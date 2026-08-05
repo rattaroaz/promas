@@ -556,7 +556,33 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
 mod tests {
     use super::*;
     use crate::db::open_and_migrate;
+    use crate::dbf::tests::write_minimal_company_dbf;
     use std::path::PathBuf;
+
+    #[test]
+    fn import_minimal_company_dbf_fixture() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_import_fix_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_minimal_company_dbf(&dir.join("COMPANY.DBF")).unwrap();
+
+        let tmp = dir.join("out.db");
+        let mut conn = open_and_migrate(&tmp).expect("open db");
+        let result = import_promas_folder(&mut conn, &dir).expect("import");
+        assert_eq!(result.companies, 1);
+        let name: String = conn
+            .query_row(
+                "SELECT name FROM companies WHERE company_no='1000'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(name, "ACME");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn import_legacy_promas_sample() {

@@ -1,8 +1,8 @@
-mod commands;
-mod db;
-mod dbf;
-mod import;
-mod models;
+pub mod commands;
+pub mod db;
+pub mod dbf;
+pub mod import;
+pub mod models;
 
 use db::{init_db, DbState};
 use std::sync::Mutex;
@@ -14,6 +14,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let conn = init_db(app.handle()).map_err(|e| -> Box<dyn std::error::Error> {
                 e.into()
@@ -55,6 +57,10 @@ pub fn run() {
             commands::report_worker_wages,
             commands::import_dbf_folder,
             commands::get_db_path,
+            commands::export_database,
+            commands::backup_database,
+            commands::set_db_location,
+            commands::import_database,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

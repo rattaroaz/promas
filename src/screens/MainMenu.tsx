@@ -10,6 +10,7 @@ export type MainAction =
   | "material"
   | "reports"
   | "misc"
+  | "settings"
   | "quit";
 
 const ITEMS: { id: MainAction; num: string; label: string; accel: string }[] = [
@@ -20,6 +21,7 @@ const ITEMS: { id: MainAction; num: string; label: string; accel: string }[] = [
   { id: "material", num: "5", label: "Material Process", accel: "M" },
   { id: "reports", num: "6", label: "Reports Menu", accel: "R" },
   { id: "misc", num: "7", label: "Miscellaneous", accel: "S" },
+  { id: "settings", num: "8", label: "Settings", accel: "T" },
 ];
 
 export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {

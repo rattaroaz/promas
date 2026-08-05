@@ -1,18 +1,78 @@
 use rusqlite::{Connection, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
 pub struct DbState(pub Mutex<Connection>);
 
+const DB_LOCATION_FILE: &str = "db_location.txt";
+const DEFAULT_DB_NAME: &str = "promas.db";
+
 pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
+    let db_path = resolve_db_path(app)?;
+    if let Some(parent) = db_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create data dir: {e}"))?;
+    }
+    open_and_migrate(&db_path)
+}
+
+/// Returns the configured database file path (custom location or default app-data path).
+pub fn resolve_db_path(app: &AppHandle) -> Result<PathBuf, String> {
     let data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| format!("app data dir: {e}"))?;
     std::fs::create_dir_all(&data_dir).map_err(|e| format!("create data dir: {e}"))?;
-    let db_path = data_dir.join("promas.db");
-    open_and_migrate(&db_path)
+
+    let config = data_dir.join(DB_LOCATION_FILE);
+    if config.exists() {
+        let raw = std::fs::read_to_string(&config).map_err(|e| format!("read db location: {e}"))?;
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed));
+        }
+    }
+    Ok(data_dir.join(DEFAULT_DB_NAME))
+}
+
+pub fn save_db_location(app: &AppHandle, path: &Path) -> Result<(), String> {
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app data dir: {e}"))?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| format!("create data dir: {e}"))?;
+    let config = data_dir.join(DB_LOCATION_FILE);
+    std::fs::write(&config, path.display().to_string())
+        .map_err(|e| format!("save db location: {e}"))
+}
+
+/// Close the live connection (via in-memory placeholder), run `op`, then reopen.
+/// On success reopens `reopen_on_ok`; on failure reopens `reopen_on_err`.
+pub fn with_db_closed<F, T>(
+    state: &DbState,
+    reopen_on_ok: &Path,
+    reopen_on_err: &Path,
+    op: F,
+) -> Result<T, String>
+where
+    F: FnOnce() -> Result<T, String>,
+{
+    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+    let _ = guard.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+    let old = std::mem::replace(
+        &mut *guard,
+        Connection::open_in_memory().map_err(|e| format!("temp db: {e}"))?,
+    );
+    drop(old);
+
+    let result = op();
+    let reopen = if result.is_ok() {
+        reopen_on_ok
+    } else {
+        reopen_on_err
+    };
+    *guard = open_and_migrate(reopen)?;
+    result
 }
 
 pub fn open_and_migrate(path: &Path) -> Result<Connection, String> {
@@ -21,6 +81,78 @@ pub fn open_and_migrate(path: &Path) -> Result<Connection, String> {
         .map_err(|e| format!("pragma: {e}"))?;
     create_schema(&conn).map_err(|e| format!("schema: {e}"))?;
     Ok(conn)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    #[test]
+    fn open_and_migrate_creates_schema_and_sysdata() {
+        let dir = std::env::temp_dir().join(format!("promas_db_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("promas.db");
+        let conn = open_and_migrate(&path).expect("migrate");
+        let company: String = conn
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert!(!company.is_empty());
+        let tables: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='companies'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(tables, 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn vacuum_into_exports_copy() {
+        let dir = std::env::temp_dir().join(format!("promas_vac_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("promas.db");
+        let export = dir.join("export.db");
+        let conn = open_and_migrate(&path).expect("migrate");
+        conn.execute(
+            "UPDATE sysdata SET company=?1 WHERE id=1",
+            ["Export Co"],
+        )
+        .unwrap();
+        conn.execute("VACUUM INTO ?1", [export.display().to_string()])
+            .unwrap();
+        assert!(export.exists());
+        let exported = Connection::open(&export).unwrap();
+        let company: String = exported
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(company, "Export Co");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn with_db_closed_reopens_on_success() {
+        let dir = std::env::temp_dir().join(format!("promas_closed_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("promas.db");
+        let conn = open_and_migrate(&path).unwrap();
+        let state = DbState(Mutex::new(conn));
+        with_db_closed(&state, &path, &path, || {
+            assert!(path.exists());
+            Ok::<_, String>(())
+        })
+        .unwrap();
+        let guard = state.0.lock().unwrap();
+        let _: String = guard
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 fn create_schema(conn: &Connection) -> Result<()> {

@@ -170,3 +170,88 @@ pub fn parse_i64(s: &str) -> i64 {
 pub fn normalize_date_field(s: &str) -> Option<String> {
     parse_date(s)
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn parse_date_yyyyymmdd_and_century_fix() {
+        assert_eq!(parse_date("20150805").as_deref(), Some("2015-08-05"));
+        // 19xx before 1990 is bumped +100 (PROMAS quirk)
+        assert_eq!(parse_date("19850312").as_deref(), Some("2085-03-12"));
+        assert_eq!(parse_date("19950312").as_deref(), Some("1995-03-12"));
+        assert_eq!(parse_date(""), None);
+        assert_eq!(parse_date("20251399"), None);
+    }
+
+    #[test]
+    fn parse_numbers() {
+        assert_eq!(parse_f64(" 12.50 "), 12.5);
+        assert_eq!(parse_f64("x"), 0.0);
+        assert_eq!(parse_i64("42.9"), 42);
+        assert_eq!(parse_i64(""), 0);
+    }
+
+    #[test]
+    fn read_minimal_dbf() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_dbf_test_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("SAMPLE.DBF");
+        write_minimal_company_dbf(&path).unwrap();
+
+        let table = read_dbf(&path).expect("read dbf");
+        assert_eq!(table.fields.len(), 2);
+        assert_eq!(table.fields[0].name, "COMPANYNO");
+        assert_eq!(table.records.len(), 1);
+        assert_eq!(table.records[0].get(&table.fields, "COMPANYNO"), "1000");
+        assert_eq!(table.records[0].get(&table.fields, "COMNAME"), "ACME");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Tiny dBase III file: COMPANYNO C(4), COMNAME C(4), one record.
+    pub fn write_minimal_company_dbf(path: &std::path::Path) -> std::io::Result<()> {
+        let mut f = std::fs::File::create(path)?;
+        let num_records: u32 = 1;
+        let header_len: u16 = 32 + 32 * 2 + 1; // header + 2 fields + terminator
+        let record_len: u16 = 1 + 4 + 4; // delete flag + fields
+
+        let mut header = [0u8; 32];
+        header[0] = 0x03; // dBase III
+        header[4..8].copy_from_slice(&num_records.to_le_bytes());
+        header[8..10].copy_from_slice(&header_len.to_le_bytes());
+        header[10..12].copy_from_slice(&record_len.to_le_bytes());
+        f.write_all(&header)?;
+
+        write_field_desc(&mut f, b"COMPANYNO", b'C', 4)?;
+        write_field_desc(&mut f, b"COMNAME", b'C', 4)?;
+        f.write_all(&[0x0D])?; // header terminator
+
+        // record: not deleted + values
+        f.write_all(b" ")?;
+        f.write_all(b"1000")?;
+        f.write_all(b"ACME")?;
+        f.write_all(&[0x1A])?; // EOF
+        Ok(())
+    }
+
+    fn write_field_desc(
+        f: &mut std::fs::File,
+        name: &[u8],
+        field_type: u8,
+        length: u8,
+    ) -> std::io::Result<()> {
+        let mut desc = [0u8; 32];
+        desc[..name.len().min(11)].copy_from_slice(&name[..name.len().min(11)]);
+        desc[11] = field_type;
+        desc[16] = length;
+        desc[17] = 0;
+        f.write_all(&desc)
+    }
+}

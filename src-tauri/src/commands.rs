@@ -3,7 +3,7 @@ use crate::import::import_promas_folder;
 use crate::models::*;
 use rusqlite::{params, OptionalExtension};
 use std::path::PathBuf;
-use tauri::{Manager, State};
+use tauri::State;
 
 fn map_err(e: impl ToString) -> String {
     e.to_string()
@@ -1348,10 +1348,97 @@ pub fn import_dbf_folder(state: State<DbState>, folder: String) -> Result<Import
 
 #[tauri::command]
 pub fn get_db_path(app: tauri::AppHandle) -> Result<String, String> {
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    Ok(data_dir.join("promas.db").display().to_string())
+    let path = crate::db::resolve_db_path(&app)?;
+    Ok(path.display().to_string())
+}
+
+fn vacuum_into(state: &State<DbState>, dest_path: &str) -> Result<(), String> {
+    let dest = PathBuf::from(dest_path);
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create export dir: {e}"))?;
+    }
+    if dest.exists() {
+        std::fs::remove_file(&dest).map_err(|e| format!("remove existing file: {e}"))?;
+    }
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute("VACUUM INTO ?1", [dest.display().to_string()])
+        .map_err(|e| format!("export database: {e}"))?;
+    Ok(())
+}
+
+/// Export a consistent copy of the live database to `dest_path` (VACUUM INTO).
+#[tauri::command]
+pub fn export_database(state: State<DbState>, dest_path: String) -> Result<(), String> {
+    vacuum_into(&state, &dest_path)
+}
+
+/// Backup the live database to `dest_path`.
+#[tauri::command]
+pub fn backup_database(state: State<DbState>, dest_path: String) -> Result<(), String> {
+    vacuum_into(&state, &dest_path)
+}
+
+/// Point the app at a new database folder. Copies the current DB there if needed.
+#[tauri::command]
+pub fn set_db_location(
+    app: tauri::AppHandle,
+    state: State<DbState>,
+    folder: String,
+) -> Result<String, String> {
+    let folder_path = PathBuf::from(&folder);
+    if !folder_path.is_dir() {
+        return Err(format!("Not a directory: {folder}"));
+    }
+    let new_path = folder_path.join("promas.db");
+    let current = crate::db::resolve_db_path(&app)?;
+
+    if current != new_path {
+        crate::db::with_db_closed(&state, &new_path, &current, || {
+            if !new_path.exists() && current.exists() {
+                std::fs::copy(&current, &new_path)
+                    .map_err(|e| format!("copy database to new location: {e}"))?;
+            }
+            Ok(())
+        })?;
+    }
+    crate::db::save_db_location(&app, &new_path)?;
+
+    Ok(new_path.display().to_string())
+}
+
+/// Replace the live database with a user-selected SQLite file.
+#[tauri::command]
+pub fn import_database(
+    app: tauri::AppHandle,
+    state: State<DbState>,
+    source_path: String,
+) -> Result<String, String> {
+    let source = PathBuf::from(&source_path);
+    if !source.is_file() {
+        return Err(format!("Not a file: {source_path}"));
+    }
+    let current = crate::db::resolve_db_path(&app)?;
+    if source == current {
+        return Err("Source path is the same as the current database.".into());
+    }
+
+    crate::db::with_db_closed(&state, &current, &current, || {
+        if let Some(parent) = current.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("create db dir: {e}"))?;
+        }
+        // Keep a safety copy next to the current DB
+        if current.exists() {
+            let bak = current.with_extension("db.bak");
+            let _ = std::fs::copy(&current, &bak);
+        }
+        std::fs::copy(&source, &current).map_err(|e| format!("import database: {e}"))?;
+        let wal = PathBuf::from(format!("{}-wal", current.display()));
+        let shm = PathBuf::from(format!("{}-shm", current.display()));
+        let _ = std::fs::remove_file(&wal);
+        let _ = std::fs::remove_file(&shm);
+        Ok(())
+    })?;
+
+    Ok(current.display().to_string())
 }
 

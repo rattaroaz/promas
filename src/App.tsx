@@ -8,9 +8,11 @@ import { MaterialBrowse } from "./screens/MaterialBrowse";
 import { WorkOrderBrowse } from "./screens/WorkOrderBrowse";
 import { ReportsScreen } from "./screens/ReportsScreen";
 import { MiscScreen } from "./screens/MiscScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 import { WorkerBrowse } from "./screens/WorkerBrowse";
 import { WorkTypeBrowse } from "./screens/WorkTypeBrowse";
 import { SubMenu } from "./screens/SubMenu";
+import { UpdateDialog } from "./components/UpdateDialog";
 import "./App.css";
 
 /**
@@ -27,6 +29,7 @@ type Screen =
   | { name: "material-browse" }
   | { name: "reports" }
   | { name: "misc" }
+  | { name: "settings" }
   | { name: "workers" }
   | { name: "worktypes" }
   | { name: "companies" };
@@ -62,6 +65,9 @@ export default function App() {
       case "misc":
         setScreen({ name: "misc" });
         break;
+      case "settings":
+        setScreen({ name: "settings" });
+        break;
       case "quit":
         try {
           await getCurrentWindow().close();
@@ -74,6 +80,7 @@ export default function App() {
 
   return (
     <div className="dos-app">
+      <UpdateDialog />
       {screen.name === "main" && <MainMenu onSelect={handleMain} />}
 
       {screen.name === "companies" && (
@@ -139,6 +146,8 @@ export default function App() {
           onWorkTypes={() => setScreen({ name: "worktypes" })}
         />
       )}
+
+      {screen.name === "settings" && <SettingsScreen onBack={goMain} />}
 
       {screen.name === "workers" && (
         <WorkerBrowse

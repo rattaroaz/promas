@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v2.0.1)"
+        required: true
+        default: "v2.0.0"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Enable VBScript (WiX / MSI)
+        shell: powershell
+        run: |
+          $cap = Get-WindowsCapability -Online | Where-Object { $_.Name -like 'VBSCRIPT*' }
+          if ($cap -and $cap.State -ne 'Installed') {
+            Add-WindowsCapability -Online -Name $cap.Name
+          } elseif (-not $cap) {
+            dism /online /enable-feature /featurename:VBSCRIPT /all /norestart
+          }
+
+      - name: Normalize signing secrets
+        shell: bash
+        run: |
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
+            echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+            echo "EOF"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<EOF"
+            echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          releaseName: "PROMAS ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: --bundles nsis,msi

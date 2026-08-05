@@ -489,6 +489,14 @@ export const api = {
   importDbfFolder: (folder: string) =>
     invoke<ImportResult>("import_dbf_folder", { folder }),
   getDbPath: () => invoke<string>("get_db_path"),
+  exportDatabase: (destPath: string) =>
+    invoke("export_database", { destPath }),
+  backupDatabase: (destPath: string) =>
+    invoke("backup_database", { destPath }),
+  setDbLocation: (folder: string) =>
+    invoke<string>("set_db_location", { folder }),
+  importDatabase: (sourcePath: string) =>
+    invoke<string>("import_database", { sourcePath }),
 };
 
 export function money(n: number | null | undefined): string {
