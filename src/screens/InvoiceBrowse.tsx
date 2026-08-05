@@ -20,6 +20,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { DateInput } from "../dos/DateInput";
 import { padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
@@ -239,16 +240,12 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
               placeholder="Invoice#, Company, Unit, PO"
             />
             <label>From:</label>
-            <input
-              className="dos-input w12"
-              type="date"
+            <DateInput
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
             />
             <label>To:</label>
-            <input
-              className="dos-input w12"
-              type="date"
+            <DateInput
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
             />
@@ -339,9 +336,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
             </div>
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
-                <input
-                  className="dos-input w12"
-                  type="date"
+                <DateInput
                   value={editing.invoice.salesDate}
                   onChange={(e) =>
                     setEditing({
@@ -355,9 +350,8 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 />
               </DotField>
               <DotField label="Due Date" width={12}>
-                <input
-                  className="dos-input w12"
-                  type="date"
+                <DateInput
+                  allowFutureYears={5}
                   value={editing.invoice.salesDue || ""}
                   onChange={(e) =>
                     setEditing({
@@ -503,9 +497,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     setEditing({ ...editing, lines });
                   }}
                 />
-                <input
-                  className="dos-input w12"
-                  type="date"
+                <DateInput
                   value={line.workDate || today()}
                   onChange={(e) => {
                     const lines = [...editing.lines];

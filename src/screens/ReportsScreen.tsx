@@ -3,6 +3,7 @@ import { api, AgingRow, SalesAnalysisRow, WorkerWageRow } from "../api";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
 import { padR, padL, money, fmtDate } from "../dos/utils";
+import { DateInput } from "../dos/DateInput";
 import { SubMenu, MenuItem } from "./SubMenu";
 
 const REPORT_ITEMS: MenuItem[] = [
@@ -154,16 +155,12 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     >
       <div className="dos-searchline">
         <label>From Date:</label>
-        <input
-          className="dos-input w12"
-          type="date"
+        <DateInput
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
         />
         <label>To Date:</label>
-        <input
-          className="dos-input w12"
-          type="date"
+        <DateInput
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
         />

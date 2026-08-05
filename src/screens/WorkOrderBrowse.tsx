@@ -17,6 +17,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { DateInput } from "../dos/DateInput";
 import { padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
@@ -205,9 +206,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
         >
           <div className="dos-form">
             <DotField label="Order Date" width={16}>
-              <input
-                className="dos-input w12"
-                type="date"
+              <DateInput
                 value={editing.order.orderDate || today()}
                 onChange={(e) =>
                   setEditing({
@@ -218,9 +217,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
             <DotField label="Service Date" width={16}>
-              <input
-                className="dos-input w12"
-                type="date"
+              <DateInput
                 value={editing.order.workDate || ""}
                 onChange={(e) =>
                   setEditing({

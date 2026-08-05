@@ -10,6 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { DateInput } from "../dos/DateInput";
 import { padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function CashBrowse({ onBack }: { onBack: () => void }) {
@@ -172,16 +173,12 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
               }}
             />
             <label>From:</label>
-            <input
-              className="dos-input w12"
-              type="date"
+            <DateInput
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
             />
             <label>To:</label>
-            <input
-              className="dos-input w12"
-              type="date"
+            <DateInput
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
             />
@@ -257,9 +254,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
             <DotField label="Pay Date" width={16}>
-              <input
-                className="dos-input w12"
-                type="date"
+              <DateInput
                 value={editing.payDate || today()}
                 onChange={(e) =>
                   setEditing({ ...editing, payDate: e.target.value })

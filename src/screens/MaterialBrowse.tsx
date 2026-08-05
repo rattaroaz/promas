@@ -10,6 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { DateInput } from "../dos/DateInput";
 import { padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function MaterialBrowse({ onBack }: { onBack: () => void }) {
@@ -193,9 +194,7 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
               </select>
             </DotField>
             <DotField label="Mat Date" width={14}>
-              <input
-                className="dos-input w12"
-                type="date"
+              <DateInput
                 value={editing.matDate || today()}
                 onChange={(e) =>
                   setEditing({ ...editing, matDate: e.target.value })

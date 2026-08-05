@@ -10,6 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { DateInput } from "../dos/DateInput";
 import { padR, padL } from "../dos/utils";
 
 export function WorkerBrowse({ onBack }: { onBack: () => void }) {
@@ -208,9 +209,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
             <DotField label="Birth Date" width={14}>
-              <input
-                className="dos-input w12"
-                type="date"
+              <DateInput
                 value={editing.birthDate || ""}
                 onChange={(e) =>
                   setEditing({
