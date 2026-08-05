@@ -11,4 +11,11 @@ test.describe("invoice process", () => {
     await expect(page.getByRole("button", { name: /A1/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /250\.00/ })).toBeVisible();
   });
+
+  test("opens invoice detail from list row", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
+    await page.getByRole("button", { name: /1000/ }).click();
+    await expect(page.getByText(/Invoice No/i)).toBeVisible();
+  });
 });

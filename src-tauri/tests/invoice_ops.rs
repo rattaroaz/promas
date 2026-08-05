@@ -237,3 +237,80 @@ fn report_aging_buckets_by_age() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn report_sales_analysis_lists_open_invoices() {
+    let (dir, mut conn) = temp_conn("sales");
+    seed_company(&conn);
+    ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(250.0)],
+        },
+    )
+    .unwrap();
+
+    let rows = ops::report_sales_analysis(
+        &conn,
+        &ListParams {
+            search: None,
+            company_no: Some("1000".into()),
+            from_date: Some("2026-01-01".into()),
+            to_date: Some("2026-12-31".into()),
+            include_voided: None,
+            limit: None,
+            offset: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].invoice, 1);
+    assert_eq!(rows[0].sales_amount, 250.0);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn report_worker_wages_includes_emp_lines() {
+    let (dir, mut conn) = temp_conn("wages");
+    seed_company(&conn);
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES (?1, ?2)",
+        params!["E1", "Pat Worker"],
+    )
+    .unwrap();
+
+    let mut ln = line(200.0);
+    ln.emp_no = "E1".into();
+    ln.commission = 50.0;
+    ln.emp_price = 0.0; // save_invoice computes from commission
+    ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![ln],
+        },
+    )
+    .unwrap();
+
+    let rows = ops::report_worker_wages(
+        &conn,
+        &ListParams {
+            search: Some("E1".into()),
+            company_no: None,
+            from_date: None,
+            to_date: None,
+            include_voided: None,
+            limit: None,
+            offset: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].emp_no, "E1");
+    assert_eq!(rows[0].emp_name, "Pat Worker");
+    assert_eq!(rows[0].wages, 100.0); // 200 * 50%
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

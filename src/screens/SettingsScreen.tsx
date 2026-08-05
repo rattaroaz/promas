@@ -125,26 +125,56 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     }
   }
 
-  async function doChooseLocation() {
+  async function applyDbLocation(selected: string) {
+    setBusy(true);
+    setMsg("Setting database file…");
+    setMsgKind("info");
     try {
-      const selected = await save({
-        title: "Choose or create PROMAS database file",
-        defaultPath: "promas.db",
-        filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
-      });
-      if (!selected) return;
-      setBusy(true);
-      setMsg("Setting database file…");
-      setMsgKind("info");
-      const path = await api.setDbLocation(selected);
-      setDbPath(path);
-      setMsg(`Database file set to: ${path}`);
+      const result = await api.setDbLocation(selected);
+      setDbPath(result.path);
+      setMsg(
+        result.created
+          ? `Created new database: ${result.path}`
+          : `Using existing database (not overwritten): ${result.path}`
+      );
       setMsgKind("info");
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Open an existing .db — never overwrites file contents. */
+  async function doOpenExistingDb() {
+    try {
+      const selected = await open({
+        multiple: false,
+        title: "Open existing PROMAS database (will not overwrite)",
+        filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
+      });
+      if (!selected || Array.isArray(selected)) return;
+      await applyDbLocation(selected);
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
+  }
+
+  /** Create a new empty .db at a chosen path (existing path still opens, never overwrites). */
+  async function doCreateNewDb() {
+    try {
+      const selected = await save({
+        title: "Create new PROMAS database file",
+        defaultPath: "promas.db",
+        filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
+      });
+      if (!selected) return;
+      await applyDbLocation(selected);
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
     }
   }
 
@@ -223,7 +253,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     export:
       "Save a full copy of the current SQLite database to a file you choose.",
     location:
-      "Choose a .db file (or type a new name). An existing file is opened; a new name creates an empty database. The path is remembered for next startup.",
+      "Open an existing .db (used as-is — never overwritten), or create a new empty database file. The path is remembered for next startup.",
     backup:
       "Create a dated backup copy of the current database.",
     import:
@@ -279,14 +309,23 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
               </button>
             )}
             {screen === "location" && (
-              <button
-                className="dos-btn"
-                disabled={busy}
-                onClick={() => void doChooseLocation()}
-                autoFocus
-              >
-                {busy ? "Updating location…" : "Choose Database File"}
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.6em" }}>
+                <button
+                  className="dos-btn"
+                  disabled={busy}
+                  onClick={() => void doOpenExistingDb()}
+                  autoFocus
+                >
+                  {busy ? "Working…" : "Open Existing Database"}
+                </button>
+                <button
+                  className="dos-btn"
+                  disabled={busy}
+                  onClick={() => void doCreateNewDb()}
+                >
+                  {busy ? "Working…" : "Create New Database File"}
+                </button>
+              </div>
             )}
             {screen === "import" && (
               <button

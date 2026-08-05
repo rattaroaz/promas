@@ -22,7 +22,10 @@ vi.mock("../api", async () => {
       getDbPath: vi.fn().mockResolvedValue("C:\\mock\\promas.db"),
       exportDatabase: vi.fn().mockResolvedValue(undefined),
       backupDatabase: vi.fn().mockResolvedValue(undefined),
-      setDbLocation: vi.fn().mockResolvedValue("D:\\data\\promas.db"),
+      setDbLocation: vi.fn().mockResolvedValue({
+        path: "D:\\data\\promas.db",
+        created: false,
+      }),
       importDatabase: vi.fn().mockResolvedValue("C:\\mock\\promas.db"),
       getBackendDiagnostics: vi.fn().mockResolvedValue({
         dbPath: "C:\\mock\\promas.db",
@@ -42,7 +45,10 @@ describe("SettingsScreen", () => {
     vi.mocked(api.getDbPath).mockResolvedValue("C:\\mock\\promas.db");
     vi.mocked(api.exportDatabase).mockResolvedValue(undefined);
     vi.mocked(api.backupDatabase).mockResolvedValue(undefined);
-    vi.mocked(api.setDbLocation).mockResolvedValue("D:\\data\\promas.db");
+    vi.mocked(api.setDbLocation).mockResolvedValue({
+      path: "D:\\data\\promas.db",
+      created: false,
+    });
     vi.mocked(api.importDatabase).mockResolvedValue("C:\\mock\\promas.db");
   });
 
@@ -96,18 +102,39 @@ describe("SettingsScreen", () => {
     expect(await screen.findByText(/Backup saved to: C:\\backups\\promas-backup.db/i)).toBeInTheDocument();
   });
 
-  it("sets location when file dialog returns a path", async () => {
+  it("opens existing database without overwrite messaging", async () => {
     const user = userEvent.setup();
-    vi.mocked(save).mockResolvedValue("D:\\data\\my-promas.db");
-    vi.mocked(api.setDbLocation).mockResolvedValue("D:\\data\\my-promas.db");
+    vi.mocked(open).mockResolvedValue("D:\\data\\existing.db");
+    vi.mocked(api.setDbLocation).mockResolvedValue({
+      path: "D:\\data\\existing.db",
+      created: false,
+    });
     renderApp(<SettingsScreen onBack={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /Choose Location of Database/i }));
-    await user.click(screen.getByRole("button", { name: /Choose Database File/i }));
+    await user.click(screen.getByRole("button", { name: /Open Existing Database/i }));
     await waitFor(() => {
-      expect(api.setDbLocation).toHaveBeenCalledWith("D:\\data\\my-promas.db");
+      expect(api.setDbLocation).toHaveBeenCalledWith("D:\\data\\existing.db");
     });
     expect(
-      await screen.findByText(/Database file set to: D:\\data\\my-promas.db/i)
+      await screen.findByText(/Using existing database \(not overwritten\): D:\\data\\existing.db/i)
+    ).toBeInTheDocument();
+  });
+
+  it("creates a new database file via save dialog", async () => {
+    const user = userEvent.setup();
+    vi.mocked(save).mockResolvedValue("D:\\data\\new-promas.db");
+    vi.mocked(api.setDbLocation).mockResolvedValue({
+      path: "D:\\data\\new-promas.db",
+      created: true,
+    });
+    renderApp(<SettingsScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /Choose Location of Database/i }));
+    await user.click(screen.getByRole("button", { name: /Create New Database File/i }));
+    await waitFor(() => {
+      expect(api.setDbLocation).toHaveBeenCalledWith("D:\\data\\new-promas.db");
+    });
+    expect(
+      await screen.findByText(/Created new database: D:\\data\\new-promas.db/i)
     ).toBeInTheDocument();
   });
 

@@ -1039,37 +1039,7 @@ pub fn report_sales_analysis(
     params: ListParams,
 ) -> Result<Vec<SalesAnalysisRow>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    let from_date = params.from_date.unwrap_or_default();
-    let to_date = params.to_date.unwrap_or_default();
-    let company_no = params.company_no.unwrap_or_default();
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT sales_date,invoice,company_no,pro_no,sales_total,sales_pay,sales_bal,pay_total,balance
-               FROM invoices
-               WHERE voided=0
-                 AND (?1='' OR company_no=?1)
-                 AND (?2='' OR sales_date>=?2)
-                 AND (?3='' OR sales_date<=?3)
-               ORDER BY sales_date, invoice"#,
-        )
-        .map_err(map_err)?;
-    let rows = stmt
-        .query_map(params![company_no, from_date, to_date], |r| {
-            Ok(SalesAnalysisRow {
-                sales_date: r.get(0)?,
-                invoice: r.get(1)?,
-                company_no: r.get(2)?,
-                pro_no: r.get(3)?,
-                sales_amount: r.get(4)?,
-                deposit: r.get(5)?,
-                sales_bal: r.get(6)?,
-                pay_total: r.get(7)?,
-                balance: r.get(8)?,
-            })
-        })
-        .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    crate::ops::report_sales_analysis(&conn, &params)
 }
 
 #[tauri::command]
@@ -1078,43 +1048,7 @@ pub fn report_worker_wages(
     params: ListParams,
 ) -> Result<Vec<WorkerWageRow>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    let from_date = params.from_date.unwrap_or_default();
-    let to_date = params.to_date.unwrap_or_default();
-    let search = params.search.unwrap_or_default();
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT l.emp_no, COALESCE(e.name,''), l.work_date, l.sales_date, l.invoice,
-               l.company_no, l.pro_no, l.price, l.commission, l.emp_price, l.description
-               FROM invoice_lines l
-               LEFT JOIN employees e ON e.emp_no=l.emp_no
-               JOIN invoices i ON i.company_no=l.company_no AND i.pro_no=l.pro_no
-                 AND i.sales_date=l.sales_date AND i.invoice=l.invoice
-               WHERE i.voided=0 AND l.emp_no != ''
-                 AND (?1='' OR l.work_date>=?1 OR (l.work_date IS NULL AND l.sales_date>=?1))
-                 AND (?2='' OR l.work_date<=?2 OR (l.work_date IS NULL AND l.sales_date<=?2))
-                 AND (?3='' OR l.emp_no=?3)
-               ORDER BY l.emp_no, l.work_date, l.invoice"#,
-        )
-        .map_err(map_err)?;
-    let rows = stmt
-        .query_map(params![from_date, to_date, search], |r| {
-            Ok(WorkerWageRow {
-                emp_no: r.get(0)?,
-                emp_name: r.get(1)?,
-                work_date: r.get(2)?,
-                inv_date: r.get(3)?,
-                invoice: r.get(4)?,
-                company_no: r.get(5)?,
-                pro_no: r.get(6)?,
-                inv_amount: r.get(7)?,
-                rate: r.get(8)?,
-                wages: r.get(9)?,
-                description: r.get(10)?,
-            })
-        })
-        .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    crate::ops::report_worker_wages(&conn, &params)
 }
 
 // ─── Import ───────────────────────────────────────────────────────────
@@ -1183,53 +1117,33 @@ pub fn backup_database(state: State<DbState>, dest_path: String) -> Result<(), S
     result
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetDbLocationResult {
+    pub path: String,
+    /// false when an existing file was opened (never overwritten).
+    pub created: bool,
+}
+
 /// Point the app at a database file path.
-/// - If the file exists, switch to it (open + migrate).
-/// - If it does not exist, create a new empty database there.
+/// - If the file exists: open it as-is (never overwrite / copy into it).
+/// - If it does not exist: create a new empty database there.
 /// The path is persisted for future startups.
 #[tauri::command]
 pub fn set_db_location(
     app: tauri::AppHandle,
     state: State<DbState>,
     path: String,
-) -> Result<String, String> {
-    let trimmed = path.trim();
-    if trimmed.is_empty() {
-        return Err("Database path is empty.".into());
-    }
-    let mut new_path = PathBuf::from(trimmed);
-    if new_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(|n| n.is_empty() || n == "." || n == "..")
-        .unwrap_or(true)
-    {
-        return Err("Choose a database file name (not a folder).".into());
-    }
-    if new_path.extension().is_none() {
-        new_path.set_extension("db");
-    }
-    if new_path.is_dir() {
-        return Err(format!(
-            "Path is a folder; choose a .db file: {}",
-            new_path.display()
-        ));
-    }
-
-    if let Some(parent) = new_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("create database folder: {e}"))?;
-        }
-    }
+) -> Result<SetDbLocationResult, String> {
+    let new_path = crate::db::normalize_db_file_path(&path)?;
+    crate::db::ensure_db_parent(&new_path)?;
 
     let current = crate::db::resolve_db_path(&app)?;
     let existed = new_path.exists();
 
-    if current != new_path {
-        // Reopen on `new_path`: opens existing DB, or creates a new schema file.
-        crate::db::with_db_closed(&state, &new_path, &current, || Ok(()))?;
-    } else if !existed {
+    // Never write/copy into an existing file. `open_and_migrate` only opens +
+    // applies CREATE IF NOT EXISTS schema; it does not replace file contents.
+    if current != new_path || !existed {
         crate::db::with_db_closed(&state, &new_path, &current, || Ok(()))?;
     }
 
@@ -1238,10 +1152,17 @@ pub fn set_db_location(
         target: "promas::db",
         "set_db_location → {} ({})",
         new_path.display(),
-        if existed { "existing" } else { "created" }
+        if existed {
+            "opened existing — not overwritten"
+        } else {
+            "created new empty database"
+        }
     );
 
-    Ok(new_path.display().to_string())
+    Ok(SetDbLocationResult {
+        path: new_path.display().to_string(),
+        created: !existed,
+    })
 }
 
 /// Replace the live database with a user-selected SQLite file.
@@ -1253,29 +1174,10 @@ pub fn import_database(
 ) -> Result<String, String> {
     log::info!(target: "promas::db", "import_database from {source_path}");
     let source = PathBuf::from(&source_path);
-    if !source.is_file() {
-        return Err(format!("Not a file: {source_path}"));
-    }
     let current = crate::db::resolve_db_path(&app)?;
-    if source == current {
-        return Err("Source path is the same as the current database.".into());
-    }
 
     crate::db::with_db_closed(&state, &current, &current, || {
-        if let Some(parent) = current.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| format!("create db dir: {e}"))?;
-        }
-        // Keep a safety copy next to the current DB
-        if current.exists() {
-            let bak = current.with_extension("db.bak");
-            let _ = std::fs::copy(&current, &bak);
-        }
-        std::fs::copy(&source, &current).map_err(|e| format!("import database: {e}"))?;
-        let wal = PathBuf::from(format!("{}-wal", current.display()));
-        let shm = PathBuf::from(format!("{}-shm", current.display()));
-        let _ = std::fs::remove_file(&wal);
-        let _ = std::fs::remove_file(&shm);
-        Ok(())
+        crate::db::import_replace_database(&current, &source)
     })?;
 
     Ok(current.display().to_string())

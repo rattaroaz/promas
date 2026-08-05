@@ -582,9 +582,15 @@ export const api = {
     log.info("db", "database backed up", { destPath });
   },
   setDbLocation: async (path: string) => {
-    const resolved = await invoke<string>("set_db_location", { path });
-    log.info("db", "database location set", { path: resolved });
-    return resolved;
+    const result = await invoke<{ path: string; created: boolean }>(
+      "set_db_location",
+      { path }
+    );
+    log.info("db", "database location set", {
+      path: result.path,
+      created: result.created,
+    });
+    return result;
   },
   importDatabase: async (sourcePath: string) => {
     const path = await invoke<string>("import_database", { sourcePath });

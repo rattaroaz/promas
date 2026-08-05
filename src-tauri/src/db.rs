@@ -16,6 +16,90 @@ pub fn init_db(app: &AppHandle) -> Result<Connection, String> {
     open_and_migrate(&db_path)
 }
 
+/// Validate / normalize a user-chosen database file path (not a folder).
+pub fn normalize_db_file_path(path: &str) -> Result<PathBuf, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Database path is empty.".into());
+    }
+    let mut new_path = PathBuf::from(trimmed);
+    if new_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.is_empty() || n == "." || n == "..")
+        .unwrap_or(true)
+    {
+        return Err("Choose a database file name (not a folder).".into());
+    }
+    // Reject existing directories before appending a default extension.
+    if new_path.is_dir() {
+        return Err(format!(
+            "Path is a folder; choose a .db file: {}",
+            new_path.display()
+        ));
+    }
+    if new_path.extension().is_none() {
+        new_path.set_extension("db");
+    }
+    Ok(new_path)
+}
+
+pub fn ensure_db_parent(path: &Path) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("create database folder: {e}"))?;
+        }
+    }
+    Ok(())
+}
+
+/// Persist chosen DB path under a config directory (`db_location.txt`).
+pub fn persist_db_location(config_dir: &Path, db_path: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(config_dir).map_err(|e| format!("create data dir: {e}"))?;
+    let config = config_dir.join(DB_LOCATION_FILE);
+    std::fs::write(&config, db_path.display().to_string())
+        .map_err(|e| format!("save db location: {e}"))
+}
+
+/// Read persisted DB path from a config directory, if present.
+pub fn load_persisted_db_location(config_dir: &Path) -> Option<PathBuf> {
+    let config = config_dir.join(DB_LOCATION_FILE);
+    if !config.exists() {
+        return None;
+    }
+    let raw = std::fs::read_to_string(&config).ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(trimmed))
+    }
+}
+
+/// Replace `current` with a copy of `source` (keeps `.db.bak` safety copy).
+pub fn import_replace_database(current: &Path, source: &Path) -> Result<(), String> {
+    if !source.is_file() {
+        return Err(format!("Not a file: {}", source.display()));
+    }
+    if source == current {
+        return Err("Source path is the same as the current database.".into());
+    }
+    if let Some(parent) = current.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create db dir: {e}"))?;
+    }
+    if current.exists() {
+        let bak = current.with_extension("db.bak");
+        let _ = std::fs::copy(current, &bak);
+    }
+    std::fs::copy(source, current).map_err(|e| format!("import database: {e}"))?;
+    let wal = PathBuf::from(format!("{}-wal", current.display()));
+    let shm = PathBuf::from(format!("{}-shm", current.display()));
+    let _ = std::fs::remove_file(&wal);
+    let _ = std::fs::remove_file(&shm);
+    Ok(())
+}
+
 /// Returns the configured database file path (custom location or default app-data path).
 pub fn resolve_db_path(app: &AppHandle) -> Result<PathBuf, String> {
     let data_dir = app
@@ -24,13 +108,8 @@ pub fn resolve_db_path(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("app data dir: {e}"))?;
     std::fs::create_dir_all(&data_dir).map_err(|e| format!("create data dir: {e}"))?;
 
-    let config = data_dir.join(DB_LOCATION_FILE);
-    if config.exists() {
-        let raw = std::fs::read_to_string(&config).map_err(|e| format!("read db location: {e}"))?;
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return Ok(PathBuf::from(trimmed));
-        }
+    if let Some(path) = load_persisted_db_location(&data_dir) {
+        return Ok(path);
     }
     Ok(data_dir.join(DEFAULT_DB_NAME))
 }
@@ -40,10 +119,7 @@ pub fn save_db_location(app: &AppHandle, path: &Path) -> Result<(), String> {
         .path()
         .app_data_dir()
         .map_err(|e| format!("app data dir: {e}"))?;
-    std::fs::create_dir_all(&data_dir).map_err(|e| format!("create data dir: {e}"))?;
-    let config = data_dir.join(DB_LOCATION_FILE);
-    std::fs::write(&config, path.display().to_string())
-        .map_err(|e| format!("save db location: {e}"))
+    persist_db_location(&data_dir, path)
 }
 
 /// Close the live connection (via in-memory placeholder), run `op`, then reopen.
@@ -151,6 +227,130 @@ mod tests {
         let _: String = guard
             .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
             .unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn normalize_db_file_path_rejects_empty_and_folders() {
+        assert!(normalize_db_file_path("").is_err());
+        assert!(normalize_db_file_path("   ").is_err());
+        assert!(normalize_db_file_path(".").is_err());
+        let dir = std::env::temp_dir().join(format!(
+            "promas_norm_dir_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(normalize_db_file_path(dir.to_str().unwrap()).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn normalize_db_file_path_adds_db_extension() {
+        let p = normalize_db_file_path(r"C:\data\mydata").unwrap();
+        assert_eq!(p.extension().and_then(|e| e.to_str()), Some("db"));
+        let p2 = normalize_db_file_path(r"C:\data\keep.sqlite").unwrap();
+        assert_eq!(p2.extension().and_then(|e| e.to_str()), Some("sqlite"));
+    }
+
+    #[test]
+    fn persist_and_load_db_location() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_loc_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        let db = dir.join("custom").join("acct.db");
+        persist_db_location(&dir, &db).unwrap();
+        let loaded = load_persisted_db_location(&dir).unwrap();
+        assert_eq!(loaded, db);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn switching_to_existing_db_preserves_data() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_keep_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let current = dir.join("current.db");
+        let existing = dir.join("existing.db");
+
+        let keep = open_and_migrate(&existing).unwrap();
+        keep.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Keep Me"])
+            .unwrap();
+        drop(keep);
+
+        let conn = open_and_migrate(&current).unwrap();
+        let state = DbState(Mutex::new(conn));
+        // Switch to existing — must not wipe "Keep Me"
+        with_db_closed(&state, &existing, &current, || Ok::<_, String>(())).unwrap();
+
+        let company: String = state
+            .0
+            .lock()
+            .unwrap()
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(company, "Keep Me");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn open_or_create_via_with_db_closed_creates_new_file() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_switch_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let current = dir.join("old.db");
+        let new_path = dir.join("nested").join("new.db");
+        let conn = open_and_migrate(&current).unwrap();
+        let state = DbState(Mutex::new(conn));
+        assert!(!new_path.exists());
+        ensure_db_parent(&new_path).unwrap();
+        with_db_closed(&state, &new_path, &current, || Ok::<_, String>(())).unwrap();
+        assert!(new_path.exists());
+        let company: String = state
+            .0
+            .lock()
+            .unwrap()
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert!(!company.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn import_replace_database_copies_and_keeps_bak() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_imp_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let current = dir.join("live.db");
+        let source = dir.join("incoming.db");
+        let c1 = open_and_migrate(&current).unwrap();
+        c1.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Old Co"])
+            .unwrap();
+        drop(c1);
+        let c2 = open_and_migrate(&source).unwrap();
+        c2.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["New Co"])
+            .unwrap();
+        drop(c2);
+
+        import_replace_database(&current, &source).unwrap();
+        assert!(current.with_extension("db.bak").exists());
+        let opened = Connection::open(&current).unwrap();
+        let company: String = opened
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(company, "New Co");
+        assert!(import_replace_database(&current, &current).is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -197,6 +197,86 @@ pub fn save_cash_receipt(conn: &mut Connection, receipt: CashReceipt) -> Result<
     Ok(())
 }
 
+pub fn report_sales_analysis(
+    conn: &Connection,
+    params: &ListParams,
+) -> Result<Vec<SalesAnalysisRow>, String> {
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let company_no = params.company_no.clone().unwrap_or_default();
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT sales_date,invoice,company_no,pro_no,sales_total,sales_pay,sales_bal,pay_total,balance
+               FROM invoices
+               WHERE voided=0
+                 AND (?1='' OR company_no=?1)
+                 AND (?2='' OR sales_date>=?2)
+                 AND (?3='' OR sales_date<=?3)
+               ORDER BY sales_date, invoice"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![company_no, from_date, to_date], |r| {
+            Ok(SalesAnalysisRow {
+                sales_date: r.get(0)?,
+                invoice: r.get(1)?,
+                company_no: r.get(2)?,
+                pro_no: r.get(3)?,
+                sales_amount: r.get(4)?,
+                deposit: r.get(5)?,
+                sales_bal: r.get(6)?,
+                pay_total: r.get(7)?,
+                balance: r.get(8)?,
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+pub fn report_worker_wages(
+    conn: &Connection,
+    params: &ListParams,
+) -> Result<Vec<WorkerWageRow>, String> {
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let search = params.search.clone().unwrap_or_default();
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT l.emp_no, COALESCE(e.name,''), l.work_date, l.sales_date, l.invoice,
+               l.company_no, l.pro_no, l.price, l.commission, l.emp_price, l.description
+               FROM invoice_lines l
+               LEFT JOIN employees e ON e.emp_no=l.emp_no
+               JOIN invoices i ON i.company_no=l.company_no AND i.pro_no=l.pro_no
+                 AND i.sales_date=l.sales_date AND i.invoice=l.invoice
+               WHERE i.voided=0 AND l.emp_no != ''
+                 AND (?1='' OR l.work_date>=?1 OR (l.work_date IS NULL AND l.sales_date>=?1))
+                 AND (?2='' OR l.work_date<=?2 OR (l.work_date IS NULL AND l.sales_date<=?2))
+                 AND (?3='' OR l.emp_no=?3)
+               ORDER BY l.emp_no, l.work_date, l.invoice"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![from_date, to_date, search], |r| {
+            Ok(WorkerWageRow {
+                emp_no: r.get(0)?,
+                emp_name: r.get(1)?,
+                work_date: r.get(2)?,
+                inv_date: r.get(3)?,
+                invoice: r.get(4)?,
+                company_no: r.get(5)?,
+                pro_no: r.get(6)?,
+                inv_amount: r.get(7)?,
+                rate: r.get(8)?,
+                wages: r.get(9)?,
+                description: r.get(10)?,
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
 pub fn report_aging(
     conn: &Connection,
     as_of: Option<String>,
