@@ -1,0 +1,680 @@
+/* ═══════════════════════════════════════════════════════════
+   PROMAS — Clipper / DOS terminal look-alike
+   Color pairs from original: W+/B, GR+/B, W+/R, BG+/R, W+/BG
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --dos-blue: #0000aa;
+  --dos-blue-bright: #0000ff;
+  --dos-cyan: #00aaaa;
+  --dos-cyan-bright: #55ffff;
+  --dos-white: #aaaaaa;
+  --dos-white-bright: #ffffff;
+  --dos-yellow: #ffff55;
+  --dos-yellow-dim: #aaaa00;
+  --dos-black: #000000;
+  --dos-red: #aa0000;
+  --dos-red-bright: #ff5555;
+  --dos-green: #00aa00;
+  --dos-green-bright: #55ff55;
+  --dos-magenta: #aa00aa;
+  --dos-brown: #aa5500;
+  --dos-gray: #555555;
+  --font-dos: "Consolas", "Lucida Console", "Courier New", monospace;
+  --cell: 1ch;
+  --row: 1.15em;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--dos-black);
+  color: var(--dos-white-bright);
+  font-family: var(--font-dos);
+  font-size: 16px;
+  line-height: var(--row);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  text-rendering: optimizeSpeed;
+  cursor: default;
+  user-select: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  border-radius: 0;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* ─── App shell ─────────────────────────────────────────── */
+
+.dos-app {
+  height: 100%;
+  width: 100%;
+  background: var(--dos-blue);
+  color: var(--dos-white-bright);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dos-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  position: relative;
+}
+
+/* ─── Status / function key bar ─────────────────────────── */
+
+.dos-statusbar {
+  background: var(--dos-black);
+  color: var(--dos-white-bright);
+  padding: 0 0.5ch;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-size: 0.95em;
+  display: flex;
+  gap: 0;
+}
+
+.dos-statusbar .key {
+  color: var(--dos-black);
+  background: var(--dos-cyan-bright);
+  padding: 0 0.4ch;
+  margin-right: 0.3ch;
+  font-weight: bold;
+}
+
+.dos-statusbar .hint {
+  color: var(--dos-white-bright);
+  margin-right: 1.2ch;
+}
+
+.dos-titlebar {
+  background: var(--dos-cyan);
+  color: var(--dos-black);
+  text-align: center;
+  font-weight: bold;
+  padding: 0 1ch;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.dos-titlebar .left {
+  float: left;
+  font-weight: normal;
+}
+
+.dos-titlebar .right {
+  float: right;
+  font-weight: normal;
+}
+
+.dos-messagebar {
+  background: var(--dos-black);
+  color: var(--dos-yellow);
+  padding: 0 1ch;
+  min-height: 1.15em;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dos-messagebar.error {
+  color: var(--dos-red-bright);
+  background: var(--dos-black);
+}
+
+.dos-messagebar.info {
+  color: var(--dos-cyan-bright);
+}
+
+/* ─── Double-line box (Clipper style) ───────────────────── */
+
+.dos-box {
+  border: none;
+  position: relative;
+  background: var(--dos-blue);
+  color: var(--dos-white-bright);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dos-box.cyan-frame {
+  box-shadow:
+    0 0 0 1px var(--dos-cyan-bright),
+    inset 0 0 0 1px var(--dos-cyan-bright);
+  margin: 1px;
+}
+
+.dos-box.white-frame {
+  box-shadow:
+    0 0 0 1px var(--dos-white-bright),
+    inset 0 0 0 1px var(--dos-white-bright);
+  margin: 1px;
+}
+
+.dos-box.yellow-frame {
+  box-shadow:
+    0 0 0 1px var(--dos-yellow),
+    inset 0 0 0 1px var(--dos-yellow);
+  margin: 1px;
+}
+
+/* Unicode double-line box using preformatted border */
+.dos-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0.5em 1ch;
+}
+
+.dos-panel-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Main menu (centered double box) ───────────────────── */
+
+.dos-main-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--dos-blue);
+  min-height: 0;
+}
+
+.dos-menu-frame {
+  background: var(--dos-blue);
+  color: var(--dos-white-bright);
+  border: 2px double var(--dos-cyan-bright);
+  padding: 0;
+  min-width: 42ch;
+  box-shadow: 4px 4px 0 #000055;
+}
+
+.dos-menu-frame .menu-header {
+  background: var(--dos-cyan);
+  color: var(--dos-black);
+  text-align: center;
+  font-weight: bold;
+  padding: 0 1ch;
+  border-bottom: 1px solid var(--dos-cyan-bright);
+}
+
+.dos-menu-frame .menu-body {
+  padding: 0.6em 0;
+}
+
+.dos-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--dos-white-bright);
+  padding: 0 2ch;
+  cursor: pointer;
+  white-space: pre;
+  font-family: var(--font-dos);
+  font-size: inherit;
+  line-height: 1.35;
+}
+
+.dos-menu-item:hover,
+.dos-menu-item.hot {
+  background: var(--dos-cyan-bright);
+  color: var(--dos-black);
+}
+
+.dos-menu-item .num {
+  color: var(--dos-yellow);
+  margin-right: 1ch;
+}
+
+.dos-menu-item.hot .num,
+.dos-menu-item:hover .num {
+  color: var(--dos-red);
+  font-weight: bold;
+}
+
+.dos-menu-item .accel {
+  text-decoration: underline;
+  color: var(--dos-yellow);
+}
+
+.dos-menu-item.hot .accel,
+.dos-menu-item:hover .accel {
+  color: var(--dos-red);
+}
+
+.dos-copyright {
+  margin-top: 1.5em;
+  color: var(--dos-cyan-bright);
+  text-align: center;
+  font-size: 0.9em;
+  white-space: pre;
+}
+
+/* ─── List browser (browse screen) ──────────────────────── */
+
+.dos-browse {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--dos-blue);
+  padding: 0.4em 1ch 0;
+}
+
+.dos-browse-header {
+  color: var(--dos-yellow);
+  white-space: pre;
+  font-weight: bold;
+  border-bottom: 1px solid var(--dos-cyan);
+  padding-bottom: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.dos-browse-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dos-cyan) var(--dos-blue);
+}
+
+.dos-browse-body::-webkit-scrollbar {
+  width: 1ch;
+}
+
+.dos-browse-body::-webkit-scrollbar-track {
+  background: var(--dos-blue);
+}
+
+.dos-browse-body::-webkit-scrollbar-thumb {
+  background: var(--dos-cyan);
+}
+
+.dos-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--dos-white-bright);
+  padding: 0 0;
+  cursor: pointer;
+  white-space: pre;
+  font-family: var(--font-dos);
+  font-size: inherit;
+  line-height: 1.2;
+}
+
+.dos-row:hover {
+  background: #0000cc;
+}
+
+.dos-row.selected,
+.dos-row.selected:hover {
+  background: var(--dos-cyan-bright);
+  color: var(--dos-black);
+}
+
+.dos-row.voided {
+  color: var(--dos-gray);
+}
+
+.dos-row.voided.selected {
+  color: var(--dos-black);
+  background: var(--dos-white);
+}
+
+/* ─── Forms / dialogs ───────────────────────────────────── */
+
+.dos-overlay {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  /* classic shadow dither */
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+}
+
+.dos-dialog {
+  background: var(--dos-blue);
+  border: 2px double var(--dos-white-bright);
+  box-shadow: 3px 3px 0 #000044;
+  min-width: 48ch;
+  max-width: 92ch;
+  max-height: 90%;
+  display: flex;
+  flex-direction: column;
+  color: var(--dos-white-bright);
+}
+
+.dos-dialog.wide {
+  min-width: 76ch;
+  width: 90%;
+}
+
+.dos-dialog.red {
+  border-color: var(--dos-red-bright);
+  background: var(--dos-red);
+}
+
+.dos-dialog .dlg-title {
+  background: var(--dos-white-bright);
+  color: var(--dos-blue);
+  text-align: center;
+  font-weight: bold;
+  padding: 0 1ch;
+}
+
+.dos-dialog.red .dlg-title {
+  background: var(--dos-yellow);
+  color: var(--dos-red);
+}
+
+.dos-dialog .dlg-body {
+  padding: 0.6em 1.5ch;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.dos-dialog .dlg-foot {
+  border-top: 1px solid var(--dos-cyan);
+  padding: 0.3em 1ch;
+  color: var(--dos-yellow);
+  text-align: center;
+  white-space: pre;
+  font-size: 0.95em;
+}
+
+/* form fields — Clipper label: ....... style */
+.dos-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+
+.dos-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5ch;
+  min-height: 1.2em;
+}
+
+.dos-field label {
+  color: var(--dos-white-bright);
+  white-space: pre;
+  flex-shrink: 0;
+  min-width: 16ch;
+}
+
+.dos-field label .dots {
+  color: var(--dos-cyan);
+}
+
+.dos-input,
+.dos-select,
+.dos-textarea {
+  background: var(--dos-black);
+  color: var(--dos-yellow);
+  border: none;
+  border-bottom: 1px solid var(--dos-cyan);
+  padding: 0 0.4ch;
+  font-family: var(--font-dos);
+  font-size: inherit;
+  min-width: 0;
+  flex: 1;
+}
+
+.dos-input:focus,
+.dos-select:focus,
+.dos-textarea:focus {
+  background: var(--dos-cyan-bright);
+  color: var(--dos-black);
+  border-bottom-color: var(--dos-cyan-bright);
+}
+
+.dos-input:disabled,
+.dos-select:disabled {
+  color: var(--dos-white);
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+.dos-textarea {
+  resize: none;
+  min-height: 3em;
+  border: 1px solid var(--dos-cyan);
+}
+
+.dos-input.w4 { max-width: 5ch; flex: 0 0 5ch; }
+.dos-input.w5 { max-width: 6ch; flex: 0 0 6ch; }
+.dos-input.w8 { max-width: 10ch; flex: 0 0 10ch; }
+.dos-input.w10 { max-width: 12ch; flex: 0 0 12ch; }
+.dos-input.w12 { max-width: 14ch; flex: 0 0 14ch; }
+.dos-input.w15 { max-width: 17ch; flex: 0 0 17ch; }
+.dos-input.w20 { max-width: 22ch; flex: 0 0 22ch; }
+.dos-input.w30 { max-width: 32ch; flex: 0 0 32ch; }
+.dos-input.w40 { max-width: 42ch; flex: 0 0 42ch; }
+.dos-input.w50 { max-width: 52ch; flex: 0 0 52ch; }
+.dos-input.num {
+  text-align: right;
+  color: var(--dos-green-bright);
+}
+.dos-input:focus.num {
+  color: var(--dos-black);
+}
+
+.dos-form-row {
+  display: flex;
+  gap: 2ch;
+  flex-wrap: wrap;
+}
+
+.dos-form-row .dos-field {
+  flex: 1;
+  min-width: 20ch;
+}
+
+/* ─── Prompt / yes-no ───────────────────────────────────── */
+
+.dos-prompt {
+  background: var(--dos-red);
+  border: 2px double var(--dos-yellow);
+  color: var(--dos-white-bright);
+  padding: 0.8em 2ch;
+  text-align: center;
+  min-width: 36ch;
+  box-shadow: 3px 3px 0 #440000;
+}
+
+.dos-prompt .q {
+  color: var(--dos-yellow);
+  margin-bottom: 0.5em;
+}
+
+.dos-prompt .opts {
+  color: var(--dos-white-bright);
+}
+
+.dos-prompt .opts b {
+  color: var(--dos-yellow);
+}
+
+/* ─── Search prompt line ────────────────────────────────── */
+
+.dos-searchline {
+  background: var(--dos-black);
+  color: var(--dos-cyan-bright);
+  padding: 0.2em 1ch;
+  display: flex;
+  gap: 1ch;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dos-searchline label {
+  color: var(--dos-yellow);
+  white-space: nowrap;
+}
+
+.dos-searchline .dos-input {
+  background: var(--dos-blue);
+  color: var(--dos-white-bright);
+  border-bottom: 1px solid var(--dos-cyan-bright);
+  flex: 1;
+}
+
+.dos-searchline .dos-input:focus {
+  background: var(--dos-cyan-bright);
+  color: var(--dos-black);
+}
+
+/* ─── Report / print area ───────────────────────────────── */
+
+.dos-report {
+  flex: 1;
+  overflow: auto;
+  background: var(--dos-blue);
+  color: var(--dos-white-bright);
+  padding: 0.5em 1ch;
+  white-space: pre;
+  font-family: var(--font-dos);
+  line-height: 1.15;
+  min-height: 0;
+}
+
+.dos-report .hdr {
+  color: var(--dos-yellow);
+  font-weight: bold;
+}
+
+.dos-report .total {
+  color: var(--dos-cyan-bright);
+  font-weight: bold;
+}
+
+/* ─── Help screen ───────────────────────────────────────── */
+
+.dos-help {
+  background: var(--dos-blue);
+  border: 2px double var(--dos-yellow);
+  color: var(--dos-white-bright);
+  padding: 0.5em 2ch 1em;
+  min-width: 50ch;
+  max-width: 70ch;
+}
+
+.dos-help h3 {
+  color: var(--dos-yellow);
+  text-align: center;
+  margin-bottom: 0.5em;
+  font-size: 1em;
+}
+
+.dos-help pre {
+  color: var(--dos-cyan-bright);
+  white-space: pre;
+  font-family: var(--font-dos);
+  line-height: 1.35;
+}
+
+/* ─── Inline text buttons (rarely used) ─────────────────── */
+
+.dos-btn {
+  background: var(--dos-cyan);
+  color: var(--dos-black);
+  border: none;
+  padding: 0 1ch;
+  cursor: pointer;
+  font-family: var(--font-dos);
+  font-size: inherit;
+}
+
+.dos-btn:hover,
+.dos-btn:focus {
+  background: var(--dos-yellow);
+}
+
+.dos-btn.danger {
+  background: var(--dos-red);
+  color: var(--dos-white-bright);
+}
+
+/* ─── Columns helper for fixed-width rows ───────────────── */
+
+.pad {
+  display: inline-block;
+  overflow: hidden;
+  white-space: pre;
+  vertical-align: bottom;
+}
+
+/* ─── Scrollable content area ───────────────────────────── */
+
+.dos-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* date input calendar icon hide for cleaner DOS look */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 0.4;
+}
+
+/* selection */
+::selection {
+  background: var(--dos-cyan-bright);
+  color: var(--dos-black);
+}
