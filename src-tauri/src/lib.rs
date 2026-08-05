@@ -3,6 +3,7 @@ pub mod db;
 pub mod dbf;
 pub mod import;
 pub mod models;
+pub mod ops;
 
 use db::{init_db, DbState};
 use std::sync::Mutex;

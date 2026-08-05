@@ -556,7 +556,7 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
 mod tests {
     use super::*;
     use crate::db::open_and_migrate;
-    use crate::dbf::tests::write_minimal_company_dbf;
+    use crate::dbf::tests::{write_minimal_company_dbf, write_multi_table_fixture};
     use std::path::PathBuf;
 
     #[test]
@@ -582,6 +582,72 @@ mod tests {
             .unwrap();
         assert_eq!(name, "ACME");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn import_multi_table_company_property_invoice_fixture() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_import_multi_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        write_multi_table_fixture(&dir).unwrap();
+
+        let tmp = dir.join("out.db");
+        let mut conn = open_and_migrate(&tmp).expect("open db");
+        let result = import_promas_folder(&mut conn, &dir).expect("import");
+        assert_eq!(result.companies, 1);
+        assert_eq!(result.properties, 1);
+        assert_eq!(result.invoices, 1);
+        assert_eq!(result.invoice_lines, 1);
+
+        let (bal, prop): (f64, String) = conn
+            .query_row(
+                r#"SELECT i.balance, p.name FROM invoices i
+                   JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
+                   WHERE i.invoice=1"#,
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(bal, 250.0);
+        assert_eq!(prop, "Bldg A");
+
+        let desc: String = conn
+            .query_row(
+                "SELECT description FROM invoice_lines WHERE invoice=1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(desc, "Paint");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn import_checked_in_promas_mini_fixture() {
+        let folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("promas_mini");
+        assert!(
+            folder.join("COMPANY.DBF").exists(),
+            "missing checked-in fixture at {}",
+            folder.display()
+        );
+        let tmp = std::env::temp_dir().join(format!(
+            "promas_fixture_import_{}.db",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&tmp);
+        let mut conn = open_and_migrate(&tmp).expect("open db");
+        let result = import_promas_folder(&mut conn, &folder).expect("import");
+        assert_eq!(result.companies, 1);
+        assert_eq!(result.properties, 1);
+        assert_eq!(result.invoices, 1);
+        assert_eq!(result.invoice_lines, 1);
+        let _ = std::fs::remove_file(&tmp);
     }
 
     #[test]

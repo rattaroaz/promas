@@ -175,6 +175,7 @@ pub fn normalize_date_field(s: &str) -> Option<String> {
 pub mod tests {
     use super::*;
     use std::io::Write;
+    use std::path::Path;
 
     #[test]
     fn parse_date_yyyyymmdd_and_century_fix() {
@@ -215,29 +216,113 @@ pub mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// Tiny dBase III file: COMPANYNO C(4), COMNAME C(4), one record.
-    pub fn write_minimal_company_dbf(path: &std::path::Path) -> std::io::Result<()> {
+    /// Write a minimal dBase III character table.
+    pub fn write_dbf(
+        path: &Path,
+        fields: &[(&str, u8)],
+        records: &[&[&str]],
+    ) -> std::io::Result<()> {
         let mut f = std::fs::File::create(path)?;
-        let num_records: u32 = 1;
-        let header_len: u16 = 32 + 32 * 2 + 1; // header + 2 fields + terminator
-        let record_len: u16 = 1 + 4 + 4; // delete flag + fields
+        let num_records = records.len() as u32;
+        let header_len: u16 = 32 + 32 * fields.len() as u16 + 1;
+        let data_len: u16 = fields.iter().map(|(_, len)| *len as u16).sum();
+        let record_len: u16 = 1 + data_len;
 
         let mut header = [0u8; 32];
-        header[0] = 0x03; // dBase III
+        header[0] = 0x03;
         header[4..8].copy_from_slice(&num_records.to_le_bytes());
         header[8..10].copy_from_slice(&header_len.to_le_bytes());
         header[10..12].copy_from_slice(&record_len.to_le_bytes());
         f.write_all(&header)?;
 
-        write_field_desc(&mut f, b"COMPANYNO", b'C', 4)?;
-        write_field_desc(&mut f, b"COMNAME", b'C', 4)?;
-        f.write_all(&[0x0D])?; // header terminator
+        for (name, length) in fields {
+            write_field_desc(&mut f, name.as_bytes(), b'C', *length)?;
+        }
+        f.write_all(&[0x0D])?;
 
-        // record: not deleted + values
-        f.write_all(b" ")?;
-        f.write_all(b"1000")?;
-        f.write_all(b"ACME")?;
-        f.write_all(&[0x1A])?; // EOF
+        for rec in records {
+            f.write_all(b" ")?;
+            for (i, (name, length)) in fields.iter().enumerate() {
+                let raw = rec.get(i).copied().unwrap_or("");
+                let mut buf = vec![b' '; *length as usize];
+                let bytes = raw.as_bytes();
+                let n = bytes.len().min(*length as usize);
+                buf[..n].copy_from_slice(&bytes[..n]);
+                let _ = name; // field order matches `fields`
+                f.write_all(&buf)?;
+            }
+        }
+        f.write_all(&[0x1A])?;
+        Ok(())
+    }
+
+    /// Tiny COMPANY.DBF: COMPANYNO C(4), COMNAME C(4), one record.
+    pub fn write_minimal_company_dbf(path: &Path) -> std::io::Result<()> {
+        write_dbf(
+            path,
+            &[("COMPANYNO", 4), ("COMNAME", 4)],
+            &[&["1000", "ACME"]],
+        )
+    }
+
+    pub fn write_minimal_property_dbf(path: &Path) -> std::io::Result<()> {
+        write_dbf(
+            path,
+            &[("COMPANYNO", 4), ("PRONO", 2), ("PRONAME", 6)],
+            &[&["1000", "01", "Bldg A"]],
+        )
+    }
+
+    pub fn write_minimal_sales2_dbf(path: &Path) -> std::io::Result<()> {
+        write_dbf(
+            path,
+            &[
+                ("COMPANYNO", 4),
+                ("PRONO", 2),
+                ("SALESDATE", 8),
+                ("INVOICE", 6),
+                ("SALESTOTAL", 8),
+                ("SALESBAL", 8),
+                ("PAYTOTAL", 8),
+                ("BALANCE", 8),
+            ],
+            &[&[
+                "1000",
+                "01",
+                "20260115",
+                "1",
+                "250.00",
+                "250.00",
+                "0",
+                "250.00",
+            ]],
+        )
+    }
+
+    pub fn write_minimal_sales1_dbf(path: &Path) -> std::io::Result<()> {
+        write_dbf(
+            path,
+            &[
+                ("COMPANYNO", 4),
+                ("PRONO", 2),
+                ("SALESDATE", 8),
+                ("INVOICE", 6),
+                ("NO", 2),
+                ("CODENO", 2),
+                ("DESCRIPT", 8),
+                ("PRICE", 8),
+            ],
+            &[&["1000", "01", "20260115", "1", "1", "*", "Paint", "250.00"]],
+        )
+    }
+
+    /// Write company + property + invoice (+ line) DBFs into a folder.
+    pub fn write_multi_table_fixture(folder: &Path) -> std::io::Result<()> {
+        std::fs::create_dir_all(folder)?;
+        write_minimal_company_dbf(&folder.join("COMPANY.DBF"))?;
+        write_minimal_property_dbf(&folder.join("PROPERTY.DBF"))?;
+        write_minimal_sales2_dbf(&folder.join("SALES2.DBF"))?;
+        write_minimal_sales1_dbf(&folder.join("SALES1.DBF"))?;
         Ok(())
     }
 
