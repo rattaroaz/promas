@@ -127,18 +127,18 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
 
   async function doChooseLocation() {
     try {
-      const folder = await open({
-        directory: true,
-        multiple: false,
-        title: "Choose folder for PROMAS database (promas.db)",
+      const selected = await save({
+        title: "Choose or create PROMAS database file",
+        defaultPath: "promas.db",
+        filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
       });
-      if (!folder || Array.isArray(folder)) return;
+      if (!selected) return;
       setBusy(true);
-      setMsg("Moving database location…");
+      setMsg("Setting database file…");
       setMsgKind("info");
-      const path = await api.setDbLocation(folder);
+      const path = await api.setDbLocation(selected);
       setDbPath(path);
-      setMsg(`Database location set to: ${path}`);
+      setMsg(`Database file set to: ${path}`);
       setMsgKind("info");
     } catch (e) {
       setMsg(String(e));
@@ -223,7 +223,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     export:
       "Save a full copy of the current SQLite database to a file you choose.",
     location:
-      "Select a folder where promas.db will be stored. Existing data is copied if the file is not already there.",
+      "Choose a .db file (or type a new name). An existing file is opened; a new name creates an empty database. The path is remembered for next startup.",
     backup:
       "Create a dated backup copy of the current database.",
     import:
@@ -285,7 +285,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
                 onClick={() => void doChooseLocation()}
                 autoFocus
               >
-                {busy ? "Updating location…" : "Choose Folder"}
+                {busy ? "Updating location…" : "Choose Database File"}
               </button>
             )}
             {screen === "import" && (

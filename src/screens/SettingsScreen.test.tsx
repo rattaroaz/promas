@@ -96,17 +96,18 @@ describe("SettingsScreen", () => {
     expect(await screen.findByText(/Backup saved to: C:\\backups\\promas-backup.db/i)).toBeInTheDocument();
   });
 
-  it("sets location when folder dialog returns a path", async () => {
+  it("sets location when file dialog returns a path", async () => {
     const user = userEvent.setup();
-    vi.mocked(open).mockResolvedValue("D:\\data");
+    vi.mocked(save).mockResolvedValue("D:\\data\\my-promas.db");
+    vi.mocked(api.setDbLocation).mockResolvedValue("D:\\data\\my-promas.db");
     renderApp(<SettingsScreen onBack={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /Choose Location of Database/i }));
-    await user.click(screen.getByRole("button", { name: /Choose Folder/i }));
+    await user.click(screen.getByRole("button", { name: /Choose Database File/i }));
     await waitFor(() => {
-      expect(api.setDbLocation).toHaveBeenCalledWith("D:\\data");
+      expect(api.setDbLocation).toHaveBeenCalledWith("D:\\data\\my-promas.db");
     });
     expect(
-      await screen.findByText(/Database location set to: D:\\data\\promas.db/i)
+      await screen.findByText(/Database file set to: D:\\data\\my-promas.db/i)
     ).toBeInTheDocument();
   });
 

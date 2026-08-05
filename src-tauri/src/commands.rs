@@ -1183,34 +1183,62 @@ pub fn backup_database(state: State<DbState>, dest_path: String) -> Result<(), S
     result
 }
 
-/// Point the app at a new database folder. Copies the current DB there if needed.
+/// Point the app at a database file path.
+/// - If the file exists, switch to it (open + migrate).
+/// - If it does not exist, create a new empty database there.
+/// The path is persisted for future startups.
 #[tauri::command]
 pub fn set_db_location(
     app: tauri::AppHandle,
     state: State<DbState>,
-    folder: String,
+    path: String,
 ) -> Result<String, String> {
-    let folder_path = PathBuf::from(&folder);
-    if !folder_path.is_dir() {
-        return Err(format!("Not a directory: {folder}"));
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Database path is empty.".into());
     }
-    let new_path = folder_path.join("promas.db");
+    let mut new_path = PathBuf::from(trimmed);
+    if new_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.is_empty() || n == "." || n == "..")
+        .unwrap_or(true)
+    {
+        return Err("Choose a database file name (not a folder).".into());
+    }
+    if new_path.extension().is_none() {
+        new_path.set_extension("db");
+    }
+    if new_path.is_dir() {
+        return Err(format!(
+            "Path is a folder; choose a .db file: {}",
+            new_path.display()
+        ));
+    }
+
+    if let Some(parent) = new_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("create database folder: {e}"))?;
+        }
+    }
+
     let current = crate::db::resolve_db_path(&app)?;
+    let existed = new_path.exists();
 
     if current != new_path {
-        crate::db::with_db_closed(&state, &new_path, &current, || {
-            if !new_path.exists() && current.exists() {
-                std::fs::copy(&current, &new_path)
-                    .map_err(|e| format!("copy database to new location: {e}"))?;
-            }
-            Ok(())
-        })?;
+        // Reopen on `new_path`: opens existing DB, or creates a new schema file.
+        crate::db::with_db_closed(&state, &new_path, &current, || Ok(()))?;
+    } else if !existed {
+        crate::db::with_db_closed(&state, &new_path, &current, || Ok(()))?;
     }
+
     crate::db::save_db_location(&app, &new_path)?;
     log::info!(
         target: "promas::db",
-        "set_db_location → {}",
-        new_path.display()
+        "set_db_location → {} ({})",
+        new_path.display(),
+        if existed { "existing" } else { "created" }
     );
 
     Ok(new_path.display().to_string())
