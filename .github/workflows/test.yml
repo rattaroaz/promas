@@ -19,11 +19,15 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
+  # PROMAS is Windows-only (Tauri/WebView2). Running cargo test on Linux
+  # pulls GTK/glib via wry and fails without system packages — use Windows.
   rust:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
       - name: Cache cargo
         uses: swatinem/rust-cache@v2
         with:
