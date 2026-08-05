@@ -129,8 +129,8 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
           </div>
         </div>
         <div className="dos-copyright">
-          {`Promas(P) Version 2.0 (c) Copyrights 1990 by C.C.C.
-Computer Communications Center
+          {`Amateurmas(P) Version 2.0 - Public Domain Software.
+Han Qi Mo Pho
 Modern rewrite — Tauri + SQLite`}
         </div>
       </div>
