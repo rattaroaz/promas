@@ -29,8 +29,10 @@ WHAT IT DOES NOT DO
 
 PLATFORM SCOPE (this app)
   - Windows only: NSIS (.exe) + MSI bundles.
+  - Architectures: x86_64 (windows-x86_64*) and ARM64 (windows-aarch64*).
   - Updater endpoint: GitHub Releases /latest/download/latest.json.
   - Tauri updater installMode on Windows: passive (minimal UI during install).
+  - CI builds both arches (windows-latest + windows-11-arm); local: npm run build:win:x64 / :arm64 / :all.
 
 KEY ARCHITECTURAL CHOICE
   - Tauri's plugin-updater handles fetch, signature verify, download, install.

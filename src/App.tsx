@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MainMenu, MainAction } from "./screens/MainMenu";
 import { CompanyBrowse } from "./screens/CompanyBrowse";
@@ -13,6 +13,12 @@ import { WorkerBrowse } from "./screens/WorkerBrowse";
 import { WorkTypeBrowse } from "./screens/WorkTypeBrowse";
 import { SubMenu } from "./screens/SubMenu";
 import { UpdateDialog } from "./components/UpdateDialog";
+import {
+  log,
+  metrics,
+  setCurrentScreen,
+} from "./lib/observability";
+import { APP_NAME, APP_VERSION } from "./lib/constants";
 import "./App.css";
 
 /**
@@ -37,14 +43,28 @@ type Screen =
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "main" });
 
+  useEffect(() => {
+    log.info("app", "session start", {
+      app: APP_NAME,
+      version: APP_VERSION,
+    });
+    metrics.inc("app.session_start");
+  }, []);
+
+  useEffect(() => {
+    setCurrentScreen(screen.name);
+    log.info("ui", `navigate → ${screen.name}`);
+    metrics.inc("ui.navigate", { screen: screen.name });
+  }, [screen.name]);
+
   function goMain() {
     setScreen({ name: "main" });
   }
 
   async function handleMain(action: MainAction) {
+    log.debug("ui", `main action=${action}`);
     switch (action) {
       case "estimate":
-        // Estimates in original led to company/property browse then proposal
         setScreen({ name: "companies" });
         break;
       case "workorder":
@@ -69,6 +89,7 @@ export default function App() {
         setScreen({ name: "settings" });
         break;
       case "quit":
+        log.info("app", "quit requested");
         try {
           await getCurrentWindow().close();
         } catch {

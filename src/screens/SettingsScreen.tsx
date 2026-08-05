@@ -6,6 +6,8 @@ import { Screen, HelpOverlay, Prompt } from "../dos/Shell";
 import { SubMenu, MenuItem } from "./SubMenu";
 import { checkForUpdatesAndApply } from "../services/updateService";
 import { APP_VERSION } from "../lib/constants";
+import { DiagnosticsPanel } from "./DiagnosticsPanel";
+import { log } from "../lib/observability";
 
 const SETTINGS_ITEMS: MenuItem[] = [
   { id: "update", num: "1", label: "Update Application", accel: "U" },
@@ -13,6 +15,7 @@ const SETTINGS_ITEMS: MenuItem[] = [
   { id: "location", num: "3", label: "Choose Location of Database", accel: "L" },
   { id: "backup", num: "4", label: "Backup Database", accel: "B" },
   { id: "import", num: "5", label: "Import Database", accel: "I" },
+  { id: "diagnostics", num: "6", label: "Diagnostics", accel: "D" },
 ];
 
 function todayStamp(): string {
@@ -188,6 +191,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       await checkForUpdatesAndApply();
       return;
     }
+    log.info("ui", `settings → ${id}`);
     setScreen(id);
     setMsg("");
     setMsgKind("default");
@@ -202,6 +206,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         onSelect={(id) => void handleSelect(id)}
       />
     );
+  }
+
+  if (screen === "diagnostics") {
+    return <DiagnosticsPanel onBack={() => setScreen(null)} />;
   }
 
   const titles: Record<string, string> = {

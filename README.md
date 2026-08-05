@@ -27,7 +27,20 @@ A TypeScript + [Tauri](https://tauri.app) + SQLite rewrite of the classic **PROM
 
 - Node.js 18+
 - Rust (stable) — [rustup](https://rustup.rs)
-- Windows build tools (Visual Studio C++ build tools)
+- Windows build tools (Visual Studio C++ build tools), including **both**  
+  x64 and ARM64 MSVC toolsets if you cross-compile
+
+## Architectures
+
+PROMAS ships for **Windows x86_64** and **Windows ARM64**:
+
+| Arch | Rust target | Typical host |
+|------|-------------|--------------|
+| x64 | `x86_64-pc-windows-msvc` | Intel/AMD PCs; `windows-latest` CI |
+| ARM64 | `aarch64-pc-windows-msvc` | Snapdragon / Windows on ARM; `windows-11-arm` CI |
+
+`rust-toolchain.toml` installs both targets. The in-app updater `latest.json` includes  
+platform keys for both (`windows-x86_64*` and `windows-aarch64*`).
 
 ## Run
 
@@ -54,11 +67,35 @@ The importer loads:
 
 ## Build release
 
+Native host arch (unsigned local installers):
+
 ```bash
-npm run tauri build
+npm run build:win
 ```
 
-Installer/binary will be under `src-tauri/target/release/bundle/`.
+Explicit architectures:
+
+```bash
+npm run build:win:x64      # x86_64 — use this from an ARM64 machine to ship Intel/AMD builds
+npm run build:win:arm64    # aarch64
+npm run build:win:all      # both, sequential
+```
+
+Signed / updater-artifact builds (needs signing key + password):
+
+```bash
+npm run build:win:x64:signed
+npm run build:win:all:signed
+```
+
+Bundles land under:
+
+```
+src-tauri/target/<triple>/release/bundle/nsis/
+src-tauri/target/<triple>/release/bundle/msi/
+```
+
+CI release tags build **both** arches via GitHub Actions (`windows-latest` + `windows-11-arm`).
 
 ## Project layout
 

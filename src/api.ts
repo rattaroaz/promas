@@ -1,4 +1,42 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as rawInvoke } from "@tauri-apps/api/core";
+import { log, metrics, noteApiError, startSpan } from "./lib/observability";
+
+/** Instrumented invoke: metrics + span + ring-buffer log on every command. */
+async function invoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>
+): Promise<T> {
+  const span = startSpan("api", cmd);
+  metrics.inc("api.invoke", { cmd });
+  const t0 =
+    typeof performance !== "undefined" ? performance.now() : Date.now();
+  try {
+    const result = await rawInvoke<T>(cmd, args);
+    const ms =
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+    metrics.observe("api.duration_ms", ms, { cmd });
+    span.end({ ok: true, meta: { ms: Math.round(ms) } });
+    log.debug("api", `${cmd} ok`, { ms: Math.round(ms) });
+    return result;
+  } catch (e) {
+    const ms =
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+    const message = String(e);
+    metrics.inc("api.error", { cmd });
+    metrics.observe("api.duration_ms", ms, { cmd });
+    const ev = log.error("api", `${cmd} failed`, {
+      ms: Math.round(ms),
+      error: message,
+    });
+    noteApiError(message);
+    span.end({
+      ok: false,
+      error: message,
+      meta: { errorId: ev?.errorId, ms: Math.round(ms) },
+    });
+    throw e;
+  }
+}
 
 export interface ListParams {
   search?: string;
@@ -497,7 +535,18 @@ export const api = {
     invoke<string>("set_db_location", { folder }),
   importDatabase: (sourcePath: string) =>
     invoke<string>("import_database", { sourcePath }),
+  getBackendDiagnostics: () =>
+    invoke<BackendDiagnostics>("get_backend_diagnostics"),
+  openLogDir: () => invoke("open_log_dir"),
 };
+
+export interface BackendDiagnostics {
+  dbPath: string;
+  logDir: string;
+  rustVersion: string;
+  crateVersion: string;
+  targetTriple: string;
+}
 
 export function money(n: number | null | undefined): string {
   return new Intl.NumberFormat("en-US", {

@@ -3,7 +3,7 @@ use crate::import::import_promas_folder;
 use crate::models::*;
 use rusqlite::{params, OptionalExtension};
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{Manager, State};
 
 fn map_err(e: impl ToString) -> String {
     e.to_string()
@@ -1327,6 +1327,7 @@ pub fn report_worker_wages(
 
 #[tauri::command]
 pub fn import_dbf_folder(state: State<DbState>, folder: String) -> Result<ImportResult, String> {
+    log::info!(target: "promas::db", "import_dbf_folder {folder}");
     let mut conn = state.0.lock().map_err(map_err)?;
     let path = PathBuf::from(&folder);
     if !path.is_dir() {
@@ -1369,13 +1370,23 @@ fn vacuum_into(state: &State<DbState>, dest_path: &str) -> Result<(), String> {
 /// Export a consistent copy of the live database to `dest_path` (VACUUM INTO).
 #[tauri::command]
 pub fn export_database(state: State<DbState>, dest_path: String) -> Result<(), String> {
-    vacuum_into(&state, &dest_path)
+    log::info!(target: "promas::db", "export_database → {dest_path}");
+    let result = vacuum_into(&state, &dest_path);
+    if let Err(ref e) = result {
+        log::error!(target: "promas::db", "export_database failed: {e}");
+    }
+    result
 }
 
 /// Backup the live database to `dest_path`.
 #[tauri::command]
 pub fn backup_database(state: State<DbState>, dest_path: String) -> Result<(), String> {
-    vacuum_into(&state, &dest_path)
+    log::info!(target: "promas::db", "backup_database → {dest_path}");
+    let result = vacuum_into(&state, &dest_path);
+    if let Err(ref e) = result {
+        log::error!(target: "promas::db", "backup_database failed: {e}");
+    }
+    result
 }
 
 /// Point the app at a new database folder. Copies the current DB there if needed.
@@ -1402,6 +1413,11 @@ pub fn set_db_location(
         })?;
     }
     crate::db::save_db_location(&app, &new_path)?;
+    log::info!(
+        target: "promas::db",
+        "set_db_location → {}",
+        new_path.display()
+    );
 
     Ok(new_path.display().to_string())
 }
@@ -1413,6 +1429,7 @@ pub fn import_database(
     state: State<DbState>,
     source_path: String,
 ) -> Result<String, String> {
+    log::info!(target: "promas::db", "import_database from {source_path}");
     let source = PathBuf::from(&source_path);
     if !source.is_file() {
         return Err(format!("Not a file: {source_path}"));
@@ -1440,5 +1457,79 @@ pub fn import_database(
     })?;
 
     Ok(current.display().to_string())
+}
+
+// ─── Observability ─────────────────────────────────────────────────────
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackendDiagnostics {
+    pub db_path: String,
+    pub log_dir: String,
+    pub rust_version: String,
+    pub crate_version: String,
+    /// Compile-time target triple (e.g. x86_64-pc-windows-msvc).
+    pub target_triple: String,
+}
+
+#[tauri::command]
+pub fn get_backend_diagnostics(app: tauri::AppHandle) -> Result<BackendDiagnostics, String> {
+    let db_path = crate::db::resolve_db_path(&app)?;
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| e.to_string())?;
+    if !log_dir.exists() {
+        let _ = std::fs::create_dir_all(&log_dir);
+    }
+    let triple = compile_target_triple();
+    log::info!(
+        target: "promas::diag",
+        "diagnostics snapshot db={} log_dir={} target={}",
+        db_path.display(),
+        log_dir.display(),
+        triple
+    );
+    Ok(BackendDiagnostics {
+        db_path: db_path.display().to_string(),
+        log_dir: log_dir.display().to_string(),
+        rust_version: rustc_version_runtime(),
+        crate_version: env!("CARGO_PKG_VERSION").to_string(),
+        target_triple: triple,
+    })
+}
+
+fn rustc_version_runtime() -> String {
+    format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
+}
+
+fn compile_target_triple() -> String {
+    #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
+    {
+        "x86_64-pc-windows-msvc".into()
+    }
+    #[cfg(all(target_arch = "aarch64", target_os = "windows"))]
+    {
+        "aarch64-pc-windows-msvc".into()
+    }
+    #[cfg(not(any(
+        all(target_arch = "x86_64", target_os = "windows"),
+        all(target_arch = "aarch64", target_os = "windows")
+    )))]
+    {
+        format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
+    }
+}
+
+#[tauri::command]
+pub fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&log_dir).map_err(|e| format!("create log dir: {e}"))?;
+    log::info!(target: "promas::diag", "open log dir {}", log_dir.display());
+    tauri_plugin_opener::open_path(&log_dir, None::<&str>)
+        .map_err(|e| format!("open log dir: {e}"))
 }
 

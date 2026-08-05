@@ -1,0 +1,7 @@
+# Dual Windows architecture support (native ARM64 host + x86_64 releases).
+[toolchain]
+channel = "stable"
+targets = [
+  "aarch64-pc-windows-msvc",
+  "x86_64-pc-windows-msvc",
+]

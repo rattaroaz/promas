@@ -5,6 +5,18 @@ export async function invoke<T = unknown>(
   if (cmd === "get_db_path") {
     return "C:\\mock\\promas.db" as T;
   }
+  if (cmd === "get_backend_diagnostics") {
+    return {
+      dbPath: "C:\\mock\\promas.db",
+      logDir: "C:\\mock\\logs",
+      rustVersion: "x86_64-windows",
+      crateVersion: "2.0.0",
+      targetTriple: "x86_64-pc-windows-msvc",
+    } as T;
+  }
+  if (cmd === "open_log_dir") {
+    return undefined as T;
+  }
   if (cmd === "get_sysdata") {
     return {
       company: "Test Co",

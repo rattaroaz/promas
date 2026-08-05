@@ -80,6 +80,7 @@ describe("checkForUpdatesAndApply", () => {
 
   it("short-circuits to up to date in VITE_E2E mode", async () => {
     vi.stubEnv("VITE_E2E", "true");
+    // Re-import is cached; function reads env at call time.
     const { checkForUpdatesAndApply } = await import("./updateService");
     await checkForUpdatesAndApply();
     expect(check).not.toHaveBeenCalled();

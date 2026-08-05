@@ -10,12 +10,35 @@ on:
         description: "Tag to build (e.g. v2.0.1)"
         required: true
         default: "v2.0.0"
+      arch:
+        description: "Architectures to build"
+        type: choice
+        options:
+          - all
+          - x64
+          - arm64
+        default: all
 
 jobs:
   release:
-    runs-on: windows-latest
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+          - arch: arm64
+            os: windows-11-arm
+            rust_target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    # Allow building a single arch from workflow_dispatch
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      inputs.arch == 'all' ||
+      inputs.arch == matrix.arch
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +53,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
 
       - name: Enable VBScript (WiX / MSI)
         shell: powershell
@@ -53,7 +78,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_ENV"
 
-      - name: Build and release
+      - name: Build and release (${{ matrix.arch }})
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,4 +89,4 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
-          args: --bundles nsis,msi
+          args: --target ${{ matrix.rust_target }} --bundles nsis,msi

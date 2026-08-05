@@ -17,19 +17,30 @@ vi.mock("../api", async () => {
       backupDatabase: vi.fn(),
       setDbLocation: vi.fn(),
       importDatabase: vi.fn(),
+      getBackendDiagnostics: vi.fn().mockResolvedValue({
+        dbPath: "C:\\mock\\promas.db",
+        logDir: "C:\\mock\\logs",
+        rustVersion: "x86_64-windows",
+        crateVersion: "2.0.0",
+        targetTriple: "x86_64-pc-windows-msvc",
+      }),
+      openLogDir: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
 
+
 describe("SettingsScreen", () => {
-  it("shows the five settings options", () => {
+  it("shows settings options including Diagnostics", () => {
     renderApp(<SettingsScreen onBack={vi.fn()} />);
     expect(screen.getByText(/Update Application/i)).toBeInTheDocument();
     expect(screen.getByText(/Export Database/i)).toBeInTheDocument();
     expect(screen.getByText(/Choose Location of Database/i)).toBeInTheDocument();
     expect(screen.getByText(/Backup Database/i)).toBeInTheDocument();
     expect(screen.getByText(/Import Database/i)).toBeInTheDocument();
+    expect(screen.getByText(/Diagnostics/i)).toBeInTheDocument();
   });
+
 
   it("calls update service for Update Application", async () => {
     const user = userEvent.setup();
