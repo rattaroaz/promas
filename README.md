@@ -97,6 +97,20 @@ src-tauri/target/<triple>/release/bundle/msi/
 
 CI release tags build **both** arches via GitHub Actions (`windows-latest` + `windows-11-arm`).
 
+### Publish installers on GitHub
+
+Pushing a `v*` tag runs the **Release** workflow, which builds **NSIS `.exe` / MSI** installers and attaches them to the GitHub Release (not just source zip).
+
+```bash
+git push origin main
+git tag v2.0.1          # bump version files first if needed
+git push origin v2.0.1
+```
+
+Then open **Actions → Release**. When green, download `PROMAS_*_x64-setup.exe` from the Release assets — ignore “Source code”.
+
+Optional for in-app updates: set Actions secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Without them, installers still build; updater signatures are skipped.
+
 ## Project layout
 
 ```

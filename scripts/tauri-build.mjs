@@ -94,23 +94,24 @@ console.log(
   `[tauri-build] Host arch=${hostNodeArch()}  targets=${targets.join(", ")}  signed=${signed}`
 );
 
-if (!signed) {
-  console.log(
-    "[tauri-build] Unsigned build (createUpdaterArtifacts=false).\n" +
-      "  For release-parity: set TAURI_SIGNING_PRIVATE_KEY(+_PASSWORD) or use --signed"
-  );
+if (signed) {
+  console.log("[tauri-build] Signed build — updater artifacts enabled.");
 } else {
-  console.log("[tauri-build] Signed build with updater artifacts.");
+  console.log(
+    "[tauri-build] Unsigned installers (createUpdaterArtifacts=false in tauri.conf).\n" +
+      "  For updater-signed release builds: set TAURI_SIGNING_* or use --signed"
+  );
 }
 
 for (const target of targets) {
   ensureRustTarget(target);
 
   const tauriArgs = ["build", "--target", target, "--bundles", "nsis,msi"];
-  if (!signed) {
+  // conf defaults to false; enable signatures only when a key is available
+  if (signed) {
     tauriArgs.push(
       "-c",
-      JSON.stringify({ bundle: { createUpdaterArtifacts: false } })
+      JSON.stringify({ bundle: { createUpdaterArtifacts: true } })
     );
   }
 

@@ -1,5 +1,12 @@
 name: Release
 
+# Builds real Windows installers (NSIS .exe + MSI) and attaches them to a
+# GitHub Release. Source zip/tar alone is NOT enough — this workflow must succeed.
+#
+# Trigger:
+#   git tag v2.0.0 && git push origin v2.0.0
+#   or Actions → Release → Run workflow
+
 on:
   push:
     tags:
@@ -7,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to build (e.g. v2.0.1)"
+        description: "Existing git tag to release (e.g. v2.0.0)"
         required: true
         default: "v2.0.0"
       arch:
@@ -30,17 +37,24 @@ jobs:
           - arch: x64
             os: windows-latest
             rust_target: x86_64-pc-windows-msvc
+            optional: false
           - arch: arm64
             os: windows-11-arm
             rust_target: aarch64-pc-windows-msvc
+            # ARM runner may be unavailable on private repos; don't block x64.
+            optional: true
     runs-on: ${{ matrix.os }}
-    # Allow building a single arch from workflow_dispatch
+    continue-on-error: ${{ matrix.optional }}
     if: >
       github.event_name != 'workflow_dispatch' ||
       inputs.arch == 'all' ||
       inputs.arch == matrix.arch
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -66,27 +80,69 @@ jobs:
             dism /online /enable-feature /featurename:VBSCRIPT /all /norestart
           }
 
-      - name: Normalize signing secrets
-        shell: bash
+      - name: Configure updater signing (optional)
+        id: signing
+        shell: powershell
+        env:
+          RAW_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          RAW_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          {
-            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF"
-            echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-            echo "EOF"
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<EOF"
-            echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-            echo "EOF"
-          } >> "$GITHUB_ENV"
+          $key = ""
+          $pass = ""
+          if ($env:RAW_KEY) { $key = $env:RAW_KEY.Trim() }
+          if ($env:RAW_PASSWORD) { $pass = $env:RAW_PASSWORD.Trim() }
 
-      - name: Build and release (${{ matrix.arch }})
+          if ($key.Length -gt 20) {
+            @"
+TAURI_SIGNING_PRIVATE_KEY<<EOF
+$key
+EOF
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD<<EOF
+$pass
+EOF
+"@ | Add-Content -Path $env:GITHUB_ENV -Encoding utf8
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "signed=true"
+            Set-Content -Path tauri-ci-bundle.json -Value '{"bundle":{"createUpdaterArtifacts":true}}' -NoNewline
+            Write-Host "Signing secrets present — updater artifacts enabled."
+          } else {
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "signed=false"
+            Set-Content -Path tauri-ci-bundle.json -Value '{"bundle":{"createUpdaterArtifacts":false}}' -NoNewline
+            Write-Host "No signing secrets — building installers WITHOUT updater signatures."
+            Write-Host "Add TAURI_SIGNING_PRIVATE_KEY (+_PASSWORD) for in-app updates."
+          }
+
+      - name: Build installers and publish GitHub Release (${{ matrix.arch }})
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           releaseName: "PROMAS ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          releaseBody: |
+            ## Install PROMAS
+
+            Download an **installer** below (not “Source code”):
+
+            | File | Platform |
+            |------|----------|
+            | `PROMAS_*_x64-setup.exe` | Windows Intel/AMD (x64) — recommended |
+            | `PROMAS_*_arm64-setup.exe` | Windows on ARM |
+            | `*.msi` | Alternative MSI installers |
+
+            In-app updates require a signed build (`latest.json` + `.sig` assets).
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: ${{ steps.signing.outputs.signed == 'true' }}
           updaterJsonPreferNsis: true
-          args: --target ${{ matrix.rust_target }} --bundles nsis,msi
+          args: --target ${{ matrix.rust_target }} --bundles nsis,msi -c tauri-ci-bundle.json
+
+      - name: Upload build artifacts (Actions tab backup)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promas-windows-${{ matrix.arch }}
+          path: |
+            src-tauri/target/${{ matrix.rust_target }}/release/bundle/nsis/*.exe
+            src-tauri/target/${{ matrix.rust_target }}/release/bundle/msi/*.msi
+          if-no-files-found: warn
+          retention-days: 30
