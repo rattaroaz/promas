@@ -71,8 +71,15 @@ describe("observability suite", () => {
     expect(text).toContain("Diagnostics");
     expect(text).toContain("promas.db");
     expect(text).toContain("--- recent logs ---");
+    expect(text).toContain("May include local paths");
     const bundle = buildDiagnosticsBundle(null);
     expect(bundle.appVersion).toBeTruthy();
     expect(bundle.recentLogs.length).toBeGreaterThan(0);
+  });
+
+  it("metrics reset clears counters", () => {
+    metrics.inc("api.invoke", { cmd: "x" });
+    metrics.reset();
+    expect(Object.keys(metrics.snapshot().counters)).toHaveLength(0);
   });
 });

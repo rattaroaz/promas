@@ -1,6 +1,9 @@
 import { invoke as rawInvoke } from "@tauri-apps/api/core";
 import { log, metrics, noteApiError, startSpan } from "./lib/observability";
 
+/** Log successful invokes at info when they exceed this (ms). */
+const SLOW_API_MS = 500;
+
 /** Instrumented invoke: metrics + span + ring-buffer log on every command. */
 async function invoke<T>(
   cmd: string,
@@ -14,9 +17,15 @@ async function invoke<T>(
     const result = await rawInvoke<T>(cmd, args);
     const ms =
       (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+    const rounded = Math.round(ms);
     metrics.observe("api.duration_ms", ms, { cmd });
-    span.end({ ok: true, meta: { ms: Math.round(ms) } });
-    log.debug("api", `${cmd} ok`, { ms: Math.round(ms) });
+    span.end({ ok: true, meta: { ms: rounded } });
+    if (rounded >= SLOW_API_MS) {
+      metrics.inc("api.slow", { cmd });
+      log.info("api", `${cmd} slow`, { ms: rounded });
+    } else {
+      log.debug("api", `${cmd} ok`, { ms: rounded });
+    }
     return result;
   } catch (e) {
     const ms =
@@ -494,15 +503,25 @@ export const api = {
       salesDate,
       invoice,
     }),
-  saveInvoice: (data: InvoiceWithLines) =>
-    invoke<number>("save_invoice", { data }),
-  voidInvoice: (
+  saveInvoice: async (data: InvoiceWithLines) => {
+    const no = await invoke<number>("save_invoice", { data });
+    log.info("db", "invoice saved", {
+      invoice: no,
+      companyNo: data.invoice.companyNo,
+      proNo: data.invoice.proNo,
+      lines: data.lines.length,
+    });
+    return no;
+  },
+  voidInvoice: async (
     companyNo: string,
     proNo: string,
     salesDate: string,
     invoice: number
-  ) =>
-    invoke("void_invoice", { companyNo, proNo, salesDate, invoice }),
+  ) => {
+    await invoke("void_invoice", { companyNo, proNo, salesDate, invoice });
+    log.info("db", "invoice voided", { invoice, companyNo, proNo, salesDate });
+  },
   listCashReceipts: (params: ListParams = {}) =>
     invoke<CashReceipt[]>("list_cash_receipts", { params }),
   saveCashReceipt: (receipt: CashReceipt) =>
@@ -518,26 +537,65 @@ export const api = {
   saveMaterial: (material: Material) =>
     invoke("save_material", { material }),
   deleteMaterial: (id: number) => invoke("delete_material", { id }),
-  reportAging: (asOf?: string) =>
-    invoke<AgingRow[]>("report_aging", { asOf: asOf ?? null }),
-  reportSalesAnalysis: (params: ListParams = {}) =>
-    invoke<SalesAnalysisRow[]>("report_sales_analysis", { params }),
-  reportWorkerWages: (params: ListParams = {}) =>
-    invoke<WorkerWageRow[]>("report_worker_wages", { params }),
-  importDbfFolder: (folder: string) =>
-    invoke<ImportResult>("import_dbf_folder", { folder }),
+  reportAging: async (asOf?: string) => {
+    const rows = await invoke<AgingRow[]>("report_aging", {
+      asOf: asOf ?? null,
+    });
+    log.info("db", "report_aging completed", {
+      rows: rows.length,
+      asOf: asOf ?? null,
+    });
+    return rows;
+  },
+  reportSalesAnalysis: async (params: ListParams = {}) => {
+    const rows = await invoke<SalesAnalysisRow[]>(
+      "report_sales_analysis",
+      { params }
+    );
+    log.info("db", "report_sales_analysis completed", { rows: rows.length });
+    return rows;
+  },
+  reportWorkerWages: async (params: ListParams = {}) => {
+    const rows = await invoke<WorkerWageRow[]>("report_worker_wages", {
+      params,
+    });
+    log.info("db", "report_worker_wages completed", { rows: rows.length });
+    return rows;
+  },
+  importDbfFolder: async (folder: string) => {
+    const result = await invoke<ImportResult>("import_dbf_folder", { folder });
+    log.info("db", "dbf import completed", {
+      companies: result.companies,
+      properties: result.properties,
+      invoices: result.invoices,
+      invoiceLines: result.invoiceLines,
+    });
+    return result;
+  },
   getDbPath: () => invoke<string>("get_db_path"),
-  exportDatabase: (destPath: string) =>
-    invoke("export_database", { destPath }),
-  backupDatabase: (destPath: string) =>
-    invoke("backup_database", { destPath }),
-  setDbLocation: (folder: string) =>
-    invoke<string>("set_db_location", { folder }),
-  importDatabase: (sourcePath: string) =>
-    invoke<string>("import_database", { sourcePath }),
+  exportDatabase: async (destPath: string) => {
+    await invoke("export_database", { destPath });
+    log.info("db", "database exported", { destPath });
+  },
+  backupDatabase: async (destPath: string) => {
+    await invoke("backup_database", { destPath });
+    log.info("db", "database backed up", { destPath });
+  },
+  setDbLocation: async (folder: string) => {
+    const path = await invoke<string>("set_db_location", { folder });
+    log.info("db", "database location set", { path });
+    return path;
+  },
+  importDatabase: async (sourcePath: string) => {
+    const path = await invoke<string>("import_database", { sourcePath });
+    log.info("db", "database imported", { sourcePath, path });
+    return path;
+  },
   getBackendDiagnostics: () =>
     invoke<BackendDiagnostics>("get_backend_diagnostics"),
   openLogDir: () => invoke("open_log_dir"),
+  saveTextFile: (path: string, contents: string) =>
+    invoke("save_text_file", { path, contents }),
 };
 
 export interface BackendDiagnostics {

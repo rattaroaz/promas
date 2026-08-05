@@ -1,0 +1,49 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { log, metrics, resetObservabilityForTests } from "./lib/observability";
+
+const rawInvoke = vi.fn();
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => rawInvoke(...args),
+}));
+
+describe("instrumented api invoke", () => {
+  beforeEach(() => {
+    resetObservabilityForTests();
+    rawInvoke.mockReset();
+  });
+
+  it("logs slow successful invokes at info", async () => {
+    rawInvoke.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 520));
+      return "ok";
+    });
+    const { api } = await import("./api");
+    await api.getDbPath();
+    const recent = log.getRecent();
+    expect(recent.some((e) => e.message.includes("slow"))).toBe(true);
+    expect(metrics.snapshot().counters["api.slow{cmd=get_db_path}"]).toBe(1);
+  });
+
+  it("logs failed invokes at error", async () => {
+    rawInvoke.mockRejectedValue(new Error("boom"));
+    const { api } = await import("./api");
+    await expect(api.getDbPath()).rejects.toThrow();
+    expect(log.getRecent().some((e) => e.level === "error")).toBe(true);
+    expect(metrics.snapshot().counters["api.error{cmd=get_db_path}"]).toBe(1);
+  });
+
+  it("records invoice saved breadcrumb", async () => {
+    rawInvoke.mockResolvedValue(42);
+    const { api, emptyInvoice } = await import("./api");
+    const inv = emptyInvoice();
+    inv.companyNo = "1000";
+    inv.proNo = "01";
+    await api.saveInvoice({ invoice: inv, lines: [] });
+    expect(
+      log.getRecent().some(
+        (e) => e.category === "db" && e.message === "invoice saved"
+      )
+    ).toBe(true);
+  });
+});

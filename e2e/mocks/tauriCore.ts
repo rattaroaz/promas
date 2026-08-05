@@ -47,6 +47,9 @@ export async function invoke<T = unknown>(
   if (cmd === "open_log_dir") {
     return undefined as T;
   }
+  if (cmd === "save_text_file") {
+    return undefined as T;
+  }
   if (cmd === "get_sysdata") {
     return {
       company: "Test Co",

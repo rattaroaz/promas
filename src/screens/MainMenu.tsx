@@ -102,7 +102,7 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
   return (
     <Screen
       statusKeys={MENU_KEYS}
-      title="Promas(P) Version 2.0.4  —  Property Management System"
+      title="Promas(P) Version 2.1.0  —  Property Management System"
       left={dateStr}
       right={timeStr}
       message={
@@ -129,7 +129,7 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
           </div>
         </div>
         <div className="dos-copyright">
-          {`Amateurmas(P) Version 2.0.4 - Public Domain Software.
+          {`Amateurmas(P) Version 2.1.0 - Public Domain Software.
 Han Qi Mo Pho
 Modern rewrite — Tauri + SQLite`}
         </div>

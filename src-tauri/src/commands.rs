@@ -1327,3 +1327,16 @@ pub fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| format!("open log dir: {e}"))
 }
 
+/// Write a UTF-8 text file (used for diagnostics export).
+#[tauri::command]
+pub fn save_text_file(path: String, contents: String) -> Result<(), String> {
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("create dir: {e}"))?;
+        }
+    }
+    std::fs::write(&path, contents.as_bytes()).map_err(|e| format!("write {path}: {e}"))?;
+    log::info!(target: "promas::diag", "saved text file → {path}");
+    Ok(())
+}
+

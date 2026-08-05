@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { save } from "@tauri-apps/plugin-dialog";
 import { api, BackendDiagnostics } from "../api";
 import {
   clearSpans,
@@ -6,11 +7,20 @@ import {
   getAppState,
   log,
   metrics,
+  setCurrentScreen,
   subscribeAppState,
 } from "../lib/observability";
 import { APP_VERSION } from "../lib/constants";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
+
+function todayStamp(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}${m}${day}`;
+}
 
 /** In-app observability viewer: metrics, logs, spans, backend paths. */
 export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
@@ -20,6 +30,11 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
   const [help, setHelp] = useState(false);
   const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    setCurrentScreen("diagnostics");
+    return () => setCurrentScreen("settings");
+  }, []);
 
   const refresh = useCallback(() => {
     setText(formatDiagnosticsText(backend));
@@ -65,8 +80,9 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
   function clearMemory() {
     log.clear();
     clearSpans();
+    metrics.reset();
     refresh();
-    setMsg("Cleared in-memory logs and spans.");
+    setMsg("Cleared in-memory logs, spans, and metrics.");
     setMsgKind("info");
     metrics.inc("diagnostics.clear");
   }
@@ -75,10 +91,30 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
     try {
       const body = formatDiagnosticsText(backend);
       await navigator.clipboard.writeText(body);
-      setMsg("Diagnostics copied to clipboard.");
+      setMsg("Diagnostics copied to clipboard (may include local paths).");
       setMsgKind("info");
       log.info("app", "diagnostics copied");
       metrics.inc("diagnostics.copy");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
+  }
+
+  async function saveBundle() {
+    try {
+      const dest = await save({
+        title: "Save Diagnostics Bundle",
+        defaultPath: `promas-diagnostics-${todayStamp()}.txt`,
+        filters: [{ name: "Text", extensions: ["txt"] }],
+      });
+      if (!dest) return;
+      const body = formatDiagnosticsText(backend);
+      await api.saveTextFile(dest, body);
+      setMsg(`Diagnostics saved to: ${dest}`);
+      setMsgKind("info");
+      log.info("app", "diagnostics saved to file", { path: dest });
+      metrics.inc("diagnostics.save_file");
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -109,6 +145,10 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
         void copyBundle();
         return true;
       }
+      if (c === "s") {
+        void saveBundle();
+        return true;
+      }
       if (c === "r") {
         refresh();
         setMsg("Refreshed.");
@@ -134,6 +174,7 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
       statusKeys={[
         { key: "Esc", label: "Back" },
         { key: "C", label: "Copy" },
+        { key: "S", label: "Save" },
         { key: "R", label: "Refresh" },
         { key: "L", label: "Log folder" },
         { key: "X", label: "Clear" },
@@ -174,6 +215,9 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
                 autoFocus
               >
                 Copy bundle (C)
+              </button>
+              <button className="dos-btn" onClick={() => void saveBundle()}>
+                Save to file (S)
               </button>
               <button className="dos-btn" onClick={refresh}>
                 Refresh (R)

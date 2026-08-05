@@ -20,6 +20,9 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
+                // Rotate at ~5 MiB; keep a few dated files for support.
+                .max_file_size(5_000_000)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(5))
                 .build(),
         )
         .setup(|app| {
@@ -80,6 +83,7 @@ pub fn run() {
             commands::import_database,
             commands::get_backend_diagnostics,
             commands::open_log_dir,
+            commands::save_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

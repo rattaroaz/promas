@@ -25,6 +25,7 @@ export {
   getAppState,
   subscribeAppState,
 } from "./state";
+export { installGlobalErrorHandlers } from "./globalErrors";
 export type {
   LogLevel,
   LogCategory,
@@ -67,6 +68,8 @@ export function formatDiagnosticsText(
     `lastApiError: ${state.lastApiError ?? "(none)"}`,
     `lastUpdate: ${state.lastUpdateOutcome ?? "(none)"}`,
     `pendingSpans: ${state.pendingSpans}`,
+    "",
+    "NOTE: May include local paths and environment details. Review before sharing.",
     "",
     "--- backend ---",
     backend

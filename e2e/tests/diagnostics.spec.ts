@@ -8,5 +8,7 @@ test.describe("diagnostics", () => {
     await expect(page.getByText(/Metrics · Traces · Logs · State/i)).toBeVisible();
     await expect(page.getByText(/Diagnostics/i).first()).toBeVisible();
     await expect(page.getByText(/recent logs/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Save to file/i })).toBeVisible();
+    await expect(page.getByText(/May include local paths/i)).toBeVisible();
   });
 });
