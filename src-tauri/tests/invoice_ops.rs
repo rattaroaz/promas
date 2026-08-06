@@ -261,6 +261,7 @@ fn report_sales_analysis_lists_open_invoices() {
             include_voided: None,
             limit: None,
             offset: None,
+            sort: None,
         },
     )
     .unwrap();
@@ -304,6 +305,7 @@ fn report_worker_wages_includes_emp_lines() {
             include_voided: None,
             limit: None,
             offset: None,
+            sort: None,
         },
     )
     .unwrap();
