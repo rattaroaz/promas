@@ -1,49 +1,56 @@
+/**
+ * Original Miscellaneous menu (exactly 3 items):
+ *  1. Change System Date
+ *  2. Reindex Data Files
+ *  3. Form Management
+ */
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
-import { api, SysData, ImportResult } from "../api";
+import { api, SysData, FormRecord } from "../api";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, FORM_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { SubMenu, MenuItem } from "./SubMenu";
+import { padR } from "../dos/utils";
 
 const MISC_ITEMS: MenuItem[] = [
-  { id: "date", num: "1", label: "Change System Date / Company Info", accel: "C" },
-  { id: "reindex", num: "2", label: "Reindex / Import Data Files", accel: "R" },
-  { id: "workers", num: "3", label: "Worker File Maintenance", accel: "W" },
-  { id: "worktype", num: "4", label: "Job Code / Work Type File", accel: "J" },
+  { id: "date", num: "1", label: "Change System Date", accel: "C" },
+  { id: "reindex", num: "2", label: "Reindex Data Files", accel: "R" },
+  { id: "forms", num: "3", label: "Form Management", accel: "F" },
 ];
 
-export function MiscScreen({
-  onBack,
-  onWorkers,
-  onWorkTypes,
-}: {
-  onBack: () => void;
-  onWorkers: () => void;
-  onWorkTypes: () => void;
-}) {
+export function MiscScreen({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<string | null>(null);
   const [data, setData] = useState<SysData | null>(null);
-  const [dbPath, setDbPath] = useState("");
   const [msg, setMsg] = useState("");
-  const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
-  const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [confirmImport, setConfirmImport] = useState(false);
-  const [pendingFolder, setPendingFolder] = useState<string | null>(null);
+  const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
+    "default"
+  );
+  const [confirmReindex, setConfirmReindex] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
+  const [forms, setForms] = useState<FormRecord[]>([]);
+  const [editForm, setEditForm] = useState<FormRecord | null>(null);
   const [help, setHelp] = useState(false);
 
   useEffect(() => {
-    if (screen === "date" || screen === "reindex") {
-      Promise.all([api.getSysdata(), api.getDbPath()])
-        .then(([s, p]) => {
-          setData(s);
-          setDbPath(p);
-        })
+    if (screen === "date") {
+      api
+        .getSysdata()
+        .then(setData)
         .catch((e) => {
           setMsg(String(e));
           setMsgKind("error");
         });
+    }
+    if (screen === "forms") {
+      api
+        .listForms()
+        .then((f) => {
+          setForms(f);
+          if (f.length === 0) {
+            setForms([{ formNo: "EST-1", content: "" }]);
+          }
+        })
+        .catch((e) => setMsg(String(e)));
     }
   }, [screen]);
 
@@ -51,25 +58,29 @@ export function MiscScreen({
     {
       onEscape: () => {
         if (help) setHelp(false);
-        else if (confirmImport) setConfirmImport(false);
-        else if (screen) {
-          setScreen(null);
-          setResult(null);
-        } else onBack();
+        else if (confirmReindex) setConfirmReindex(false);
+        else if (editForm) setEditForm(null);
+        else if (screen) setScreen(null);
+        else onBack();
       },
       onF1: () => setHelp(true),
       onCtrlW: () => {
-        if (screen === "date" && data) save();
+        if (screen === "date" && data) saveSys();
+        if (editForm) saveForm();
+      },
+      onInsert: () => {
+        if (screen === "forms" && !editForm) {
+          setEditForm({ formNo: "", content: "" });
+        }
       },
       onChar: (ch) => {
-        if (confirmImport) {
+        if (confirmReindex) {
           if (ch === "y" || ch === "Y") {
-            doImport();
+            doReindex();
             return true;
           }
           if (ch === "n" || ch === "N") {
-            setConfirmImport(false);
-            setPendingFolder(null);
+            setConfirmReindex(false);
             return true;
           }
         }
@@ -79,7 +90,7 @@ export function MiscScreen({
     !!screen
   );
 
-  async function save() {
+  async function saveSys() {
     if (!data) return;
     try {
       await api.saveSysdata(data);
@@ -91,43 +102,38 @@ export function MiscScreen({
     }
   }
 
-  async function pickFolder() {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "Select PROMAS folder (COMPANY.DBF ...)",
-      });
-      if (!selected || Array.isArray(selected)) return;
-      setPendingFolder(selected);
-      setConfirmImport(true);
-      setMsg(
-        "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***  Are you sure(Y/N) ?"
-      );
-    } catch (e) {
-      setMsg(String(e));
-      setMsgKind("error");
-    }
-  }
-
-  async function doImport() {
-    if (!pendingFolder) return;
-    setConfirmImport(false);
-    setImporting(true);
+  async function doReindex() {
+    setConfirmReindex(false);
+    setReindexing(true);
     setMsg("Reindexing Data Files......");
     setMsgKind("info");
     try {
-      const r = await api.importDbfFolder(pendingFolder);
-      setResult(r);
-      setMsg("Import completed successfully");
+      const r = await api.reindexDataFiles();
+      setMsg(r);
       setMsgKind("info");
-      setData(await api.getSysdata());
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
     } finally {
-      setImporting(false);
-      setPendingFolder(null);
+      setReindexing(false);
+    }
+  }
+
+  async function saveForm() {
+    if (!editForm?.formNo.trim()) {
+      setMsg("--> Form # required !!");
+      setMsgKind("error");
+      return;
+    }
+    try {
+      await api.saveForm(editForm);
+      setEditForm(null);
+      setForms(await api.listForms());
+      setMsg("Form saved.");
+      setMsgKind("info");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
     }
   }
 
@@ -138,9 +144,16 @@ export function MiscScreen({
         items={MISC_ITEMS}
         onBack={onBack}
         onSelect={(id) => {
-          if (id === "workers") onWorkers();
-          else if (id === "worktype") onWorkTypes();
-          else setScreen(id);
+          if (id === "reindex") {
+            setScreen("reindex");
+            setConfirmReindex(true);
+            setMsg(
+              "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***  Are you sure(Y/N) ?"
+            );
+          } else {
+            setScreen(id);
+            setMsg("");
+          }
         }}
       />
     );
@@ -150,7 +163,7 @@ export function MiscScreen({
     return (
       <Screen
         statusKeys={FORM_KEYS}
-        title=" Change System Date / Company Info "
+        title=" Change System Date "
         message={msg || "Esc=Cancel, Ctrl-W=Save & Exit"}
         messageKind={msgKind}
       >
@@ -162,7 +175,7 @@ export function MiscScreen({
             <div className="dlg-title"> System / Company Information </div>
             <div className="dlg-body">
               <div className="dos-form">
-                <DotField label="Company" width={12}>
+                <DotField label="Company" width={14}>
                   <input
                     className="dos-input w30"
                     value={data.company}
@@ -172,7 +185,7 @@ export function MiscScreen({
                     autoFocus
                   />
                 </DotField>
-                <DotField label="Address1" width={12}>
+                <DotField label="Address1" width={14}>
                   <input
                     className="dos-input w30"
                     value={data.address1}
@@ -181,7 +194,7 @@ export function MiscScreen({
                     }
                   />
                 </DotField>
-                <DotField label="Address2" width={12}>
+                <DotField label="Address2" width={14}>
                   <input
                     className="dos-input w30"
                     value={data.address2}
@@ -190,7 +203,7 @@ export function MiscScreen({
                     }
                   />
                 </DotField>
-                <DotField label="City" width={12}>
+                <DotField label="City" width={14}>
                   <input
                     className="dos-input w15"
                     value={data.city}
@@ -199,14 +212,27 @@ export function MiscScreen({
                     }
                   />
                 </DotField>
-                <DotField label="Zip" width={12}>
+                <DotField label="Zip" width={14}>
                   <input
                     className="dos-input w10"
                     value={data.zip}
                     onChange={(e) => setData({ ...data, zip: e.target.value })}
                   />
                 </DotField>
-                <DotField label="Next Invoice" width={12}>
+                <DotField label="Close Date" width={14}>
+                  <input
+                    className="dos-input w12"
+                    type="date"
+                    value={data.closeDate || ""}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        closeDate: e.target.value || null,
+                      })
+                    }
+                  />
+                </DotField>
+                <DotField label="Next Invoice" width={14}>
                   <input
                     className="dos-input w8"
                     type="number"
@@ -219,7 +245,7 @@ export function MiscScreen({
                     }
                   />
                 </DotField>
-                <DotField label="Next Order" width={12}>
+                <DotField label="Next Order" width={14}>
                   <input
                     className="dos-input w8"
                     type="number"
@@ -232,7 +258,20 @@ export function MiscScreen({
                     }
                   />
                 </DotField>
-                <DotField label="Terms Days" width={12}>
+                <DotField label="Next Estimate" width={14}>
+                  <input
+                    className="dos-input w8"
+                    type="number"
+                    value={data.nextEstimate}
+                    onChange={(e) =>
+                      setData({
+                        ...data,
+                        nextEstimate: parseInt(e.target.value, 10) || 1,
+                      })
+                    }
+                  />
+                </DotField>
+                <DotField label="Terms Days" width={14}>
                   <input
                     className="dos-input w5"
                     type="number"
@@ -260,8 +299,7 @@ export function MiscScreen({
       <Screen
         statusKeys={[
           { key: "Esc", label: "Exit" },
-          { key: "Enter", label: "Import" },
-          { key: "F1", label: "Help" },
+          { key: "Y/N", label: "Confirm" },
         ]}
         title=" *** Reindex Data Files *** "
         message={
@@ -271,58 +309,114 @@ export function MiscScreen({
         messageKind={msgKind}
       >
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "56ch" }}>
-            <div className="menu-header"> Import Legacy PROMAS (.DBF) Files </div>
+          <div className="dos-menu-frame" style={{ minWidth: "52ch" }}>
+            <div className="menu-header"> Reindex Data Files </div>
             <div className="menu-body" style={{ padding: "1em 2ch" }}>
               <div style={{ color: "var(--dos-yellow)", marginBottom: "1em" }}>
-                Select the PROMAS folder containing COMPANY.DBF, SALES1.DBF,
-                SALES2.DBF, etc.
+                *** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***
               </div>
-              <div style={{ color: "var(--dos-cyan-bright)", marginBottom: "1em", fontSize: "0.9em" }}>
-                Database: {dbPath}
+              <div style={{ marginBottom: "1em" }}>
+                Rebuilds internal indexes (SQLite REINDEX / ANALYZE).
+                <br />
+                Original rebuilt COMPANY, PROPERTY, SALES, CASHRECT, etc. NTX
+                files.
               </div>
               <button
                 className="dos-btn"
-                disabled={importing}
-                onClick={pickFolder}
-                autoFocus
+                disabled={reindexing}
+                onClick={() => setConfirmReindex(true)}
               >
-                {importing ? "Reindexing Data Files......" : "Select Folder & Import"}
+                {reindexing ? "Reindexing Data Files......" : "Reindex Now"}
               </button>
-              {result && (
-                <pre
-                  style={{
-                    marginTop: "1em",
-                    color: "var(--dos-white-bright)",
-                    whiteSpace: "pre",
-                  }}
-                >
-                  {`Companies...... ${result.companies}
-Properties..... ${result.properties}
-Employees...... ${result.employees}
-Work Types..... ${result.workTypes}
-Invoices....... ${result.invoices}
-Invoice Lines.. ${result.invoiceLines}
-Cash Receipts.. ${result.cashReceipts}
-Materials...... ${result.materials}
-Work Orders.... ${result.workOrders}
-Estimates...... ${result.estimates}
-
-Import completed successfully`}
-                </pre>
-              )}
             </div>
           </div>
         </div>
-        {confirmImport && (
+        {confirmReindex && (
           <Prompt
-            question="Are you sure(Y/N) ?  This REPLACES all current data."
-            onYes={doImport}
-            onNo={() => {
-              setConfirmImport(false);
-              setPendingFolder(null);
-            }}
+            question="Are you sure(Y/N) ?"
+            onYes={doReindex}
+            onNo={() => setConfirmReindex(false)}
           />
+        )}
+        {help && <HelpOverlay onClose={() => setHelp(false)} />}
+      </Screen>
+    );
+  }
+
+  if (screen === "forms") {
+    return (
+      <Screen
+        statusKeys={[
+          { key: "Esc", label: "Exit" },
+          { key: "Ins", label: "Add" },
+          { key: "Enter", label: "Edit" },
+          { key: "Ctrl-W", label: "Save" },
+        ]}
+        title=" <<< Form Management >>> "
+        message={msg || "Enter Form #(Esc=Exit) !  Ins=Add  Enter=Edit"}
+        messageKind={msgKind}
+      >
+        {!editForm ? (
+          <div className="dos-browse">
+            <div className="dos-browse-header">
+              {"Form #............  Content preview"}
+            </div>
+            <div className="dos-browse-body">
+              {forms.map((f) => (
+                <button
+                  key={f.formNo}
+                  className="dos-row"
+                  onClick={() => setEditForm({ ...f })}
+                >
+                  {padR(f.formNo, 16)} {padR(f.content.slice(0, 40), 40)}
+                </button>
+              ))}
+              {forms.length === 0 && (
+                <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+                  {"  Press Ins to add Form #"}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="dos-main-wrap">
+            <div className="dos-dialog" style={{ minWidth: "50ch" }}>
+              <div className="dlg-title"> Enter Form </div>
+              <div className="dlg-body">
+                <div className="dos-form">
+                  <DotField label="Form #" width={12}>
+                    <input
+                      className="dos-input w12"
+                      value={editForm.formNo}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          formNo: e.target.value.toUpperCase(),
+                        })
+                      }
+                      autoFocus
+                    />
+                  </DotField>
+                  <DotField label="Form text" width={12}>
+                    <textarea
+                      className="dos-textarea"
+                      value={editForm.content}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          content: e.target.value,
+                        })
+                      }
+                      rows={8}
+                    />
+                  </DotField>
+                </div>
+              </div>
+              <div className="dlg-foot">
+                Esc=Cancel, Ctrl-W=Save & Exit
+              </div>
+            </div>
+          </div>
         )}
         {help && <HelpOverlay onClose={() => setHelp(false)} />}
       </Screen>

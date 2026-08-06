@@ -943,6 +943,146 @@ pub fn save_work_order(state: State<DbState>, data: WorkOrderWithLines) -> Resul
     Ok(order_no)
 }
 
+#[tauri::command]
+pub fn get_work_order(
+    state: State<DbState>,
+    company_no: String,
+    pro_no: String,
+    order_date: String,
+    order_no: i64,
+) -> Result<Option<WorkOrderWithLines>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    let order = conn
+        .query_row(
+            r#"SELECT w.company_no,w.pro_no,w.order_date,w.order_no,w.work_date,w.order_unit,w.order_size,
+               w.order_man,w.order_by,w.cust_po_no,w.remark1,w.remark2,w.status,w.voided,c.name,p.name
+               FROM work_orders w
+               LEFT JOIN companies c ON c.company_no=w.company_no
+               LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
+               WHERE w.company_no=? AND w.pro_no=? AND w.order_date=? AND w.order_no=?"#,
+            params![company_no, pro_no, order_date, order_no],
+            |r| {
+                Ok(WorkOrder {
+                    company_no: r.get(0)?,
+                    pro_no: r.get(1)?,
+                    order_date: r.get(2)?,
+                    order_no: r.get(3)?,
+                    work_date: r.get(4)?,
+                    order_unit: r.get(5)?,
+                    order_size: r.get(6)?,
+                    order_man: r.get(7)?,
+                    order_by: r.get(8)?,
+                    cust_po_no: r.get(9)?,
+                    remark1: r.get(10)?,
+                    remark2: r.get(11)?,
+                    status: r.get(12)?,
+                    voided: r.get::<_, i64>(13)? != 0,
+                    company_name: r.get(14)?,
+                    property_name: r.get(15)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(map_err)?;
+
+    let Some(order) = order else {
+        return Ok(None);
+    };
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT id,company_no,pro_no,order_date,order_no,line_no,code_no,description,work_type,price
+               FROM work_order_lines
+               WHERE company_no=? AND pro_no=? AND order_date=? AND order_no=?
+               ORDER BY line_no"#,
+        )
+        .map_err(map_err)?;
+    let lines = stmt
+        .query_map(
+            params![
+                order.company_no,
+                order.pro_no,
+                order.order_date,
+                order.order_no
+            ],
+            |r| {
+                Ok(WorkOrderLine {
+                    id: r.get(0)?,
+                    company_no: r.get(1)?,
+                    pro_no: r.get(2)?,
+                    order_date: r.get(3)?,
+                    order_no: r.get(4)?,
+                    line_no: r.get(5)?,
+                    code_no: r.get(6)?,
+                    description: r.get(7)?,
+                    work_type: r.get(8)?,
+                    price: r.get(9)?,
+                })
+            },
+        )
+        .map_err(map_err)?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(Some(WorkOrderWithLines { order, lines }))
+}
+
+#[tauri::command]
+pub fn void_work_order(
+    state: State<DbState>,
+    company_no: String,
+    pro_no: String,
+    order_date: String,
+    order_no: i64,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        "UPDATE work_orders SET voided=1, status='V' WHERE company_no=? AND pro_no=? AND order_date=? AND order_no=?",
+        params![company_no, pro_no, order_date, order_no],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+/// Find work order by order number within company (for invoice build).
+#[tauri::command]
+pub fn find_work_order(
+    state: State<DbState>,
+    company_no: String,
+    pro_no: String,
+    order_no: i64,
+) -> Result<Option<WorkOrderWithLines>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    // Prefer exact company+property match; fall back to company-wide
+    let key: Option<(String, String, String, i64)> = conn
+        .query_row(
+            r#"SELECT company_no,pro_no,order_date,order_no FROM work_orders
+               WHERE company_no=? AND pro_no=? AND order_no=?
+               ORDER BY order_date DESC LIMIT 1"#,
+            params![company_no, pro_no, order_no],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .optional()
+        .map_err(map_err)?
+        .or_else(|| {
+            conn.query_row(
+                r#"SELECT company_no,pro_no,order_date,order_no FROM work_orders
+                   WHERE company_no=? AND order_no=?
+                   ORDER BY order_date DESC LIMIT 1"#,
+                params![company_no, order_no],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .optional()
+            .ok()
+            .flatten()
+        });
+    let Some((c, p, d, n)) = key else {
+        return Ok(None);
+    };
+    drop(conn);
+    get_work_order(state, c, p, d, n)
+}
+
 // ─── Materials ────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -952,19 +1092,25 @@ pub fn list_materials(state: State<DbState>, params: ListParams) -> Result<Vec<M
     let from_date = params.from_date.unwrap_or_default();
     let to_date = params.to_date.unwrap_or_default();
     let like = format!("%{}%", search);
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT m.id,m.emp_no,m.description,m.mat_date,m.amount,m.status,m.voided,e.name
-               FROM materials m
-               LEFT JOIN employees e ON e.emp_no=m.emp_no
-               WHERE m.voided=0
-                 AND (?1='' OR m.mat_date>=?1)
-                 AND (?2='' OR m.mat_date<=?2)
-                 AND (?3='' OR m.emp_no LIKE ?4 OR m.description LIKE ?4 OR e.name LIKE ?4)
-               ORDER BY m.mat_date DESC, m.id DESC"#,
-        )
-        .map_err(map_err)?;
+    let sort = params.sort.unwrap_or_default().to_lowercase();
+    // Original Material Process sort orders (NTX keys)
+    let order_by = match sort.as_str() {
+        "worker" => "m.emp_no, m.mat_date, m.description",
+        "date" => "m.mat_date, m.emp_no, m.description",
+        "desc" | "descript" => "m.description, m.emp_no, m.mat_date",
+        _ => "m.mat_date DESC, m.id DESC",
+    };
+    let sql = format!(
+        r#"SELECT m.id,m.emp_no,m.description,m.mat_date,m.amount,m.status,m.voided,e.name
+           FROM materials m
+           LEFT JOIN employees e ON e.emp_no=m.emp_no
+           WHERE m.voided=0
+             AND (?1='' OR m.mat_date>=?1)
+             AND (?2='' OR m.mat_date<=?2)
+             AND (?3='' OR m.emp_no LIKE ?4 OR m.description LIKE ?4 OR e.name LIKE ?4)
+           ORDER BY {order_by}"#
+    );
+    let mut stmt = conn.prepare(&sql).map_err(map_err)?;
     let rows = stmt
         .query_map(params![from_date, to_date, search, like], |r| {
             Ok(Material {
@@ -1181,6 +1327,321 @@ pub fn import_database(
     })?;
 
     Ok(current.display().to_string())
+}
+
+// ─── Estimates ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_estimates(
+    state: State<DbState>,
+    params: ListParams,
+) -> Result<Vec<Estimate>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    let company_no = params.company_no.unwrap_or_default();
+    let include_voided = params.include_voided.unwrap_or(false);
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT id,company_no,est_date,est_no,form_no,memo,status,voided
+               FROM estimates
+               WHERE (?1 OR voided=0)
+                 AND (?2='' OR company_no=?2)
+               ORDER BY est_date DESC, est_no DESC"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![include_voided, company_no], |r| {
+            Ok(Estimate {
+                id: r.get(0)?,
+                company_no: r.get(1)?,
+                est_date: r.get(2)?,
+                est_no: r.get(3)?,
+                form_no: r.get(4)?,
+                memo: r.get(5)?,
+                status: r.get(6)?,
+                voided: r.get::<_, i64>(7)? != 0,
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+#[tauri::command]
+pub fn save_estimate(state: State<DbState>, estimate: Estimate) -> Result<i64, String> {
+    let mut conn = state.0.lock().map_err(map_err)?;
+    let tx = conn.transaction().map_err(map_err)?;
+    let mut est = estimate;
+    if est.est_no == 0 {
+        let next: i64 = tx
+            .query_row(
+                "SELECT next_estimate FROM sysdata WHERE id=1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(1);
+        est.est_no = next;
+        tx.execute(
+            "UPDATE sysdata SET next_estimate=? WHERE id=1",
+            params![next + 1],
+        )
+        .map_err(map_err)?;
+    }
+    if let Some(id) = est.id {
+        tx.execute(
+            r#"UPDATE estimates SET company_no=?,est_date=?,est_no=?,form_no=?,memo=?,status=?,voided=?
+               WHERE id=?"#,
+            params![
+                est.company_no,
+                est.est_date,
+                est.est_no,
+                est.form_no,
+                est.memo,
+                est.status,
+                if est.voided { 1 } else { 0 },
+                id
+            ],
+        )
+        .map_err(map_err)?;
+        tx.commit().map_err(map_err)?;
+        Ok(est.est_no)
+    } else {
+        tx.execute(
+            r#"INSERT INTO estimates (company_no,est_date,est_no,form_no,memo,status,voided)
+               VALUES (?,?,?,?,?,?,?)"#,
+            params![
+                est.company_no,
+                est.est_date,
+                est.est_no,
+                est.form_no,
+                est.memo,
+                est.status,
+                if est.voided { 1 } else { 0 },
+            ],
+        )
+        .map_err(map_err)?;
+        tx.commit().map_err(map_err)?;
+        Ok(est.est_no)
+    }
+}
+
+#[tauri::command]
+pub fn void_estimate(state: State<DbState>, id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        "UPDATE estimates SET voided=1, status='V' WHERE id=?",
+        params![id],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+// ─── Forms ─────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_forms(state: State<DbState>) -> Result<Vec<FormRecord>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    let mut stmt = conn
+        .prepare("SELECT form_no, content FROM forms ORDER BY form_no")
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(FormRecord {
+                form_no: r.get(0)?,
+                content: r.get(1)?,
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+#[tauri::command]
+pub fn save_form(state: State<DbState>, form: FormRecord) -> Result<(), String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        r#"INSERT INTO forms (form_no, content) VALUES (?,?)
+           ON CONFLICT(form_no) DO UPDATE SET content=excluded.content"#,
+        params![form.form_no, form.content],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+// ─── Reindex (Misc #2) ─────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn reindex_data_files(state: State<DbState>) -> Result<String, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    // SQLite equivalent of Clipper REINDEX on all .NTX files
+    conn.execute_batch(
+        r#"
+        REINDEX;
+        ANALYZE;
+        "#,
+    )
+    .map_err(map_err)?;
+    Ok("Reindexing Data Files...... done.".into())
+}
+
+// ─── Customer Ledger report ────────────────────────────────────────────
+
+#[tauri::command]
+pub fn report_customer_ledger(
+    state: State<DbState>,
+    company_no: String,
+) -> Result<Vec<LedgerLine>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    let mut invs = conn
+        .prepare(
+            r#"SELECT invoice,sales_date,sales_total,balance,sales_unit,pro_no
+               FROM invoices
+               WHERE company_no=? AND voided=0
+               ORDER BY sales_date, invoice"#,
+        )
+        .map_err(map_err)?;
+    let invoices: Vec<(i64, String, f64, f64, String, String)> = invs
+        .query_map(params![company_no], |r| {
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get(4)?,
+                r.get(5)?,
+            ))
+        })
+        .map_err(map_err)?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let mut lines = Vec::new();
+    for (invoice, inv_date, inv_amount, balance, unit, pro_no) in invoices {
+        let mut pays = conn
+            .prepare(
+                r#"SELECT pay_date,pay_ref_no,payment FROM cash_receipts
+                   WHERE company_no=? AND invoice=? AND voided=0
+                   ORDER BY pay_date, id"#,
+            )
+            .map_err(map_err)?;
+        let payments: Vec<(String, String, f64)> = pays
+            .query_map(params![company_no, invoice], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })
+            .map_err(map_err)?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        if payments.is_empty() {
+            lines.push(LedgerLine {
+                invoice,
+                inv_date: inv_date.clone(),
+                inv_amount,
+                pay_date: None,
+                pay_ref_no: None,
+                pay_amount: None,
+                balance,
+                unit: unit.clone(),
+                pro_no: pro_no.clone(),
+            });
+        } else {
+            let mut first = true;
+            let mut running = inv_amount;
+            for (pay_date, pay_ref, payment) in payments {
+                running -= payment;
+                lines.push(LedgerLine {
+                    invoice: if first { invoice } else { 0 },
+                    inv_date: if first {
+                        inv_date.clone()
+                    } else {
+                        String::new()
+                    },
+                    inv_amount: if first { inv_amount } else { 0.0 },
+                    pay_date: Some(pay_date),
+                    pay_ref_no: Some(pay_ref),
+                    pay_amount: Some(payment),
+                    balance: running.max(0.0),
+                    unit: if first {
+                        unit.clone()
+                    } else {
+                        String::new()
+                    },
+                    pro_no: if first {
+                        pro_no.clone()
+                    } else {
+                        String::new()
+                    },
+                });
+                first = false;
+            }
+        }
+    }
+    Ok(lines)
+}
+
+// ─── Check Missing Invoice ─────────────────────────────────────────────
+
+#[tauri::command]
+pub fn report_missing_invoices(
+    state: State<DbState>,
+    params: ListParams,
+) -> Result<Vec<MissingInvoiceRow>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    let from_date = params.from_date.unwrap_or_default();
+    let to_date = params.to_date.unwrap_or_default();
+    // Work orders that have no matching non-void invoice with same order_no
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT w.order_no,w.order_date,w.company_no,w.pro_no,
+                      w.order_by,w.order_man,w.order_unit,w.order_size,w.status,w.voided,
+                      COALESCE(p.street,''), COALESCE(p.name,''),
+                      i.invoice, i.sales_date, i.balance
+               FROM work_orders w
+               LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
+               LEFT JOIN invoices i ON i.company_no=w.company_no AND i.pro_no=w.pro_no
+                    AND i.order_no=w.order_no AND i.voided=0 AND w.order_no>0
+               WHERE (?1='' OR w.order_date>=?1)
+                 AND (?2='' OR w.order_date<=?2)
+               ORDER BY w.order_date, w.order_no"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![from_date, to_date], |r| {
+            let voided: i64 = r.get(9)?;
+            let status: String = r.get(8)?;
+            let inv: Option<i64> = r.get(12)?;
+            let label = if voided != 0 || status.eq_ignore_ascii_case("V") {
+                "**** Void Work Order ****".into()
+            } else if inv.is_none() {
+                "*** Not Build Invoice ***".into()
+            } else {
+                "Built".into()
+            };
+            Ok(MissingInvoiceRow {
+                order_no: r.get(0)?,
+                order_date: r.get(1)?,
+                company_no: r.get(2)?,
+                pro_no: r.get(3)?,
+                order_by: {
+                    let by: String = r.get(4)?;
+                    let man: String = r.get(5)?;
+                    if by.is_empty() { man } else { by }
+                },
+                invoice: inv,
+                inv_date: r.get(13)?,
+                balance: r.get::<_, Option<f64>>(14)?.unwrap_or(0.0),
+                status: label,
+                property_address: {
+                    let street: String = r.get(10)?;
+                    let name: String = r.get(11)?;
+                    if street.is_empty() { name } else { street }
+                },
+                unit_size: {
+                    let u: String = r.get(6)?;
+                    let s: String = r.get(7)?;
+                    if s.is_empty() { u } else { format!("{u}/{s}") }
+                },
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
 // ─── Observability ─────────────────────────────────────────────────────

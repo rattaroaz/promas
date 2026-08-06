@@ -1,0 +1,2065 @@
+Sysdata
+3Promas(P) Version 2.0 (c) Copyrights 1990 by C.C.C.
+,Computer Communications Center (213)383-4662
+          
+           
+B           
+      
+>           
+     
+       
+B           
+        
+       
+     
+C           
+        
+       
+         
+B          
+     
+       
+ Property Management System 
+ Estimate Process      
+ Work Order Process    
+ Invoice Process       
+ Cash Receipts Process 
+ Material Process      
+ Reports Menu          
+ Miscellaneous         
+ Do you want quit (Y/N) ?
+Net Work Error
+Error No --> 
+33333[p@d5
+33333[p@d<
+sysdata
+W+/B,W+/R,B
+GR+/B
+RB+/B
+BG+/R
+GR+/R
+RB/BG
+W+/BG
+G+/RB+
+ *** Function Key Description ***
+ F1 = Help
+ Ins = Add Data
+ Del = Delete or Void Data
+% Home= Diplay Company,Property Detail
+ End = Print Data
+ Cntr_Home = Edit Data
+ Enter(Ret)= Default Data
+ PgUp = Previous Data
+ PgDn = Next Data
+ Arrow Key = Up,Down Data
+Press any key to continue ...
+Proposal #........
+Proposal Date.....
+Form #............
+E Esc      Ins      Ctrl-Home       PgUp       PgDn      Home      End
+E Esc      Ins      Ctrl-Home       PgUp       PgDn      Home      End
+Press any key to continue ...
+'Enter Proposal Information (Esc=Exit) !
+!!!!!!!!!!
+=Enter Proposal Information (Esc=Cancel, Cntr_W=Save & Exit) !
+ Void Proposal 
+<<< Form Management >>>
+Form #............
+; Esc      Ins      Ctrl-Home       PgUp       PgDn      End
+; Esc      Ins      Ctrl-Home       PgUp       PgDn      End
+Form # : 
+     Printed Date : 
+4====================================================
+Enter Form #(Esc=Exit) !
+!!!!!!!!!!
+"-- > Already exist in Form File !!
+-Enter Form (Esc=Cancel, Cntr_W=Save & Exit) !
+ Material Process 
+, 1. Material Transaction (Add,Modification) 
+, 2. Material Transaction in Worker No       
+, 3. Material Transaction in Date            
+, 4. Material Transaction in Descript        
+, 5. Worker Wages Calculation                
+ Miscellaneous 
+ 1. Change System Date        
+ 2. Reindex Data Files        
+ 3. Form Management           
+*** Reindex Data Files ***
+<*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***
+Are you sure(Y/N) ?
+Reindexing Data Files......
+COMPANY
+companyno
+COMID
+upper(comname)
+COMNAME
+comphone
+COMPHONE
+PROPERTY
+companyno+prono
+PROID
+companyno+upper(proname)
+PRONAME
+companyno+prophone
+PROPHONE
+upper(prostreet)
+PROSTREET
+EMPLOYEE
+upper(empno)
+EMPID
+WORKTYPE
+upper(codeno)
+CODENO
+SALES1
+8companyno+prono+dtos(salesdate)+str(invoice,5)+str(no,2)
+SALESID1
+empno+dtos(workdate)
+WORKEMP
+SALES2
+.companyno+prono+dtos(salesdate)+str(invoice,5)
+SALESID2
+companyno+str(invoice,5)
+INVLEDG
+str(invoice,5)
+INVOICE
+dtos(salesdate)+str(invoice,5)
+SALESDATE
+ORDER1
+8companyno+prono+dtos(orderdate)+str(orderno,5)+str(no,2)
+ORDERID1
+ORDER2
+.companyno+prono+dtos(orderdate)+str(orderno,5)
+ORDERID2
+str(orderno,5)
+ORDERNO
+dtos(orderdate)+str(orderno,5)
+ORDERDATE
+CASHRECT
+companyno+str(invoice,5)
+CASHRECT
+dtos(paydate)+str(invoice,5)
+CASHDATE
+MATERIAL
+empno+dtos(matdate)
+MATID
+dtos(matdate)+empno
+MATDATE
+upper(matdescript)
+MATDESC
+companyno+str(estno,5)
+formno
+worktype
+CODENO
+codeno>=trim(icodeno)
+5Ins    Ctrl-Home    Del    End    PgUp    PgDn    Esc
+=Code NO......Description.......................W/T......Price
+5 --> does not exist !! Do you want Add Worktype(Y/N)?
+5Ins    Ctrl-Home    Del    End    PgUp    PgDn    Esc
+Are you sure (Y/N) ?
+5Ins    Ctrl-Home    Del    End    PgUp    PgDn    Esc
+Do you want delete (Y/N) ?
+5Ins    Ctrl-Home    Del    End    PgUp    PgDn    Esc
+Enter Job Code No (Esc=Exit) !
+!!!!!
+ --> Already exist !!
+'Enter Job Code Information (Esc=Exit) !
+9999.99
+Work Type Information
+Code NO     :
+Description :
+Work Type   :
+Price       :
+9999.99
+N  <<<<<<<<<<<<<<<<<<<<<<   W O R K   T Y P E   R E P O R T  >>>>>>>>>>>>>>>>>>
+  Date : 
+Page :
+N  ============================================================================
+L  Code#     Description                              Worktype          Price
+N  ============================================================================
+N  <<<<<<<<<<<<<<<<<<<<<<   W O R K   T Y P E   R E P O R T  >>>>>>>>>>>>>>>>>>
+  Date : 
+Page :
+N  ============================================================================
+L  Code#     Description                              Worktype          Price
+N  ============================================================================
+order1
+ORDERID1
+order2
+ORDERID2
+ORDERNO
+ORDERDATE
+97yX/
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+Do you want Void (Y/N) ?
+ Void Work Order 
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+(Enter Job Order Information (Esc=Exit) !
+Is This Data Correct ? (Y/N)
+ Void Work Order 
+Order No..........
+Order Date........
+Service Date......
+Order Person......
+Unit #............
+Size..............
+Order By..........
+Customer P.O......
+KCode# Description                                          W/T        Price
+1Enter Job Code No (Esc=Exit, * = Command Input) !
+!!!!!
+IEnter Description, Worktype(Esc=Cancel,(P)aint,(C)lean,(F)loor,(O)ther) !
+9999999.99
+9999999.99
+EEnter Descript,Worktype(Esc=Cancel,(P)aint,(C)lean,(F)loor,(O)ther) !
+9999999.99
+9999999.99
+9999999.99
+ Page : 1 
+9999999.99
+ Page : 1 
+9999999.99
+ Page : 2 
+9999999.99
+Customer P.O.# : 
+SIGNATURE : __________________
+Painting Job 
+Cleaning Job 
+Shampoo Job  
+Floor Job    
+Other Job    
+$***  V O I D  W O R K  O R D E R ***
+!Mon  Tue  Wed  Thu  Fri  Sat  Sun
+  Code/Name : 
+ Service Date : 
+  Address   : 
+ Service Crew :
+              
+ Key  : 
+  Phone/Mgr : 
+ Time : 
+  Page Map  : 
+MJob Description                                             Price    Material
+APT UNIT # : 
+SIZE : 
+Enter Remarks (Esc=Exit) !
+sysdata
+company
+COMID
+COMNAME
+COMPHONE
+ Invoice Process 
+ WorkOrder Process 
+ Cash Receipts Process 
+ Estimate Process 
+Company NO.......
+Company Name.....
+Company Phone....
+COMID
+COMNAME
+COMPHONE
++Enter Search Company NO (Esc=Exit, ?=First)
+COMID
+COMNAME
+COMPHONE
+ --> Wrong Company NO !!
+COMID
+COMNAME
+COMPHONE
+-Enter Search Company Name (Esc=Exit, ?=First)
+!!!!!!!!!!!!!!!!!!!!
+COMNAME
+COMID
+COMPHONE
+COMNAME
+COMID
+COMPHONE
+.Enter Search Company Phone (Esc=Exit, ?=First)
+(999)999-9999
+COMPHONE
+COMNAME
+COMID
+COMPHONE
+COMNAME
+COMID
+Property Street..
+)Enter Search Property Street (Esc=Exit) !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+companyno>=trim(seritem)
+comname>=trim(seritem)
+comphone>=trim(seritem)
+ Company NO Order 
+ Company Name Order 
+ Company Phone Order 
+=Company NO...Company Name.......................Phone........
+0 Ins      Ctrl-Home      PgUp      PgDn      Esc
+6 --> Does not exist !! Do you want Add Company (Y/N) ?
+Are you sure (Y/N) ?
+/Esc=Cancel, Home=Detail_Data, Otherkey=Continue
+COMID
+COMNAME
+COMPHONE
+COMNAME
+COMID
+COMPHONE
+COMPHONE
+COMID
+COMNAME
+Property
+PROID
+PRONAME
+PROPHONE
+PROSTREET
+Property NO......
+Property Name....
+Property Phone...
+PROID
+PRONAME
+PROPHONE
+#Enter Property NO(Esc=Exit,?=First)
+PROID
+PRONAME
+PROPHONE
+PROSTREET
+ --> Wrong Property NO !!
+PROID
+PRONAME
+PROPHONE
+PROSTREET
+%Enter Property Name(Esc=Exit,?=First)
+!!!!!!!!!!!!!!!!!!!!
+PRONAME
+PROID
+PROPHONE
+PROSTREET
+PRONAME
+PROID
+PROPHONE
+PROSTREET
+&Enter Property Phone(Esc=Exit,?=First)
+(999)999-9999
+PROPHONE
+PRONAME
+PROID
+PROSTREET
+PROPHONE
+PRONAME
+PROID
+PROSTREET
+ Property NO Order 
+ Property Name Order 
+ Property Phone Order 
+=Property NO..Property Name......................Phone........
+0 Ins      Ctrl-Home      PgUp      PgDn      Esc
+2 Property Empty !! Do you want Add Property(Y/N) ?
+6 --> Does not exist !! Do you want Add Property(Y/N) ?
+Are you sure (Y/N) ?
+/Esc=Cancel, Home=Detail_Data, Otherkey=Continue
+PROID
+PRONAME
+PROPHONE
+PROSTREET
+PRONAME
+PROID
+PROPHONE
+PROSTREET
+PROPHONE
+PROID
+PRONAME
+PROSTREET
+COMID
+Property
+PROSTREET
+" --> Not exist in Property File !!
+prostreet>=trim(iprostreet)
+ Property Street Order 
+Property NO
+Property Name.................
+Phone........
+PgUp     PgDn     Esc
+/Esc=Cancel, Home=Detail_Data, Otherkey=Continue
+/Esc=Cancel, Home=Detail_Data, Otherkey=Continue
+Property NO......
+Property Name....
+Property Phone...
+company
+COMID
+COMNAME
+COMPHONE
+PROSTREET
+&Enter Company Information (Esc=exit) !
+99999-9999
+(999)999-9999
+(999)999-9999
+(999)999-9999
+(999)999-9999
+Company Information
+Company NO  :
+Company Name:
+Class       :
+Street :
+City   :
+Sta :
+Zip :
+Phone1 :
+Phone2 :
+Beeper :
+Fax NO :
+Contact:
+'Enter Property Information (Esc=Exit) !
+99999-9999
+(999)999-9999
+(999)999-9999
+99999
+Property Information
+Property NO :
+PropertyName:
+Class       :
+Street :
+City   :
+Sta :
+Zip :
+Phone1 :
+Phone2 :
+Contact:
+Unit:
+Key    :
+Time :
+PageMap:
+Comment:
+99999
+Detaill Company Information
+&Do you want Change Information (Y/N) ?
+.Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key
+Detaill Property Information
+&Do you want Change Information (Y/N) ?
+.Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key
+order2
+ORDERNO
+sales1
+SALESID1
+WORKEMP
+sales2
+SALESID2
+INVOICE
+INVLEDG
+SALESDATE
+97yX/
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+Do you want Void (Y/N) ?
+ Void Invoice 
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+ Days    
+Enter Invoice Date (Esc=Exit) !
+ Enter Work Order No (Esc=Exit) !
+99999
+8 --> does not exist ! Do you want Manual Invoice (Y/N) ?
+$ --> Void Work Order ! Retry (Y/N) ?
++ --> Differnt Work Order No ! Retry (Y/N) ?
+&Enter Invoice Information (Esc=Exit) !
+99999
+!!!!!!!!!!!!!!!
+9999999.99
+9999999.99
+9999999.99
+9999999.99
+Is This Data Correct ? (Y/N)
+ Void Invoice 
+ Paid Invoice 
+99999
+9999999.99
+9999999.99
+9999999.99
+Invoice No........
+Invoice Date......
+Order No..........
+Order Date........
+Order Person......
+Unit..............
+Size..............
+Total.............
+Deposit...........
+Deposit Ref.......
+Balance...........
+Terms.............
+Due Date..........
+Customer P.O......
+LCode# Description                                        WorkDate     Price 
+Work Date.........
+Work Person.......
+LUnit# Description                                                     Price 
+1Enter Job Code No (Esc=Exit, * = Command Input) !
+Enter Apt Unit No (Esc=Exit) !
+!!!!!
+0Enter Description,WorkDate,Amount (Esc=Cancel) !
+999999.99
+999999.99
+999999.99
+999999.99
+-Enter Descript,WorkDate,Amount (Esc=Cancel) !
+999999.99
+999999.99
+999999.99
+999999.99
+ Page : 1 
+999999.99
+ Page : 
+999999.99
+ Page : 
+999999.99
+ Page : 
+999999.99
+ Page : 
+999999.99
+*** V O I D  I N V O I C E ***
+ APT UNIT # : 
+SIZE : 
+Paint
+Clean
+Shampoo
+Floor
+Other
+*** V O I D  I N V O I C E ***
+Paint
+Clean
+Shampoo
+Floor
+Other
+P.O.#    :  
+     
+81.5% interest charged on past due accounts over 30 days.
+Invoice Total : 
+Company No.: 
+Company No.: 
+APT UNIT # : 
+SIZE : 
+Paint
+Clean
+Shampoo
+Floor
+Other
+Order No.    : 
+Order Date   : 
+Order Person : 
+*** V O I D  I N V O I C E ***
+Paint
+Clean
+Shampoo
+Floor
+Other
+*** V O I D  I N V O I C E ***
+ APT UNIT # : 
+SIZE : 
+Paint
+Clean
+Shampoo
+Floor
+Other
+ Reports Menu 
+ 1. Customer Ledger        
+ 2. Customer File          
+ 3. Invoice Register       
+ 4. Cash Receipts Register 
+ 5. Open Receivables Aging 
+ 6. Sales Analysis         
+ 7. Check Missing Invoice  
+ 8. Mailing Labels         
+ TEST MAILING LABELS 
+#Are labels aligned (Y/N,Esc=Exit) ?
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+0Enter Seletion (Esc=Exit,(C)ustomer,(P)roperty)?
+company
+COMNAME
+property
+upper(proname)
+From Company Name :
+  To Company Name :
+From Property Name :
+  To Property Name :
+upper(comname)>=upper(sname)
+upper(proname)>=upper(sname)
+============
+Total :
+============
+Do you want Printing (Y/N) ?
+Company
+COMID
+Property
+PROID
+*****  Customer Report  *****
+DATE : 
+PAGE :
+*****  Customer Report  *****
+DATE : 
+PAGE :
+ --> Property Total : 
+ --> Property Total : 
+Property Grand Total : 
+Property Unit  Total : 
+Company  Grand Total : 
+%Selection(Esc=Exit,(P)rint,(S)creen)?
+Cashrect
+CASHRECT
+Company
+COMID
+sales2
+INVLEDG
+From Company No :
+ To  Company No :
+companyno>=fcompanyno
+" --> does not exist Transaction !!
+97yXD
+9999999.99
+9999999.99
+*** Void Invoice ***
+ - Next page continued - 
+ - Next page continued - 
+N------------------------------------------------------------------------------
+Total : 
+9999999.99
+ - Next page continued - 
+;      *****   Customer Ledger   *****                Page :
+(From:
+ Company)
+Company NO : 
+ --> 
+N------------------------------------------------------------------------------
+JInvoice#  Inv_Date  Inv_amount  PayDate   Payrefno   Payamount     Balance
+N------------------------------------------------------------------------------
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+(Sort Order(Esc=Exit,Invoice(N)o,(D)ate)?
+Company
+COMID
+sales2
+INVOICE
+SALESDATE
+From Invoice No :
+99999
+ To  Invoice No :
+99999
+From Invoice Date :
+ To  Invoice Date :
+invoice>=finvoice
+" --> does not exist Transaction !!
+salesdate>=fdate
+*** Void Invoice ***
+ - Next page continued - 
+P--------------------------------------------------------------------------------
+Total : 
+=       *****   Invoice Regester   *****                Page :
+(From:
+ Invoice No)
+(From:
+ Inv_Date)
+P--------------------------------------------------------------------------------
+PInv_# Inv_Date Comp Pro Unit/Size               Inv_Amount   PayTotal    Balance
+P--------------------------------------------------------------------------------
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+&Sort Order(Esc=Exit,Order(N)o,(D)ate)?
+property
+PROID
+sales2
+str(orderno,5)
+order2
+ORDERNO
+ORDERNO
+ORDERDATE
+From Order No :
+99999
+ To  Order No :
+99999
+From Order Date :
+ To  Order Date :
+orderno>=forderno
+" --> does not exist Transaction !!
+orderdate>=fdate
+" --> does not exist Transaction !!
+97yXD
+ *** Not Build Invoice ***  
+ ***** Void Invoice ******  
+ **** Void Work Order ****  
+ - Next page continued - 
+===============================
+Total Built Order Count : 
+       Void Order Count : 
+       Missing Invoice  : 
+    Built Invoice Count : 
+     Void Invoice Count : 
+    Valid Invoice Count : 
+===============================
+%*****   Check Missing Invoice   *****
+Page :
+(From:
+ Order No)
+(From:
+ OrderDate)
+cOrd#  OrdDate  Comp Pro Order By        Inv_# Inv_Date    Balance   Property Address /  Unit / Size
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+material
+Company
+COMID
+sales1
+sales2
+SALESDATE
+From Date :
+To   Date :
+salesdate>=fdate
+" --> does not exist Transaction !!
+ *** Void Invoice ***
+P--------------------------------------------------------------------------------
+Grand Total --> 
+ Total Material :
+ Total Wages    :
+ Net Profits    :
+5*****   Sales Analysis  *****                  Page :
+(From:
+ InvDate)
+P--------------------------------------------------------------------------------
+PInv_Date  InvNo Com  Pro   Sales_Amt    Deposit  Sales_Bal   PayTotal    Balance
+P--------------------------------------------------------------------------------
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+From Work Date :
+ To  Work Date :
+material
+Property
+PROID
+sales2
+INVOICE
+sales1
+WORKEMP
+employee
+EMPID
+From Worker No :
+ To  Worker No :
+empno>=fempno
+" --> does not exist Transaction !!
+*** Void Invoice ***
+(----------------------------------------
+Sub Total -->
+ Total --> 
+ Material :
+  Net_Wages :
+ - Next page continued - 
+(----------------------------------------
+Sub Total -->
+ - Next page continued - 
+!=================================
+Grand Total  Invoice : 
+               Wages : 
+            Material : 
+            Net_Wages: 
+!=================================
+"*****   Worker Wages Report  *****
+Page :
+Worker No : 
+From:
+ - To:
+OWorkDate Inv_Date Inv_# Comp Pro   Inv_Amnt W/Rate     Wages   Work Description
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+Company
+COMID
+Property
+PROID
+sales2
+SALESID2
+From Company No :
+ To  Company No :
+companyno>=fcompanyno
+" --> does not exist Transaction !!
+97yX-
+ ---> 
+ - Next page continued - 
+Total:
+I              Grand Total: Currnt  > 30   > 60   > 90   > 120   Open Bal 
+I                           ====== ====== ====== ====== ====== ========== 
+Date : 
+$*****   Open Receivable Aging  *****
+Page :
+(From:
+ Company)
+FCompany#  Company Name                                           Phone
+jTransDte Inv_No Inv_Amount Currnt  > 30   > 60   > 90   > 120   Open Bal   Property Address  / Unit / Size
+4 ================================================== 
+4 Printer is not Ready ! (Online Off or Power Off !) 
+4 Turn on Printer and Strike any key to continue ... 
+4 ================================================== 
+%Selection(Esc=Exit,(P)rint,(S)creen)?
+Company
+COMID
+Cashrect
+CASHDATE
+From Pay Date :
+ To  Pay Date :
+paydate>=fdate
+" --> does not exist Transaction !!
+ - Next page continued - 
+ - Next page continued - 
+P--------------------------------------------------------------------------------
+Total --> Counts : 
+=        *****    Cash  Receipts   *****                Page :
+(From:
+ PayDate)
+P--------------------------------------------------------------------------------
+PInv_# Inv_Date Com# Company                       PayDate  PayRefno      Payment
+P--------------------------------------------------------------------------------
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+From Search Date :
+ To  Search Date :
+employee
+EMPID
+material
+&empno+dtoc(matdate)+upper(matdescript)
+From Worker No :
+ To  Worker No :
+empno>=fempno
+" --> does not exist Transaction !!
+&dtos(matdate)+empno+upper(matdescript)
+&upper(matdescript)+empno+dtos(matdate)
+From Descript :
+ To  Descript :
+#upper(matdescript)>=upper(fmatdesc)
+" --> does not exist Transaction !!
+97yX]
+P--------------------------------------------------------------------------------
+Sub Total --> 
+Sub Total --> 
+Sub Total --> 
+ - Next page continued - 
+========================
+Grand Total : 
+========================
+<*****   Worker Material Report (Worker Order)   ***** Page :
+Worker No : 
+From:
+ - To:
+P--------------------------------------------------------------------------------
+PTransDate  Material Description            Material Amount                      
+P--------------------------------------------------------------------------------
+<*****   Worker Material Report (Date Order)   *****   Page :
+Trans Date: 
+From:
+ - To:
+P--------------------------------------------------------------------------------
+PEmpno      Material Description            Material Amount                      
+P--------------------------------------------------------------------------------
+<  ***   Worker Material Report (Descript Order) ***   Page :
+Description : 
+From:
+ - To:
+P--------------------------------------------------------------------------------
+PEmpno      Trans Date                         Material Amount                   
+P--------------------------------------------------------------------------------
+ Contact : 
+I                     *****   Employee  List   *****                Page :
+N------------------------------------------------------------------------------
+LEmp#  Name                             Phone      Comm    SSNO     Birthdate
+N------------------------------------------------------------------------------
+Cashrect
+CASHRECT
+Company
+COMID
+sales2
+INVLEDG
+From Company No :
+ To  Company No :
+companyno>=fcompanyno
+" --> does not exist Transaction !!
+Press any key to continue...
+Press any key to continue...
+P--------------------------------------------------------------------------------
+Grand Total -->
+Press any key to continue...
+9999999.99
+9999999.99
+*** Void Invoice ***
+INVLEDG
+INVLEDG
+N------------------------------------------------------------------------------
+Total : 
+INVLEDG
+9999999.99
+INVLEDG
+(Sort Order(Esc=Exit,Invoice(N)o,(D)ate)?
+Company
+COMID
+sales2
+INVOICE
+SALESDATE
+From Invoice No :
+99999
+ To  Invoice No :
+99999
+From Invoice Date :
+ To  Invoice Date :
+invoice>=finvoice
+" --> does not exist Transaction !!
+salesdate>=fdate
+97yXv
+'  *****   Invoice Register Total  *****
+P--------------------------------------------------------------------------------
+   From Invoice No.   :  
+    To  Invoice No.   :  
+   From Invoice Date  :  
+    To  Invoice Date  :  
+Invoice Total Counts  : 
+              Amounts : 
+              Payment : 
+              Balance : 
+P--------------------------------------------------------------------------------
+Press any key to continue ...
+*** Void Invoice ***
+INVOICE
+SALESDATE
+P--------------------------------------------------------------------------------
+Total : 
+&Sort Order(Esc=Exit,Order(N)o,(D)ate)?
+property
+PROID
+sales2
+str(orderno,5)
+order2
+ORDERNO
+ORDERDATE
+From Order No :
+99999
+ To  Order No :
+99999
+From Order Date :
+ To  Order Date :
+orderno>=forderno
+" --> does not exist Transaction !!
+orderdate>=fdate
+" --> does not exist Transaction !!
+ *** Not Build Invoice ***  
+ ***** Void Invoice ******  
+ **** Void Work Order ****  
+ORDERNO
+ORDERDATE
+===============================
+Total Built Order Count : 
+       Void Order Count : 
+       Missing Invoice  : 
+    Built Invoice Count : 
+     Void Invoice Count : 
+    Valid Invoice Count : 
+===============================
+Press any key to continue...
+%*****   Check Missing Invoice   *****
+Page :
+(From:
+ Order No)
+(From:
+ OrderDate)
+P--------------------------------------------------------------------------------
+LOrd#  OrdDate  Comp Pro Order By        Inv_# Inv_Date    Balance  Unit/Size
+P--------------------------------------------------------------------------------
+Company
+COMID
+sales2
+SALESDATE
+From Date :
+To   Date :
+salesdate>=fdate
+" --> does not exist Transaction !!
+"*****   Sales Analysis Total *****
+P--------------------------------------------------------------------------------
+   From Sales Date   :  
+    To  Sales Date   :  
+Sales Total Counts  : 
+            Amounts : 
+            Deposit : 
+            Payment : 
+            Balance : 
+P--------------------------------------------------------------------------------
+Press any key to continue ...
+ *** Void Invoice ***
+SALESDATE
+P--------------------------------------------------------------------------------
+Grand Total --> 
+Company
+COMID
+Property
+PROID
+sales2
+SALESID2
+From Company No :
+ To  Company No :
+companyno>=fcompanyno
+" --> does not exist Transaction !!
+97yXG
+Press any key to continue...
+Press any key to continue...
+P================================= ====== ====== ====== ====== ====== ========== 
+Grand Total --> 
+Press any key to continue...
+O-------------------------------------------------------------------------------
+Total:
+SALESID2
+SALESID2
+Press any key to continue...
+P================================= ====== ====== ====== ====== ====== ========== 
+Grand Total --> 
+Press any key to continue...
+Date : 
+$*****   Open Receivable Aging  *****
+Page :
+(From:
+ Company)
+FCompany#  Company Name                                           Phone
+HTransDte Inv_No Inv_Amount Currnt  > 30   > 60   > 90   > 120   Open Bal
+O======== ====== ========== ====== ====== ====== ====== ====== =================
+ ---> 
+Date : 
+)*****   Open Receivable Aging Total *****
+Page :
+(From:
+ Company)
+OCompany#,Phone,Name               Currnt  > 30   > 60   > 90   > 120   Open Bal
+O================================= ====== ====== ====== ====== ====== ==========
+Company
+COMID
+Cashrect
+CASHDATE
+From Pay Date :
+ To  Pay Date :
+paydate>=fdate
+" --> does not exist Transaction !!
+(   *****    Cash  Receipts Total   *****
+P--------------------------------------------------------------------------------
+Cash Receipts Total Counts  :
+                    Amounts :
+P--------------------------------------------------------------------------------
+Press any key to continue ...
+97yXN
+&Press any key to continue (Esc=Exit) !
+P--------------------------------------------------------------------------------
+Total --> Counts : 
+(End of File !! Press any key to exit ...
+From Search Date :
+ To  Search Date :
+employee
+EMPID
+material
+ --> not exist Trans Data !!
+&empno+dtoc(matdate)+upper(matdescript)
+From Worker No :
+ To  Worker No :
+empno>=fempno
+" --> does not exist Transaction !!
+&dtos(matdate)+empno+upper(matdescript)
+&upper(matdescript)+empno+dtos(matdate)
+From Descript :
+ To  Descript :
+#upper(matdescript)>=upper(fmatdesc)
+" --> does not exist Transaction !!
+P--------------------------------------------------------------------------------
+Sub Total --> 
+Sub Total --> 
+Sub Total --> 
+%Press any key to continue(Esc=Exit) !
+)Press any key to Next Worker (Esc=Exit) !
+-Press any key to Next Trans Date (Esc=Exit) !
+.Press any key to Next Description (Esc=Exit) !
+Press any key to continue...
+P================================================================================
+Grand Total : 
+(End of File !! Press any key to Exit ...
+company
+COMID
+property
+PROID
+sales1
+SALESID1
+0Enter Detail Invoice No(Esc=Exit,Ret=Continue) :
+99999
+=Enter Detail Invoice No(Esc=Exit,Ret=Continue Next Company) :
+99999
+(End of File !! Enter Detail Invoice No :
+99999
+INVOICE
+ Invoice Process 
+Company NO.......
+Company Name.....
+Company Phone....
+Property NO......
+Property Name....
+Property Phone...
+Press any key to continue ...
+' --> does not exist in Invoice File !!!
+company
+COMID
+property
+PROID
+order1
+ORDERID1
+ORDERNO
+3Enter Detail Work Order No(Esc=Exit,Ret=Continue) :
+99999
+@Enter Detail Work Order No(Esc=Exit,Ret=Continue Next Company) :
+99999
++End of File !! Enter Detail Work Order No :
+99999
+ Work Order Process 
+Company NO.......
+Company Name.....
+Company Phone....
+Property NO......
+Property Name....
+Property Phone...
+Press any key to continue ...
+* --> does not exist in Work Order File !!!
+From Work Date :
+ To  Work Date :
+Property
+PROID
+sales2
+INVOICE
+sales1
+WORKEMP
+employee
+EMPID
+From Worker No :
+ To  Worker No :
+empno>=fempno
+" --> does not exist Transaction !!
+97yXr
+P================================================================================
+Grand Total : 
+Press any key to continue...
+*** Void Invoice ***
+P--------------------------------------------------------------------------------
+Sub Total --> 
+WORKEMP
+WORKEMP
+P================================================================================
+Grand Total :
+Press any key to continue...
+"*****   Worker Wages Report  *****
+Page :
+Worker No : 
+From:
+ - To:
+O-------------------------------------------------------------------------------
+JWorkDate Inv_Date Inv_# Comp Pro   Inv_Amnt W/Rate     Wages   Unit / Size
+O-------------------------------------------------------------------------------
+'*****   Worker Wages Report Total *****
+Page :
+O-------------------------------------------------------------------------------
+KWorker#,Name                        Inv_Amnt            Wages              
+O-------------------------------------------------------------------------------
+=   *****   Customer Ledger Total  *****                Page :
+(From:
+ Company)
+P--------------------------------------------------------------------------------
+PCompany#,Phone,Name                              Inv_amount Payamount    Balance
+P--------------------------------------------------------------------------------
+Property
+PROID
+Cashrect
+CASHRECT
+CASHDATE
+sales2
+INVLEDG
+INVOICE
+Balance Total....
+Receipt Total....
+Ending Balance...
+KInv_#  Inv_Date  Inv_amount  PayDate   Check/Ref   Payamount    Balance  OK
+A --> does not exsit in Receivable File !! Press Enter to Exit ...
+A --> does not exsit in Receivable File !! Press Enter to Exit ...
+9999999.99
+9999999.99
+9999999.99
+; Ins     Home     PgUp      PgDn      Esc    (A)uto_Receipt
+      
+      
+&Enter Your Payment Data(Esc=Cancel) ! 
+9999999.99
+5Payment may not exceed Balance Due. Press any key ...
+"Payment is zero. Press any key ...
+9999999.99
+Are You Sure (Y/N) ?
+; Ins     Home     PgUp      PgDn      Esc    (A)uto_Receipt
+Press any key to continue...
+;Payment not found. Press any key to Cancel Auto Receipt ...
+9999999.99
+9999999.99
+Payment Remaining to Apply -->
+Are You Sure(Y/N) ?
+9999999.99
+9999999.99
+;Cancel without Posting this Receipt as an Open Credit (Y/N)
+Unapplied receipt of $
+ Post as an Open Credit(Y/N)?
+7Auto Receipts Apply Finished. Press any key to Exit ...
+Invoice_No............
+Invoice_Amount...
+Paid Total.......
+Balance..........
+PaidDate  Check/Ref  AmountPaid
+9999999.99
+#Press any key to next data ...     
+#Press any key to continue ....     
+9999999.99
+9999999.99
+9999999.99
+Check/Ref............
+Pay Date.............
+Amount Paid..........
+(Enter Automatic Receipt Data(Esc=Exit) !
+9999999.99
+Payment is zero !  Retry !!
+(Payment may not exceed End Balance Due !
+9999999.99
+9999999.99
+9999999.99
+9999999.99
+9999999.99
+employee
+EMPID
+empno>=trim(iempno)
+5Ins    Ctrl-Home    Del    PgUp    PgDn    End    Esc
+=Worker No....Worker Name........................Phone........
+6 --> does not exist !! Do you want Add Employee(Y/N) ?
+Are you sure (Y/N) ?
+3Ins     Ctrl-Home     Del     PgUp     PgDn     Esc
+0  Enter Worker Wages (Esc=Cancle) !             
+Worker Wages: 
+999999.99
+0  Enter Yard,UnitPrice (Esc=Cancle) !           
+Yard :
+Price:
+999.99
+Do you want delete (Y/N) ?
+3Ins     Ctrl-Home     Del     PgUp     PgDn     Esc
+  /  /  
+Enter Worker No (Esc=Exit) !
+ --> Already exist !!
+%Enter Worker Information (Esc=Exit) !
+99999
+(999)999-9999
+99.99
+999-99-9999
+Worker Information
+Worker No   :
+Worker Name :
+Class       :
+Street :
+City   :
+Sta :
+Zip :
+Phone       :
+Contact     :
+Wages Rate  :       %
+S.S.#       :
+Birth Date  :
+99.99
+material
+MATID
+MATDATE
+MATDESC
+3Ins     Ctrl-Home     Del     PgUp     PgDn     Esc
+'******    Material Maintenance   ******
+ Worker No : 
+   Worker Name : 
+=Mat_Date.....Material Description................Mater.Amount
+%Do you want add Material Data (Y/N) ?
+Void 
+VoidVoid
+Void 
+VoidVoid
+999999.99
+3Ins     Ctrl-Home     Del     PgUp     PgDn     Esc
+Press any key to continue ...
+Do you want Void (Y/N) ?
+3Ins     Ctrl-Home     Del     PgUp     PgDn     Esc
+Void 
+VoidVoid
+u6Y[_
+u3Y[_
+uBY[_G
+uBY[_G
+t?Y[_
+tIY[_
+6X6 6
+,z.r.
+L9v9B:Z:|:
+>v?v?v?v?v?z>
+>v?v?v?v?v?v?v?
+>v?v?v?v?v?v?v?v?
+@HFNGNGNG
+FNGNGNGNG
+FNGNG
+FNGNGNGNGNGNGNGNGNGNGNG
+QSRUVP
+tAN<Dt
+t1<+t
+tJ,0rE<
+t3<.t ,0r*<
+(PSR3
+(PSR2
+)PQRSUW3
+_][ZYX
+)PQRSUW3
+_][ZYX
+)PQRSUW
+tLwV= 
+WVRQSP
+VPSQR
+VPSQR
+VPSQR
+VRQSP3
+PSQRVWU
+Proc 
+ line 
+Proc 
+ line 
+Proc 
+ line 
+Proc 
+ line 
+Retry? (Y/N)
+Proc 
+ line 
+Proc 
+ line 
+, printer not ready
+Retry? (Y/N)
+<_t-*
+PROMAS
+COMSCR
+PROSCR
+ORDITEM1
+ORDITEM2
+ORDITEM3
+ORDITEM4
+INVITEM1
+INVITEM2
+INVITEM3
+INVITEM4
+INVITEM5
+INVITEM6
+INVITEM7
+INVITEM8
+INVITEM9
+COPYLOCK
+COMMON
+ORDER
+COMPANY
+INVOICE
+REPORT
+CASHRECE
+!ORDITEM5
+NET_USE
+NETERRORBE
+SPECIAL
+CINDEXPOS
+PINDEXPOS
+FIRSTREC
+ONPRINT
+ILASTESTNO
+IESTDATE
+ISTATUS
+IFORMNO
+IMEMO
+ICOMPANYNO
+ICOMNAME
+ICOMCLASS
+ICOMSTREET
+ICOMCITY
+ICOMSTATE
+ICOMZIP
+ICOMPHONE
+ICOMPHONE2
+ICOMPHONE3
+ICOMPHONE4
+ICOMCONTAC
+ILASTCOMID
+ILASTPROID
+IPRONO
+IPRONAME
+IPROCLASS
+IPROSTREET
+IPROCITY
+IPROSTATE
+IPROZIP
+IPROPHONE
+IPROPHONE2
+IPROPHONE3
+IPROPHONE4
+IPROCONTAC
+IPROKEY
+IPROTIME
+INOOFUNIT
+IPROPAGEMA
+IPROCONT
+IPROCOMM1
+IPROCOMM2
+ILASTORDER
+ILASTINVOI
+IEMPNO
+IEMPNAME
+IEMPCLASS
+IEMPSTREET
+IEMPCITY
+IEMPSTATE
+IEMPZIP
+IEMPPHONE
+IEMPCONTAC
+ICOMMISION
+IINVOICE
+ISALESDATE
+ISALESTOTA
+ISALESPAY
+ISALESBAL
+IPAYTOTAL
+IPAYREFNO
+IAPAYMENT
+IPAYMENT
+ISALESTERM
+ISALESDUE
+ICUSTPONO
+ISALESUNIT
+ISALESSIZE
+IDEPOSITRE
+IDESCRIPT
+IWORKDATE
+IPRICE
+IWORKTYPE
+IEMPPRICE
+INETDAY
+IORDERDATE
+IORDERTIME
+IORDERNO
+IORDERUNIT
+IORDERSIZE
+IORDERMAN
+IORDERBY
+ICODENO
+IREMARK1
+IREMARK2
+MAXPAGECNT
+ONEXIT
+IDATE
+ITIME
+SETCOLOR
++EBLUE1
+BLUE3
+BROWN
+MAGENTA
+CYAN2
+CYAN1
+PAGEBEEP
+CHOICE
+COMPANY_MA
+MAT_MAIN
+REPORT_MAI
+MISC_MAIN
+CLEAR_ARRA
+AFILL
+RELINE_CLEAR
+FREAD
+MOVEBEEP
+gEENTERBEEP
+ERRORBEEP
+TEMPSCR
+STARTBEEP
+DONEBEEP
+COLOR_SET
+BLUE2
+BLUE4
+GREEN1
+GREEN2
+CYAN3
+CYAN4
+MAGENTA2
+WARNING
+WHITE1
+WHITE2
+DIS_HELP
+EST_MAIN
+RECNO
+PREVSCR
+TEMPSCR1
+COMPANYNO
+DIS_EST
+ESTDATE
+IESTNO
+ESTNO
+FORMNO
+INPUT_EST_
+MOD_EST_DA
+REC_LOCK
+INT11
+RESTSCREEN
+ECHK_PRINTE
+COMNAME
+COMPHONE
+COMSTREET
+COMCITY
+COMSTATE
+COMZIP
+FIL_LOCK
+ADD_REC
+MEMOEDIT
+EFORM_MAIN
+DIS_FORM
+IFORM
+INPUT_FORM
+EX_USE
+FOREVER
+NETERR
+EMP_MAIN
+!MAT_LIST
+COMM_LIST
+TDATE
+REINDEX_DA
+PRONO
+PRONAME
+PROPHONE
+PROSTREET
+EMPNO
+CODENO
+SALESDATE
+WORKDATE
+ORDERDATE
+ORDERNO
+PAYDATE
+MATDATE
+MATDESCRIP
+TYPE_MAIN
+PARM2
+PARM3
+PARM4
+PARM5
+LASTPOS
+SNAME
+TEMPSCR2
+ADDFLAG
+DIS_WORKSE
+DESCRIPT
+WORKTYPE
+PRICE
+DIS_WSCR
+DIS_WORK
+INPUT_WORK
+MOD_WORK_D
+TYPE_PRINT
+PAGECNT
+LINECNT
+ORDER_MAIN
+DIS_OSCR
+DIS_ORDER
+INPUT_ORDE
+MOD_ORDER_
+STATUS
+ORDER_PRIN
+CLEAR_ORDE
+CLEAR_O_IT
+INPUT_O_IT
+ORDERUNIT
+ORDERSIZE
+ORDERMAN
+ORDERBY
+CUSTPONO
+REMARK1
+REMARK2
+DIS_O_ITEM
+ORDROW
+READEXIT
+)INPUT_REMA
+PRTWSTART
+PWORKTYPE
+IINT7
+PRINT_TITL
+IJOBCONT
+SAVESCREEN
+ESERITEM
+DIR_SEARCH
+DIS_COMSEL
+DIS_CSCR
+DIS_COM
+INPUT_COM_
+MOD_COM_DA
+COM_DETAIL
+CASHRECE_P
+PRO_MAIN
+DIS_PROSEL
+DIS_PSCR
+DIS_PRO
+INPUT_PRO_
+LASTPROID
+MOD_PRO_DA
+PRO_DETAIL
+INVOICE_MA
+COMCLASS
+COMPHONE2
+COMPHONE3
+COMPHONE4
+COMCONTACT
+PROCLASS
+PROCITY
+PROSTATE
+PROZIP
+PROPHONE2
+PROCONT
+NOOFUNIT
+PROCONTACT
+PROKEY
+PROTIME
+PROPAGEMAP
+PROCOMM1
+PROCOMM2
+CUSTSCR
+DIS_SSCR
+DIS_SALES
+IBALANCE
+BALANCE
+INPUT_SALE
+MOD_SALES_
+SALES_PRIN
+CLEAR_SALE
+CLEAR_I_IT
+INPUT_I_IT
+SALESTOTAL
+SALESPAY
+SALESBAL
+SALESTERM
+SALESDUE
+SALESUNIT
+SALESSIZE
+DEPOSITREF
+EMPPRICE
+COMMISION
+PAYTOTAL
+DIS_I_ITEM
+INVROW
+PAGECNTA
+CONTENT
+PRTISTART
+CUSTLEDG
+CUSTLIST
+INVREGIS
+CASHRECT
+ARAGING
+SALESCHECK
+CHKORDER
+MAILLIST
+LNAME
+SDATE
+LDATE
+TOTALCNT
+COMLENG
+PROCNT
+PROTOTAL
+TOTALUNIT
+TOTALCOM
+BCOMPANYNO
+COMENTERDA
+VCUSTLEDG
+TCOMPANYNO
+FCOMPANYNO
+PTOTALSUM
+PTOTALPAY
+PTOTALBAL
+PRINT_CL_T
+PRINT_RECE
+PAYREFNO
+PAYMENT
+INVCNT
+VINVREGIS
+TINVOICE
+FINVOICE
+FDATE
+PRINT_IR_T
+VCHKORDER
+TORDERNO
+FORDERNO
+ORDCNT
+VOIDINV
+VOIDORD
+MISSINVCNT
+PRINT_OR_T
+WSTATUS
+VSALESCHEC
+TSALESTOTA
+TSALESPAY
+TSALESBAL
+TPAYTOTAL
+TBALANCE
+TWAGES
+PRINT_SC_T
+MATAMOUNT
+TMATAMOUNT
+BEMPNO
+CONTENT2
+VCOMM_LIST
+TEMPNO
+FEMPNO
+GRDTOTAL
+GRDSALES
+GRDMATTOT
+DSUBTOTAL
+DSUBSALES
+SUBTOTAL
+SUBSALES
+EMPNAME
+PRINT_CM_T
+BINVOICE
+MATTOT
+VARAGING
+TTOTALSUM
+TTOTALBAL
+TTOTAL0
+TTOTAL3
+TTOTAL6
+TTOTAL9
+TTOTAL12
+AG_TITLE
+PTOTAL0
+PTOTAL3
+PTOTAL6
+PTOTAL9
+PTOTAL12
+ISPRINTER
+gEVCASHRECT
+TOTALSUM
+PRINT_CH_T
+VMAT_LIST
+TMATDATE
+FMATDATE
+TMATDESC
+FMATDESC
+BMATDATE
+BMATDESCRI
+PRINT_MT_T
+IMATDATE
+IMATDESCRI
+PRINT_EMP
+MAXLINECNT
+PRINT_EM_T
+EMPPHONE
+BIRTHDATE
+EMPSTREET
+EMPCITY
+EMPSTATE
+EMPZIP
+EMPCONTACT
+TTOTALPAY
+PRINT_TCL_
+PRINT_VREC
+DETAIL_INV
+LINVOICE
+PRINT_VOR_
+DETAIL_ORD
+TAG_TITLE
+VAG_TITLE
+PRINT_TCM_
+PRINT_VCM_
+IPAYDATE
+INVRECNO
+INVNO
+INVREF
+INVPDATE
+TOTBAL
+ENDBAL
+TOTPAY
+DIS_BAL_DA
+-!WRITE_RECE
+p!DIS_RECE_D
+ INPUT_AUTO
+B!ITEMPPRICE
+IYARD
+DIS_EMPSEL
+"DIS_ESCR
+"INPUT_EMP_
+"MAT_PROCES
+#ISSNO
+IBIRTHDATE
+EMPCLASS
+ADDRECNO
+ADDPOS
+DIS_MATSEL
+#IMATAMOUNT
+MOD_MAT_DA
+ERRORSYS
+BEXPR_ERROR
+BNAME
+MODEL
+UNDEF_ERRO
+BMISC_ERROR
+BOPEN_ERROR
+BNETERR
+$DOSERROR
+!0DB_ERROR
+BPRINT_ERRO
+MS Run-Time Library - Copyright (c) 1987, Microsoft Corp
+ABS(_1)
+ACCEPT
+counter
+_1 .AND. _2
+ASC(_1)
+AT(_1, _2)
+BOF()
+CDOW(_1)
+CHR(_1)
+CMONTH(_1)
+COL()
+CTOD(_1)
+DATE()
+DAY(_1)
+DECLARE
+DELETED()
+_1 / _2
+DOW(_1)
+DTOC(_1)
+DTOS(_1)
+_1 == _2
+EMPTY(_1)
+EOF()
+_1 = _2
+EXP(_1)
+ALIAS()
+ALIAS(_1)
+FCOUNT()
+FIELDNAME(_1)
+FILE(_1)
+FLOCK()
+FOUND()
+SELECT()
+SELECT(_1)
+_1 >= _2
+_1 > _2
+INKEY()
+INKEY(_1)
+INPUT
+INT(_1)
+ISCOLOR()
+(condition)
+(condition)
+KEYBOARD
+LASTKEY()
+LASTREC()
+_1 <= _2
+LEN(_1)
+LOCK()
+LOG(_1)
+LOWER(_1)
+_1 < _2
+LTRIM(_1)
+MAX(_1, _2)
+MEMORY(_1)
+MIN(_1, _2)
+_1 - _2
+MONTH(_1)
+_1 * _2
+RESTORE
+_1 <> _2
+NETNAME()
+.NOT. _1
+INDEX ON
+INDEXKEY()
+SET INDEX
+SET ORDER
+_1 .OR. _2
+PCOL()
+PCOUNT()
+_1 + _2
+PRIVATE
+PROCLINE()
+PROCNAME()
+PROW()
+PUBLIC
+READVAR()
+RECNO()
+RELEASE
+REPLICATE(_1, _2)
+ROUND(_1, _2)
+ROW()
+RESTORE SCREEN
+SAVE SCREEEN
+SECONDS()
+SELECT
+SPACE(_1)
+SQRT(_1)
+STR(_1)
+STR(_1, _2)
+STR(_1, _2, _3)
+SUBSTR(_1, _2)
+SUBSTR(_1,_2,_3)
+TIME()
+TRANS(_1, _2)
+TRIM(_1)
+TYPE(_1)
+UPDATED()
+UPPER(_1)
+USED()
+VAL(_1)
+WORD(_1)
+RELEASE
+YEAR(_1)
+/.//.-
+ALIAS
+CMONTH
+DELETED
+EMPTY
+FCOUNT
+FIELDNAME
+FLOCK
+FOUND
+INDEXKEY
+INKEY
+ISCOLOR
+ISCOLOUR
+LASTKEY
+LASTREC
+LOWER
+LTRIM
+MEMORY
+MONTH
+NETNAME
+PCOUNT
+PROCLINE
+PROCNAME
+READVAR
+RECCOUNT
+RECNO
+REPLICATE
+RLOCK
+ROUND
+RTRIM
+SECONDS
+SELECT
+SPACE
+SUBSTR
+TRANSFORM
+UPDATED
+UPPER
+Sunday
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
+February
+March
+April
+August
+September
+October
+November
+December
+"Database Files    # Records    Last Update     Size
+Do you want more samples?
+Page No.
+** Subtotal **
+* Subsubtotal *
+*** Total ***
+Invalid date
+RANGE is 
+#'#6#F#T#X#\#i#s#Y/N
+CLIPTEMP.TMP
+;C_FILE_INFO
+log10
+M61xx
+2FIELD_NAME
+FIELD_TYPE
+FIELD_LEN
+FIELD_DEC
+*.DBF
+disk full
+9#ALNXY!
+         
+<begin>
+CLIPPER
+ERRORSYS
+Not enough memory
+Error in =Fnnn file handles
+<startup>
+proc 
+ line 
+internal error 
+ (in 
+relation
+filter
+VALID
+index key
+macro
+LOCATE
+expr_error
+<startup>
+expr_error
+<startup>
+open_error
+<startup>
+db_error
+<startup>
+undef_error
+<startup>
+misc_error
+<startup>
+multiple errors
+type mismatch
+subscript range
+not an array
+type mismatch
+zero divide
+expression error
+open error
+undefined identifier
+undefined identifier
+missing EXTERNAL
+out of memory
+RUN error
+database required
+lock required
+exclusive required
+field numeric overflow
+index file corrupted
+zero length index key
+out of memory 
+multiple errors
+printer error
+print_error
+<startup>
+  Continue? (Y/N)
+paused...
+CLIPPER
+COMSPEC
+disk full
+disk full
+disk full
+disk full
+K<insert>
+        
+Abort Edit? (
+<insert>
+<insert>
+        
+<<NMSG>>
+R6002
+- floating point not loaded
+R6001
+- null pointer assignment
+: MATH
+- floating-point error: 
+invalid
+divide by 0
+overflow
+stack overflow
+explicitly generated
+DOMAIN error
+SING error
+TLOSS error
+R6000
+- stack overflow
+R6003
+- integer divide by 0
+R6009
+- not enough space for environment
+run-time error 

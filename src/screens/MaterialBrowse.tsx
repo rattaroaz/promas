@@ -1,3 +1,10 @@
+/**
+ * Material Process browse — supports original sort orders:
+ *  1 Add/Modify (default date order)
+ *  2 Worker No order
+ *  3 Date order
+ *  4 Descript order
+ */
 import { useCallback, useEffect, useState } from "react";
 import { api, Material, Employee, emptyMaterial } from "../api";
 import { useBrowseIndex, useDosKeys } from "../dos/hooks";
@@ -10,16 +17,32 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { DateInput } from "../dos/DateInput";
 import { padR, padL, money, fmtDate, today } from "../dos/utils";
 
-export function MaterialBrowse({ onBack }: { onBack: () => void }) {
+export type MaterialSort = "default" | "worker" | "date" | "desc";
+
+const SORT_TITLE: Record<MaterialSort, string> = {
+  default: "******    Material Maintenance   ******",
+  worker: "*****   Worker Material Report (Worker Order)   *****",
+  date: "*****   Worker Material Report (Date Order)   *****",
+  desc: "***   Worker Material Report (Descript Order) ***",
+};
+
+export function MaterialBrowse({
+  onBack,
+  sort = "default",
+}: {
+  onBack: () => void;
+  sort?: MaterialSort;
+}) {
   const [rows, setRows] = useState<Material[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Material | null>(null);
-  const [msg, setMsg] = useState("******    Material Maintenance   ******");
-  const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
+  const [msg, setMsg] = useState(SORT_TITLE[sort]);
+  const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
+    "default"
+  );
   const [voidAsk, setVoidAsk] = useState(false);
   const [help, setHelp] = useState(false);
   const { index, setIndex, up, down, pageUp, pageDown, home, end } =
@@ -28,20 +51,24 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
   const load = useCallback(async () => {
     try {
       const [data, emps] = await Promise.all([
-        api.listMaterials({ search }),
+        api.listMaterials({
+          search,
+          sort: sort === "default" ? undefined : sort,
+        }),
         api.listEmployees({}),
       ]);
       setRows(data);
       setEmployees(emps);
+      const tot = data.reduce((s, r) => s + r.amount, 0);
       setMsg(
-        `******    Material Maintenance   ******  ${data.length} records  Ins=Add  Del=Void`
+        `${SORT_TITLE[sort]}  ${data.length}  Total Material: ${money(tot)}  Ins=Add  Del=Void  Esc=Exit`
       );
       setMsgKind("default");
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
     }
-  }, [search]);
+  }, [search, sort]);
 
   useEffect(() => {
     const t = setTimeout(load, 150);
@@ -77,7 +104,7 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
     onPageUp: !editing ? pageUp : undefined,
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
-    onEnd: !editing ? end : undefined,
+    onEnd: !editing ? () => window.print() : end,
     onCtrlW: () => {
       if (editing) save();
     },
@@ -119,6 +146,13 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
     await load();
   }
 
+  const header =
+    sort === "worker"
+      ? "Worker  TransDate   Material Description                Amount"
+      : sort === "desc"
+        ? "Description                          Empno  Trans Date      Amount"
+        : "Mat_Date.....Material Description................Mater.Amount  Worker";
+
   return (
     <Screen
       statusKeys={editing ? FORM_KEYS : BROWSE_KEYS}
@@ -129,7 +163,13 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
+            <label>
+              {sort === "worker"
+                ? "From Worker No :"
+                : sort === "desc"
+                  ? "From Descript :"
+                  : "Search:"}
+            </label>
             <input
               className="dos-input"
               value={search}
@@ -140,9 +180,7 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Mat_Date.....Material Description................Mater.Amount  Worker"}
-            </div>
+            <div className="dos-browse-header">{header}</div>
             <div className="dos-browse-body">
               {rows.map((m, i) => (
                 <button
@@ -154,10 +192,23 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
                     setEditing({ ...m });
                   }}
                 >
-                  {padR(fmtDate(m.matDate), 12)}{" "}
-                  {padR(m.description, 36)}{" "}
-                  {padL(money(m.amount), 12)}{" "}
-                  {padR(`${m.empNo} ${m.empName || ""}`, 20)}
+                  {sort === "worker" ? (
+                    <>
+                      {padR(m.empNo, 6)} {padR(fmtDate(m.matDate), 11)}{" "}
+                      {padR(m.description, 36)} {padL(money(m.amount), 10)}
+                    </>
+                  ) : sort === "desc" ? (
+                    <>
+                      {padR(m.description, 34)} {padR(m.empNo, 6)}{" "}
+                      {padR(fmtDate(m.matDate), 12)} {padL(money(m.amount), 10)}
+                    </>
+                  ) : (
+                    <>
+                      {padR(fmtDate(m.matDate), 12)} {padR(m.description, 36)}{" "}
+                      {padL(money(m.amount), 12)}{" "}
+                      {padR(`${m.empNo} ${m.empName || ""}`, 20)}
+                    </>
+                  )}
                 </button>
               ))}
               {rows.length === 0 && (
@@ -194,7 +245,9 @@ export function MaterialBrowse({ onBack }: { onBack: () => void }) {
               </select>
             </DotField>
             <DotField label="Mat Date" width={14}>
-              <DateInput
+              <input
+                className="dos-input w12"
+                type="date"
                 value={editing.matDate || today()}
                 onChange={(e) =>
                   setEditing({ ...editing, matDate: e.target.value })

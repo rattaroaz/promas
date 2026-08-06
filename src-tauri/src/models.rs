@@ -209,7 +209,6 @@ pub struct Material {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 pub struct Estimate {
     pub id: Option<i64>,
     pub company_no: String,
@@ -219,6 +218,43 @@ pub struct Estimate {
     pub memo: String,
     pub status: String,
     pub voided: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LedgerLine {
+    pub invoice: i64,
+    pub inv_date: String,
+    pub inv_amount: f64,
+    pub pay_date: Option<String>,
+    pub pay_ref_no: Option<String>,
+    pub pay_amount: Option<f64>,
+    pub balance: f64,
+    pub unit: String,
+    pub pro_no: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissingInvoiceRow {
+    pub order_no: i64,
+    pub order_date: String,
+    pub company_no: String,
+    pub pro_no: String,
+    pub order_by: String,
+    pub invoice: Option<i64>,
+    pub inv_date: Option<String>,
+    pub balance: f64,
+    pub status: String,
+    pub property_address: String,
+    pub unit_size: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormRecord {
+    pub form_no: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,6 +310,8 @@ pub struct ListParams {
     pub include_voided: Option<bool>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    /// materials sort: "worker" | "date" | "desc" | default
+    pub sort: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -13,6 +13,7 @@ export type MainAction =
   | "settings"
   | "quit";
 
+/** Original 1–7; 8 Settings is the only modern addition */
 const ITEMS: { id: MainAction; num: string; label: string; accel: string }[] = [
   { id: "estimate", num: "1", label: "Estimate Process", accel: "E" },
   { id: "workorder", num: "2", label: "Work Order Process", accel: "W" },
@@ -102,7 +103,7 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
   return (
     <Screen
       statusKeys={MENU_KEYS}
-      title="Promas(P) Version 2.2.0  —  Property Management System"
+      title="Promas(P) Version 2.0  —  Property Management System"
       left={dateStr}
       right={timeStr}
       message={
@@ -129,9 +130,8 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
           </div>
         </div>
         <div className="dos-copyright">
-          {`Amateurmas(P) Version 2.2.0 - Public Domain Software.
-Han Qi Mo Pho
-Modern rewrite — Tauri + SQLite`}
+          {`Promas(P) Version 2.0 (c) Copyrights 1990 by C.C.C.
+Computer Communications Center (213)383-4662`}
         </div>
       </div>
       {help && <HelpOverlay onClose={() => setHelp(false)} />}

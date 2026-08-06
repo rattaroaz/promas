@@ -1,0 +1,283 @@
+ Property Management System 
+ Estimate Process      
+ Work Order Process    
+ Invoice Process       
+ Cash Receipts Process 
+ Material Process      
+ Reports Menu          
+ Do you want quit (Y/N) ?
+ Ins = Add Data
+ Del = Delete or Void Data
+% Home= Diplay Company,Property Detail
+Proposal #........
+Proposal Date.....
+Form #............
+E Esc      Ins      Ctrl-Home       PgUp       PgDn      Home      End
+'Enter Proposal Information (Esc=Exit) !
+=Enter Proposal Information (Esc=Cancel, Cntr_W=Save & Exit) !
+ Void Proposal 
+<<< Form Management >>>
+; Esc      Ins      Ctrl-Home       PgUp       PgDn      End
+Form # : 
+Enter Form #(Esc=Exit) !
+"-- > Already exist in Form File !!
+-Enter Form (Esc=Cancel, Cntr_W=Save & Exit) !
+ Material Process 
+, 1. Material Transaction (Add,Modification) 
+, 2. Material Transaction in Worker No       
+, 3. Material Transaction in Date            
+, 4. Material Transaction in Descript        
+, 5. Worker Wages Calculation                
+ 3. Form Management           
+Are you sure(Y/N) ?
+5Ins    Ctrl-Home    Del    End    PgUp    PgDn    Esc
+=Code NO......Description.......................W/T......Price
+5 --> does not exist !! Do you want Add Worktype(Y/N)?
+Are you sure (Y/N) ?
+Do you want delete (Y/N) ?
+Enter Job Code No (Esc=Exit) !
+'Enter Job Code Information (Esc=Exit) !
+Code NO     :
+L  Code#     Description                              Worktype          Price
+N Esc      Ins      Ctrl-Home       Del      PgUp       PgDn      Home      End
+Do you want Void (Y/N) ?
+ Void Work Order 
+(Enter Job Order Information (Esc=Exit) !
+Order No..........
+Order Date........
+Order Person......
+Order By..........
+KCode# Description                                          W/T        Price
+1Enter Job Code No (Esc=Exit, * = Command Input) !
+IEnter Description, Worktype(Esc=Cancel,(P)aint,(C)lean,(F)loor,(O)ther) !
+EEnter Descript,Worktype(Esc=Cancel,(P)aint,(C)lean,(F)loor,(O)ther) !
+  Code/Name : 
+MJob Description                                             Price    Material
+Enter Remarks (Esc=Exit) !
+ Invoice Process 
+ WorkOrder Process 
+ Estimate Process 
+Company NO.......
+Company Name.....
+Company Phone....
++Enter Search Company NO (Esc=Exit, ?=First)
+ --> Wrong Company NO !!
+-Enter Search Company Name (Esc=Exit, ?=First)
+.Enter Search Company Phone (Esc=Exit, ?=First)
+Property Street..
+)Enter Search Property Street (Esc=Exit) !
+ Company NO Order 
+ Company Name Order 
+ Company Phone Order 
+=Company NO...Company Name.......................Phone........
+0 Ins      Ctrl-Home      PgUp      PgDn      Esc
+6 --> Does not exist !! Do you want Add Company (Y/N) ?
+/Esc=Cancel, Home=Detail_Data, Otherkey=Continue
+Property
+Property NO......
+Property Name....
+Property Phone...
+#Enter Property NO(Esc=Exit,?=First)
+ --> Wrong Property NO !!
+%Enter Property Name(Esc=Exit,?=First)
+&Enter Property Phone(Esc=Exit,?=First)
+ Property NO Order 
+ Property Name Order 
+ Property Phone Order 
+=Property NO..Property Name......................Phone........
+2 Property Empty !! Do you want Add Property(Y/N) ?
+6 --> Does not exist !! Do you want Add Property(Y/N) ?
+" --> Not exist in Property File !!
+ Property Street Order 
+Property NO
+Property Name.................
+PgUp     PgDn     Esc
+&Enter Company Information (Esc=exit) !
+Company Information
+Company NO  :
+Company Name:
+'Enter Property Information (Esc=Exit) !
+Property Information
+Property NO :
+PropertyName:
+Detaill Company Information
+&Do you want Change Information (Y/N) ?
+.Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key
+Detaill Property Information
+ Void Invoice 
+Enter Invoice Date (Esc=Exit) !
+ Enter Work Order No (Esc=Exit) !
+8 --> does not exist ! Do you want Manual Invoice (Y/N) ?
+$ --> Void Work Order ! Retry (Y/N) ?
++ --> Differnt Work Order No ! Retry (Y/N) ?
+&Enter Invoice Information (Esc=Exit) !
+ Paid Invoice 
+Invoice No........
+Invoice Date......
+LCode# Description                                        WorkDate     Price 
+Enter Apt Unit No (Esc=Exit) !
+0Enter Description,WorkDate,Amount (Esc=Cancel) !
+-Enter Descript,WorkDate,Amount (Esc=Cancel) !
+Invoice Total : 
+Company No.: 
+Order No.    : 
+Order Date   : 
+Order Person : 
+ Reports Menu 
+ 1. Customer Ledger        
+ 3. Invoice Register       
+ 5. Open Receivables Aging 
+ 7. Check Missing Invoice  
+#Are labels aligned (Y/N,Esc=Exit) ?
+0Enter Seletion (Esc=Exit,(C)ustomer,(P)roperty)?
+From Company Name :
+  To Company Name :
+From Property Name :
+  To Property Name :
+Do you want Printing (Y/N) ?
+Company
+*****  Customer Report  *****
+ProNo  Property Name                     ProPhone-1       ProPhone-2       Key         Time           Unit  Contact            Page Map
+---Company Information------------------------------------------------------------------------------------------------------------------
+ --> Property Total : 
+Property Grand Total : 
+Property Unit  Total : 
+Company  Grand Total : 
+%Selection(Esc=Exit,(P)rint,(S)creen)?
+From Company No :
+ To  Company No :
+*** Void Invoice ***
+;      *****   Customer Ledger   *****                Page :
+ Company)
+Company NO : 
+JInvoice#  Inv_Date  Inv_amount  PayDate   Payrefno   Payamount     Balance
+&Selection (Esc=Exit,(P)rint,(S)creen)?
+(Sort Order(Esc=Exit,Invoice(N)o,(D)ate)?
+From Invoice No :
+ To  Invoice No :
+From Invoice Date :
+ To  Invoice Date :
+=       *****   Invoice Regester   *****                Page :
+ Invoice No)
+&Sort Order(Esc=Exit,Order(N)o,(D)ate)?
+From Order No :
+ To  Order No :
+From Order Date :
+ To  Order Date :
+ *** Not Build Invoice ***  
+ ***** Void Invoice ******  
+ **** Void Work Order ****  
+Total Built Order Count : 
+       Void Order Count : 
+       Missing Invoice  : 
+    Built Invoice Count : 
+     Void Invoice Count : 
+    Valid Invoice Count : 
+%*****   Check Missing Invoice   *****
+ Order No)
+ OrderDate)
+cOrd#  OrdDate  Comp Pro Order By        Inv_# Inv_Date    Balance   Property Address /  Unit / Size
+From Date :
+To   Date :
+ *** Void Invoice ***
+ Total Material :
+ Total Wages    :
+5*****   Sales Analysis  *****                  Page :
+From Work Date :
+ To  Work Date :
+From Worker No :
+ To  Worker No :
+ Material :
+  Net_Wages :
+Grand Total  Invoice : 
+               Wages : 
+            Material : 
+            Net_Wages: 
+"*****   Worker Wages Report  *****
+Worker No : 
+OWorkDate Inv_Date Inv_# Comp Pro   Inv_Amnt W/Rate     Wages   Work Description
+$*****   Open Receivable Aging  *****
+FCompany#  Company Name                                           Phone
+jTransDte Inv_No Inv_Amount Currnt  > 30   > 60   > 90   > 120   Open Bal   Property Address  / Unit / Size
+From Pay Date :
+ To  Pay Date :
+=        *****    Cash  Receipts   *****                Page :
+PInv_# Inv_Date Com# Company                       PayDate  PayRefno      Payment
+From Search Date :
+ To  Search Date :
+From Descript :
+ To  Descript :
+<*****   Worker Material Report (Worker Order)   ***** Page :
+PTransDate  Material Description            Material Amount                      
+<*****   Worker Material Report (Date Order)   *****   Page :
+PEmpno      Material Description            Material Amount                      
+<  ***   Worker Material Report (Descript Order) ***   Page :
+PEmpno      Trans Date                         Material Amount                   
+I                     *****   Employee  List   *****                Page :
+'  *****   Invoice Register Total  *****
+   From Invoice No.   :  
+    To  Invoice No.   :  
+   From Invoice Date  :  
+    To  Invoice Date  :  
+Invoice Total Counts  : 
+              Payment : 
+LOrd#  OrdDate  Comp Pro Order By        Inv_# Inv_Date    Balance  Unit/Size
+"*****   Sales Analysis Total *****
+   From Sales Date   :  
+    To  Sales Date   :  
+            Payment : 
+)*****   Open Receivable Aging Total *****
+OCompany#,Phone,Name               Currnt  > 30   > 60   > 90   > 120   Open Bal
+(   *****    Cash  Receipts Total   *****
+&Press any key to continue (Esc=Exit) !
+%Press any key to continue(Esc=Exit) !
+)Press any key to Next Worker (Esc=Exit) !
+-Press any key to Next Trans Date (Esc=Exit) !
+.Press any key to Next Description (Esc=Exit) !
+0Enter Detail Invoice No(Esc=Exit,Ret=Continue) :
+=Enter Detail Invoice No(Esc=Exit,Ret=Continue Next Company) :
+(End of File !! Enter Detail Invoice No :
+' --> does not exist in Invoice File !!!
+3Enter Detail Work Order No(Esc=Exit,Ret=Continue) :
+@Enter Detail Work Order No(Esc=Exit,Ret=Continue Next Company) :
++End of File !! Enter Detail Work Order No :
+ Work Order Process 
+* --> does not exist in Work Order File !!!
+JWorkDate Inv_Date Inv_# Comp Pro   Inv_Amnt W/Rate     Wages   Unit / Size
+'*****   Worker Wages Report Total *****
+KWorker#,Name                        Inv_Amnt            Wages              
+=   *****   Customer Ledger Total  *****                Page :
+PCompany#,Phone,Name                              Inv_amount Payamount    Balance
+A --> does not exsit in Receivable File !! Press Enter to Exit ...
+; Ins     Home     PgUp      PgDn      Esc    (A)uto_Receipt
+&Enter Your Payment Data(Esc=Cancel) ! 
+5Payment may not exceed Balance Due. Press any key ...
+"Payment is zero. Press any key ...
+;Payment not found. Press any key to Cancel Auto Receipt ...
+Payment Remaining to Apply -->
+Invoice_No............
+Invoice_Amount...
+(Enter Automatic Receipt Data(Esc=Exit) !
+Payment is zero !  Retry !!
+(Payment may not exceed End Balance Due !
+5Ins    Ctrl-Home    Del    PgUp    PgDn    End    Esc
+=Worker No....Worker Name........................Phone........
+6 --> does not exist !! Do you want Add Employee(Y/N) ?
+3Ins     Ctrl-Home     Del     PgUp     PgDn     Esc
+0  Enter Worker Wages (Esc=Cancle) !             
+Worker Wages: 
+0  Enter Yard,UnitPrice (Esc=Cancle) !           
+Enter Worker No (Esc=Exit) !
+%Enter Worker Information (Esc=Exit) !
+Worker Information
+Worker No   :
+Worker Name :
+Wages Rate  :       %
+'******    Material Maintenance   ******
+ Worker No : 
+   Worker Name : 
+=Mat_Date.....Material Description................Mater.Amount
+%Do you want add Material Data (Y/N) ?
+Void 
+VoidVoid
+Do you want more samples?

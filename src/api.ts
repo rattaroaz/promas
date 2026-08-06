@@ -55,6 +55,8 @@ export interface ListParams {
   includeVoided?: boolean;
   limit?: number;
   offset?: number;
+  /** materials: "worker" | "date" | "desc" */
+  sort?: string;
 }
 
 export interface SysData {
@@ -315,6 +317,58 @@ export interface ImportResult {
   messages: string[];
 }
 
+export interface Estimate {
+  id?: number | null;
+  companyNo: string;
+  estDate?: string | null;
+  estNo: number;
+  formNo: string;
+  memo: string;
+  status: string;
+  voided: boolean;
+}
+
+export interface LedgerLine {
+  invoice: number;
+  invDate: string;
+  invAmount: number;
+  payDate?: string | null;
+  payRefNo?: string | null;
+  payAmount?: number | null;
+  balance: number;
+  unit: string;
+  proNo: string;
+}
+
+export interface MissingInvoiceRow {
+  orderNo: number;
+  orderDate: string;
+  companyNo: string;
+  proNo: string;
+  orderBy: string;
+  invoice?: number | null;
+  invDate?: string | null;
+  balance: number;
+  status: string;
+  propertyAddress: string;
+  unitSize: string;
+}
+
+export interface FormRecord {
+  formNo: string;
+  content: string;
+}
+
+export const emptyEstimate = (companyNo = ""): Estimate => ({
+  companyNo,
+  estDate: new Date().toISOString().slice(0, 10),
+  estNo: 0,
+  formNo: "EST-1",
+  memo: "",
+  status: "",
+  voided: false,
+});
+
 export const emptyCompany = (): Company => ({
   companyNo: "",
   name: "",
@@ -530,13 +584,50 @@ export const api = {
     invoke("delete_cash_receipt", { id }),
   listWorkOrders: (params: ListParams = {}) =>
     invoke<WorkOrder[]>("list_work_orders", { params }),
+  getWorkOrder: (
+    companyNo: string,
+    proNo: string,
+    orderDate: string,
+    orderNo: number
+  ) =>
+    invoke<WorkOrderWithLines | null>("get_work_order", {
+      companyNo,
+      proNo,
+      orderDate,
+      orderNo,
+    }),
+  findWorkOrder: (companyNo: string, proNo: string, orderNo: number) =>
+    invoke<WorkOrderWithLines | null>("find_work_order", {
+      companyNo,
+      proNo,
+      orderNo,
+    }),
   saveWorkOrder: (data: WorkOrderWithLines) =>
     invoke<number>("save_work_order", { data }),
+  voidWorkOrder: (
+    companyNo: string,
+    proNo: string,
+    orderDate: string,
+    orderNo: number
+  ) =>
+    invoke("void_work_order", { companyNo, proNo, orderDate, orderNo }),
   listMaterials: (params: ListParams = {}) =>
     invoke<Material[]>("list_materials", { params }),
   saveMaterial: (material: Material) =>
     invoke("save_material", { material }),
   deleteMaterial: (id: number) => invoke("delete_material", { id }),
+  listEstimates: (params: ListParams = {}) =>
+    invoke<Estimate[]>("list_estimates", { params }),
+  saveEstimate: (estimate: Estimate) =>
+    invoke<number>("save_estimate", { estimate }),
+  voidEstimate: (id: number) => invoke("void_estimate", { id }),
+  listForms: () => invoke<FormRecord[]>("list_forms"),
+  saveForm: (form: FormRecord) => invoke("save_form", { form }),
+  reindexDataFiles: () => invoke<string>("reindex_data_files"),
+  reportCustomerLedger: (companyNo: string) =>
+    invoke<LedgerLine[]>("report_customer_ledger", { companyNo }),
+  reportMissingInvoices: (params: ListParams = {}) =>
+    invoke<MissingInvoiceRow[]>("report_missing_invoices", { params }),
   reportAging: async (asOf?: string) => {
     const rows = await invoke<AgingRow[]>("report_aging", {
       asOf: asOf ?? null,
