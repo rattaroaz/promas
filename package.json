@@ -1,7 +1,7 @@
 {
   "name": "promas",
   "private": true,
-  "version": "2.3.0",
+  "version": "2.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,6 @@
     "build:win:x64:signed": "node scripts/tauri-build.mjs --arch x64 --signed",
     "build:win:arm64:signed": "node scripts/tauri-build.mjs --arch arm64 --signed",
     "build:win:all:signed": "node scripts/tauri-build.mjs --arch all --signed",
-
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -34,6 +33,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "date-fns": "^4.4.0",
+    "pdf-lib": "^1.17.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

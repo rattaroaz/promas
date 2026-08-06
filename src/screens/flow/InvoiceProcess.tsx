@@ -22,11 +22,13 @@ import {
   Dialog,
   Prompt,
   HelpOverlay,
-  BROWSE_KEYS,
-  FORM_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { padR, padL, money, fmtDate, today } from "../../dos/utils";
+import {
+  printInvoiceOnTemplate,
+  downloadInvoicePdf,
+} from "../../lib/invoicePrint";
 
 type Mode = "browse" | "new-prompt" | "edit";
 
@@ -59,7 +61,7 @@ export function InvoiceProcess({
   const [addWtAsk, setAddWtAsk] = useState<string | null>(null);
   const [pendingWtLine, setPendingWtLine] = useState<number | null>(null);
   const [help, setHelp] = useState(false);
-  const { index, setIndex, up, down, pageUp, pageDown, home, end } =
+  const { index, setIndex, up, down, pageUp, pageDown, home } =
     useBrowseIndex(rows.length);
 
   const load = useCallback(async () => {
@@ -285,6 +287,72 @@ export function InvoiceProcess({
     await load();
   }
 
+  /** End = Print on the official invoice_template.pdf form */
+  async function printCurrent() {
+    try {
+      let inv = editing?.invoice ?? current;
+      let lines = editing?.lines ?? [];
+      if (!inv) {
+        setMsg("--> Select or open an invoice to print !!");
+        setMsgKind("error");
+        return;
+      }
+      if (!editing && current) {
+        const full = await api.getInvoice(
+          current.companyNo,
+          current.proNo,
+          current.salesDate,
+          current.invoice
+        );
+        if (!full) {
+          setMsg("--> does not exist in Invoice File !!!");
+          setMsgKind("error");
+          return;
+        }
+        inv = full.invoice;
+        lines = full.lines;
+      }
+      setMsg(`Printing Invoice #${inv.invoice} on form template...`);
+      setMsgKind("info");
+      await printInvoiceOnTemplate({
+        company,
+        property,
+        invoice: inv,
+        lines,
+      });
+      setMsg(`Invoice #${inv.invoice} sent to printer form.`);
+      setMsgKind("info");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+      // Fallback download if popup blocked
+      try {
+        if (current || editing) {
+          const inv = editing?.invoice ?? current!;
+          const full =
+            editing ??
+            (await api.getInvoice(
+              inv.companyNo,
+              inv.proNo,
+              inv.salesDate,
+              inv.invoice
+            ));
+          if (full && "lines" in full) {
+            await downloadInvoicePdf({
+              company,
+              property,
+              invoice: full.invoice ?? inv,
+              lines: full.lines,
+            });
+            setMsg("Print window blocked — PDF downloaded instead.");
+          }
+        }
+      } catch {
+        /* already reported */
+      }
+    }
+  }
+
   useDosKeys({
     forceNav: mode === "browse",
     onEscape: () => {
@@ -323,7 +391,9 @@ export function InvoiceProcess({
     onPageUp: mode === "browse" ? pageUp : undefined,
     onPageDown: mode === "browse" ? pageDown : undefined,
     onHome: mode === "browse" ? home : undefined,
-    onEnd: mode === "browse" ? () => window.print() : end,
+    onEnd: () => {
+      printCurrent();
+    },
     onCtrlW: () => {
       if (mode === "edit") save();
     },
@@ -412,7 +482,25 @@ export function InvoiceProcess({
 
   return (
     <Screen
-      statusKeys={mode === "edit" || mode === "new-prompt" ? FORM_KEYS : BROWSE_KEYS}
+      statusKeys={
+        mode === "edit" || mode === "new-prompt"
+          ? [
+              { key: "Esc", label: "Cancel" },
+              { key: "Ctrl-W", label: "Save" },
+              { key: "End", label: "Print Form" },
+              { key: "F1", label: "Help" },
+            ]
+          : [
+              { key: "Esc", label: "Exit" },
+              { key: "Ins", label: "Add" },
+              { key: "Ctrl-Home", label: "Edit" },
+              { key: "Del", label: "Void" },
+              { key: "End", label: "Print Form" },
+              { key: "PgUp", label: "Prev" },
+              { key: "PgDn", label: "Next" },
+              { key: "F1", label: "Help" },
+            ]
+      }
       title=" Invoice Process "
       message={msg}
       messageKind={msgKind}
@@ -525,7 +613,7 @@ export function InvoiceProcess({
           }
           wide
           red={editing.invoice.voided}
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
           <div className="dos-form">
             <div style={{ color: "var(--dos-cyan-bright)", marginBottom: "0.4em" }}>
@@ -885,6 +973,15 @@ export function InvoiceProcess({
                     editing.invoice.salesPay -
                     editing.invoice.payTotal
                 )}
+                {"  "}
+                <button
+                  type="button"
+                  className="dos-btn"
+                  onClick={() => printCurrent()}
+                  title="Print on invoice_template.pdf (End)"
+                >
+                  Print Form (End)
+                </button>
               </span>
             </div>
             <div
