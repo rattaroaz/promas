@@ -4,11 +4,14 @@ name: Release
 #
 #   git tag vX.Y.Z && git push origin vX.Y.Z
 #   or: Actions → Release → Run workflow
+#
+# x64 creates/updates the GitHub Release first; ARM64 then attaches its
+# installers. ARM64 failures fail the workflow (not continue-on-error).
 
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       tag:
@@ -93,7 +96,7 @@ jobs:
             Download a **setup installer** below — not “Source code”:
 
             - **Windows x64 (Intel/AMD):** `PROMAS_*_x64-setup.exe` or `*_x64_*.msi`
-            - **Windows ARM64** (if present): `PROMAS_*_arm64-setup.exe`
+            - **Windows ARM64 (Snapdragon):** `PROMAS_*_arm64-setup.exe` or `*_arm64_*.msi`
 
             Double-click the `.exe` to install and run the app.
           releaseDraft: false
@@ -113,14 +116,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-  # ── Optional: ARM64 Windows installer ───────────────────────────────
+  # ── Required: ARM64 Windows installer (native windows-11-arm) ───────
   release-arm64:
     name: Build Windows ARM64 installer
     needs: release-x64
     permissions:
       contents: write
     runs-on: windows-11-arm
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -167,9 +169,11 @@ jobs:
             echo "EOF" >> $env:GITHUB_ENV
             echo "signed=true" >> $env:GITHUB_OUTPUT
             Set-Content tauri-ci-bundle.json '{"bundle":{"createUpdaterArtifacts":true}}' -NoNewline
+            Write-Host "Signed build enabled"
           } else {
             echo "signed=false" >> $env:GITHUB_OUTPUT
             Set-Content tauri-ci-bundle.json '{"bundle":{"createUpdaterArtifacts":false}}' -NoNewline
+            Write-Host "Building unsigned installers (no TAURI_SIGNING_* secrets)"
           }
 
       - name: Build + upload ARM64 installers to GitHub Release
@@ -193,5 +197,26 @@ jobs:
           path: |
             src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
+
+  # ── Confirm both architectures are on the GitHub Release ────────────
+  verify-release-assets:
+    name: Verify x64 + ARM64 release assets
+    needs: [release-x64, release-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check release assets for both arches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ env.TAG_NAME }}
+        run: |
+          set -euo pipefail
+          assets=$(gh api "repos/${{ github.repository }}/releases/tags/${TAG}" --jq '.assets[].name')
+          echo "Assets on ${TAG}:"
+          echo "$assets"
+          echo "$assets" | grep -E '_x64-setup\.exe$' >/dev/null
+          echo "$assets" | grep -E '_arm64-setup\.exe$' >/dev/null
+          echo "OK: both x64 and arm64 setup.exe present"
