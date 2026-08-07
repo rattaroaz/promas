@@ -273,6 +273,93 @@ fn report_sales_analysis_lists_open_invoices() {
 }
 
 #[test]
+fn deposit_and_cash_combine_for_balance() {
+    let (dir, mut conn) = temp_conn("deposit");
+    seed_company(&conn);
+    let mut inv = blank_invoice();
+    inv.sales_pay = 50.0;
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: inv,
+            lines: vec![line(250.0)],
+        },
+    )
+    .unwrap();
+    let (sb, bal): (f64, f64) = conn
+        .query_row(
+            "SELECT sales_bal, balance FROM invoices WHERE invoice=?",
+            params![inv_no],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(sb, 200.0);
+    assert_eq!(bal, 200.0);
+
+    ops::save_cash_receipt(
+        &mut conn,
+        CashReceipt {
+            id: None,
+            company_no: "1000".into(),
+            sales_date: "2026-01-15".into(),
+            invoice: inv_no,
+            payment: 75.5,
+            pay_ref_no: "CHK".into(),
+            pay_date: "2026-01-20".into(),
+            voided: false,
+            company_name: None,
+        },
+    )
+    .unwrap();
+    let bal: f64 = conn
+        .query_row(
+            "SELECT balance FROM invoices WHERE invoice=?",
+            params![inv_no],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(bal, 124.5);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn voided_invoices_excluded_from_aging_and_sales() {
+    let (dir, mut conn) = temp_conn("void_excl");
+    seed_company(&conn);
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(99.0)],
+        },
+    )
+    .unwrap();
+    ops::void_invoice(&conn, "1000", "01", "2026-01-15", inv_no).unwrap();
+
+    let aging = ops::report_aging(&conn, Some("2026-02-01".into())).unwrap();
+    assert!(aging.is_empty() || aging.iter().all(|r| r.open_bal < 0.01));
+
+    let sales = ops::report_sales_analysis(
+        &conn,
+        &ListParams {
+            search: None,
+            company_no: Some("1000".into()),
+            from_date: None,
+            to_date: None,
+            include_voided: None,
+            limit: None,
+            offset: None,
+            sort: None,
+        },
+    )
+    .unwrap();
+    assert!(sales.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn report_worker_wages_includes_emp_lines() {
     let (dir, mut conn) = temp_conn("wages");
     seed_company(&conn);
@@ -313,6 +400,140 @@ fn report_worker_wages_includes_emp_lines() {
     assert_eq!(rows[0].emp_no, "E1");
     assert_eq!(rows[0].emp_name, "Pat Worker");
     assert_eq!(rows[0].wages, 100.0); // 200 * 50%
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn delete_cash_receipt_voids_and_restores_balance() {
+    let (dir, mut conn) = temp_conn("del_cash");
+    seed_company(&conn);
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(250.0)],
+        },
+    )
+    .unwrap();
+    ops::save_cash_receipt(
+        &mut conn,
+        CashReceipt {
+            id: None,
+            company_no: "1000".into(),
+            sales_date: "2026-01-15".into(),
+            invoice: inv_no,
+            payment: 100.0,
+            pay_ref_no: "CHK".into(),
+            pay_date: "2026-01-20".into(),
+            voided: false,
+            company_name: None,
+        },
+    )
+    .unwrap();
+    let id: i64 = conn
+        .query_row(
+            "SELECT id FROM cash_receipts WHERE invoice=?",
+            params![inv_no],
+            |r| r.get(0),
+        )
+        .unwrap();
+
+    ops::delete_cash_receipt(&mut conn, id).unwrap();
+
+    let (pay, bal, voided): (f64, f64, i64) = conn
+        .query_row(
+            "SELECT i.pay_total, i.balance, c.voided
+             FROM invoices i JOIN cash_receipts c ON c.id=?
+             WHERE i.invoice=?",
+            params![id, inv_no],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(voided, 1);
+    assert_eq!(pay, 0.0);
+    assert_eq!(bal, 250.0);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn overpayment_allowed_negative_balance() {
+    let (dir, mut conn) = temp_conn("overpay");
+    seed_company(&conn);
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(100.0)],
+        },
+    )
+    .unwrap();
+    ops::save_cash_receipt(
+        &mut conn,
+        CashReceipt {
+            id: None,
+            company_no: "1000".into(),
+            sales_date: "2026-01-15".into(),
+            invoice: inv_no,
+            payment: 125.0,
+            pay_ref_no: "OVR".into(),
+            pay_date: "2026-01-20".into(),
+            voided: false,
+            company_name: None,
+        },
+    )
+    .unwrap();
+    let bal: f64 = conn
+        .query_row(
+            "SELECT balance FROM invoices WHERE invoice=?",
+            params![inv_no],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(bal, -25.0);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn two_receipts_sum_to_pay_total() {
+    let (dir, mut conn) = temp_conn("two_rcpt");
+    seed_company(&conn);
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(500.0)],
+        },
+    )
+    .unwrap();
+    for (amt, r) in [(100.0, "A"), (150.5, "B")] {
+        ops::save_cash_receipt(
+            &mut conn,
+            CashReceipt {
+                id: None,
+                company_no: "1000".into(),
+                sales_date: "2026-01-15".into(),
+                invoice: inv_no,
+                payment: amt,
+                pay_ref_no: r.into(),
+                pay_date: "2026-01-20".into(),
+                voided: false,
+                company_name: None,
+            },
+        )
+        .unwrap();
+    }
+    let (pay, bal): (f64, f64) = conn
+        .query_row(
+            "SELECT pay_total, balance FROM invoices WHERE invoice=?",
+            params![inv_no],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(pay, 250.5);
+    assert_eq!(bal, 249.5);
 
     let _ = std::fs::remove_dir_all(&dir);
 }

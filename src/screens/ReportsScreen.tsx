@@ -344,18 +344,28 @@ function formatLedger(
     "Invoice#  Inv_Date  Inv_amount  PayDate   Payrefno   Payamount     Balance\n";
   t +=
     "------------------------------------------------------------------------------\n";
-  let invTot = 0,
-    payTot = 0;
+  let invTot = 0;
+  let payTot = 0;
+  let ending = 0;
+  // Track last balance per invoice group for ending open AR
+  let lastBal = 0;
   for (const l of lines) {
-    if (l.invoice) invTot += l.invAmount;
-    if (l.payAmount) payTot += l.payAmount;
+    if (l.invoice) {
+      invTot += l.invAmount;
+      ending += lastBal;
+      lastBal = l.balance;
+    } else {
+      lastBal = l.balance;
+    }
+    if (l.payAmount && l.payRefNo !== "DEPOSIT") payTot += l.payAmount;
     t += `${l.invoice ? padL(l.invoice, 8) : "        "}  ${padR(fmtDate(l.invDate), 10)}  ${l.invAmount ? padL(money(l.invAmount), 10) : "          "}  ${padR(fmtDate(l.payDate), 9)} ${padR(l.payRefNo || "", 10)} ${l.payAmount != null ? padL(money(l.payAmount), 10) : "          "} ${padL(money(l.balance), 10)}\n`;
   }
+  ending += lastBal;
   t +=
     "------------------------------------------------------------------------------\n";
-  t += `Balance Total.... ${money(invTot)}\n`;
+  t += `Invoice Total.... ${money(invTot)}\n`;
   t += `Receipt Total.... ${money(payTot)}\n`;
-  t += `Ending Balance... ${money(invTot - payTot)}\n`;
+  t += `Ending Balance... ${money(ending)}\n`;
   return t;
 }
 
