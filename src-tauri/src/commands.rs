@@ -771,38 +771,7 @@ pub fn save_cash_receipt(state: State<DbState>, receipt: CashReceipt) -> Result<
 #[tauri::command]
 pub fn delete_cash_receipt(state: State<DbState>, id: i64) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(map_err)?;
-    let tx = conn.transaction().map_err(map_err)?;
-
-    let (company_no, invoice): (String, i64) = tx
-        .query_row(
-            "SELECT company_no, invoice FROM cash_receipts WHERE id=?",
-            params![id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )
-        .map_err(map_err)?;
-
-    tx.execute(
-        "UPDATE cash_receipts SET voided=1 WHERE id=?",
-        params![id],
-    )
-    .map_err(map_err)?;
-
-    let pay_total: f64 = tx
-        .query_row(
-            "SELECT COALESCE(SUM(payment),0) FROM cash_receipts WHERE company_no=? AND invoice=? AND voided=0",
-            params![company_no, invoice],
-            |r| r.get(0),
-        )
-        .map_err(map_err)?;
-
-    tx.execute(
-        "UPDATE invoices SET pay_total=?, balance=sales_bal-? WHERE company_no=? AND invoice=?",
-        params![pay_total, pay_total, company_no, invoice],
-    )
-    .map_err(map_err)?;
-
-    tx.commit().map_err(map_err)?;
-    Ok(())
+    crate::ops::delete_cash_receipt(&mut conn, id)
 }
 
 // ─── Work Orders ──────────────────────────────────────────────────────
@@ -864,83 +833,7 @@ pub fn list_work_orders(
 #[tauri::command]
 pub fn save_work_order(state: State<DbState>, data: WorkOrderWithLines) -> Result<i64, String> {
     let mut conn = state.0.lock().map_err(map_err)?;
-    let tx = conn.transaction().map_err(map_err)?;
-    let mut order = data.order;
-
-    if order.order_no == 0 {
-        let next: i64 = tx
-            .query_row("SELECT next_order FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .map_err(map_err)?;
-        order.order_no = next;
-        tx.execute(
-            "UPDATE sysdata SET next_order=? WHERE id=1",
-            params![next + 1],
-        )
-        .map_err(map_err)?;
-    }
-
-    tx.execute(
-        r#"INSERT INTO work_orders
-           (company_no,pro_no,order_date,order_no,work_date,order_unit,order_size,
-            order_man,order_by,cust_po_no,remark1,remark2,status,voided)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-           ON CONFLICT(company_no,pro_no,order_date,order_no) DO UPDATE SET
-             work_date=excluded.work_date,order_unit=excluded.order_unit,order_size=excluded.order_size,
-             order_man=excluded.order_man,order_by=excluded.order_by,cust_po_no=excluded.cust_po_no,
-             remark1=excluded.remark1,remark2=excluded.remark2,status=excluded.status,voided=excluded.voided"#,
-        params![
-            order.company_no,
-            order.pro_no,
-            order.order_date,
-            order.order_no,
-            order.work_date,
-            order.order_unit,
-            order.order_size,
-            order.order_man,
-            order.order_by,
-            order.cust_po_no,
-            order.remark1,
-            order.remark2,
-            order.status,
-            if order.voided { 1 } else { 0 },
-        ],
-    )
-    .map_err(map_err)?;
-
-    tx.execute(
-        "DELETE FROM work_order_lines WHERE company_no=? AND pro_no=? AND order_date=? AND order_no=?",
-        params![order.company_no, order.pro_no, order.order_date, order.order_no],
-    )
-    .map_err(map_err)?;
-
-    for (i, line) in data.lines.iter().enumerate() {
-        let line_no = if line.line_no > 0 {
-            line.line_no
-        } else {
-            (i + 1) as i64
-        };
-        tx.execute(
-            r#"INSERT INTO work_order_lines
-               (company_no,pro_no,order_date,order_no,line_no,code_no,description,work_type,price)
-               VALUES (?,?,?,?,?,?,?,?,?)"#,
-            params![
-                order.company_no,
-                order.pro_no,
-                order.order_date,
-                order.order_no,
-                line_no,
-                line.code_no,
-                line.description,
-                line.work_type,
-                line.price,
-            ],
-        )
-        .map_err(map_err)?;
-    }
-
-    let order_no = order.order_no;
-    tx.commit().map_err(map_err)?;
-    Ok(order_no)
+    crate::ops::save_work_order(&mut conn, data)
 }
 
 #[tauri::command]
@@ -952,79 +845,7 @@ pub fn get_work_order(
     order_no: i64,
 ) -> Result<Option<WorkOrderWithLines>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    let order = conn
-        .query_row(
-            r#"SELECT w.company_no,w.pro_no,w.order_date,w.order_no,w.work_date,w.order_unit,w.order_size,
-               w.order_man,w.order_by,w.cust_po_no,w.remark1,w.remark2,w.status,w.voided,c.name,p.name
-               FROM work_orders w
-               LEFT JOIN companies c ON c.company_no=w.company_no
-               LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
-               WHERE w.company_no=? AND w.pro_no=? AND w.order_date=? AND w.order_no=?"#,
-            params![company_no, pro_no, order_date, order_no],
-            |r| {
-                Ok(WorkOrder {
-                    company_no: r.get(0)?,
-                    pro_no: r.get(1)?,
-                    order_date: r.get(2)?,
-                    order_no: r.get(3)?,
-                    work_date: r.get(4)?,
-                    order_unit: r.get(5)?,
-                    order_size: r.get(6)?,
-                    order_man: r.get(7)?,
-                    order_by: r.get(8)?,
-                    cust_po_no: r.get(9)?,
-                    remark1: r.get(10)?,
-                    remark2: r.get(11)?,
-                    status: r.get(12)?,
-                    voided: r.get::<_, i64>(13)? != 0,
-                    company_name: r.get(14)?,
-                    property_name: r.get(15)?,
-                })
-            },
-        )
-        .optional()
-        .map_err(map_err)?;
-
-    let Some(order) = order else {
-        return Ok(None);
-    };
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT id,company_no,pro_no,order_date,order_no,line_no,code_no,description,work_type,price
-               FROM work_order_lines
-               WHERE company_no=? AND pro_no=? AND order_date=? AND order_no=?
-               ORDER BY line_no"#,
-        )
-        .map_err(map_err)?;
-    let lines = stmt
-        .query_map(
-            params![
-                order.company_no,
-                order.pro_no,
-                order.order_date,
-                order.order_no
-            ],
-            |r| {
-                Ok(WorkOrderLine {
-                    id: r.get(0)?,
-                    company_no: r.get(1)?,
-                    pro_no: r.get(2)?,
-                    order_date: r.get(3)?,
-                    order_no: r.get(4)?,
-                    line_no: r.get(5)?,
-                    code_no: r.get(6)?,
-                    description: r.get(7)?,
-                    work_type: r.get(8)?,
-                    price: r.get(9)?,
-                })
-            },
-        )
-        .map_err(map_err)?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(Some(WorkOrderWithLines { order, lines }))
+    crate::ops::get_work_order(&conn, &company_no, &pro_no, &order_date, order_no)
 }
 
 #[tauri::command]
@@ -1036,12 +857,7 @@ pub fn void_work_order(
     order_no: i64,
 ) -> Result<(), String> {
     let conn = state.0.lock().map_err(map_err)?;
-    conn.execute(
-        "UPDATE work_orders SET voided=1, status='V' WHERE company_no=? AND pro_no=? AND order_date=? AND order_no=?",
-        params![company_no, pro_no, order_date, order_no],
-    )
-    .map_err(map_err)?;
-    Ok(())
+    crate::ops::void_work_order(&conn, &company_no, &pro_no, &order_date, order_no)
 }
 
 /// Find work order by order number within company (for invoice build).
@@ -1053,34 +869,7 @@ pub fn find_work_order(
     order_no: i64,
 ) -> Result<Option<WorkOrderWithLines>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    // Prefer exact company+property match; fall back to company-wide
-    let key: Option<(String, String, String, i64)> = conn
-        .query_row(
-            r#"SELECT company_no,pro_no,order_date,order_no FROM work_orders
-               WHERE company_no=? AND pro_no=? AND order_no=?
-               ORDER BY order_date DESC LIMIT 1"#,
-            params![company_no, pro_no, order_no],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-        )
-        .optional()
-        .map_err(map_err)?
-        .or_else(|| {
-            conn.query_row(
-                r#"SELECT company_no,pro_no,order_date,order_no FROM work_orders
-                   WHERE company_no=? AND order_no=?
-                   ORDER BY order_date DESC LIMIT 1"#,
-                params![company_no, order_no],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-            )
-            .optional()
-            .ok()
-            .flatten()
-        });
-    let Some((c, p, d, n)) = key else {
-        return Ok(None);
-    };
-    drop(conn);
-    get_work_order(state, c, p, d, n)
+    crate::ops::find_work_order(&conn, &company_no, &pro_no, order_no)
 }
 
 // ─── Materials ────────────────────────────────────────────────────────
@@ -1489,15 +1278,16 @@ pub fn report_customer_ledger(
     company_no: String,
 ) -> Result<Vec<LedgerLine>, String> {
     let conn = state.0.lock().map_err(map_err)?;
+    // Use sales_bal (after deposit) as the opening AR amount, then subtract cash.
     let mut invs = conn
         .prepare(
-            r#"SELECT invoice,sales_date,sales_total,balance,sales_unit,pro_no
+            r#"SELECT invoice,sales_date,sales_total,sales_pay,sales_bal,balance,sales_unit,pro_no
                FROM invoices
                WHERE company_no=? AND voided=0
                ORDER BY sales_date, invoice"#,
         )
         .map_err(map_err)?;
-    let invoices: Vec<(i64, String, f64, f64, String, String)> = invs
+    let invoices: Vec<(i64, String, f64, f64, f64, f64, String, String)> = invs
         .query_map(params![company_no], |r| {
             Ok((
                 r.get(0)?,
@@ -1506,6 +1296,8 @@ pub fn report_customer_ledger(
                 r.get(3)?,
                 r.get(4)?,
                 r.get(5)?,
+                r.get(6)?,
+                r.get(7)?,
             ))
         })
         .map_err(map_err)?
@@ -1513,7 +1305,7 @@ pub fn report_customer_ledger(
         .collect();
 
     let mut lines = Vec::new();
-    for (invoice, inv_date, inv_amount, balance, unit, pro_no) in invoices {
+    for (invoice, inv_date, inv_amount, sales_pay, sales_bal, balance, unit, pro_no) in invoices {
         let mut pays = conn
             .prepare(
                 r#"SELECT pay_date,pay_ref_no,payment FROM cash_receipts
@@ -1542,10 +1334,26 @@ pub fn report_customer_ledger(
                 pro_no: pro_no.clone(),
             });
         } else {
+            // Opening balance for cash application is amount after deposit (sales_bal).
             let mut first = true;
-            let mut running = inv_amount;
+            let mut running = sales_bal;
+            // Show deposit as a pseudo-payment line when present
+            if sales_pay > 0.0005 {
+                lines.push(LedgerLine {
+                    invoice,
+                    inv_date: inv_date.clone(),
+                    inv_amount,
+                    pay_date: Some(inv_date.clone()),
+                    pay_ref_no: Some("DEPOSIT".into()),
+                    pay_amount: Some(sales_pay),
+                    balance: sales_bal,
+                    unit: unit.clone(),
+                    pro_no: pro_no.clone(),
+                });
+                first = false;
+            }
             for (pay_date, pay_ref, payment) in payments {
-                running -= payment;
+                running = ((running - payment) * 100.0).round() / 100.0;
                 lines.push(LedgerLine {
                     invoice: if first { invoice } else { 0 },
                     inv_date: if first {
@@ -1557,7 +1365,7 @@ pub fn report_customer_ledger(
                     pay_date: Some(pay_date),
                     pay_ref_no: Some(pay_ref),
                     pay_amount: Some(payment),
-                    balance: running.max(0.0),
+                    balance: running,
                     unit: if first {
                         unit.clone()
                     } else {

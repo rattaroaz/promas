@@ -151,13 +151,11 @@ export async function buildInvoicePdf(
   const { company, property, invoice, lines } = data;
 
   // ── Cover template regions we replace ─────────────────────────────
-  // JOB # (remove entirely)
-  whiteOut(page, 20, 105, 230, 22);
-  // Old labels
-  whiteOut(page, 20, 118, 250, 14);
-  whiteOut(page, 300, 118, 250, 14);
+  // Left: JOB # + bill-to rules (do not touch invoice header boxes on right)
+  whiteOut(page, 14, 100, 290, 108);
+  // Right: job-site / service rules only (below DATE/DUE DATE boxes)
+  whiteOut(page, 300, 122, 280, 86);
   // Everything from description header through bottom of letter page
-  // (template body + blank letter remainder)
   whiteOut(page, 14, 208, PAGE_W - 28, PAGE_H - 208 - 4);
 
   // ── Header box values (on template cells at top) ──────────────────
@@ -174,18 +172,41 @@ export async function buildInvoicePdf(
     9,
     { maxWidth: 90, align: "center" }
   );
-  draw(page, font, fmtDate(invoice.salesDate), 385, 108, 10, {
+  draw(page, font, fmtDate(invoice.salesDate), 385, 102, 10, {
     maxWidth: 90,
     align: "center",
   });
-  draw(page, font, fmtDate(invoice.salesDue), 492, 108, 10, {
+  draw(page, font, fmtDate(invoice.salesDue), 492, 102, 10, {
     maxWidth: 90,
     align: "center",
   });
 
-  // ── Section labels ────────────────────────────────────────────────
-  draw(page, fontBold, "COMPANY INFORMATION", 25, 123, 8);
-  draw(page, fontBold, "SERVICE ADDRESS", 310, 123, 8);
+  // ── Company / service address — above description lines ───────────
+  // Redraw the whole block (template rules were misaligned with text).
+  // Layout: label, then 5 rows of text each sitting just above its rule.
+  const left = 18;
+  const right = 594;
+  const ADDR_LABEL_TOP = 118;
+  const ADDR_FIRST_RULE = 138;
+  const ADDR_LINE_H = 14;
+  const ADDR_RULE_COUNT = 5;
+  const ADDR_COLS = [
+    { label: "COMPANY INFORMATION", x: 25, textX: 28, ruleX: 25, ruleW: 250 },
+    { label: "SERVICE ADDRESS", x: 310, textX: 314, ruleX: 310, ruleW: 250 },
+  ] as const;
+
+  for (const col of ADDR_COLS) {
+    draw(page, fontBold, col.label, col.x, ADDR_LABEL_TOP, 8);
+    for (let i = 0; i < ADDR_RULE_COUNT; i++) {
+      const ruleTop = ADDR_FIRST_RULE + i * ADDR_LINE_H;
+      page.drawLine({
+        start: { x: col.ruleX, y: PAGE_H - ruleTop },
+        end: { x: col.ruleX + col.ruleW, y: PAGE_H - ruleTop },
+        thickness: 0.6,
+        color: rgb(0, 0, 0),
+      });
+    }
+  }
 
   const companyLines = [
     company.name,
@@ -194,10 +215,6 @@ export async function buildInvoicePdf(
     company.phone,
     company.contact ? `Attn: ${company.contact}` : "",
   ].filter(Boolean);
-  companyLines.forEach((line, i) => {
-    draw(page, font, clip(line, 42), 28, 138 + i * 15, 9, { maxWidth: 210 });
-  });
-
   const serviceLines = [
     property.name,
     property.street,
@@ -207,15 +224,28 @@ export async function buildInvoicePdf(
       ? `Contact: ${property.manager || property.contact}`
       : "",
   ].filter(Boolean);
+
+  // Text baseline ~2pt above each rule (top-origin: ruleTop − font ≈ text top)
+  const addrTextTop = (ruleIndex: number, size = 9) =>
+    ADDR_FIRST_RULE + ruleIndex * ADDR_LINE_H - size - 1;
+
+  companyLines.forEach((line, i) => {
+    if (i >= ADDR_RULE_COUNT) return;
+    draw(page, font, clip(line, 42), 28, addrTextTop(i), 9, { maxWidth: 210 });
+  });
   serviceLines.forEach((line, i) => {
-    draw(page, font, clip(line, 42), 314, 138 + i * 15, 9, { maxWidth: 210 });
+    if (i >= ADDR_RULE_COUNT) return;
+    draw(page, font, clip(line, 42), 314, addrTextTop(i), 9, {
+      maxWidth: 210,
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════
   // Description table fills letter page; totals at true bottom
   // ═══════════════════════════════════════════════════════════════════
-  const left = 18;
-  const right = 594;
+  // Start table just below the last address rule
+  const tableHeaderTop =
+    ADDR_FIRST_RULE + ADDR_RULE_COUNT * ADDR_LINE_H + 8; // ~216
   const tableW = right - left;
   const colDesc = { x: left, w: 290 };
   const colQty = { x: 308, w: 75 };
@@ -233,7 +263,6 @@ export async function buildInvoicePdf(
   // Totals sit at the bottom of the 11" page
   const totalsTop = PAGE_H - marginBottom - totalsBlockH;
   const tableBottom = totalsTop - gapAboveTotals;
-  const tableHeaderTop = 210;
   const firstRowTop = tableHeaderTop + tableHeaderH;
   const availableForRows = tableBottom - firstRowTop;
   const maxRows = Math.max(12, Math.floor(availableForRows / rowH));
@@ -385,14 +414,19 @@ export async function buildInvoicePdf(
     });
   }
 
+  // Match DB model: total = Σ lines; paid = deposit + cash; net = balance
   const subtotal =
     invoice.salesTotal ||
     itemLines.reduce((s, l) => s + (l.price || 0), 0);
   const tax = 0;
   const total = subtotal + tax;
-  const amountPaid = (invoice.payTotal || 0) + (invoice.salesPay || 0);
+  const deposit = invoice.salesPay || 0;
+  const cashPaid = invoice.payTotal || 0;
+  const amountPaid = deposit + cashPaid;
   const netToPay =
-    invoice.balance != null ? invoice.balance : total - amountPaid;
+    invoice.balance != null
+      ? invoice.balance
+      : Math.round((total - amountPaid) * 100) / 100;
   const payRef = invoice.depositRef || "";
   const valTop = valueTop + 5;
 

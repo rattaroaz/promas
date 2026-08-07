@@ -5,6 +5,7 @@ import {
   money,
   padL,
   padR,
+  today,
   withAccel,
 } from "./utils";
 
@@ -56,5 +57,11 @@ describe("labelDots / withAccel", () => {
       accel: "",
       after: "",
     });
+  });
+});
+
+describe("today", () => {
+  it("returns ISO yyyy-mm-dd", () => {
+    expect(today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
