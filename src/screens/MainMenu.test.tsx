@@ -95,7 +95,6 @@ describe("MainMenu", () => {
   });
 
   it("arrow keys wrap highlight; Home/End jump", async () => {
-    const user = userEvent.setup();
     const onSelect = vi.fn();
     renderApp(<MainMenu onSelect={onSelect} />);
     key("End");
