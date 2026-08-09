@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent } from "../test/render";
+import { APP_VERSION } from "../lib/constants";
 import { MainMenu } from "./MainMenu";
 
 function key(key: string) {
@@ -10,6 +11,17 @@ function key(key: string) {
 }
 
 describe("MainMenu", () => {
+  it("shows current app version and HQMP public-domain copyright", () => {
+    renderApp(<MainMenu onSelect={vi.fn()} />);
+    expect(
+      screen.getAllByText(new RegExp(`Promas\\(P\\) Version ${APP_VERSION}`, "i"))
+        .length
+    ).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Public Domain Software \(c\) by HQMP/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Computer Communications Center/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/383-4662/)).not.toBeInTheDocument();
+  });
+
   it("lists Settings as option 8", () => {
     renderApp(<MainMenu onSelect={vi.fn()} />);
     expect(screen.getByRole("button", { name: /8\.\s*Settings/i })).toBeInTheDocument();

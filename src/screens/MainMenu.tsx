@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, MENU_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
+import { APP_VERSION } from "../lib/constants";
 
 export type MainAction =
   | "estimate"
@@ -103,7 +104,7 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
   return (
     <Screen
       statusKeys={MENU_KEYS}
-      title="Promas(P) Version 2.0  —  Property Management System"
+      title={`Promas(P) Version ${APP_VERSION}  —  Property Management System`}
       left={dateStr}
       right={timeStr}
       message={
@@ -130,8 +131,8 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
           </div>
         </div>
         <div className="dos-copyright">
-          {`Promas(P) Version 2.0 (c) Copyrights 1990 by C.C.C.
-Computer Communications Center (213)383-4662`}
+          {`Promas(P) Version ${APP_VERSION}
+Public Domain Software (c) by HQMP`}
         </div>
       </div>
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
