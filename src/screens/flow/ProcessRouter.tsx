@@ -2,8 +2,9 @@
  * Wraps the original process path:
  *   Main menu item → Company/Property gate → process screen
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Company, Property } from "../../api";
+import { setCurrentScreen } from "../../lib/observability";
 import {
   CompanyPropertyGate,
   ProcessKind,
@@ -24,6 +25,10 @@ export function ProcessRouter({
     company: Company;
     property: Property;
   } | null>(null);
+
+  useEffect(() => {
+    setCurrentScreen(ctx ? `${process}/process` : `${process}/gate`);
+  }, [process, ctx]);
 
   if (!ctx) {
     return (

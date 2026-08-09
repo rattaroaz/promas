@@ -4,6 +4,11 @@ use rusqlite::{params, Connection};
 use std::path::Path;
 
 pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<ImportResult, String> {
+    log::info!(
+        target: "promas::import",
+        "DBF import starting from {}",
+        folder.display()
+    );
     let mut result = ImportResult {
         companies: 0,
         properties: 0,
@@ -20,7 +25,10 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
 
     let tx = conn
         .unchecked_transaction()
-        .map_err(|e| format!("begin tx: {e}"))?;
+        .map_err(|e| {
+            log::error!(target: "promas::import", "begin tx failed: {e}");
+            format!("begin tx: {e}")
+        })?;
 
     // Clear existing data for clean import
     tx.execute_batch(
@@ -547,8 +555,21 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
     )
     .map_err(|e| e.to_string())?;
 
-    tx.commit().map_err(|e| format!("commit: {e}"))?;
+    tx.commit().map_err(|e| {
+        log::error!(target: "promas::import", "commit failed: {e}");
+        format!("commit: {e}")
+    })?;
     result.messages.push("Import completed successfully".into());
+    log::info!(
+        target: "promas::import",
+        "DBF import ok companies={} properties={} invoices={} cash={} work_orders={} estimates={}",
+        result.companies,
+        result.properties,
+        result.invoices,
+        result.cash_receipts,
+        result.work_orders,
+        result.estimates
+    );
     Ok(result)
 }
 

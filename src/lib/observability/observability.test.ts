@@ -8,6 +8,7 @@ import {
   noteApiError,
   noteUpdateOutcome,
   resetObservabilityForTests,
+  sanitizeDiagnosticsText,
   setCurrentScreen,
   startSpan,
 } from "./index";
@@ -75,6 +76,31 @@ describe("observability suite", () => {
     const bundle = buildDiagnosticsBundle(null);
     expect(bundle.appVersion).toBeTruthy();
     expect(bundle.recentLogs.length).toBeGreaterThan(0);
+  });
+
+  it("redacts local paths when sanitize is requested", () => {
+    const text = formatDiagnosticsText(
+      {
+        dbPath: "C:\\Users\\kimri\\data\\promas.db",
+        logDir: "C:\\Users\\kimri\\logs",
+        rustVersion: "x86_64-windows",
+        crateVersion: "2.4.2",
+        targetTriple: "x86_64-pc-windows-msvc",
+      },
+      { sanitize: true }
+    );
+    expect(text).toContain("<redacted-path>");
+    expect(text).not.toContain("C:\\Users\\kimri");
+    expect(text).toContain("Local paths redacted");
+    expect(
+      sanitizeDiagnosticsText("see /home/alice/app/file.txt and C:\\Temp\\x.db")
+    ).toContain("<redacted-path>");
+  });
+
+  it("attaches spanId from log meta onto LogEvent", () => {
+    log.info("api", "ok", { spanId: "span_test_1", ms: 3 });
+    const ev = log.getRecent().find((e) => e.message === "ok");
+    expect(ev?.spanId).toBe("span_test_1");
   });
 
   it("metrics reset clears counters", () => {

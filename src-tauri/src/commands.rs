@@ -1007,7 +1007,14 @@ pub fn import_dbf_folder(state: State<DbState>, folder: String) -> Result<Import
                 .into(),
         );
     };
-    import_promas_folder(&mut conn, &promas)
+    let result = import_promas_folder(&mut conn, &promas)?;
+    log::info!(
+        target: "promas::db",
+        "import_dbf_folder done companies={} invoices={}",
+        result.companies,
+        result.invoices
+    );
+    Ok(result)
 }
 
 #[tauri::command]

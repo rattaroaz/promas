@@ -119,6 +119,66 @@ export async function invoke<T = unknown>(
   if (cmd === "list_employees" || cmd === "list_work_types") {
     return [] as T;
   }
+  if (cmd === "list_work_orders") {
+    return [
+      {
+        companyNo: "1000",
+        proNo: "01",
+        orderDate: "2026-02-01",
+        orderNo: 7,
+        workDate: "2026-02-02",
+        orderUnit: "A1",
+        orderSize: "",
+        orderMan: "MGR",
+        orderBy: "",
+        custPoNo: "",
+        remark1: "",
+        remark2: "",
+        status: "",
+        voided: false,
+        companyName: "ACME",
+        propertyName: "Bldg A",
+      },
+    ] as T;
+  }
+  if (cmd === "get_work_order") {
+    return {
+      order: {
+        companyNo: "1000",
+        proNo: "01",
+        orderDate: "2026-02-01",
+        orderNo: 7,
+        workDate: "2026-02-02",
+        orderUnit: "A1",
+        orderSize: "",
+        orderMan: "MGR",
+        orderBy: "",
+        custPoNo: "",
+        remark1: "",
+        remark2: "",
+        status: "",
+        voided: false,
+        companyName: "ACME",
+        propertyName: "Bldg A",
+      },
+      lines: [
+        {
+          companyNo: "1000",
+          proNo: "01",
+          orderDate: "2026-02-01",
+          orderNo: 7,
+          lineNo: 1,
+          codeNo: "*",
+          description: "Prep",
+          workType: "P",
+          price: 100,
+        },
+      ],
+    } as T;
+  }
+  if (cmd === "save_cash_receipt") {
+    return undefined as T;
+  }
   if (cmd === "get_invoice") {
     return {
       invoice: fixtureInvoice,

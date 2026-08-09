@@ -62,6 +62,8 @@ function write(
 ): LogEvent | null {
   if (!shouldLog(level)) return null;
 
+  const spanFromMeta =
+    meta && typeof meta.spanId === "string" ? meta.spanId : undefined;
   const event: LogEvent = {
     id: nextId(),
     ts: Date.now(),
@@ -70,7 +72,7 @@ function write(
     message,
     meta,
     errorId: extra?.errorId,
-    spanId: extra?.spanId,
+    spanId: extra?.spanId ?? spanFromMeta,
   };
   events.push(event);
   listeners.forEach((l) => l(event));
@@ -146,7 +148,8 @@ export const log = {
         const t = new Date(e.ts).toISOString();
         const meta = e.meta ? ` ${JSON.stringify(e.meta)}` : "";
         const eid = e.errorId ? ` errorId=${e.errorId}` : "";
-        return `${t} ${e.level.toUpperCase().padEnd(5)} [${e.category}] ${e.message}${meta}${eid}`;
+        const sid = e.spanId ? ` spanId=${e.spanId}` : "";
+        return `${t} ${e.level.toUpperCase().padEnd(5)} [${e.category}] ${e.message}${meta}${eid}${sid}`;
       })
       .join("\n");
   },
