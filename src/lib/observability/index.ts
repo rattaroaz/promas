@@ -2,6 +2,7 @@ import { APP_NAME, APP_VERSION } from "../constants";
 import { log, resetLoggerForTests } from "./logger";
 import { metrics } from "./metrics";
 import { getAppState, resetAppStateForTests } from "./state";
+import { sanitizeDiagnosticsText } from "./sanitize";
 import {
   clearSpans,
   formatRecentSpans,
@@ -26,6 +27,7 @@ export {
   subscribeAppState,
 } from "./state";
 export { installGlobalErrorHandlers } from "./globalErrors";
+export { sanitizeDiagnosticsText } from "./sanitize";
 export type {
   LogLevel,
   LogCategory,
@@ -55,10 +57,15 @@ export function buildDiagnosticsBundle(
 }
 
 export function formatDiagnosticsText(
-  backend?: BackendDiagnostics | null
+  backend?: BackendDiagnostics | null,
+  opts?: { sanitize?: boolean }
 ): string {
   const bundle = buildDiagnosticsBundle(backend);
   const state = bundle.state;
+  const sanitize = opts?.sanitize ?? false;
+  const pathNote = sanitize
+    ? "NOTE: Local paths redacted for sharing."
+    : "NOTE: May include local paths and environment details. Review before sharing.";
   const lines = [
     `=== ${bundle.appName} Diagnostics ===`,
     `generated: ${bundle.generatedAt}`,
@@ -69,7 +76,7 @@ export function formatDiagnosticsText(
     `lastUpdate: ${state.lastUpdateOutcome ?? "(none)"}`,
     `pendingSpans: ${state.pendingSpans}`,
     "",
-    "NOTE: May include local paths and environment details. Review before sharing.",
+    pathNote,
     "",
     "--- backend ---",
     backend
@@ -90,7 +97,8 @@ export function formatDiagnosticsText(
     "--- recent logs ---",
     log.formatRecent(120),
   ];
-  return lines.join("\n");
+  const text = lines.join("\n");
+  return sanitize ? sanitizeDiagnosticsText(text) : text;
 }
 
 /** Reset all in-memory observability state (unit tests). */

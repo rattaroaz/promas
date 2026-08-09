@@ -152,10 +152,18 @@ where
 }
 
 pub fn open_and_migrate(path: &Path) -> Result<Connection, String> {
-    let conn = Connection::open(path).map_err(|e| format!("open db: {e}"))?;
+    log::info!(target: "promas::db", "opening database {}", path.display());
+    let conn = Connection::open(path).map_err(|e| {
+        log::error!(target: "promas::db", "open failed {}: {e}", path.display());
+        format!("open db: {e}")
+    })?;
     conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")
         .map_err(|e| format!("pragma: {e}"))?;
-    create_schema(&conn).map_err(|e| format!("schema: {e}"))?;
+    create_schema(&conn).map_err(|e| {
+        log::error!(target: "promas::db", "schema migrate failed {}: {e}", path.display());
+        format!("schema: {e}")
+    })?;
+    log::info!(target: "promas::db", "database ready {}", path.display());
     Ok(conn)
 }
 

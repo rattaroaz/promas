@@ -22,9 +22,9 @@ async function invoke<T>(
     span.end({ ok: true, meta: { ms: rounded } });
     if (rounded >= SLOW_API_MS) {
       metrics.inc("api.slow", { cmd });
-      log.info("api", `${cmd} slow`, { ms: rounded });
+      log.info("api", `${cmd} slow`, { ms: rounded, spanId: span.id });
     } else {
-      log.debug("api", `${cmd} ok`, { ms: rounded });
+      log.debug("api", `${cmd} ok`, { ms: rounded, spanId: span.id });
     }
     return result;
   } catch (e) {
@@ -36,6 +36,7 @@ async function invoke<T>(
     const ev = log.error("api", `${cmd} failed`, {
       ms: Math.round(ms),
       error: message,
+      spanId: span.id,
     });
     noteApiError(message);
     span.end({

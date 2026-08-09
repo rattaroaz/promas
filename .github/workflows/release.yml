@@ -15,17 +15,23 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Git tag to release (must already exist), e.g. v2.4.2"
+        description: "Git tag to release (must already exist), e.g. v2.4.3"
         required: true
-        default: "v2.4.2"
+        default: "v2.4.3"
 
 env:
   TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
+  # Block installer builds until unit/e2e/rust tests pass.
+  preflight-tests:
+    name: Preflight tests
+    uses: ./.github/workflows/test.yml
+
   # ── Required: Intel/AMD Windows installer ───────────────────────────
   release-x64:
     name: Build Windows x64 installer
+    needs: preflight-tests
     permissions:
       contents: write
     runs-on: windows-latest

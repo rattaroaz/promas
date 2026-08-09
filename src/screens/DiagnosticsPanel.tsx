@@ -89,9 +89,9 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
 
   async function copyBundle() {
     try {
-      const body = formatDiagnosticsText(backend);
+      const body = formatDiagnosticsText(backend, { sanitize: true });
       await navigator.clipboard.writeText(body);
-      setMsg("Diagnostics copied to clipboard (may include local paths).");
+      setMsg("Diagnostics copied (local paths redacted).");
       setMsgKind("info");
       log.info("app", "diagnostics copied");
       metrics.inc("diagnostics.copy");
@@ -109,11 +109,11 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
         filters: [{ name: "Text", extensions: ["txt"] }],
       });
       if (!dest) return;
-      const body = formatDiagnosticsText(backend);
+      const body = formatDiagnosticsText(backend, { sanitize: true });
       await api.saveTextFile(dest, body);
-      setMsg(`Diagnostics saved to: ${dest}`);
+      setMsg(`Diagnostics saved (paths redacted): ${dest}`);
       setMsgKind("info");
-      log.info("app", "diagnostics saved to file", { path: dest });
+      log.info("app", "diagnostics saved to file");
       metrics.inc("diagnostics.save_file");
     } catch (e) {
       setMsg(String(e));
