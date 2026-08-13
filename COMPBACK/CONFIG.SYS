@@ -1,0 +1,114 @@
+REM ************************************************************************
+REM Sample CONFIG.SYS
+REM Please edit this file to suit your needs.
+REM See http://fd-doc.sourceforge.net/spec/config.html for
+REM details on commands available in CONFIG.SYS
+REM This is not necessarily an optimized CONFIG.SYS, 
+REM but should be a reasonable starting point.
+REM ************************************************************************
+
+REM device=[d:][path]file [options]
+REM This will load the device driver specified by d:path\file (into
+REM normal aka conventional memory).  The options are for the driver
+REM itself; refer to documentation that came with your particular device
+REM for supported options and their usage.
+
+REM devicehigh=[d:][path]file [options]
+REM This is just like device= statement, except it attempts to load
+REM the device driver into high memory first (failing that it should
+REM load it in conventional memory).  
+REM Note: The order you load devices may have a large impact on amount
+REM of free memory available.  In general try to load large (in memory
+REM usage) programs into high memory first.
+REM Important: You should have a high memory manager such as FDXMS or
+REM Himem installed (prior device=FDXMS.SYS or device=HIMEM.SYS) before
+REM using this option.
+
+REM Load memory managers (refer to their docs for available options)
+REM Warning: most memory managers require newer (286/386/Pentium) computers.
+REM Here C:\UTIL refers to an arbitrary directory for non FreeDOS programs.
+
+REM FDXMS & FDXXMS are extended memory managers (similar to himem)
+REM FDXMS supports up to 64MB of XMS memory & FDXXMS supports up to 4GB
+REM FDXMS.SYS [NUMHANDLES=nnn] [BIOS]
+REM NUMHANDLES specifies how many XMS handles available (default=32, min=2)
+REM BIOS indicates to use BIOS Int15 switching instead of internal method
+REM device=C:\FDOS\BIN\FDXMS.SYS /NUMHANDLES=16
+REM device=C:\FDOS\BIN\FDXXMS.SYS /NUMHANDLES=32
+
+REM Freeware program to support UMBs for some computers
+REM device=C:\UTIL\umbpci.sys
+
+REM EMM286 Freeware expanded memory manager for 286s
+REM EMM286.EXE [mem in kb] [/H=hhh #EMM handles] [/S=sss #context save maps]
+REM device=C:\UTIL\EMM286.exe 256 /H=64 /S=7
+
+REM EMM386 Standard (386+) expanded memory manager
+REM EMM386.EXE [NOEMS] [FRAME=XXXX] [EMM=XXXXX] [X=XXXX-XXXX] [I=XXXX-XXXX]
+REM Note: Current EMM386 included with FreeDOS is not fully compatible
+REM with other DOSes EMM386.  Additionally, it requires its included
+REM HIMEM.EXE instead of FDXMS.SYS (which it is incompatible with).
+REM device=C:\FDOS\BIN\HIMEM.EXE
+REM device=C:\FDOS\BIN\EMM386.EXE NOEMS FRAME=D000 EMM=20000
+
+REM dos=high|low,umb|noumb
+REM indicates whether the kernel should try to load itself into
+REM high memory or only conventional (low), and whether to link
+REM upper memory blocks in with normal memory or not.  
+REM Note: only one set need be given, ie dos=high and dos=noumb are ok.
+REM Important: if you specify dos=high[,umb|noumb] then you must also
+REM load a high memory manager (first), ie FDXMS or HIMEM
+REM dos=high,noumb
+dos=low,noumb
+
+REM files=nnn where nnn is in range 8-255 (default 8)
+REM Specifies how many files allowed open at once
+REM Note: there are other restrictions, so a given program
+REM       may not be able to actually open this many
+REM A good number is 20, though some programs suggest/require
+REM 30, 40, or even 255
+files=20
+
+REM buffers=nn[,n] where nn is in range 1-99 & n is in range 1-8
+REM Memory buffers used by the kernel; primary[,secondary]
+buffers=20
+
+REM The country statement is not currently supported by FreeDOS
+REM country=nnn[,[mmm][,[d:][path]file]]
+REM Enables/sets international features of DOS
+REM nnn is country code (001==US)
+REM mmm is code page (437 is default, 850 is updated form, 1252 for Windows)
+REM [drive][path]file specifies file with country specific data
+REM country=001,850,C:\FDOS\BIN\COUNTRY.SYS
+
+REM lastdrive=x where x is last drive letter available for use; A-Z
+lastdrive=z
+
+REM shell=[d:][path]file [options]
+REM Indicates the shell to use, often used to alter COMMAND.COM's behavior
+REM shell=C:\COMMAND.COM /E:256 /P
+REM shellhigh=C:\COMMAND.COM /E:256 /P
+
+REM stacks=nn,nnn where nn is in range 0,8-64 and nnn is in range 32-512
+REM Changes number of stacks available
+REM nn is number of different stacks and nnn is size in bytes of each one
+REM stacks=16,256
+
+REM version=x.y FreeDOS specific command to specify what DOS version to report
+REM version=6.2
+
+REM general CD Driver (also requires FDCDEX loaded in AUTOEXEC.BAT)
+REM device=C:\UTIL\ATAPICDD.SYS /D:FDCD0001
+
+REM ansi, enhanced CONsole driver
+REM device=C:\FDOS\BIN\NANSI.SYS /S
+
+DOS=HIGH
+FILES=60
+BUFFERS=20
+REM add for usb drives
+REM lastdrive=Z
+REM device=HIMEM.SYS
+REM devicehigh=USBASPI.SYS /v /w /e
+REM devicehigh=DI1000DD.SYS
+
