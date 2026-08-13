@@ -207,6 +207,8 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       p.proNo.toUpperCase().includes(q) ||
       p.name.toUpperCase().includes(q) ||
       p.phone.includes(propSearch.trim()) ||
+      p.contact.toUpperCase().includes(q) ||
+      p.manager.toUpperCase().includes(q) ||
       addr.includes(q)
     );
   });
@@ -236,7 +238,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 setSearch(e.target.value);
                 setIndex(0);
               }}
-              placeholder="Company NO, Name, Phone, or property address"
+              placeholder="Company NO, Name, Phone, Contact, or property address"
             />
           </div>
           <div className="dos-browse">
@@ -287,7 +289,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 setPropSearch(e.target.value);
                 setIndex(0);
               }}
-              placeholder="Property NO, Name, Street, City, ZIP"
+              placeholder="Property NO, Name, Street, City, ZIP, or Contact"
               autoFocus
             />
           </div>

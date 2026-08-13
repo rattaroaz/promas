@@ -1,7 +1,7 @@
 /**
  * Original PROMAS gateway shared by Estimate / Work Order / Invoice / Cash:
- *   Company NO / Name / Phone / Property Street  → select or add
- *   then Property NO / Name / Phone → select or add
+ *   Company NO / Name / Phone / Contact / Property Street / Property Contact
+ *   then Property NO / Name / Phone / Contact → select or add
  * Then hand off company+property to the process screen.
  */
 import { useEffect, useState } from "react";
@@ -45,9 +45,18 @@ type Phase =
   | "pr-browse"
   | "pr-edit";
 
-type CoField = "no" | "name" | "phone";
-type PrField = "no" | "name" | "phone" | "street";
+type CoField = "no" | "name" | "phone" | "contact";
+type PrField = "no" | "name" | "phone" | "street" | "contact";
 type FirstKind = "company" | "property";
+
+function matchesPropertyContact(p: Property, q: string): boolean {
+  const needle = q.trim().toUpperCase();
+  if (!needle) return false;
+  return (
+    p.contact.toUpperCase().includes(needle) ||
+    p.manager.toUpperCase().includes(needle)
+  );
+}
 
 function matchesPropertyAddress(p: Property, q: string): boolean {
   const needle = q.trim().toUpperCase();
@@ -101,14 +110,20 @@ export function CompanyPropertyGate({
   useEffect(() => {
     if (phase === "co-search") {
       if (firstKind === "property") {
-        setMsg("Enter Search Property Street (Esc=Exit) !");
+        setMsg(
+          prField === "contact"
+            ? "Enter Search Property Contact (Esc=Exit, ?=First)"
+            : "Enter Search Property Street (Esc=Exit) !"
+        );
       } else {
         setMsg(
           coField === "no"
             ? "Enter Search Company NO (Esc=Exit, ?=First)"
             : coField === "name"
               ? "Enter Search Company Name (Esc=Exit, ?=First)"
-              : "Enter Search Company Phone (Esc=Exit, ?=First)"
+              : coField === "phone"
+                ? "Enter Search Company Phone (Esc=Exit, ?=First)"
+                : "Enter Search Company Contact (Esc=Exit, ?=First)"
         );
       }
     } else if (phase === "pr-search") {
@@ -117,7 +132,9 @@ export function CompanyPropertyGate({
           ? "Enter Property NO(Esc=Exit,?=First)"
           : prField === "name"
             ? "Enter Property Name(Esc=Exit,?=First)"
-            : "Enter Property Phone(Esc=Exit,?=First)"
+            : prField === "phone"
+              ? "Enter Property Phone(Esc=Exit,?=First)"
+              : "Enter Property Contact(Esc=Exit,?=First)"
       );
     }
   }, [phase, coField, prField, firstKind]);
@@ -162,8 +179,12 @@ export function CompanyPropertyGate({
       list = list.filter((c) =>
         c.name.toUpperCase().includes(q.toUpperCase())
       );
-    } else {
+    } else if (coField === "phone") {
       list = list.filter((c) => c.phone.includes(q) || c.phone2.includes(q));
+    } else {
+      list = list.filter((c) =>
+        c.contact.toUpperCase().includes(q.toUpperCase())
+      );
     }
 
     if (list.length === 0) {
@@ -175,10 +196,11 @@ export function CompanyPropertyGate({
       if (coField === "no") blank.companyNo = q;
       if (coField === "name") blank.name = q;
       if (coField === "phone") blank.phone = q;
+      if (coField === "contact") blank.contact = q;
       setEditCo(blank);
       return;
     }
-    if (list.length === 1 && coField === "no") {
+    if (list.length === 1 && (coField === "no" || coField === "contact")) {
       await selectCompany(list[0]);
       return;
     }
@@ -241,10 +263,14 @@ export function CompanyPropertyGate({
       if (prField === "no") blank.proNo = q;
       if (prField === "name") blank.name = q;
       if (prField === "street") blank.street = q;
+      if (prField === "contact") {
+        blank.contact = q;
+        blank.manager = q;
+      }
       setEditPr(blank);
       return;
     }
-    if (list.length === 1 && (prField === "no" || prField === "street")) {
+    if (list.length === 1 && (prField === "no" || prField === "street" || prField === "contact")) {
       await pickPropertyWithCompany(list[0]);
       return;
     }
@@ -286,6 +312,9 @@ export function CompanyPropertyGate({
     if (field === "phone") {
       return all.filter((p) => p.phone.includes(q) || p.phone2.includes(q));
     }
+    if (field === "contact") {
+      return all.filter((p) => matchesPropertyContact(p, q));
+    }
     return all.filter((p) => matchesPropertyAddress(p, q));
   }
 
@@ -321,6 +350,7 @@ export function CompanyPropertyGate({
       list = all.filter(
         (p) =>
           matchesPropertyAddress(p, q) ||
+          matchesPropertyContact(p, q) ||
           p.name.toUpperCase().includes(q.toUpperCase()) ||
           p.proNo.includes(q)
       );
@@ -556,15 +586,21 @@ export function CompanyPropertyGate({
         ? " Company Name Order "
         : coField === "phone"
           ? " Company Phone Order "
-          : " Company NO Order "
+          : coField === "contact"
+            ? " Company Contact Order "
+            : " Company NO Order "
       : phase === "pr-browse"
         ? !company
-          ? " Property Street Order "
+          ? prField === "contact"
+            ? " Property Contact Order "
+            : " Property Street Order "
           : prField === "name"
             ? " Property Name Order "
             : prField === "phone"
               ? " Property Phone Order "
-              : " Property NO Order "
+              : prField === "contact"
+                ? " Property Contact Order "
+                : " Property NO Order "
         : title;
 
   return (
@@ -656,6 +692,35 @@ export function CompanyPropertyGate({
                     }}
                   />
                 </DotField>
+                <DotField label="Company Contact" width={16}>
+                  <input
+                    className="dos-input w30"
+                    aria-label="Company Contact"
+                    value={
+                      firstKind === "company" && coField === "contact"
+                        ? query
+                        : ""
+                    }
+                    onFocus={() => {
+                      setFirstKind("company");
+                      setCoField("contact");
+                      setQuery("");
+                    }}
+                    onChange={(e) => {
+                      setFirstKind("company");
+                      setCoField("contact");
+                      setQuery(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setFirstKind("company");
+                        setCoField("contact");
+                        void searchCompanies(e.currentTarget.value);
+                      }
+                    }}
+                  />
+                </DotField>
                 <DotField label="Property Street" width={16}>
                   <input
                     className="dos-input w30"
@@ -680,6 +745,35 @@ export function CompanyPropertyGate({
                         e.preventDefault();
                         setFirstKind("property");
                         setPrField("street");
+                        void searchPropertiesGlobal(e.currentTarget.value);
+                      }
+                    }}
+                  />
+                </DotField>
+                <DotField label="Property Contact" width={16}>
+                  <input
+                    className="dos-input w30"
+                    aria-label="Property Contact"
+                    value={
+                      firstKind === "property" && prField === "contact"
+                        ? query
+                        : ""
+                    }
+                    onFocus={() => {
+                      setFirstKind("property");
+                      setPrField("contact");
+                      setQuery("");
+                    }}
+                    onChange={(e) => {
+                      setFirstKind("property");
+                      setPrField("contact");
+                      setQuery(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setFirstKind("property");
+                        setPrField("contact");
                         void searchPropertiesGlobal(e.currentTarget.value);
                       }
                     }}
@@ -786,13 +880,32 @@ export function CompanyPropertyGate({
                     }}
                   />
                 </DotField>
+                <DotField label="Property Contact" width={16}>
+                  <input
+                    className="dos-input w30"
+                    aria-label="Property Contact"
+                    value={prField === "contact" ? query : ""}
+                    onFocus={() => {
+                      setPrField("contact");
+                      setQuery("");
+                    }}
+                    onChange={(e) => {
+                      setPrField("contact");
+                      setQuery(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        searchProperties(e.currentTarget.value);
+                      }
+                    }}
+                  />
+                </DotField>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* ── Property browse ────────────────────────────── */}
       {phase === "pr-browse" && (
         <div className="dos-browse">
           <div className="dos-browse-header">

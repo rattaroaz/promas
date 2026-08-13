@@ -237,7 +237,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 setSearch(e.target.value);
                 setIndex(0);
               }}
-              placeholder="Invoice#, Company, Address, Unit, PO"
+              placeholder="Invoice#, Company, Contact, Address, Unit, PO"
             />
             <label>From:</label>
             <DateInput

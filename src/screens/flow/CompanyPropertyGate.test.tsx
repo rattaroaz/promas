@@ -22,6 +22,7 @@ const company = {
   ...emptyCompany(),
   companyNo: "1000",
   name: "ACME",
+  contact: "ELAINE",
 };
 
 const property = {
@@ -31,6 +32,8 @@ const property = {
   street: "1105 QUAIL ST.",
   city: "NEWPORT BEACH",
   zip: "92660",
+  contact: "MARIA",
+  manager: "MARIA",
 };
 
 describe("CompanyPropertyGate", () => {
@@ -54,7 +57,9 @@ describe("CompanyPropertyGate", () => {
     expect(screen.getByRole("textbox", { name: "Company NO" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Company Name" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Company Phone" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Company Contact" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Property Street" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Property Contact" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("? = first")).toBeInTheDocument();
     expect(screen.getAllByText(/Invoice Process/i).length).toBeGreaterThan(0);
   });
@@ -167,6 +172,53 @@ describe("CompanyPropertyGate", () => {
       expect(onReady).toHaveBeenCalledWith(
         expect.objectContaining({ companyNo: "1000" }),
         expect.objectContaining({ street: "1105 QUAIL ST." })
+      );
+    });
+  });
+
+  it("selects company from the first screen by contact", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+
+    const contact = screen.getByRole("textbox", { name: "Company Contact" });
+    await user.click(contact);
+    await user.type(contact, "ELAINE{Enter}");
+
+    expect(
+      await screen.findByText(/Enter Property NO/i)
+    ).toBeInTheDocument();
+    expect(api.listCompanies).toHaveBeenCalledWith(
+      expect.objectContaining({ search: "ELAINE" })
+    );
+  });
+
+  it("selects property from the first screen by contact", async () => {
+    const user = userEvent.setup();
+    const onReady = vi.fn();
+    renderApp(
+      <CompanyPropertyGate
+        process="cash"
+        onBack={vi.fn()}
+        onReady={onReady}
+      />
+    );
+
+    const contact = screen.getByRole("textbox", { name: "Property Contact" });
+    await user.click(contact);
+    await user.type(contact, "MARIA{Enter}");
+
+    await waitFor(() => {
+      expect(api.listProperties).toHaveBeenCalled();
+      expect(api.getCompany).toHaveBeenCalledWith("1000");
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "1000" }),
+        expect.objectContaining({ contact: "MARIA" })
       );
     });
   });

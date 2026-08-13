@@ -290,3 +290,45 @@ fn property_and_company_search_match_street_city_zip() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn company_and_property_search_match_contact() {
+    let (dir, conn) = temp_conn("contact_search");
+    conn.execute(
+        r#"INSERT INTO companies
+           (company_no,name,class,street,city,state,zip,phone,phone2,phone3,phone4,
+            contact,enter_date,page_map,last_pro_id,memo,voided)
+           VALUES ('1000','ACME','A','','','CA','','','','','','ELAINE',NULL,'',100,'',0)"#,
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        r#"INSERT INTO properties
+           (company_no,pro_no,name,class,street,city,state,zip,phone,phone2,contact,
+            no_of_unit,manager,page_map,key_info,paint_time,comment1,comment2,memo,voided)
+           VALUES ('1000','01','Bldg A','','1105 QUAIL ST.','NEWPORT BEACH','CA','92660','',
+                   '','MARIA',0,'MARIA','','','','','','',0)"#,
+        [],
+    )
+    .unwrap();
+
+    let co: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM companies WHERE contact LIKE ?1",
+            rusqlite::params!["%ELAINE%"],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(co, 1);
+
+    let pr: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM properties WHERE contact LIKE ?1 OR manager LIKE ?1",
+            rusqlite::params!["%MARIA%"],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(pr, 1);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
