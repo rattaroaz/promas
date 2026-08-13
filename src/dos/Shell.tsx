@@ -10,7 +10,7 @@ export function StatusBar({
       {keys.map((k) => (
         <span key={k.key + k.label}>
           <span className="key">{k.key}</span>
-          <span className="hint">{k.label}</span>
+          {k.label ? <span className="hint">{k.label}</span> : <span className="hint"> </span>}
         </span>
       ))}
     </div>
@@ -113,10 +113,7 @@ export function Prompt({
     <div className="dos-overlay">
       <div className="dos-prompt" tabIndex={0}>
         <div className="q">{question}</div>
-        <div className="opts">
-          (<b>Y</b>)es &nbsp; / &nbsp; (<b>N</b>)o
-        </div>
-        <div style={{ marginTop: "0.6em", display: "flex", gap: "1ch", justifyContent: "center" }}>
+        <div style={{ marginTop: "0.6em", display: "flex", gap: "2ch", justifyContent: "center" }}>
           <button className="dos-btn" onClick={onYes} autoFocus>
             Y
           </button>
@@ -133,21 +130,18 @@ export function HelpOverlay({ onClose }: { onClose: () => void }) {
   return (
     <div className="dos-overlay" onClick={onClose}>
       <div className="dos-help" onClick={(e) => e.stopPropagation()}>
-        <h3>*** Function Key Description ***</h3>
+        <h3> *** Function Key Description *** </h3>
         <pre>{`
- F1        = Help
- Ins       = Add Data
- Del       = Delete or Void Data
- Home      = Display Company/Property Detail
- End       = Print Data
- Ctrl-Home = Edit Data
- Enter     = Select / Default
- PgUp      = Previous Data
- PgDn      = Next Data
- Arrow Key = Up, Down Data
- Esc       = Exit / Cancel
- Ctrl-W    = Save & Exit
-
+ F1 = Help
+ Ins = Add Data
+ Del = Delete or Void Data
+ Home= Diplay Company,Property Detail
+ End = Print Data
+ Cntr_Home = Edit Data
+ Enter(Ret)= Default Data
+ PgUp = Previous Data
+ PgDn = Next Data
+ Arrow Key = Up,Down Data
 Press any key to continue ...
 `}</pre>
         <div style={{ textAlign: "center", marginTop: "0.5em" }}>
@@ -161,15 +155,33 @@ Press any key to continue ...
 }
 
 export const BROWSE_KEYS = [
-  { key: "Esc", label: "Exit" },
-  { key: "Ins", label: "Add" },
-  { key: "Ctrl-Home", label: "Edit" },
-  { key: "Del", label: "Void" },
-  { key: "PgUp", label: "Prev" },
-  { key: "PgDn", label: "Next" },
-  { key: "Home", label: "Detail" },
-  { key: "End", label: "Print" },
-  { key: "F1", label: "Help" },
+  { key: "Esc", label: "" },
+  { key: "Ins", label: "" },
+  { key: "Ctrl-Home", label: "" },
+  { key: "Del", label: "" },
+  { key: "PgUp", label: "" },
+  { key: "PgDn", label: "" },
+  { key: "Home", label: "" },
+  { key: "End", label: "" },
+];
+
+/** Company / property pick-list: Ins  Ctrl-Home  PgUp  PgDn  Esc */
+export const SEARCH_BROWSE_KEYS = [
+  { key: "Ins", label: "" },
+  { key: "Ctrl-Home", label: "" },
+  { key: "PgUp", label: "" },
+  { key: "PgDn", label: "" },
+  { key: "Esc", label: "" },
+];
+
+/** Cash receipts: Ins  Home  PgUp  PgDn  Esc  (A)uto_Receipt */
+export const CASH_KEYS = [
+  { key: "Ins", label: "" },
+  { key: "Home", label: "" },
+  { key: "PgUp", label: "" },
+  { key: "PgDn", label: "" },
+  { key: "Esc", label: "" },
+  { key: "(A)", label: "uto_Receipt" },
 ];
 
 export const MENU_KEYS = [
@@ -182,7 +194,6 @@ export const MENU_KEYS = [
 
 export const FORM_KEYS = [
   { key: "Esc", label: "Cancel" },
-  { key: "Ctrl-W", label: "Save & Exit" },
-  { key: "↑↓", label: "Edit" },
-  { key: "Tab", label: "Next Field" },
+  { key: "Cntr_W", label: "Save & Exit" },
+  { key: "↑↓", label: "Edit=Arrow_Key" },
 ];

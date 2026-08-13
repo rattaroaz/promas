@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 async function openWorkOrders(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: /2\.\s*Work Order Process/i }).click();
-  await expect(page.getByText("Search Company", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Enter Search Company NO/i)).toBeVisible();
 
   const companyNo = page.getByPlaceholder("? = first").first();
   await companyNo.fill("?");

@@ -193,7 +193,12 @@ pub fn list_companies(state: State<DbState>, params: ListParams) -> Result<Vec<C
                contact,enter_date,page_map,last_pro_id,memo,voided
                FROM companies
                WHERE (?1 OR voided=0)
-                 AND (?2='' OR company_no LIKE ?3 OR name LIKE ?3 OR phone LIKE ?3 OR contact LIKE ?3)
+                 AND (?2='' OR company_no LIKE ?3 OR name LIKE ?3 OR phone LIKE ?3 OR contact LIKE ?3
+                      OR street LIKE ?3 OR city LIKE ?3 OR zip LIKE ?3
+                      OR company_no IN (
+                           SELECT company_no FROM properties
+                           WHERE street LIKE ?3 OR city LIKE ?3 OR state LIKE ?3 OR zip LIKE ?3
+                      ))
                ORDER BY company_no
                LIMIT ?4 OFFSET ?5"#,
         )
@@ -328,7 +333,8 @@ pub fn list_properties(state: State<DbState>, params: ListParams) -> Result<Vec<
                FROM properties
                WHERE (?1 OR voided=0)
                  AND (?2='' OR company_no=?2)
-                 AND (?3='' OR pro_no LIKE ?4 OR name LIKE ?4 OR street LIKE ?4 OR phone LIKE ?4)
+                 AND (?3='' OR pro_no LIKE ?4 OR name LIKE ?4 OR phone LIKE ?4
+                      OR street LIKE ?4 OR city LIKE ?4 OR state LIKE ?4 OR zip LIKE ?4)
                ORDER BY company_no, pro_no
                LIMIT ?5 OFFSET ?6"#,
         )
@@ -595,7 +601,8 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
                  AND (?3='' OR i.sales_date>=?3)
                  AND (?4='' OR i.sales_date<=?4)
                  AND (?5='' OR CAST(i.invoice AS TEXT) LIKE ?6 OR i.sales_unit LIKE ?6
-                      OR c.name LIKE ?6 OR i.cust_po_no LIKE ?6)
+                      OR c.name LIKE ?6 OR i.cust_po_no LIKE ?6
+                      OR p.street LIKE ?6 OR p.city LIKE ?6 OR p.zip LIKE ?6 OR p.name LIKE ?6)
                ORDER BY i.sales_date DESC, i.invoice DESC
                LIMIT ?7 OFFSET ?8"#,
         )
@@ -797,7 +804,8 @@ pub fn list_work_orders(
                LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
                WHERE (?1 OR w.voided=0)
                  AND (?2='' OR w.company_no=?2)
-                 AND (?3='' OR CAST(w.order_no AS TEXT) LIKE ?4 OR w.order_unit LIKE ?4 OR c.name LIKE ?4)
+                 AND (?3='' OR CAST(w.order_no AS TEXT) LIKE ?4 OR w.order_unit LIKE ?4 OR c.name LIKE ?4
+                      OR p.street LIKE ?4 OR p.city LIKE ?4 OR p.zip LIKE ?4 OR p.name LIKE ?4)
                ORDER BY w.order_date DESC, w.order_no DESC
                LIMIT ?5"#,
         )
@@ -993,20 +1001,13 @@ pub fn import_dbf_folder(state: State<DbState>, folder: String) -> Result<Import
     log::info!(target: "promas::db", "import_dbf_folder {folder}");
     let mut conn = state.0.lock().map_err(map_err)?;
     let path = PathBuf::from(&folder);
-    if !path.is_dir() {
-        return Err(format!("Not a directory: {folder}"));
-    }
-    // Accept either the PROMAS folder or COMPBACK parent
-    let promas = if path.join("COMPANY.DBF").exists() || path.join("company.dbf").exists() {
-        path
-    } else if path.join("PROMAS").is_dir() {
-        path.join("PROMAS")
-    } else {
-        return Err(
-            "Could not find COMPANY.DBF. Select the PROMAS data folder (containing .DBF files)."
-                .into(),
-        );
-    };
+    let promas = crate::import::resolve_promas_data_dir(&path)?;
+    log::info!(
+        target: "promas::db",
+        "import_dbf_folder resolved {} → {}",
+        path.display(),
+        promas.display()
+    );
     let result = import_promas_folder(&mut conn, &promas)?;
     log::info!(
         target: "promas::db",

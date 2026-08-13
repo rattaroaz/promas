@@ -70,7 +70,7 @@ export function EstimateProcess({
     e.formNo = "EST-1";
     setIsNew(true);
     setEditing(e);
-    setMsg("Enter Proposal Information (Esc=Cancel, Ctrl-W=Save & Exit) !");
+    setMsg("Enter Proposal Information (Esc=Cancel, Cntr_W=Save & Exit) !");
   }
 
   async function save() {
@@ -116,7 +116,7 @@ export function EstimateProcess({
       if (!editing && current) {
         setIsNew(false);
         setEditing({ ...current });
-        setMsg("Enter Proposal Information (Esc=Cancel, Ctrl-W=Save & Exit) !");
+        setMsg("Enter Proposal Information (Esc=Cancel, Cntr_W=Save & Exit) !");
       }
     },
     onCtrlHome: () => {
@@ -173,7 +173,7 @@ export function EstimateProcess({
             {property.name}
           </div>
           <div className="dos-browse-header">
-            {"Proposal#  Date        Form#       Status"}
+            {"Proposal #........  Proposal Date.....  Form #............"}
           </div>
           <div className="dos-browse-body">
             {rows.map((e, i) => (
@@ -186,10 +186,10 @@ export function EstimateProcess({
                   setEditing({ ...e });
                 }}
               >
-                {padL(e.estNo, 9)}{" "}
-                {padR(fmtDate(e.estDate), 12)}{" "}
-                {padR(e.formNo, 12)}{" "}
-                {e.voided ? "VOID" : e.status || "OK"}
+                {padL(e.estNo, 16)}{" "}
+                {padR(fmtDate(e.estDate), 18)}{" "}
+                {padR(e.formNo, 18)}{" "}
+                {e.voided ? "VOID" : e.status || ""}
               </button>
             ))}
             {rows.length === 0 && (
@@ -210,7 +210,7 @@ export function EstimateProcess({
                 ? "Enter Proposal Information"
                 : "Enter Proposal Information"
           }
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Cntr_W=Save & Exit"
           red={editing.voided}
         >
           <div className="dos-form">

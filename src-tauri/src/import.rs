@@ -1,7 +1,58 @@
 use crate::dbf::{normalize_date_field, read_dbf};
 use crate::models::ImportResult;
 use rusqlite::{params, Connection};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+fn has_company_dbf(dir: &Path) -> bool {
+    dir.join("COMPANY.DBF").is_file() || dir.join("company.dbf").is_file()
+}
+
+/// Locate the original Clipper data folder from a user-chosen path.
+/// Accepts the PROMAS data dir itself, COMPBACK, the app install folder, or
+/// a parent that contains those (walks one directory level).
+pub fn resolve_promas_data_dir(path: &Path) -> Result<PathBuf, String> {
+    let start = if path.is_file() {
+        path.parent()
+            .map(Path::to_path_buf)
+            .ok_or_else(|| "Not a directory".to_string())?
+    } else {
+        path.to_path_buf()
+    };
+    if !start.is_dir() {
+        return Err(format!("Not a directory: {}", path.display()));
+    }
+
+    let mut candidates: Vec<PathBuf> = vec![
+        start.clone(),
+        start.join("PROMAS"),
+        start.join("COMPBACK"),
+        start.join("COMPBACK").join("PROMAS"),
+        start.join("DATA"),
+        start.join("data"),
+    ];
+    if let Ok(entries) = std::fs::read_dir(&start) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                candidates.push(p.clone());
+                candidates.push(p.join("PROMAS"));
+                candidates.push(p.join("COMPBACK").join("PROMAS"));
+            }
+        }
+    }
+
+    for c in candidates {
+        if has_company_dbf(&c) {
+            return Ok(c);
+        }
+    }
+
+    Err(
+        "Could not find COMPANY.DBF. Select the original PROMAS folder \
+         (the app folder, COMPBACK, or the folder that contains the .DBF files)."
+            .into(),
+    )
+}
 
 pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<ImportResult, String> {
     log::info!(
@@ -692,5 +743,28 @@ mod tests {
         assert!(result.invoice_lines > 0, "expected invoice lines");
         println!("{:?}", result);
         let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn resolve_promas_data_dir_finds_nested_compback() {
+        let dir = std::env::temp_dir().join(format!(
+            "promas_resolve_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        let data = dir.join("COMPBACK").join("PROMAS");
+        std::fs::create_dir_all(&data).unwrap();
+        write_minimal_company_dbf(&data.join("COMPANY.DBF")).unwrap();
+
+        let found = resolve_promas_data_dir(&dir).expect("resolve from app folder");
+        assert_eq!(found, data);
+
+        let found2 = resolve_promas_data_dir(&dir.join("COMPBACK")).expect("resolve from COMPBACK");
+        assert_eq!(found2, data);
+
+        let found3 = resolve_promas_data_dir(&data).expect("resolve from data dir");
+        assert_eq!(found3, data);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

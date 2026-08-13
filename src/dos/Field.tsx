@@ -1,6 +1,6 @@
 import { labelDots } from "./utils";
 
-/** Clipper-style field: Label........ [input] */
+/** Clipper search GET: Company NO....... [input] */
 export function DotField({
   label,
   width = 16,
@@ -17,6 +17,27 @@ export function DotField({
         <span className="dots">
           {".".repeat(Math.max(1, width - label.length))}
         </span>
+      </label>
+      {children}
+    </div>
+  );
+}
+
+/** Clipper GET form: Company NO  : [input] */
+export function ColonField({
+  label,
+  width = 13,
+  children,
+}: {
+  label: string;
+  width?: number;
+  children: React.ReactNode;
+}) {
+  const text = label.length >= width - 1 ? label : label.padEnd(width - 1, " ");
+  return (
+    <div className="dos-field">
+      <label style={{ minWidth: `${width}ch`, whiteSpace: "pre" }}>
+        {text}:
       </label>
       {children}
     </div>

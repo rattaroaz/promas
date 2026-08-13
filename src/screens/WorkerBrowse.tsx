@@ -128,7 +128,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Worker No....Worker Name........................Phone........  Rate%"}
+            {"Worker No....Worker Name........................Phone........"}
             </div>
             <div className="dos-browse-body">
               {rows.map((e, i) => (
@@ -185,7 +185,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
                 }
               />
             </DotField>
-            <DotField label="Wages Rate %" width={14}>
+            <DotField label="Wages Rate" width={14}>
               <input
                 className="dos-input w8 num"
                 type="number"
@@ -198,6 +198,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
                   })
                 }
               />
+              <span style={{ marginLeft: "1ch" }}>%</span>
             </DotField>
             <DotField label="S.S.#" width={14}>
               <input

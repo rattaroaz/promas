@@ -17,6 +17,7 @@ import {
   Dialog,
   HelpOverlay,
   FORM_KEYS,
+  CASH_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { padR, padL, money, fmtDate, today } from "../../dos/utils";
@@ -74,6 +75,8 @@ export function CashProcess({
     (s, i) => s + Math.max(0, i.balance),
     0
   );
+  const balanceTotal = invoices.reduce((s, i) => s + (i.salesTotal || 0), 0);
+  const receiptTotal = invoices.reduce((s, i) => s + (i.payTotal || 0), 0);
 
   function startPayment(inv?: Invoice) {
     const target = inv || current;
@@ -235,14 +238,7 @@ export function CashProcess({
       statusKeys={
         editing || autoMode
           ? FORM_KEYS
-          : [
-              { key: "Esc", label: "Exit" },
-              { key: "Ins", label: "Payment" },
-              { key: "A", label: "Auto_Receipt" },
-              { key: "Home", label: "Auto" },
-              { key: "PgUp", label: "Prev" },
-              { key: "PgDn", label: "Next" },
-            ]
+          : CASH_KEYS
       }
       title=" Cash Receipts Process "
       message={msg}
@@ -261,14 +257,14 @@ export function CashProcess({
           >
             {`*****   Customer Ledger   *****
 Company NO : ${company.companyNo}  ${company.name}
-Phone      : ${company.phone}
-Property   : ${property.proNo}  ${property.name}  (context)
+Balance Total.... ${money(balanceTotal)}
+Receipt Total.... ${money(receiptTotal)}
 Ending Balance... ${money(endingBalance)}`}
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
               {
-                "Inv#  Inv_Date  Pro Unit     Inv_amount   PayTotal    Balance"
+                "Inv_#  Inv_Date  Inv_amount  PayDate   Check/Ref   Payamount    Balance  OK"
               }
             </div>
             <div className="dos-browse-body">
@@ -284,8 +280,8 @@ Ending Balance... ${money(endingBalance)}`}
                 >
                   {padL(inv.invoice, 5)}{" "}
                   {padR(fmtDate(inv.salesDate), 10)}{" "}
-                  {padR(inv.proNo, 3)} {padR(inv.salesUnit, 8)}{" "}
                   {padL(money(inv.salesTotal), 11)}{" "}
+                  {padR("", 9)} {padR("", 10)}{" "}
                   {padL(money(inv.payTotal), 10)}{" "}
                   {padL(money(inv.balance), 10)}
                   {inv.balance <= 0 ? " *" : "  "}
@@ -308,7 +304,7 @@ Ending Balance... ${money(endingBalance)}`}
 
       {editing && (
         <Dialog
-          title="Enter Your Payment Data"
+          title="Enter Your Payment Data(Esc=Cancel) !"
           foot="Esc=Cancel  Ctrl-W/Enter=Post Receipt"
         >
           <div className="dos-form">
@@ -332,6 +328,16 @@ Ending Balance... ${money(endingBalance)}`}
                 value={
                   invoices.find((i) => i.invoice === editing.invoice)
                     ?.salesTotal ?? ""
+                }
+              />
+            </DotField>
+            <DotField label="Paid Total" width={16}>
+              <input
+                className="dos-input w12 num"
+                disabled
+                value={
+                  invoices.find((i) => i.invoice === editing.invoice)
+                    ?.payTotal ?? ""
                 }
               />
             </DotField>
@@ -385,7 +391,7 @@ Ending Balance... ${money(endingBalance)}`}
 
       {autoMode && (
         <Dialog
-          title="Enter Automatic Receipt Data"
+          title="Enter Automatic Receipt Data(Esc=Exit) !"
           foot="Esc=Cancel  Enter=Apply to open invoices (oldest first)"
         >
           <div className="dos-form">

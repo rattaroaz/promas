@@ -1,3 +1,22 @@
+const fixtureCompany = {
+  companyNo: "1000",
+  name: "ACME",
+  class: "A",
+  street: "",
+  city: "",
+  state: "CA",
+  zip: "",
+  phone: "",
+  phone2: "",
+  contact: "",
+  attn: "",
+  fax: "",
+  remark1: "",
+  remark2: "",
+  enterDate: null,
+  voided: false,
+};
+
 const fixtureInvoice = {
   companyNo: "1000",
   proNo: "01",
@@ -69,26 +88,10 @@ export async function invoke<T = unknown>(
     return [fixtureInvoice] as T;
   }
   if (cmd === "list_companies") {
-    return [
-      {
-        companyNo: "1000",
-        name: "ACME",
-        class: "A",
-        street: "",
-        city: "",
-        state: "CA",
-        zip: "",
-        phone: "",
-        phone2: "",
-        contact: "",
-        attn: "",
-        fax: "",
-        remark1: "",
-        remark2: "",
-        enterDate: null,
-        voided: false,
-      },
-    ] as T;
+    return [fixtureCompany] as T;
+  }
+  if (cmd === "get_company") {
+    return fixtureCompany as T;
   }
   if (cmd === "list_properties") {
     return [

@@ -251,3 +251,42 @@ fn aging_report_after_open_invoice() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn property_and_company_search_match_street_city_zip() {
+    let (dir, conn) = temp_conn("addr_search");
+    upsert_company(&conn, "1000", "ACME");
+    conn.execute(
+        r#"INSERT INTO properties
+           (company_no,pro_no,name,class,street,city,state,zip,phone,phone2,contact,
+            no_of_unit,manager,page_map,key_info,paint_time,comment1,comment2,memo,voided)
+           VALUES ('1000','01','Bldg A','','1105 QUAIL ST.','NEWPORT BEACH','CA','92660','',
+                   '','',0,'','','','','','','',0)"#,
+        [],
+    )
+    .unwrap();
+
+    let n: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM properties WHERE street LIKE ?1 OR city LIKE ?1 OR zip LIKE ?1",
+            rusqlite::params!["%QUAIL%"],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(n, 1);
+
+    let co: i64 = conn
+        .query_row(
+            r#"SELECT COUNT(*) FROM companies
+               WHERE company_no IN (
+                 SELECT company_no FROM properties
+                 WHERE street LIKE ?1 OR city LIKE ?1 OR zip LIKE ?1
+               )"#,
+            rusqlite::params!["%92660%"],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(co, 1);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
