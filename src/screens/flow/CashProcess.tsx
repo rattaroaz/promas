@@ -243,8 +243,8 @@ export function CashProcess({
       title=" Cash Receipts Process "
       message={msg}
       messageKind={msgKind}
-      left={`${company.companyNo}`}
-      right={company.name.slice(0, 28)}
+      left={`${company.companyNo}/${property.proNo}`}
+      right={property.name.slice(0, 24)}
     >
       {!editing && !autoMode && (
         <>
