@@ -15,9 +15,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Git tag to release (must already exist), e.g. v2.4.3"
+        description: "Git tag to release (must already exist), e.g. v2.4.4"
         required: true
-        default: "v2.4.3"
+        default: "v2.4.4"
 
 env:
   TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}

@@ -8,6 +8,7 @@
     "opener:default",
     "dialog:default",
     "dialog:allow-ask",
+    "dialog:allow-open",
     "fs:default",
     "updater:default",
     "process:default",

@@ -53,11 +53,14 @@ npm run tauri dev
 ## Import legacy data
 
 1. Start the app  
-2. Open **Settings / Import**  
-3. Click **Select PROMAS Folder & Import**  
-4. Choose the folder that contains the `.DBF` files, e.g.  
+2. Open **7. Miscellaneous**  
+3. Choose **4. Import Database** (also available under **2. Reindex Data Files**)  
+4. Click **Select Original PROMAS Folder & Import**  
+5. Choose the original application folder. PROMAS finds `COMPANY.DBF` in that folder, in `COMPBACK`, or in `COMPBACK\PROMAS`, e.g.
 
    `...\DKSKapp\COMPBACK\PROMAS`
+
+Import **replaces** all current data with the original `.DBF` files.
 
 The importer loads:
 
@@ -103,8 +106,8 @@ Pushing a `v*` tag runs the **Release** workflow, which builds **NSIS `.exe` / M
 
 ```bash
 git push origin main
-git tag v2.4.3          # bump version files first if needed
-git push origin v2.4.3
+git tag v2.4.4          # bump version files first if needed
+git push origin v2.4.4
 ```
 
 Then open **Actions → Release**. When green, download `PROMAS_*_x64-setup.exe` from the Release assets — ignore “Source code”.

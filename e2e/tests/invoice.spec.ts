@@ -4,14 +4,14 @@ import { expect, type Page, test } from "@playwright/test";
 async function openInvoiceBrowse(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
-  await expect(page.getByText("Search Company", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Enter Search Company NO/i)).toBeVisible();
 
   const companyNo = page.getByPlaceholder("? = first").first();
   await companyNo.fill("?");
   await companyNo.press("Enter");
   await page.getByRole("button", { name: /1000\s+ACME/i }).click();
 
-  await expect(page.getByText(/— Property/i)).toBeVisible();
+  await expect(page.getByText(/Enter Property NO/i)).toBeVisible();
   const propertyNo = page.getByPlaceholder("? = first");
   await propertyNo.fill("?");
   await propertyNo.press("Enter");

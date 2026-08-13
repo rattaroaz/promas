@@ -16,14 +16,14 @@ export type MainAction =
 
 /** Original 1–7; 8 Settings is the only modern addition */
 const ITEMS: { id: MainAction; num: string; label: string; accel: string }[] = [
-  { id: "estimate", num: "1", label: "Estimate Process", accel: "E" },
-  { id: "workorder", num: "2", label: "Work Order Process", accel: "W" },
-  { id: "invoice", num: "3", label: "Invoice Process", accel: "I" },
+  { id: "estimate", num: "1", label: "Estimate Process     ", accel: "E" },
+  { id: "workorder", num: "2", label: "Work Order Process   ", accel: "W" },
+  { id: "invoice", num: "3", label: "Invoice Process      ", accel: "I" },
   { id: "cash", num: "4", label: "Cash Receipts Process", accel: "C" },
-  { id: "material", num: "5", label: "Material Process", accel: "M" },
-  { id: "reports", num: "6", label: "Reports Menu", accel: "R" },
-  { id: "misc", num: "7", label: "Miscellaneous", accel: "S" },
-  { id: "settings", num: "8", label: "Settings", accel: "T" },
+  { id: "material", num: "5", label: "Material Process     ", accel: "M" },
+  { id: "reports", num: "6", label: "Reports Menu         ", accel: "R" },
+  { id: "misc", num: "7", label: "Miscellaneous        ", accel: "S" },
+  { id: "settings", num: "8", label: "Settings             ", accel: "T" },
 ];
 
 export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
@@ -104,14 +104,10 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
   return (
     <Screen
       statusKeys={MENU_KEYS}
-      title={`Promas(P) Version ${APP_VERSION}  —  Property Management System`}
+      title={`Promas(P) Version ${APP_VERSION}`}
       left={dateStr}
       right={timeStr}
-      message={
-        quitAsk
-          ? "Do you want quit (Y/N) ?"
-          : "Select menu item and press Enter  —  or click with mouse"
-      }
+      message={quitAsk ? "Do you want quit (Y/N) ?" : ""}
     >
       <div className="dos-main-wrap">
         <div className="dos-menu-frame">

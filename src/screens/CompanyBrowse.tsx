@@ -20,6 +20,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
   const [edit, setEdit] = useState<Company | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [props, setProps] = useState<Property[]>([]);
+  const [propSearch, setPropSearch] = useState("");
   const [propEdit, setPropEdit] = useState<Property | null>(null);
   const [msg, setMsg] = useState("Ins=Add  Ctrl-Home=Edit  Del=Void  Home=Properties  Esc=Exit");
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
@@ -64,6 +65,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       limit: 500,
     });
     setProps(p);
+    setPropSearch("");
     setMode("props");
     setMsg(
       `Properties for ${current.companyNo} ${current.name}  —  Esc=Back  Ins=Add`
@@ -197,6 +199,18 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
   const header =
     "Co#  Company Name                   City            Phone         Contact";
 
+  const visibleProps = props.filter((p) => {
+    const q = propSearch.trim().toUpperCase();
+    if (!q) return true;
+    const addr = [p.street, p.city, p.state, p.zip].join(" ").toUpperCase();
+    return (
+      p.proNo.toUpperCase().includes(q) ||
+      p.name.toUpperCase().includes(q) ||
+      p.phone.includes(propSearch.trim()) ||
+      addr.includes(q)
+    );
+  });
+
   return (
     <Screen
       statusKeys={
@@ -222,7 +236,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 setSearch(e.target.value);
                 setIndex(0);
               }}
-              placeholder="Company NO, Name, Phone  (Esc=Exit)"
+              placeholder="Company NO, Name, Phone, or property address"
             />
           </div>
           <div className="dos-browse">
@@ -263,15 +277,29 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       )}
 
       {mode === "props" && (
+        <>
+          <div className="dos-searchline">
+            <label>Search:</label>
+            <input
+              className="dos-input"
+              value={propSearch}
+              onChange={(e) => {
+                setPropSearch(e.target.value);
+                setIndex(0);
+              }}
+              placeholder="Property NO, Name, Street, City, ZIP"
+              autoFocus
+            />
+          </div>
         <div className="dos-browse">
           <div className="dos-browse-header">
             {"Pro# Name                           Street                         Phone"}
           </div>
           <div className="dos-browse-body">
-            {props.map((p, i) => (
+            {visibleProps.map((p, i) => (
               <button
                 key={p.proNo}
-                className={`dos-row ${i === index % Math.max(props.length, 1) ? "selected" : ""}`}
+                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""}`}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
@@ -281,6 +309,11 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 {padR(p.phone, 13)}
               </button>
             ))}
+            {visibleProps.length === 0 && props.length > 0 && (
+              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+                {"  ( no properties match that address )"}
+              </div>
+            )}
             {props.length === 0 && (
               <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
                 {"  Property Empty !! Press Ins to Add Property"}
@@ -288,6 +321,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             )}
           </div>
         </div>
+        </>
       )}
 
       {(mode === "edit" || mode === "detail") && edit && (

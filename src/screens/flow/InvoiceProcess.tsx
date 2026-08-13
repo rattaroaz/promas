@@ -559,7 +559,6 @@ export function InvoiceProcess({
       {mode === "new-prompt" && (
         <div className="dos-main-wrap">
           <div className="dos-menu-frame" style={{ minWidth: "44ch" }}>
-            <div className="menu-header"> New Invoice </div>
             <div className="menu-body" style={{ padding: "1em 2ch" }}>
               <div className="dos-form">
                 <DotField label="Invoice Date" width={18}>
@@ -568,34 +567,28 @@ export function InvoiceProcess({
                     type="date"
                     value={invDate}
                     onChange={(e) => setInvDate(e.target.value)}
+                    onFocus={() =>
+                      setMsg("Enter Invoice Date (Esc=Exit) !")
+                    }
                     autoFocus
                   />
                 </DotField>
-                <DotField label="Work Order No" width={18}>
+                <DotField label="Order No" width={18}>
                   <input
                     className="dos-input w8"
                     value={orderNo}
                     onChange={(e) => setOrderNo(e.target.value)}
+                    onFocus={() =>
+                      setMsg(" Enter Work Order No (Esc=Exit) !")
+                    }
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         tryFromOrder();
                       }
                     }}
-                    placeholder="blank=manual"
                   />
                 </DotField>
-              </div>
-              <div style={{ marginTop: "1em", color: "var(--dos-yellow)" }}>
-                Enter Work Order No, or leave blank + Enter for Manual Invoice
-              </div>
-              <div style={{ marginTop: "0.8em" }}>
-                <button className="dos-btn" onClick={tryFromOrder}>
-                  Continue
-                </button>{" "}
-                <button className="dos-btn" onClick={openManual}>
-                  Manual Invoice
-                </button>
               </div>
             </div>
           </div>

@@ -148,10 +148,12 @@ export function MaterialBrowse({
 
   const header =
     sort === "worker"
-      ? "Worker  TransDate   Material Description                Amount"
+      ? "TransDate  Material Description            Material Amount"
       : sort === "desc"
-        ? "Description                          Empno  Trans Date      Amount"
-        : "Mat_Date.....Material Description................Mater.Amount  Worker";
+        ? "Empno      Trans Date                         Material Amount"
+        : sort === "date"
+          ? "Empno      Material Description            Material Amount"
+          : "Mat_Date.....Material Description................Mater.Amount";
 
   return (
     <Screen
@@ -194,19 +196,23 @@ export function MaterialBrowse({
                 >
                   {sort === "worker" ? (
                     <>
-                      {padR(m.empNo, 6)} {padR(fmtDate(m.matDate), 11)}{" "}
-                      {padR(m.description, 36)} {padL(money(m.amount), 10)}
+                      {padR(fmtDate(m.matDate), 10)} {padR(m.description, 36)}{" "}
+                      {padL(money(m.amount), 16)}
                     </>
                   ) : sort === "desc" ? (
                     <>
-                      {padR(m.description, 34)} {padR(m.empNo, 6)}{" "}
-                      {padR(fmtDate(m.matDate), 12)} {padL(money(m.amount), 10)}
+                      {padR(m.empNo, 10)} {padR(fmtDate(m.matDate), 12)}{" "}
+                      {padL(money(m.amount), 16)}
+                    </>
+                  ) : sort === "date" ? (
+                    <>
+                      {padR(m.empNo, 10)} {padR(m.description, 36)}{" "}
+                      {padL(money(m.amount), 16)}
                     </>
                   ) : (
                     <>
                       {padR(fmtDate(m.matDate), 12)} {padR(m.description, 36)}{" "}
-                      {padL(money(m.amount), 12)}{" "}
-                      {padR(`${m.empNo} ${m.empName || ""}`, 20)}
+                      {padL(money(m.amount), 12)}
                     </>
                   )}
                 </button>
@@ -223,7 +229,7 @@ export function MaterialBrowse({
 
       {editing && (
         <Dialog
-          title="Material Transaction"
+          title="******    Material Maintenance   ******"
           foot="Esc=Cancel  Ctrl-W=Save & Exit"
         >
           <div className="dos-form">

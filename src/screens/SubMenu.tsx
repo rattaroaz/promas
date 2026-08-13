@@ -62,7 +62,7 @@ export function SubMenu({
     <Screen
       statusKeys={MENU_KEYS}
       title={title}
-      message="Select item (Enter)  —  Esc=Return to Main Menu"
+      message=""
     >
       <div className="dos-main-wrap">
         <div className="dos-menu-frame">

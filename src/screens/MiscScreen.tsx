@@ -1,22 +1,35 @@
 /**
- * Original Miscellaneous menu (exactly 3 items):
+ * Original Miscellaneous menu:
  *  1. Change System Date
- *  2. Reindex Data Files
+ *  2. Reindex Data Files  (also offered original-data import)
  *  3. Form Management
+ *  4. Import Database     — pick original PROMAS folder and load all .DBF files
  */
 import { useEffect, useState } from "react";
-import { api, SysData, FormRecord } from "../api";
+import { open } from "@tauri-apps/plugin-dialog";
+import { api, SysData, FormRecord, ImportResult } from "../api";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, FORM_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { SubMenu, MenuItem } from "./SubMenu";
 import { padR } from "../dos/utils";
+import { log } from "../lib/observability";
 
 const MISC_ITEMS: MenuItem[] = [
   { id: "date", num: "1", label: "Change System Date", accel: "C" },
   { id: "reindex", num: "2", label: "Reindex Data Files", accel: "R" },
   { id: "forms", num: "3", label: "Form Management", accel: "F" },
+  { id: "import", num: "4", label: "Import Database", accel: "I" },
 ];
+
+function formatImportSummary(r: ImportResult): string {
+  const lines = [
+    `Imported original PROMAS data — Companies ${r.companies}  Properties ${r.properties}  Employees ${r.employees}`,
+    `Invoices ${r.invoices}  Lines ${r.invoiceLines}  Receipts ${r.cashReceipts}  Orders ${r.workOrders}  Estimates ${r.estimates}  Materials ${r.materials}`,
+  ];
+  if (r.messages.length) lines.push(r.messages.slice(-3).join("  "));
+  return lines.join("  ");
+}
 
 export function MiscScreen({ onBack }: { onBack: () => void }) {
   const [screen, setScreen] = useState<string | null>(null);
@@ -27,6 +40,8 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
   );
   const [confirmReindex, setConfirmReindex] = useState(false);
   const [reindexing, setReindexing] = useState(false);
+  const [confirmImport, setConfirmImport] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [forms, setForms] = useState<FormRecord[]>([]);
   const [editForm, setEditForm] = useState<FormRecord | null>(null);
   const [help, setHelp] = useState(false);
@@ -59,6 +74,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
       onEscape: () => {
         if (help) setHelp(false);
         else if (confirmReindex) setConfirmReindex(false);
+        else if (confirmImport) setConfirmImport(false);
         else if (editForm) setEditForm(null);
         else if (screen) setScreen(null);
         else onBack();
@@ -81,6 +97,16 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
           }
           if (ch === "n" || ch === "N") {
             setConfirmReindex(false);
+            return true;
+          }
+        }
+        if (confirmImport) {
+          if (ch === "y" || ch === "Y") {
+            void doImportOriginal();
+            return true;
+          }
+          if (ch === "n" || ch === "N") {
+            setConfirmImport(false);
             return true;
           }
         }
@@ -119,6 +145,30 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
     }
   }
 
+  async function doImportOriginal() {
+    setConfirmImport(false);
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Select original PROMAS folder (app folder, COMPBACK, or .DBF folder)",
+      });
+      if (!selected || Array.isArray(selected)) return;
+      setImporting(true);
+      setMsg("Importing original PROMAS data files…");
+      setMsgKind("info");
+      log.info("db", "legacy dbf import started", { folder: selected });
+      const result = await api.importDbfFolder(selected);
+      setMsg(formatImportSummary(result));
+      setMsgKind("info");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function saveForm() {
     if (!editForm?.formNo.trim()) {
       setMsg("--> Form # required !!");
@@ -146,10 +196,11 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         onSelect={(id) => {
           if (id === "reindex") {
             setScreen("reindex");
-            setConfirmReindex(true);
-            setMsg(
-              "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***  Are you sure(Y/N) ?"
-            );
+            setConfirmReindex(false);
+            setMsg("");
+          } else if (id === "import") {
+            setScreen("import");
+            setMsg("");
           } else {
             setScreen(id);
             setMsg("");
@@ -294,40 +345,83 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
     );
   }
 
-  if (screen === "reindex") {
+  if (screen === "reindex" || screen === "import") {
+    const isImport = screen === "import";
     return (
       <Screen
         statusKeys={[
           { key: "Esc", label: "Exit" },
           { key: "Y/N", label: "Confirm" },
         ]}
-        title=" *** Reindex Data Files *** "
+        title={
+          isImport ? " *** Import Database *** " : " *** Reindex Data Files *** "
+        }
         message={
           msg ||
-          "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***"
+          (isImport
+            ? "Select the original PROMAS folder to import all .DBF files"
+            : "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***")
         }
         messageKind={msgKind}
       >
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "52ch" }}>
-            <div className="menu-header"> Reindex Data Files </div>
+          <div className="dos-menu-frame" style={{ minWidth: "58ch" }}>
+            <div className="menu-header">
+              {isImport ? " Import Original Database " : " Reindex Data Files "}
+            </div>
             <div className="menu-body" style={{ padding: "1em 2ch" }}>
               <div style={{ color: "var(--dos-yellow)", marginBottom: "1em" }}>
-                *** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***
+                {isImport
+                  ? "This REPLACES all current companies, invoices, receipts, and related files."
+                  : "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***"}
               </div>
               <div style={{ marginBottom: "1em" }}>
-                Rebuilds internal indexes (SQLite REINDEX / ANALYZE).
-                <br />
-                Original rebuilt COMPANY, PROPERTY, SALES, CASHRECT, etc. NTX
-                files.
+                {isImport ? (
+                  <>
+                    Choose the original application folder. PROMAS finds{" "}
+                    COMPANY.DBF automatically in that folder, in COMPBACK, or in
+                    COMPBACK\PROMAS (for example DKSKapp\COMPBACK\PROMAS).
+                  </>
+                ) : (
+                  <>
+                    Rebuilds internal indexes (SQLite REINDEX / ANALYZE).
+                    <br />
+                    Original rebuilt COMPANY, PROPERTY, SALES, CASHRECT, etc. NTX
+                    files.
+                    <br />
+                    <br />
+                    Import Database loads all original .DBF files from the old
+                    PROMAS folder.
+                  </>
+                )}
               </div>
-              <button
-                className="dos-btn"
-                disabled={reindexing}
-                onClick={() => setConfirmReindex(true)}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6em",
+                }}
               >
-                {reindexing ? "Reindexing Data Files......" : "Reindex Now"}
-              </button>
+                {!isImport && (
+                  <button
+                    className="dos-btn"
+                    disabled={reindexing || importing}
+                    onClick={() => setConfirmReindex(true)}
+                  >
+                    {reindexing ? "Reindexing Data Files......" : "Reindex Now"}
+                  </button>
+                )}
+                <button
+                  className="dos-btn"
+                  disabled={reindexing || importing}
+                  onClick={() => setConfirmImport(true)}
+                  autoFocus={isImport}
+                >
+                  {importing
+                    ? "Importing original data......"
+                    : "Select Original PROMAS Folder & Import"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -336,6 +430,13 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
             question="Are you sure(Y/N) ?"
             onYes={doReindex}
             onNo={() => setConfirmReindex(false)}
+          />
+        )}
+        {confirmImport && (
+          <Prompt
+            question="Import REPLACES all current data. Are you sure(Y/N) ?"
+            onYes={() => void doImportOriginal()}
+            onNo={() => setConfirmImport(false)}
           />
         )}
         {help && <HelpOverlay onClose={() => setHelp(false)} />}
