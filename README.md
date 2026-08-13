@@ -106,8 +106,8 @@ Pushing a `v*` tag runs the **Release** workflow, which builds **NSIS `.exe` / M
 
 ```bash
 git push origin main
-git tag v2.4.4          # bump version files first if needed
-git push origin v2.4.4
+git tag v2.4.5          # bump version files first if needed
+git push origin v2.4.5
 ```
 
 Then open **Actions → Release**. When green, download `PROMAS_*_x64-setup.exe` from the Release assets — ignore “Source code”.

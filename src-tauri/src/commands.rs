@@ -198,6 +198,7 @@ pub fn list_companies(state: State<DbState>, params: ListParams) -> Result<Vec<C
                       OR company_no IN (
                            SELECT company_no FROM properties
                            WHERE street LIKE ?3 OR city LIKE ?3 OR state LIKE ?3 OR zip LIKE ?3
+                              OR contact LIKE ?3 OR manager LIKE ?3
                       ))
                ORDER BY company_no
                LIMIT ?4 OFFSET ?5"#,
@@ -334,7 +335,8 @@ pub fn list_properties(state: State<DbState>, params: ListParams) -> Result<Vec<
                WHERE (?1 OR voided=0)
                  AND (?2='' OR company_no=?2)
                  AND (?3='' OR pro_no LIKE ?4 OR name LIKE ?4 OR phone LIKE ?4
-                      OR street LIKE ?4 OR city LIKE ?4 OR state LIKE ?4 OR zip LIKE ?4)
+                      OR street LIKE ?4 OR city LIKE ?4 OR state LIKE ?4 OR zip LIKE ?4
+                      OR contact LIKE ?4 OR manager LIKE ?4)
                ORDER BY company_no, pro_no
                LIMIT ?5 OFFSET ?6"#,
         )
@@ -601,8 +603,9 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
                  AND (?3='' OR i.sales_date>=?3)
                  AND (?4='' OR i.sales_date<=?4)
                  AND (?5='' OR CAST(i.invoice AS TEXT) LIKE ?6 OR i.sales_unit LIKE ?6
-                      OR c.name LIKE ?6 OR i.cust_po_no LIKE ?6
-                      OR p.street LIKE ?6 OR p.city LIKE ?6 OR p.zip LIKE ?6 OR p.name LIKE ?6)
+                      OR c.name LIKE ?6 OR c.contact LIKE ?6 OR i.cust_po_no LIKE ?6
+                      OR p.street LIKE ?6 OR p.city LIKE ?6 OR p.zip LIKE ?6 OR p.name LIKE ?6
+                      OR p.contact LIKE ?6 OR p.manager LIKE ?6)
                ORDER BY i.sales_date DESC, i.invoice DESC
                LIMIT ?7 OFFSET ?8"#,
         )
@@ -743,7 +746,8 @@ pub fn list_cash_receipts(
                  AND (?1='' OR cr.company_no=?1)
                  AND (?2='' OR cr.pay_date>=?2)
                  AND (?3='' OR cr.pay_date<=?3)
-                 AND (?4='' OR CAST(cr.invoice AS TEXT) LIKE ?5 OR cr.pay_ref_no LIKE ?5 OR c.name LIKE ?5)
+                 AND (?4='' OR CAST(cr.invoice AS TEXT) LIKE ?5 OR cr.pay_ref_no LIKE ?5 OR c.name LIKE ?5
+                      OR c.contact LIKE ?5)
                ORDER BY cr.pay_date DESC, cr.id DESC
                LIMIT ?6"#,
         )
@@ -805,7 +809,9 @@ pub fn list_work_orders(
                WHERE (?1 OR w.voided=0)
                  AND (?2='' OR w.company_no=?2)
                  AND (?3='' OR CAST(w.order_no AS TEXT) LIKE ?4 OR w.order_unit LIKE ?4 OR c.name LIKE ?4
-                      OR p.street LIKE ?4 OR p.city LIKE ?4 OR p.zip LIKE ?4 OR p.name LIKE ?4)
+                      OR c.contact LIKE ?4
+                      OR p.street LIKE ?4 OR p.city LIKE ?4 OR p.zip LIKE ?4 OR p.name LIKE ?4
+                      OR p.contact LIKE ?4 OR p.manager LIKE ?4)
                ORDER BY w.order_date DESC, w.order_no DESC
                LIMIT ?5"#,
         )

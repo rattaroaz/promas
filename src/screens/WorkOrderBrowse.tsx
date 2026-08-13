@@ -168,7 +168,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 setSearch(e.target.value);
                 setIndex(0);
               }}
-              placeholder="Order#, Company, Address, Unit"
+              placeholder="Order#, Company, Contact, Address, Unit"
             />
           </div>
           <div className="dos-browse">
