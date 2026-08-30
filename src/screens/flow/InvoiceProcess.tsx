@@ -494,7 +494,7 @@ export function InvoiceProcess({
             editing.invoice.voided
               ? "*** V O I D  I N V O I C E ***"
               : editing.invoice.invoice
-                ? `Invoice No........ ${editing.invoice.invoice}${
+                ? `Invoice Number ${editing.invoice.invoice}${
                     (editing.invoice.custPoNo ?? "").trim()
                       ? `  ${editing.invoice.custPoNo.trim()}`
                       : ""

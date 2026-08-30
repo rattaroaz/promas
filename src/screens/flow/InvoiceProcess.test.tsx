@@ -4,6 +4,8 @@ import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { InvoiceProcess } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 import {
+  COLOR_CHANGE_CEILING_SWISS_COFFEE,
+  COLOR_CHANGE_WALLS_NAVAJO_WHITE,
   INTERIOR_PAINT_WALL_CLOSET,
   PAINTING_OF_CEILING,
   PAINT_BASE_BOARD,
@@ -82,6 +84,7 @@ describe("InvoiceProcess", () => {
     });
     vi.mocked(api.getInvoice).mockResolvedValue({ invoice: fixture, lines: [] });
     vi.mocked(api.saveInvoice).mockResolvedValue(1);
+    vi.mocked(api.voidInvoice).mockResolvedValue(undefined);
   });
 
   it("loads invoices for the selected property", async () => {
@@ -105,7 +108,8 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /A1/i }));
-    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 1\s+PO-441/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Invoice Number 1\s+PO-441/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Invoice Number")).toHaveValue(1);
     await waitFor(() => {
       expect(api.getInvoice).toHaveBeenCalled();
     });
@@ -121,8 +125,8 @@ describe("InvoiceProcess", () => {
         new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
       );
     });
-    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Invoice Number/i)).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
     const dateInput = document.querySelector(
       'input[type="date"]'
     ) as HTMLInputElement;
@@ -137,8 +141,8 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Invoice Number/i)).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
     expect(api.getSysdata).toHaveBeenCalled();
   });
 
@@ -149,7 +153,7 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^Ins Add$/i }));
-    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
   });
 
   it("goes back when the Esc status hint is clicked", async () => {
@@ -250,7 +254,9 @@ describe("InvoiceProcess", () => {
     expect(descriptions).toEqual([
       "",
       INTERIOR_PAINT_WALL_CLOSET,
+      COLOR_CHANGE_WALLS_NAVAJO_WHITE,
       PAINTING_OF_CEILING,
+      COLOR_CHANGE_CEILING_SWISS_COFFEE,
       PAINT_BASE_BOARD,
       PLASTIC_COVERING_OF_FLOOR,
       PAINT_ALL_ENAMEL_SURFACES,
@@ -330,6 +336,81 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(130);
   });
 
+  it("prices color-change descriptions at 80% of the related paint item", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    await user.selectOptions(
+      await screen.findByLabelText("Line 1 description"),
+      COLOR_CHANGE_CEILING_SWISS_COFFEE
+    );
+    await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(92);
+    await user.selectOptions(
+      screen.getByLabelText("Line 1 description"),
+      COLOR_CHANGE_WALLS_NAVAJO_WHITE
+    );
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(196);
+  });
+
+  it("saves a new invoice after Ctrl-W confirm", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    await user.type(screen.getByLabelText("Line 1 work person name"), "Ana Cruz");
+    await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    await waitFor(() => {
+      expect(api.saveInvoice).toHaveBeenCalled();
+    });
+    expect(api.saveWorkPerson).toHaveBeenCalledWith("Ana Cruz");
+    expect(api.saveInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoice: expect.objectContaining({
+          companyNo: "1000",
+          proNo: "01",
+          invoice: 2,
+        }),
+      })
+    );
+  });
+
+  it("voids the selected invoice after Del confirm", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^Del Void$/i }));
+    expect(screen.getByText(/Do you want Void/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    await waitFor(() => {
+      expect(api.voidInvoice).toHaveBeenCalledWith(
+        "1000",
+        "01",
+        "2026-01-15",
+        1
+      );
+    });
+  });
+
+  it("shows an empty-state when the property has no invoices", async () => {
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    expect(
+      await screen.findByText(/No invoices for this property/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^New Invoice$/i })).toBeInTheDocument();
+  });
+
   it("activates new-invoice status hints when they are clicked", async () => {
     const user = userEvent.setup();
     renderApp(
@@ -337,7 +418,7 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
 
     await user.click(screen.getByRole("button", { name: /^F1 Help$/i }));
     expect(screen.getByText(/\*\*\* Function Key Description \*\*\*/i)).toBeInTheDocument();
@@ -350,7 +431,7 @@ describe("InvoiceProcess", () => {
     await user.click(screen.getByRole("button", { name: /^N$/i }));
 
     await user.click(screen.getByRole("button", { name: /^Esc Cancel$/i }));
-    expect(screen.queryByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Invoice Number")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^New Invoice$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Esc Exit$/i })).toBeInTheDocument();
   });

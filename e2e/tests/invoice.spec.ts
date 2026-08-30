@@ -34,7 +34,8 @@ test.describe("invoice process", () => {
     await page
       .getByRole("button", { name: /01\/15\/2026\s+1\s+A1\s+250\.00/ })
       .click();
-    await expect(page.getByText(/Invoice No/i)).toBeVisible();
+    await expect(page.getByLabel("Invoice Number")).toHaveValue("1");
+    await expect(page.getByText(/Invoice Number 1/i)).toBeVisible();
   });
 
   test("New Invoice skips date/number prompt and opens the form", async ({
@@ -42,8 +43,31 @@ test.describe("invoice process", () => {
   }) => {
     await openInvoiceBrowse(page);
     await page.getByRole("button", { name: /^New Invoice$/i }).click();
-    await expect(page.getByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeVisible();
     await expect(page.getByLabel("Invoice Number")).toHaveValue("2");
+    await expect(page.getByText(/Invoice Number 2/i)).toBeVisible();
     await expect(page.getByText(/Due Date/i)).toBeVisible();
   });
+
+  test("fills a preset line price from size", async ({ page }) => {
+    await openInvoiceBrowse(page);
+    await page.getByRole("button", { name: /^New Invoice$/i }).click();
+    await page.getByLabel("Line 1 description").selectOption(
+      "Interior Painting of Wall/Closet Inside"
+    );
+    await page.getByLabel("Size", { exact: true }).selectOption("1+1");
+    await expect(page.getByLabel("Price 1")).toHaveValue("245");
+  });
+
+  test("fills a color-change line at 80% of the related paint price", async ({
+    page,
+  }) => {
+    await openInvoiceBrowse(page);
+    await page.getByRole("button", { name: /^New Invoice$/i }).click();
+    await page.getByLabel("Line 1 description").selectOption(
+      "Color Change of Ceiling to Swiss Coffee"
+    );
+    await page.getByLabel("Size", { exact: true }).selectOption("1+1");
+    await expect(page.getByLabel("Price 1")).toHaveValue("92");
+  });
 });
+
