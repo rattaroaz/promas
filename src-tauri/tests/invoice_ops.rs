@@ -20,13 +20,13 @@ fn temp_conn(label: &str) -> (std::path::PathBuf, rusqlite::Connection) {
 
 fn seed_company(conn: &rusqlite::Connection) {
     conn.execute(
-        "INSERT INTO companies (company_no, name, phone) VALUES (?1, ?2, ?3)",
-        params!["1000", "ACME Prop", "555-0100"],
+        "INSERT INTO companies (company_no, name, phone, contact) VALUES (?1, ?2, ?3, ?4)",
+        params!["1000", "ACME Prop", "555-0100", "ELAINE"],
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO properties (company_no, pro_no, name) VALUES (?1, ?2, ?3)",
-        params!["1000", "01", "Bldg A"],
+        "INSERT INTO properties (company_no, pro_no, name, street, city, zip) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params!["1000", "01", "Bldg A", "1105 QUAIL ST.", "NEWPORT BEACH", "92660"],
     )
     .unwrap();
 }
@@ -108,6 +108,22 @@ fn save_invoice_allocates_number_and_totals() {
     assert_eq!(total, 150.0);
     assert_eq!(bal, 150.0);
     assert_eq!(next, 2);
+
+    let mut assigned = blank_invoice();
+    assigned.invoice = 2;
+    let inv_no2 = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: assigned,
+            lines: vec![line(10.0)],
+        },
+    )
+    .expect("save preassigned");
+    assert_eq!(inv_no2, 2);
+    let next2: i64 = conn
+        .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(next2, 3);
 
     let lines: i64 = conn
         .query_row(
@@ -227,13 +243,33 @@ fn report_aging_buckets_by_age() {
     )
     .unwrap();
 
-    let rows = ops::report_aging(&conn, Some("2026-02-01".into())).unwrap();
+    let rows = ops::report_aging(&conn, Some("2026-02-01".into()), None).unwrap();
     assert_eq!(rows.len(), 1);
     let row = &rows[0];
     assert_eq!(row.company_no, "1000");
+    assert_eq!(row.contact, "ELAINE");
     assert_eq!(row.current, 100.0);
     assert_eq!(row.days_30, 50.0);
     assert_eq!(row.open_bal, 150.0);
+
+    let by_contact =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("ELAINE".into())).unwrap();
+    assert_eq!(by_contact.len(), 1);
+    let by_name =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("ACME".into())).unwrap();
+    assert_eq!(by_name.len(), 1);
+    let by_no =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("1000".into())).unwrap();
+    assert_eq!(by_no.len(), 1);
+    let by_street =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("QUAIL".into())).unwrap();
+    assert_eq!(by_street.len(), 1);
+    let by_city =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("NEWPORT".into())).unwrap();
+    assert_eq!(by_city.len(), 1);
+    let miss =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("NOPE".into())).unwrap();
+    assert!(miss.is_empty());
 
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -337,7 +373,7 @@ fn voided_invoices_excluded_from_aging_and_sales() {
     .unwrap();
     ops::void_invoice(&conn, "1000", "01", "2026-01-15", inv_no).unwrap();
 
-    let aging = ops::report_aging(&conn, Some("2026-02-01".into())).unwrap();
+    let aging = ops::report_aging(&conn, Some("2026-02-01".into()), None).unwrap();
     assert!(aging.is_empty() || aging.iter().all(|r| r.open_bal < 0.01));
 
     let sales = ops::report_sales_analysis(
@@ -534,6 +570,83 @@ fn two_receipts_sum_to_pay_total() {
         .unwrap();
     assert_eq!(pay, 250.5);
     assert_eq!(bal, 249.5);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn list_cash_receipts_matches_property_address() {
+    let (dir, mut conn) = temp_conn("cash_addr");
+    seed_company(&conn);
+    conn.execute(
+        "UPDATE properties SET street='1105 QUAIL ST.', city='NEWPORT BEACH', zip='92660' WHERE company_no='1000' AND pro_no='01'",
+        [],
+    )
+    .unwrap();
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(250.0)],
+        },
+    )
+    .unwrap();
+    ops::save_cash_receipt(
+        &mut conn,
+        CashReceipt {
+            id: None,
+            company_no: "1000".into(),
+            sales_date: "2026-01-15".into(),
+            invoice: inv_no,
+            payment: 80.0,
+            pay_ref_no: "CHK".into(),
+            pay_date: "2026-01-20".into(),
+            voided: false,
+            company_name: None,
+        },
+    )
+    .unwrap();
+
+    let empty = ListParams {
+        search: None,
+        company_no: None,
+        from_date: None,
+        to_date: None,
+        include_voided: None,
+        limit: None,
+        offset: None,
+        sort: None,
+    };
+    let by_street = ops::list_cash_receipts(
+        &conn,
+        &ListParams {
+            search: Some("QUAIL".into()),
+            ..empty.clone()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_street.len(), 1);
+    assert_eq!(by_street[0].invoice, inv_no);
+
+    let by_city = ops::list_cash_receipts(
+        &conn,
+        &ListParams {
+            search: Some("NEWPORT".into()),
+            ..empty.clone()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_city.len(), 1);
+
+    let miss = ops::list_cash_receipts(
+        &conn,
+        &ListParams {
+            search: Some("NOPE".into()),
+            ..empty
+        },
+    )
+    .unwrap();
+    assert!(miss.is_empty());
 
     let _ = std::fs::remove_dir_all(&dir);
 }

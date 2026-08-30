@@ -27,6 +27,7 @@ export default defineConfig({
           "@tauri-apps/plugin-process": `${rootDir}/e2e/mocks/tauriProcess.ts`,
           "@tauri-apps/plugin-dialog": `${rootDir}/e2e/mocks/tauriDialog.ts`,
           "@tauri-apps/api/core": `${rootDir}/e2e/mocks/tauriCore.ts`,
+          "@tauri-apps/api/event": `${rootDir}/e2e/mocks/tauriEvent.ts`,
           "@tauri-apps/api/window": `${rootDir}/e2e/mocks/tauriWindow.ts`,
           "@tauri-apps/plugin-log": `${rootDir}/e2e/mocks/tauriLog.ts`,
         },

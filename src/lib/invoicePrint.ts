@@ -476,41 +476,8 @@ export async function printInvoiceOnTemplate(
     type: "application/pdf",
   });
   const url = URL.createObjectURL(blob);
-
-  const win = window.open(url, "_blank", "noopener,noreferrer");
-  if (win) {
-    setTimeout(() => {
-      try {
-        win.focus();
-        win.print();
-      } catch {
-        /* manual */
-      }
-    }, 600);
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    return;
-  }
-
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  iframe.onload = () => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } finally {
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-        URL.revokeObjectURL(url);
-      }, 60_000);
-    }
-  };
+  const { openPrintPreview } = await import("../stores/printPreviewStore");
+  openPrintPreview(url);
 }
 
 export async function downloadInvoicePdf(

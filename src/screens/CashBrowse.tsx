@@ -171,6 +171,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
                 setSearch(e.target.value);
                 setIndex(0);
               }}
+              placeholder="Invoice#, Company, Contact, or Property Address"
             />
             <label>From:</label>
             <DateInput

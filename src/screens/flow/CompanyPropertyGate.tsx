@@ -73,6 +73,25 @@ function matchesPropertyAddress(p: Property, q: string): boolean {
   );
 }
 
+export function formatPropertyAddress(p: Property): string {
+  return [p.street, p.city, p.state, p.zip]
+    .map((s) => (s ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function formatPropertySearchRow(
+  p: Property,
+  companyContact: string,
+  includeCompanyNo: boolean
+): string {
+  const addr = formatPropertyAddress(p) || p.name;
+  if (includeCompanyNo) {
+    return `${padR(p.companyNo, 6)}${padR(p.proNo, 6)}${padR(addr, 28)}${padR(companyContact, 14)}`;
+  }
+  return `${padR(p.proNo, 6)}${padR(p.name, 16)}${padR(addr, 24)}${padR(companyContact, 14)}`;
+}
+
 export function CompanyPropertyGate({
   process,
   onBack,
@@ -103,6 +122,9 @@ export function CompanyPropertyGate({
   );
   const [askAdd, setAskAdd] = useState(false);
   const [help, setHelp] = useState(false);
+  const [companyContacts, setCompanyContacts] = useState<Record<string, string>>(
+    {}
+  );
 
   const coBrowse = useBrowseIndex(companies.length);
   const prBrowse = useBrowseIndex(properties.length);
@@ -240,10 +262,10 @@ export function CompanyPropertyGate({
         setEditPr(emptyProperty(company.companyNo));
         return;
       }
-      setProperties(all);
-      prBrowse.setIndex(0);
-      setPhase("pr-browse");
-      setMsg("Enter=Select  Ins=Add  Ctrl-Home=Edit  Esc=Back");
+      await showPropertyBrowse(
+        all,
+        "Enter=Select  Ins=Add  Ctrl-Home=Edit  Esc=Back"
+      );
       return;
     }
     if (!q) {
@@ -274,11 +296,10 @@ export function CompanyPropertyGate({
       await pickPropertyWithCompany(list[0]);
       return;
     }
-    setProperties(list);
-    prBrowse.setIndex(0);
-    setPhase("pr-browse");
-    setMsg("Enter=Select  Ins=Add  Ctrl-Home=Edit  Esc=Back");
-    setMsgKind("default");
+    await showPropertyBrowse(
+      list,
+      "Enter=Select  Ins=Add  Ctrl-Home=Edit  Esc=Back"
+    );
   }
 
   async function pickPropertyWithCompany(p: Property) {
@@ -333,10 +354,7 @@ export function CompanyPropertyGate({
         return;
       }
       setCompany(null);
-      setProperties(all);
-      prBrowse.setIndex(0);
-      setPhase("pr-browse");
-      setMsg("Enter=Select  Esc=Back  (all properties)");
+      await showPropertyBrowse(all, "Enter=Select  Esc=Back  (all properties)");
       return;
     }
     if (!q) {
@@ -366,10 +384,30 @@ export function CompanyPropertyGate({
       return;
     }
     setCompany(null);
+    await showPropertyBrowse(list, "Enter=Select  Esc=Back  (matched properties)");
+  }
+
+  async function loadCompanyContacts(list: Property[]) {
+    const needed = new Set(list.map((p) => p.companyNo));
+    if (company && needed.size <= 1) {
+      setCompanyContacts({ [company.companyNo]: company.contact });
+      return;
+    }
+    const all = await api.listCompanies({ limit: 2000 });
+    const map: Record<string, string> = {};
+    for (const c of all) {
+      if (needed.has(c.companyNo)) map[c.companyNo] = c.contact;
+    }
+    if (company) map[company.companyNo] = company.contact;
+    setCompanyContacts(map);
+  }
+
+  async function showPropertyBrowse(list: Property[], browseMsg: string) {
     setProperties(list);
     prBrowse.setIndex(0);
+    await loadCompanyContacts(list);
     setPhase("pr-browse");
-    setMsg("Enter=Select  Esc=Back  (matched properties)");
+    setMsg(browseMsg);
     setMsgKind("default");
   }
 
@@ -789,7 +827,7 @@ export function CompanyPropertyGate({
       {phase === "co-browse" && (
         <div className="dos-browse">
           <div className="dos-browse-header">
-            {"Company NO...Company Name.......................Phone........"}
+            {"Company NO...Company Name.......................Phone........Contact"}
           </div>
           <div className="dos-browse-body">
             {companies.map((c, i) => (
@@ -803,6 +841,7 @@ export function CompanyPropertyGate({
                 {padR(c.companyNo, 12)}
                 {padR(c.name, 35)}
                 {padR(c.phone, 13)}
+                {padR(c.contact, 18)}
               </button>
             ))}
           </div>
@@ -910,8 +949,8 @@ export function CompanyPropertyGate({
         <div className="dos-browse">
           <div className="dos-browse-header">
             {company
-              ? "Property NO..Property Name......................Phone........"
-              : "Company NO...Property NO..Property Name......................Phone........"}
+              ? "ProNO  Name            Address                  Co.Contact"
+              : "CoNO  ProNO  Address                      Co.Contact"}
           </div>
           <div className="dos-browse-body">
             {properties.map((p, i) => (
@@ -921,9 +960,12 @@ export function CompanyPropertyGate({
                 onMouseEnter={() => prBrowse.setIndex(i)}
                 onClick={() => selectProperty(p)}
               >
-                {company
-                  ? `${padR(p.proNo, 12)}${padR(p.name, 35)}${padR(p.phone, 13)}`
-                  : `${padR(p.companyNo, 12)}${padR(p.proNo, 12)}${padR(p.name, 35)}${padR(p.phone, 13)}`}
+                {formatPropertySearchRow(
+                  p,
+                  companyContacts[p.companyNo] ??
+                    (company?.companyNo === p.companyNo ? company.contact : ""),
+                  !company
+                )}
               </button>
             ))}
           </div>

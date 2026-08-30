@@ -77,18 +77,16 @@ pub fn save_invoice(conn: &mut Connection, data: InvoiceWithLines) -> Result<i64
     let tx = conn.transaction().map_err(map_err)?;
     let mut inv = data.invoice;
 
+    let stored_next: i64 = tx
+        .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| r.get(0))
+        .unwrap_or(1);
     if inv.invoice == 0 {
-        let next: i64 = tx
-            .query_row(
-                "SELECT next_invoice FROM sysdata WHERE id=1",
-                [],
-                |r| r.get(0),
-            )
-            .map_err(map_err)?;
-        inv.invoice = next;
+        inv.invoice = stored_next.max(1);
+    }
+    if inv.invoice + 1 > stored_next {
         tx.execute(
             "UPDATE sysdata SET next_invoice=? WHERE id=1",
-            params![next + 1],
+            params![inv.invoice + 1],
         )
         .map_err(map_err)?;
     }
@@ -281,6 +279,62 @@ pub fn delete_cash_receipt(conn: &mut Connection, id: i64) -> Result<(), String>
 
     tx.commit().map_err(map_err)?;
     Ok(())
+}
+
+pub fn list_cash_receipts(
+    conn: &Connection,
+    params: &ListParams,
+) -> Result<Vec<CashReceipt>, String> {
+    let search = params.search.clone().unwrap_or_default();
+    let company_no = params.company_no.clone().unwrap_or_default();
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let limit = params.limit.unwrap_or(200);
+    let like = format!("%{}%", search);
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT cr.id,cr.company_no,cr.sales_date,cr.invoice,cr.payment,cr.pay_ref_no,cr.pay_date,cr.voided,c.name
+               FROM cash_receipts cr
+               LEFT JOIN companies c ON c.company_no=cr.company_no
+               WHERE cr.voided=0
+                 AND (?1='' OR cr.company_no=?1)
+                 AND (?2='' OR cr.pay_date>=?2)
+                 AND (?3='' OR cr.pay_date<=?3)
+                 AND (?4='' OR CAST(cr.invoice AS TEXT) LIKE ?5 OR cr.pay_ref_no LIKE ?5 OR c.name LIKE ?5
+                      OR c.contact LIKE ?5
+                      OR EXISTS (
+                           SELECT 1 FROM invoices i
+                           LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
+                           WHERE i.company_no=cr.company_no
+                             AND i.sales_date=cr.sales_date
+                             AND i.invoice=cr.invoice
+                             AND (p.street LIKE ?5 OR p.city LIKE ?5 OR p.zip LIKE ?5
+                                  OR p.state LIKE ?5 OR p.name LIKE ?5)
+                      ))
+               ORDER BY cr.pay_date DESC, cr.id DESC
+               LIMIT ?6"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(
+            params![company_no, from_date, to_date, search, like, limit],
+            |r| {
+                Ok(CashReceipt {
+                    id: r.get(0)?,
+                    company_no: r.get(1)?,
+                    sales_date: r.get(2)?,
+                    invoice: r.get(3)?,
+                    payment: r.get(4)?,
+                    pay_ref_no: r.get(5)?,
+                    pay_date: r.get(6)?,
+                    voided: r.get::<_, i64>(7)? != 0,
+                    company_name: r.get(8)?,
+                })
+            },
+        )
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
 pub fn report_sales_analysis(
@@ -586,14 +640,17 @@ pub fn find_work_order(
 pub fn report_aging(
     conn: &Connection,
     as_of: Option<String>,
+    search: Option<String>,
 ) -> Result<Vec<AgingRow>, String> {
     let as_of = as_of.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+    let search = search.unwrap_or_default();
+    let like = format!("%{}%", search);
 
     // Age from invoice date (original invoice register / aging used Inv_Date).
     // Buckets: Current (0–30), >30 (31–60), >60 (61–90), >90 (91–120), >120.
     let mut stmt = conn
         .prepare(
-            r#"SELECT i.company_no, COALESCE(c.name,''), COALESCE(c.phone,''),
+            r#"SELECT i.company_no, COALESCE(c.name,''), COALESCE(c.contact,''), COALESCE(c.phone,''),
                SUM(CASE WHEN CAST(julianday(?1)-julianday(i.sales_date) AS INTEGER) <= 30 THEN i.balance ELSE 0 END),
                SUM(CASE WHEN CAST(julianday(?1)-julianday(i.sales_date) AS INTEGER) BETWEEN 31 AND 60 THEN i.balance ELSE 0 END),
                SUM(CASE WHEN CAST(julianday(?1)-julianday(i.sales_date) AS INTEGER) BETWEEN 61 AND 90 THEN i.balance ELSE 0 END),
@@ -603,22 +660,31 @@ pub fn report_aging(
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                WHERE i.voided=0 AND i.balance > 0.0005
+                 AND (?2='' OR i.company_no LIKE ?3 OR COALESCE(c.name,'') LIKE ?3
+                      OR COALESCE(c.contact,'') LIKE ?3
+                      OR EXISTS (
+                           SELECT 1 FROM properties p
+                           WHERE p.company_no=i.company_no
+                             AND (p.street LIKE ?3 OR p.city LIKE ?3 OR p.zip LIKE ?3
+                                  OR p.state LIKE ?3 OR p.name LIKE ?3)
+                      ))
                GROUP BY i.company_no
                ORDER BY i.company_no"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![as_of], |r| {
+        .query_map(params![as_of, search, like], |r| {
             Ok(AgingRow {
                 company_no: r.get(0)?,
                 company_name: r.get(1)?,
-                phone: r.get(2)?,
-                current: r.get(3)?,
-                days_30: r.get(4)?,
-                days_60: r.get(5)?,
-                days_90: r.get(6)?,
-                days_120: r.get(7)?,
-                open_bal: r.get(8)?,
+                contact: r.get(2)?,
+                phone: r.get(3)?,
+                current: r.get(4)?,
+                days_30: r.get(5)?,
+                days_60: r.get(6)?,
+                days_90: r.get(7)?,
+                days_120: r.get(8)?,
+                open_bal: r.get(9)?,
             })
         })
         .map_err(map_err)?;
@@ -1209,7 +1275,7 @@ mod tests {
         )
         .unwrap();
 
-        let rows = report_aging(&conn, Some("2020-03-15".into())).unwrap();
+        let rows = report_aging(&conn, Some("2020-03-15".into()), None).unwrap();
         assert_eq!(rows.len(), 1);
         let r = &rows[0];
         // days from Jan 1 to Mar 15 = 74 → bucket >60 (61-90)
@@ -1433,7 +1499,7 @@ mod tests {
         .unwrap();
         assert!(sales.is_empty());
 
-        let aging = report_aging(&conn, Some("2020-02-01".into())).unwrap();
+        let aging = report_aging(&conn, Some("2020-02-01".into()), None).unwrap();
         assert!(aging.is_empty());
 
         let _ = std::fs::remove_file(path);

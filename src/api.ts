@@ -269,6 +269,7 @@ export interface DashboardStats {
 export interface AgingRow {
   companyNo: string;
   companyName: string;
+  contact: string;
   phone: string;
   current: number;
   days30: number;
@@ -629,13 +630,15 @@ export const api = {
     invoke<LedgerLine[]>("report_customer_ledger", { companyNo }),
   reportMissingInvoices: (params: ListParams = {}) =>
     invoke<MissingInvoiceRow[]>("report_missing_invoices", { params }),
-  reportAging: async (asOf?: string) => {
+  reportAging: async (asOf?: string, search?: string) => {
     const rows = await invoke<AgingRow[]>("report_aging", {
       asOf: asOf ?? null,
+      search: search?.trim() ? search.trim() : null,
     });
     log.info("db", "report_aging completed", {
       rows: rows.length,
       asOf: asOf ?? null,
+      search: search?.trim() || null,
     });
     return rows;
   },

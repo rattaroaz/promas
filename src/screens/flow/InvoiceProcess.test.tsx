@@ -32,8 +32,10 @@ const fixture = {
   salesDate: "2026-01-15",
   invoice: 1,
   salesUnit: "A1",
+  salesSize: "1+1",
   salesTotal: 250,
   balance: 250,
+  custPoNo: "PO-441",
 };
 
 describe("InvoiceProcess", () => {
@@ -65,6 +67,10 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
     expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inv#\s+PO/i)).toBeInTheDocument();
+    expect(screen.getByText(/Unit\s+Size/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /A1\s+1\+1/i })).toBeInTheDocument();
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({ companyNo: "1000" })
     );
@@ -77,7 +83,7 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /A1/i }));
-    expect(await screen.findByText(/Invoice No/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 1\s+PO-441/i)).toBeInTheDocument();
     await waitFor(() => {
       expect(api.getInvoice).toHaveBeenCalled();
     });
@@ -94,5 +100,25 @@ describe("InvoiceProcess", () => {
       );
     });
     expect(await screen.findByText(/Enter Invoice Date/i)).toBeInTheDocument();
+  });
+
+  it("autopopulates the next invoice number on a new invoice", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
+      );
+    });
+    const order = await screen.findByLabelText(/Invoice Number/i);
+    await user.click(order);
+    await user.keyboard("{Enter}");
+    expect(await screen.findAllByText(/Manual Invoice/i)).not.toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeInTheDocument();
+    expect(api.getSysdata).toHaveBeenCalled();
   });
 });

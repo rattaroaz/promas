@@ -80,6 +80,8 @@ describe("CompanyPropertyGate", () => {
     await user.type(companyNo, "?{Enter}");
 
     expect(await screen.findByRole("button", { name: /1000\s+ACME/i })).toBeInTheDocument();
+    expect(screen.getByText(/Contact/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ELAINE/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /1000\s+ACME/i }));
 
     expect(
@@ -176,6 +178,29 @@ describe("CompanyPropertyGate", () => {
     });
   });
 
+  it("lists company contact in company search results", async () => {
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      company,
+      { ...emptyCompany(), companyNo: "2000", name: "BETA", contact: "ELAINE" },
+    ]);
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+
+    const contact = screen.getByRole("textbox", { name: "Company Contact" });
+    await user.click(contact);
+    await user.type(contact, "ELAINE{Enter}");
+
+    expect(await screen.findByRole("button", { name: /1000\s+ACME.*ELAINE/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2000\s+BETA.*ELAINE/i })).toBeInTheDocument();
+    expect(screen.getByText(/Phone\.+Contact/)).toBeInTheDocument();
+  });
+
   it("selects company from the first screen by contact", async () => {
     const user = userEvent.setup();
     renderApp(
@@ -196,6 +221,46 @@ describe("CompanyPropertyGate", () => {
     expect(api.listCompanies).toHaveBeenCalledWith(
       expect.objectContaining({ search: "ELAINE" })
     );
+  });
+
+  it("lists property address and company contact when several properties match", async () => {
+    const other = {
+      ...emptyProperty("2000"),
+      proNo: "02",
+      name: "Bldg B",
+      street: "1105 QUAIL ST.",
+      city: "IRVINE",
+      zip: "92618",
+    };
+    vi.mocked(api.listProperties).mockResolvedValue([property, other]);
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      company,
+      { ...emptyCompany(), companyNo: "2000", name: "BETA", contact: "JANE" },
+    ]);
+
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+
+    const street = screen.getByRole("textbox", { name: "Property Street" });
+    await user.click(street);
+    await user.type(street, "QUAIL{Enter}");
+
+    expect(
+      await screen.findByRole("button", { name: /1105 QUAIL ST\.\s*,\s*NEWPORT/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ELAINE/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /1105 QUAIL ST\.\s*,\s*IRVINE/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /JANE/i })).toBeInTheDocument();
+    expect(screen.getByText(/Address/i)).toBeInTheDocument();
+    expect(screen.getByText(/Co\.Contact/i)).toBeInTheDocument();
   });
 
   it("selects property from the first screen by contact", async () => {

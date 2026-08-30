@@ -111,12 +111,14 @@ export function InvoiceProcess({
     inv.salesDate = invDate || today();
     try {
       const sys = await api.getSysdata();
+      inv.invoice = Math.max(1, sys.nextInvoice || 1);
       const days = sys.termsDays || 7;
       const d = new Date(inv.salesDate);
       d.setDate(d.getDate() + days);
       inv.salesDue = d.toISOString().slice(0, 10);
       inv.salesTerm = `Net  ${days} Days`;
     } catch {
+      inv.invoice = inv.invoice || 1;
       const d = new Date(inv.salesDate);
       d.setDate(d.getDate() + 7);
       inv.salesDue = d.toISOString().slice(0, 10);
@@ -179,12 +181,14 @@ export function InvoiceProcess({
     inv.remark2 = full.order.remark2;
     try {
       const sys = await api.getSysdata();
+      inv.invoice = Math.max(1, sys.nextInvoice || 1);
       const days = sys.termsDays || 7;
       const d = new Date(inv.salesDate);
       d.setDate(d.getDate() + days);
       inv.salesDue = d.toISOString().slice(0, 10);
       inv.salesTerm = `Net  ${days} Days`;
     } catch {
+      inv.invoice = inv.invoice || 1;
       const d = new Date(inv.salesDate);
       d.setDate(d.getDate() + 7);
       inv.salesDue = d.toISOString().slice(0, 10);
@@ -522,7 +526,7 @@ export function InvoiceProcess({
             {property.paintTime}
           </div>
           <div className="dos-browse-header">
-            {"Inv#  Inv_Date  Unit/Size          Total      Paid     Balance St"}
+            {"Inv_Date  Inv#  PO           Unit     Size     Total      Paid     Balance St"}
           </div>
           <div className="dos-browse-body">
             {rows.map((inv, i) => (
@@ -535,12 +539,11 @@ export function InvoiceProcess({
                   openEdit(inv);
                 }}
               >
-                {padL(inv.invoice, 5)}{" "}
                 {padR(fmtDate(inv.salesDate), 10)}{" "}
-                {padR(
-                  `${inv.salesUnit}${inv.salesSize ? "/" + inv.salesSize : ""}`,
-                  16
-                )}{" "}
+                {padL(inv.invoice, 5)}{" "}
+                {padR(inv.custPoNo ?? "", 12)}{" "}
+                {padR(inv.salesUnit, 8)}{" "}
+                {padR(inv.salesSize, 8)}{" "}
                 {padL(money(inv.salesTotal), 10)}{" "}
                 {padL(money(inv.payTotal), 9)}{" "}
                 {padL(money(inv.balance), 10)}{" "}
@@ -573,13 +576,14 @@ export function InvoiceProcess({
                     autoFocus
                   />
                 </DotField>
-                <DotField label="Order No" width={18}>
+                <DotField label="Invoice Number" width={18}>
                   <input
                     className="dos-input w8"
+                    aria-label="Invoice Number"
                     value={orderNo}
                     onChange={(e) => setOrderNo(e.target.value)}
                     onFocus={() =>
-                      setMsg(" Enter Work Order No (Esc=Exit) !")
+                      setMsg(" Enter Invoice Number (Esc=Exit) !")
                     }
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -601,7 +605,11 @@ export function InvoiceProcess({
             editing.invoice.voided
               ? "*** V O I D  I N V O I C E ***"
               : editing.invoice.invoice
-                ? `Invoice No........ ${editing.invoice.invoice}`
+                ? `Invoice No........ ${editing.invoice.invoice}${
+                    (editing.invoice.custPoNo ?? "").trim()
+                      ? `  ${editing.invoice.custPoNo.trim()}`
+                      : ""
+                  }`
                 : "Enter Invoice Information"
           }
           wide

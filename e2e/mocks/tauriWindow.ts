@@ -3,5 +3,8 @@ export function getCurrentWindow() {
     close: async () => {
       /* no-op in browser E2E */
     },
+    onCloseRequested: async () => {
+      return () => {};
+    },
   };
 }
