@@ -20,6 +20,10 @@ vi.mock("@tauri-apps/api/event", () => ({
   },
 }));
 
+vi.mock("@tauri-apps/plugin-process", () => ({
+  exit: vi.fn(),
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     close: vi.fn(),

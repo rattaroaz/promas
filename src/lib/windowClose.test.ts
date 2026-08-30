@@ -4,6 +4,7 @@ const invoke = vi.fn();
 const listen = vi.fn();
 const onCloseRequested = vi.fn();
 const close = vi.fn();
+const exit = vi.fn();
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invoke(...args),
@@ -11,6 +12,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: (...args: unknown[]) => listen(...args),
+}));
+
+vi.mock("@tauri-apps/plugin-process", () => ({
+  exit: (...args: unknown[]) => exit(...args),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -26,6 +31,7 @@ describe("windowClose", () => {
     listen.mockReset();
     onCloseRequested.mockReset();
     close.mockReset();
+    exit.mockReset();
     listen.mockResolvedValue(() => {});
     onCloseRequested.mockResolvedValue(() => {});
     const { resetWindowCloseForTests } = await import("./windowClose");
@@ -37,11 +43,13 @@ describe("windowClose", () => {
     const { confirmAppQuit } = await import("./windowClose");
     await confirmAppQuit();
     expect(invoke).toHaveBeenCalledWith("confirm_quit");
+    expect(exit).toHaveBeenCalledWith(0);
     expect(close).not.toHaveBeenCalled();
   });
 
   it("confirmAppQuit falls back to window.close when invoke fails", async () => {
     invoke.mockRejectedValue(new Error("no tauri"));
+    exit.mockRejectedValue(new Error("no process plugin"));
     close.mockResolvedValue(undefined);
     const { confirmAppQuit } = await import("./windowClose");
     await confirmAppQuit();
