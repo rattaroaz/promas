@@ -730,47 +730,7 @@ pub fn list_cash_receipts(
     params: ListParams,
 ) -> Result<Vec<CashReceipt>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    let search = params.search.unwrap_or_default();
-    let company_no = params.company_no.unwrap_or_default();
-    let from_date = params.from_date.unwrap_or_default();
-    let to_date = params.to_date.unwrap_or_default();
-    let limit = params.limit.unwrap_or(200);
-    let like = format!("%{}%", search);
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT cr.id,cr.company_no,cr.sales_date,cr.invoice,cr.payment,cr.pay_ref_no,cr.pay_date,cr.voided,c.name
-               FROM cash_receipts cr
-               LEFT JOIN companies c ON c.company_no=cr.company_no
-               WHERE cr.voided=0
-                 AND (?1='' OR cr.company_no=?1)
-                 AND (?2='' OR cr.pay_date>=?2)
-                 AND (?3='' OR cr.pay_date<=?3)
-                 AND (?4='' OR CAST(cr.invoice AS TEXT) LIKE ?5 OR cr.pay_ref_no LIKE ?5 OR c.name LIKE ?5
-                      OR c.contact LIKE ?5)
-               ORDER BY cr.pay_date DESC, cr.id DESC
-               LIMIT ?6"#,
-        )
-        .map_err(map_err)?;
-    let rows = stmt
-        .query_map(
-            params![company_no, from_date, to_date, search, like, limit],
-            |r| {
-                Ok(CashReceipt {
-                    id: r.get(0)?,
-                    company_no: r.get(1)?,
-                    sales_date: r.get(2)?,
-                    invoice: r.get(3)?,
-                    payment: r.get(4)?,
-                    pay_ref_no: r.get(5)?,
-                    pay_date: r.get(6)?,
-                    voided: r.get::<_, i64>(7)? != 0,
-                    company_name: r.get(8)?,
-                })
-            },
-        )
-        .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    crate::ops::list_cash_receipts(&conn, &params)
 }
 
 #[tauri::command]
@@ -977,9 +937,13 @@ pub fn delete_material(state: State<DbState>, id: i64) -> Result<(), String> {
 // ─── Reports ──────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub fn report_aging(state: State<DbState>, as_of: Option<String>) -> Result<Vec<AgingRow>, String> {
+pub fn report_aging(
+    state: State<DbState>,
+    as_of: Option<String>,
+    search: Option<String>,
+) -> Result<Vec<AgingRow>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    crate::ops::report_aging(&conn, as_of)
+    crate::ops::report_aging(&conn, as_of, search)
 }
 
 #[tauri::command]
@@ -1550,6 +1514,18 @@ pub fn save_text_file(path: String, contents: String) -> Result<(), String> {
     }
     std::fs::write(&path, contents.as_bytes()).map_err(|e| format!("write {path}: {e}"))?;
     log::info!(target: "promas::diag", "saved text file → {path}");
+    Ok(())
+}
+
+/// User confirmed quit — allow the next CloseRequested and close the window.
+#[tauri::command]
+pub fn confirm_quit(app: tauri::AppHandle) -> Result<(), String> {
+    crate::ALLOW_CLOSE.store(true, std::sync::atomic::Ordering::SeqCst);
+    if let Some(win) = app.get_webview_window("main") {
+        win.close().map_err(|e| e.to_string())?;
+    } else {
+        app.exit(0);
+    }
     Ok(())
 }
 

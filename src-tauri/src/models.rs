@@ -275,6 +275,7 @@ pub struct DashboardStats {
 pub struct AgingRow {
     pub company_no: String,
     pub company_name: String,
+    pub contact: String,
     pub phone: String,
     pub current: f64,
     pub days_30: f64,

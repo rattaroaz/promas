@@ -32,6 +32,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [companyNo, setCompanyNo] = useState("");
+  const [search, setSearch] = useState("");
   const [labelMode, setLabelMode] = useState<"C" | "P">("C");
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
@@ -82,7 +83,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     setMsg("Generating report...");
     try {
       if (id === "aging") {
-        setText(formatAging(await api.reportAging()));
+        setText(formatAging(await api.reportAging(undefined, search)));
       } else if (id === "sales" || id === "invoice") {
         const rows = await api.reportSalesAnalysis({
           fromDate: fromDate || undefined,
@@ -100,6 +101,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
           companyNo: companyNo || undefined,
+          search: search.trim() || undefined,
           limit: 2000,
         });
         let t = `        *****    Cash  Receipts   *****\n\n`;
@@ -171,6 +173,10 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setMsg(
             id === "ledger"
               ? "Enter Company No, then Enter to run"
+              : id === "aging"
+                ? "Search company NO, name, contact, or property address (optional), then Enter to run"
+              : id === "cash"
+                ? "Search company or property address (optional), then Enter to run"
               : id === "labels"
                 ? "Enter Seletion (Esc=Exit,(C)ustomer,(P)roperty)?"
                 : "Enter date range (optional) then press Enter to run"
@@ -196,6 +202,32 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       message={msg || (running ? "Working..." : "Enter=Run  P=Print  Esc=Back")}
     >
       <div className="dos-searchline">
+        {(report === "aging" || report === "cash") && (
+          <>
+            <label>Search:</label>
+            <input
+              className="dos-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                report === "aging"
+                  ? "Company NO, Name, Contact, or Property Address"
+                  : "Company, Contact, or Property Address"
+              }
+              aria-label={
+                report === "aging"
+                  ? "Aging company search"
+                  : "Cash receipts search"
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            />
+          </>
+        )}
         {(report === "ledger" ||
           report === "invoice" ||
           report === "cash" ||
@@ -269,9 +301,9 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
 function formatAging(rows: AgingRow[]): string {
   let t = `*****   Open Receivable Aging  *****\nDate : ${fmtDate(new Date().toISOString().slice(0, 10))}\n\n`;
   t +=
-    "Company#  Company Name                     Phone         Current     >30      >60      >90     >120   Open Bal\n";
+    "Company#  Company Name                     Contact            Phone         Current     >30      >60      >90     >120   Open Bal\n";
   t +=
-    "==============================================================================================================\n";
+    "====================================================================================================================================\n";
   let tc = 0,
     t30 = 0,
     t60 = 0,
@@ -279,7 +311,7 @@ function formatAging(rows: AgingRow[]): string {
     t120 = 0,
     to = 0;
   for (const r of rows) {
-    t += `${padR(r.companyNo, 8)}  ${padR(r.companyName, 32)} ${padR(r.phone, 13)} ${padL(money(r.current), 9)} ${padL(money(r.days30), 8)} ${padL(money(r.days60), 8)} ${padL(money(r.days90), 8)} ${padL(money(r.days120), 8)} ${padL(money(r.openBal), 10)}\n`;
+    t += `${padR(r.companyNo, 8)}  ${padR(r.companyName, 32)} ${padR(r.contact ?? "", 18)} ${padR(r.phone, 13)} ${padL(money(r.current), 9)} ${padL(money(r.days30), 8)} ${padL(money(r.days60), 8)} ${padL(money(r.days90), 8)} ${padL(money(r.days120), 8)} ${padL(money(r.openBal), 10)}\n`;
     tc += r.current;
     t30 += r.days30;
     t60 += r.days60;
@@ -288,7 +320,7 @@ function formatAging(rows: AgingRow[]): string {
     to += r.openBal;
   }
   t +=
-    "==============================================================================================================\n";
+    "====================================================================================================================================\n";
   t += `              Grand Total: ${padL(money(tc), 9)} ${padL(money(t30), 8)} ${padL(money(t60), 8)} ${padL(money(t90), 8)} ${padL(money(t120), 8)} ${padL(money(to), 10)}\n`;
   return t;
 }
@@ -371,7 +403,7 @@ function formatLedger(
 
 function formatCustomerFile(
   cos: Company[],
-  props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[]
+  props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[],
 ): string {
   let t = `*****  Customer Report  *****\nDATE : ${fmtDate(new Date().toISOString().slice(0, 10))}\n\n`;
   for (const c of cos) {

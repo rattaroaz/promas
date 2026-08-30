@@ -245,7 +245,7 @@ fn aging_report_after_open_invoice() {
     )
     .unwrap();
 
-    let rows = ops::report_aging(&conn, Some("2026-02-15".into())).unwrap();
+    let rows = ops::report_aging(&conn, Some("2026-02-15".into()), None).unwrap();
     assert!(!rows.is_empty());
     assert!(rows.iter().any(|r| r.company_no == "1000"));
 

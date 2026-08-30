@@ -6,8 +6,12 @@ pub mod models;
 pub mod ops;
 
 use db::{init_db, DbState};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager, WindowEvent};
+
+/// Set only after the user confirms quit. CloseRequested is blocked otherwise.
+pub static ALLOW_CLOSE: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -42,6 +46,20 @@ pub fn run() {
             }
             app.manage(DbState(Mutex::new(conn)));
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                // Child windows (print preview, etc.) close without quitting the app.
+                if window.label() != "main" {
+                    return;
+                }
+                if !ALLOW_CLOSE.load(Ordering::SeqCst) {
+                    api.prevent_close();
+                    if let Err(e) = window.emit("quit-requested", ()) {
+                        log::warn!(target: "promas", "emit quit-requested: {e}");
+                    }
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_sysdata,
@@ -95,6 +113,7 @@ pub fn run() {
             commands::get_backend_diagnostics,
             commands::open_log_dir,
             commands::save_text_file,
+            commands::confirm_quit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

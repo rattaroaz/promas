@@ -307,7 +307,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                   setMode("propedit");
                 }}
               >
-                {padR(p.proNo, 4)} {padR(p.name, 30)} {padR(p.street, 30)}{" "}
+                {padR(p.proNo, 4)} {padR(p.name, 28)} {padR(p.street, 24)}{" "}
                 {padR(p.phone, 13)}
               </button>
             ))}

@@ -87,6 +87,12 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
     setWorkTypes(wts);
     setProperties([]);
     const inv = emptyInvoice();
+    try {
+      const sys = await api.getSysdata();
+      inv.invoice = Math.max(1, sys.nextInvoice || 1);
+    } catch {
+      inv.invoice = 1;
+    }
     setEditing({ invoice: inv, lines: [emptyInvoiceLine(inv, 1)] });
     setMsg("Enter Invoice Information (Esc=Cancel, Ctrl-W=Save & Exit)");
   }
@@ -252,7 +258,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Inv#  Inv_Date  Co#  Pro Unit/Size          Inv_Amount   PayTotal    Balance"}
+              {"Inv_Date  Inv#  PO           Co#  Pro Unit     Size     Inv_Amount   PayTotal    Balance"}
             </div>
             <div className="dos-browse-body">
               {rows.map((inv, i) => (
@@ -265,14 +271,13 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     openEdit(inv);
                   }}
                 >
-                  {padL(inv.invoice, 5)}{" "}
                   {padR(fmtDate(inv.salesDate), 10)}{" "}
+                  {padL(inv.invoice, 5)}{" "}
+                  {padR(inv.custPoNo ?? "", 12)}{" "}
                   {padR(inv.companyNo, 4)}{" "}
                   {padR(inv.proNo, 3)}{" "}
-                  {padR(
-                    `${inv.salesUnit}${inv.salesSize ? "/" + inv.salesSize : ""}`,
-                    16
-                  )}{" "}
+                  {padR(inv.salesUnit, 8)}{" "}
+                  {padR(inv.salesSize, 8)}{" "}
                   {padL(money(inv.salesTotal), 11)}{" "}
                   {padL(money(inv.payTotal), 10)}{" "}
                   {padL(money(inv.balance), 10)}
@@ -288,7 +293,11 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
         <Dialog
           title={
             editing.invoice.invoice
-              ? `Invoice No........ ${editing.invoice.invoice}`
+              ? `Invoice No........ ${editing.invoice.invoice}${
+                  (editing.invoice.custPoNo ?? "").trim()
+                    ? `  ${editing.invoice.custPoNo.trim()}`
+                    : ""
+                }`
               : "Enter Invoice Information"
           }
           wide

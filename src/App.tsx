@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MainMenu, MainAction } from "./screens/MainMenu";
+import { Prompt } from "./dos/Shell";
+import {
+  QUIT_PROMPT,
+  confirmAppQuit,
+  subscribeQuitRequested,
+} from "./lib/windowClose";
 import { ProcessRouter } from "./screens/flow/ProcessRouter";
 import { MaterialBrowse, MaterialSort } from "./screens/MaterialBrowse";
 import { WagesReport } from "./screens/WagesReport";
@@ -9,6 +14,8 @@ import { MiscScreen } from "./screens/MiscScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { SubMenu } from "./screens/SubMenu";
 import { UpdateDialog } from "./components/UpdateDialog";
+import { PrintPreviewOverlay } from "./components/PrintPreviewOverlay";
+import { closePrintPreview } from "./stores/printPreviewStore";
 import {
   log,
   metrics,
@@ -46,6 +53,7 @@ type Screen =
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "main" });
+  const [quitAsk, setQuitAsk] = useState(false);
 
   useEffect(() => {
     log.info("app", "session start", {
@@ -55,6 +63,35 @@ export default function App() {
     metrics.inc("app.session_start");
   }, []);
 
+  useEffect(
+    () =>
+      subscribeQuitRequested(() => {
+        if (closePrintPreview()) return;
+        setQuitAsk(true);
+      }),
+    []
+  );
+
+  useEffect(() => {
+    if (!quitAsk) return;
+    const onKey = (e: KeyboardEvent) => {
+      const ch = e.key;
+      if (ch === "y" || ch === "Y" || ch === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        void doQuit();
+        return;
+      }
+      if (ch === "n" || ch === "N" || ch === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setQuitAsk(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [quitAsk]);
+
   useEffect(() => {
     setCurrentScreen(screen.name);
     log.info("ui", `navigate → ${screen.name}`);
@@ -63,6 +100,12 @@ export default function App() {
 
   function goMain() {
     setScreen({ name: "main" });
+  }
+
+  async function doQuit() {
+    setQuitAsk(false);
+    log.info("app", "quit confirmed");
+    await confirmAppQuit();
   }
 
   async function handleMain(action: MainAction) {
@@ -93,12 +136,7 @@ export default function App() {
         setScreen({ name: "settings" });
         break;
       case "quit":
-        log.info("app", "quit requested");
-        try {
-          await getCurrentWindow().close();
-        } catch {
-          window.close();
-        }
+        await doQuit();
         break;
     }
   }
@@ -106,6 +144,7 @@ export default function App() {
   return (
     <div className="dos-app">
       <UpdateDialog />
+      <PrintPreviewOverlay />
       {screen.name === "main" && <MainMenu onSelect={handleMain} />}
 
       {screen.name === "estimate" && (
@@ -181,6 +220,14 @@ export default function App() {
       {screen.name === "misc" && <MiscScreen onBack={goMain} />}
 
       {screen.name === "settings" && <SettingsScreen onBack={goMain} />}
+
+      {quitAsk && (
+        <Prompt
+          question={QUIT_PROMPT}
+          onYes={() => void doQuit()}
+          onNo={() => setQuitAsk(false)}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ vi.mock("../api", async () => {
       listProperties: vi.fn(),
       saveInvoice: vi.fn(),
       voidInvoice: vi.fn(),
+      getSysdata: vi.fn(),
     },
   };
 });
@@ -28,6 +29,7 @@ const fixture = {
   salesDate: "2026-01-15",
   invoice: 1,
   salesUnit: "A1",
+  custPoNo: "PO-441",
   salesTotal: 250,
   payTotal: 0,
   balance: 250,
@@ -47,14 +49,29 @@ describe("InvoiceBrowse", () => {
       lines: [],
     });
     vi.mocked(api.saveInvoice).mockResolvedValue(1);
+    vi.mocked(api.getSysdata).mockResolvedValue({
+      company: "Test",
+      address1: "",
+      address2: "",
+      city: "",
+      zip: "",
+      closeDate: null,
+      nextInvoice: 8,
+      nextOrder: 1,
+      nextEstimate: 1,
+      termsDays: 7,
+      interestRate: 1.5,
+    });
   });
 
   it("loads invoice list and opens edit on row click", async () => {
     const user = userEvent.setup();
     renderApp(<InvoiceBrowse onBack={vi.fn()} />);
     expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inv#\s+PO/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /1000/ }));
-    expect(await screen.findByText(/Invoice No/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 1\s+PO-441/i)).toBeInTheDocument();
     await waitFor(() => {
       expect(api.getInvoice).toHaveBeenCalledWith(
         "1000",
@@ -70,7 +87,7 @@ describe("InvoiceBrowse", () => {
     renderApp(<InvoiceBrowse onBack={vi.fn()} />);
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /1000/ }));
-    await screen.findByText(/Invoice No/i);
+    await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 1\s+PO-441/i);
     await user.keyboard("{Control>}w{/Control}");
     await waitFor(() => {
       expect(api.saveInvoice).toHaveBeenCalled();
@@ -80,5 +97,17 @@ describe("InvoiceBrowse", () => {
       expect(screen.queryByText(/Invoice No/i)).not.toBeInTheDocument();
     });
     expect(screen.getByText(/1 invoices/i)).toBeInTheDocument();
+  });
+
+  it("autopopulates the next invoice number when adding", async () => {
+    renderApp(<InvoiceBrowse onBack={vi.fn()} />);
+    await screen.findByText(/1 invoices/i);
+    const { act } = await import("@testing-library/react");
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
+      );
+    });
+    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 8/i)).toBeInTheDocument();
   });
 });
