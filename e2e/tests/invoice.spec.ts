@@ -25,14 +25,14 @@ test.describe("invoice process", () => {
   test("opens Invoice Process and shows fixture list row", async ({ page }) => {
     await openInvoiceBrowse(page);
     await expect(
-      page.getByRole("button", { name: /1\s+01\/15\/2026\s+A1\s+250\.00/ })
+      page.getByRole("button", { name: /01\/15\/2026\s+1\s+A1\s+250\.00/ })
     ).toBeVisible();
   });
 
   test("opens invoice detail from list row", async ({ page }) => {
     await openInvoiceBrowse(page);
     await page
-      .getByRole("button", { name: /1\s+01\/15\/2026\s+A1\s+250\.00/ })
+      .getByRole("button", { name: /01\/15\/2026\s+1\s+A1\s+250\.00/ })
       .click();
     await expect(page.getByText(/Invoice No/i)).toBeVisible();
   });
