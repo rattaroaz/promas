@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { exit } from "@tauri-apps/plugin-process";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export const QUIT_REQUESTED_EVENT = "quit-requested";
@@ -18,9 +19,14 @@ export async function confirmAppQuit(): Promise<void> {
   allowClose = true;
   try {
     await invoke("confirm_quit");
-    return;
   } catch {
     /* browser / e2e / missing command */
+  }
+  try {
+    await exit(0);
+    return;
+  } catch {
+    /* plugin unavailable */
   }
   try {
     await getCurrentWindow().close();

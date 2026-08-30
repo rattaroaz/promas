@@ -1517,15 +1517,14 @@ pub fn save_text_file(path: String, contents: String) -> Result<(), String> {
     Ok(())
 }
 
-/// User confirmed quit — allow the next CloseRequested and close the window.
+/// User confirmed quit — tear down the window and exit the process.
 #[tauri::command]
 pub fn confirm_quit(app: tauri::AppHandle) -> Result<(), String> {
     crate::ALLOW_CLOSE.store(true, std::sync::atomic::Ordering::SeqCst);
     if let Some(win) = app.get_webview_window("main") {
-        win.close().map_err(|e| e.to_string())?;
-    } else {
-        app.exit(0);
+        let _ = win.destroy();
     }
+    app.exit(0);
     Ok(())
 }
 
