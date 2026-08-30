@@ -69,6 +69,15 @@ export default defineConfig({
         "**/*.test.{ts,tsx}",
         "**/*.spec.{ts,tsx}",
       ],
+      // Floors sit just under the current suite so CI fails on regressions,
+      // not on normal branch noise. Raise after adding tests, never lower
+      // to hide a drop.
+      thresholds: {
+        statements: 56,
+        branches: 51,
+        functions: 50,
+        lines: 58,
+      },
     },
   },
 });

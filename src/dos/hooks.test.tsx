@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useBrowseIndex, useDosKeys } from "./hooks";
+import { STATUS_KEY_CLICK } from "./Shell";
 
 describe("useBrowseIndex", () => {
   it("starts at 0 and clamps when count shrinks", () => {
@@ -141,6 +142,31 @@ describe("useDosKeys", () => {
     renderHook(() => useDosKeys({ onEscape }, false));
     fire("Escape");
     expect(onEscape).not.toHaveBeenCalled();
+  });
+
+  it("runs handlers from status-bar clicks even when an input is focused", () => {
+    const onEscape = vi.fn();
+    const onCtrlW = vi.fn();
+    const onEnd = vi.fn();
+    const onInsert = vi.fn();
+    const onChar = vi.fn();
+    renderHook(() =>
+      useDosKeys({ onEscape, onCtrlW, onEnd, onInsert, onChar })
+    );
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Esc" }));
+    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Ctrl-W" }));
+    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "End" }));
+    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Ins" }));
+    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "(A)" }));
+    expect(onEscape).toHaveBeenCalledOnce();
+    expect(onCtrlW).toHaveBeenCalledOnce();
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onInsert).toHaveBeenCalledOnce();
+    expect(onChar).toHaveBeenCalledWith("A", expect.anything());
+    document.body.removeChild(input);
   });
 
   it("calls onChar for printable keys", () => {

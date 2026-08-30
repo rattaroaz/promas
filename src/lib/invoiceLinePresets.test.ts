@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { emptyInvoice, emptyInvoiceLine } from "../api";
 import {
+  COLOR_CHANGE_CEILING_SWISS_COFFEE,
+  COLOR_CHANGE_WALLS_NAVAJO_WHITE,
   INTERIOR_PAINT_WALL_CLOSET,
   PAINT_ALL_ENAMEL_SURFACES,
   PAINT_BASE_BOARD,
@@ -49,6 +51,8 @@ describe("priceForPreset", () => {
     const sizes = ["single", "1+1", "2+1", "2+2", "3+2", "4+2"] as const;
     const table: [string, number[]][] = [
       [PAINTING_OF_CEILING, [75, 115, 125, 150, 175, 195]],
+      [COLOR_CHANGE_CEILING_SWISS_COFFEE, [60, 92, 100, 120, 140, 156]],
+      [COLOR_CHANGE_WALLS_NAVAJO_WHITE, [176, 196, 224, 236, 360, 436]],
       [PAINT_BASE_BOARD, [95, 105, 125, 125, 155, 250]],
       [PLASTIC_COVERING_OF_FLOOR, [95, 105, 125, 135, 165, 170]],
       [PAINT_ALL_ENAMEL_SURFACES, [145, 180, 190, 195, 225, 255]],

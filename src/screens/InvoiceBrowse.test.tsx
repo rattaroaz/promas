@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../test/render";
 import { InvoiceBrowse } from "./InvoiceBrowse";
-import { api, emptyInvoice } from "../api";
+import { api, emptyCompany, emptyInvoice, emptyProperty } from "../api";
 
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
@@ -49,6 +50,7 @@ describe("InvoiceBrowse", () => {
       lines: [],
     });
     vi.mocked(api.saveInvoice).mockResolvedValue(1);
+    vi.mocked(api.voidInvoice).mockResolvedValue(undefined);
     vi.mocked(api.getSysdata).mockResolvedValue({
       company: "Test",
       address1: "",
@@ -109,5 +111,84 @@ describe("InvoiceBrowse", () => {
       );
     });
     expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 8/i)).toBeInTheDocument();
+  });
+
+  it("requires company and property before saving a new invoice", async () => {
+    const user = userEvent.setup();
+    renderApp(<InvoiceBrowse onBack={vi.fn()} />);
+    await screen.findByText(/1 invoices/i);
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
+      );
+    });
+    expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 8/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    expect(
+      await screen.findByText(/Company, Property, Date required/i)
+    ).toBeInTheDocument();
+    expect(api.saveInvoice).not.toHaveBeenCalled();
+  });
+
+  it("saves a new invoice after company and property are chosen", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    renderApp(<InvoiceBrowse onBack={vi.fn()} />);
+    await screen.findByText(/1 invoices/i);
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
+      );
+    });
+    await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 8/i);
+    const [companySelect] = screen.getAllByRole("combobox");
+    await user.selectOptions(companySelect, "1000");
+    await waitFor(() => {
+      expect(api.listProperties).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "1000" })
+      );
+    });
+    const selects = screen.getAllByRole("combobox");
+    await user.selectOptions(selects[1], "01");
+    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await waitFor(() => {
+      expect(api.saveInvoice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoice: expect.objectContaining({
+            companyNo: "1000",
+            proNo: "01",
+            invoice: 8,
+          }),
+        })
+      );
+    });
+  });
+
+  it("voids the selected invoice after Del confirm", async () => {
+    const user = userEvent.setup();
+    renderApp(<InvoiceBrowse onBack={vi.fn()} />);
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^Del$/i }));
+    expect(screen.getByText(/Do you want Void/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    await waitFor(() => {
+      expect(api.voidInvoice).toHaveBeenCalledWith(
+        "1000",
+        "01",
+        "2026-01-15",
+        1
+      );
+    });
+  });
+
+  it("shows an empty-state when there are no invoices", async () => {
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    renderApp(<InvoiceBrowse onBack={vi.fn()} />);
+    expect(await screen.findByText(/No invoices/i)).toBeInTheDocument();
   });
 });

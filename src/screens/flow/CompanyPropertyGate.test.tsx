@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { CompanyPropertyGate } from "./CompanyPropertyGate";
 import { api, emptyCompany, emptyProperty } from "../../api";
@@ -286,5 +287,130 @@ describe("CompanyPropertyGate", () => {
         expect.objectContaining({ contact: "MARIA" })
       );
     });
+  });
+
+  it("offers to add a company that does not exist, then saves it", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listCompanies).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockResolvedValue(null);
+
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+
+    const companyNo = screen.getByPlaceholderText("? = first");
+    await user.type(companyNo, "9999{Enter}");
+    expect(
+      (await screen.findAllByText(/Do you want Add Company \(Y\/N\)/i)).length
+    ).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    expect(
+      (await screen.findAllByText(/Company Information/i)).length
+    ).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue("9999")).toBeInTheDocument();
+
+    const fields = screen.getAllByRole("textbox");
+    await user.type(fields[1], "NEWCO");
+    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await waitFor(() => {
+      expect(api.saveCompany).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "9999", name: "NEWCO" })
+      );
+    });
+    expect(await screen.findByText(/Enter Property NO/i)).toBeInTheDocument();
+  });
+
+  it("requires company number and name when adding from Ins", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
+      );
+    });
+    expect(
+      (await screen.findAllByText(/Company Information/i)).length
+    ).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    expect(
+      await screen.findByText(/Company NO and Name required/i)
+    ).toBeInTheDocument();
+    expect(api.saveCompany).not.toHaveBeenCalled();
+  });
+
+  it("offers to add a missing property and then calls onReady", async () => {
+    const user = userEvent.setup();
+    const onReady = vi.fn();
+    vi.mocked(api.listProperties).mockResolvedValue([]);
+
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={onReady}
+      />
+    );
+
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+    const propertyNo = await screen.findByPlaceholderText("? = first");
+    await user.type(propertyNo, "02{Enter}");
+
+    expect(
+      (await screen.findAllByText(/Do you want Add Property\(Y\/N\)/i)).length
+    ).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    expect(
+      (await screen.findAllByText(/Property Information/i)).length
+    ).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue("02")).toBeInTheDocument();
+
+    const fields = screen.getAllByRole("textbox");
+    await user.type(fields[1], "Bldg B");
+    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await waitFor(() => {
+      expect(api.saveProperty).toHaveBeenCalledWith(
+        expect.objectContaining({
+          companyNo: "1000",
+          proNo: "02",
+          name: "Bldg B",
+        })
+      );
+    });
+    await waitFor(() => {
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "1000" }),
+        expect.objectContaining({ proNo: "02", name: "Bldg B" })
+      );
+    });
+  });
+
+  it("reports a first-screen property search miss", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+    await user.click(screen.getByRole("textbox", { name: "Property Street" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Property Street" }),
+      "ZZZZZ{Enter}"
+    );
+    expect(
+      await screen.findByText(/property does not exist/i)
+    ).toBeInTheDocument();
   });
 });

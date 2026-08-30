@@ -13,6 +13,8 @@ vi.mock("../../api", async () => {
       listCompanies: vi.fn(),
       listProperties: vi.fn(),
       listInvoices: vi.fn(),
+      listWorkOrders: vi.fn(),
+      listEstimates: vi.fn(),
       getCompany: vi.fn(),
     },
   };
@@ -49,5 +51,39 @@ describe("ProcessRouter observability", () => {
     await waitFor(() => {
       expect(getAppState().currentScreen).toBe("invoice/process");
     });
+  });
+
+  it.each([
+    ["workorder", "workorder/process", "Work Order Process"],
+    ["cash", "cash/process", "Cash Receipts Process"],
+    ["estimate", "estimate/process", "Estimate Process"],
+  ] as const)("routes %s after company and property", async (process, screenName, title) => {
+    resetObservabilityForTests();
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.listWorkOrders).mockResolvedValue([]);
+    vi.mocked(api.listEstimates).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process={process} onBack={vi.fn()} />);
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /01\s+Bldg A/i }));
+
+    await waitFor(() => {
+      expect(getAppState().currentScreen).toBe(screenName);
+    });
+    expect(screen.getByText(new RegExp(title, "i"))).toBeInTheDocument();
   });
 });

@@ -32,7 +32,11 @@ function prices(
 
 export const INTERIOR_PAINT_WALL_CLOSET =
   "Interior Painting of Wall/Closet Inside";
+export const COLOR_CHANGE_WALLS_NAVAJO_WHITE =
+  "Color Change of Walls and Closet to Navajo White";
 export const PAINTING_OF_CEILING = "Painting of Ceiling";
+export const COLOR_CHANGE_CEILING_SWISS_COFFEE =
+  "Color Change of Ceiling to Swiss Coffee";
 export const PAINT_BASE_BOARD = "Paint Baseboard";
 export const PLASTIC_COVERING_OF_FLOOR = "Plastic Covering of Floor";
 export const PAINT_ALL_ENAMEL_SURFACES =
@@ -49,16 +53,44 @@ export const PAINT_OVER_CABINETS_PRIMER_INSIDE =
 export const PAINT_OVER_CABINETS_PRIMER_OUTSIDE =
   "Paint Over Kitchen Cabinets Outside with Primer";
 
+const INTERIOR_PAINT_PRICES = prices(220, 245, 280, 295, 450, 545);
+const CEILING_PAINT_PRICES = prices(75, 115, 125, 150, 175, 195);
+const COLOR_CHANGE_FACTOR = 0.8;
+
+function scalePrices(
+  source: Record<UnitSizeOption, number>,
+  factor: number
+): Record<UnitSizeOption, number> {
+  return prices(
+    source.single * factor,
+    source["1+1"] * factor,
+    source["2+1"] * factor,
+    source["2+2"] * factor,
+    source["3+2"] * factor,
+    source["4+2"] * factor
+  );
+}
+
 export const INVOICE_LINE_PRESETS = [
   {
     id: "interior-paint-wall-closet",
     description: INTERIOR_PAINT_WALL_CLOSET,
-    prices: prices(220, 245, 280, 295, 450, 545),
+    prices: INTERIOR_PAINT_PRICES,
+  },
+  {
+    id: "color-change-walls-navajo-white",
+    description: COLOR_CHANGE_WALLS_NAVAJO_WHITE,
+    prices: scalePrices(INTERIOR_PAINT_PRICES, COLOR_CHANGE_FACTOR),
   },
   {
     id: "painting-of-ceiling",
     description: PAINTING_OF_CEILING,
-    prices: prices(75, 115, 125, 150, 175, 195),
+    prices: CEILING_PAINT_PRICES,
+  },
+  {
+    id: "color-change-ceiling-swiss-coffee",
+    description: COLOR_CHANGE_CEILING_SWISS_COFFEE,
+    prices: scalePrices(CEILING_PAINT_PRICES, COLOR_CHANGE_FACTOR),
   },
   {
     id: "paint-base-board",

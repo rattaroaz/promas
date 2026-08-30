@@ -23,4 +23,15 @@ test.describe("cash receipts process", () => {
     await openCashLedger(page);
     await expect(page.getByText(/Open 250\.00/i)).toBeVisible();
   });
+
+  test("posts a receipt for the open invoice", async ({ page }) => {
+    await openCashLedger(page);
+    await page.getByRole("button", { name: /^Ins$/i }).click();
+    await expect(page.locator(".dlg-title")).toContainText(
+      "Enter Your Payment Data"
+    );
+    await expect(page.locator('input[type="number"]').last()).toHaveValue("250");
+    await page.getByRole("button", { name: /Cntr_W Save/i }).click();
+    await expect(page.getByText(/Ending Balance/i)).toBeVisible();
+  });
 });

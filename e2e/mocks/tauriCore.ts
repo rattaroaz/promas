@@ -192,6 +192,26 @@ export async function invoke<T = unknown>(
       ],
     } as T;
   }
+  if (cmd === "list_estimates") {
+    return [
+      {
+        id: 5,
+        companyNo: "1000",
+        estDate: "2026-03-01",
+        estNo: 12,
+        formNo: "EST-1",
+        memo: "",
+        status: "",
+        voided: false,
+      },
+    ] as T;
+  }
+  if (cmd === "save_estimate") {
+    return 13 as T;
+  }
+  if (cmd === "void_estimate") {
+    return undefined as T;
+  }
   if (cmd === "save_cash_receipt") {
     return undefined as T;
   }
