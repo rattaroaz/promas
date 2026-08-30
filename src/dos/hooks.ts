@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState, useRef } from "react";
+import { STATUS_KEY_CLICK } from "./Shell";
 
 export type KeyHandler = (e: KeyboardEvent) => boolean | void;
 
@@ -128,8 +129,62 @@ export function useDosKeys(
       }
     };
 
+    const onStatusClick = (ev: Event) => {
+      const key = (ev as CustomEvent<string>).detail;
+      if (typeof key !== "string") return;
+      const h = ref.current;
+      switch (key) {
+        case "Esc":
+          h.onEscape?.();
+          return;
+        case "Ins":
+          h.onInsert?.();
+          return;
+        case "Del":
+          h.onDelete?.();
+          return;
+        case "Enter":
+          h.onEnter?.();
+          return;
+        case "F1":
+          h.onF1?.();
+          return;
+        case "Home":
+          h.onHome?.();
+          return;
+        case "End":
+          h.onEnd?.();
+          return;
+        case "PgUp":
+          h.onPageUp?.();
+          return;
+        case "PgDn":
+          h.onPageDown?.();
+          return;
+        case "Ctrl-Home":
+        case "Cntr_Home":
+          h.onCtrlHome?.();
+          return;
+        case "Ctrl-W":
+        case "Cntr_W":
+          h.onCtrlW?.();
+          return;
+        case "↑↓":
+          h.onArrowDown?.();
+          return;
+        default: {
+          const ch = key === "(A)" ? "A" : key.length === 1 ? key : "";
+          if (ch) h.onChar?.(ch, ev as unknown as KeyboardEvent);
+        }
+      }
+    };
+
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    window.addEventListener(STATUS_KEY_CLICK, onStatusClick);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener(STATUS_KEY_CLICK, onStatusClick);
+    };
   }, [active]);
 }
 

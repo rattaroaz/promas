@@ -1,7 +1,7 @@
 /**
  * Invoice Process after Company+Property selected.
- * Original: browse invoices for site; Ins=new (date, work order# or manual);
- * form fields match SALES2 labels; lines from SALES1 / job codes.
+ * Browse invoices for the site; Ins or New Invoice opens the entry form
+ * with date and next invoice number already filled.
  */
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -10,11 +10,8 @@ import {
   Property,
   Invoice,
   InvoiceWithLines,
-  Employee,
-  WorkType,
   emptyInvoice,
   emptyInvoiceLine,
-  emptyWorkType,
 } from "../../api";
 import { useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
@@ -29,8 +26,18 @@ import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
 } from "../../lib/invoicePrint";
+import {
+  INVOICE_LINE_PRESETS,
+  UNIT_SIZE_OPTIONS,
+  applyPresetPriceToLine,
+  applyPresetPrices,
+  blankNewInvoiceLine,
+  isListedUnitSize,
+  isPresetDescription,
+  normalizeUnitSize,
+} from "../../lib/invoiceLinePresets";
 
-type Mode = "browse" | "new-prompt" | "edit";
+type Mode = "browse" | "edit";
 
 export function InvoiceProcess({
   company,
@@ -44,10 +51,9 @@ export function InvoiceProcess({
   const [rows, setRows] = useState<Invoice[]>([]);
   const [mode, setMode] = useState<Mode>("browse");
   const [editing, setEditing] = useState<InvoiceWithLines | null>(null);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
-  const [invDate, setInvDate] = useState(today());
-  const [orderNo, setOrderNo] = useState("");
+  const [isNewInvoice, setIsNewInvoice] = useState(false);
+  const [workPersons, setWorkPersons] = useState<string[]>([]);
+  const [deleteNameAsk, setDeleteNameAsk] = useState<string | null>(null);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
   );
@@ -55,11 +61,7 @@ export function InvoiceProcess({
     "default"
   );
   const [voidAsk, setVoidAsk] = useState(false);
-  const [confirmData, setConfirmData] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
-  const [voidWoRetry, setVoidWoRetry] = useState(false);
-  const [addWtAsk, setAddWtAsk] = useState<string | null>(null);
-  const [pendingWtLine, setPendingWtLine] = useState<number | null>(null);
   const [help, setHelp] = useState(false);
   const { index, setIndex, up, down, pageUp, pageDown, home } =
     useBrowseIndex(rows.length);
@@ -75,7 +77,7 @@ export function InvoiceProcess({
     setMsg(
       mine.length
         ? `${mine.length} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
-        : "No invoices for this property. Press Ins for new invoice."
+        : "No invoices for this property. Press Ins or click New Invoice."
     );
   }, [company.companyNo, property.proNo]);
 
@@ -91,24 +93,67 @@ export function InvoiceProcess({
 
   const current = rows[index] ?? null;
 
-  async function startNew() {
-    const [emps, wts] = await Promise.all([
-      api.listEmployees({}),
-      api.listWorkTypes({}),
-    ]);
-    setEmployees(emps);
-    setWorkTypes(wts);
-    setInvDate(today());
-    setOrderNo("");
-    setMode("new-prompt");
-    setMsg("Enter Invoice Date (Esc=Exit) !");
+  async function loadWorkPersons() {
+    try {
+      setWorkPersons(await api.listWorkPersons());
+    } catch {
+      setWorkPersons([]);
+    }
   }
 
-  async function openManual() {
+  async function confirmDeleteWorkPerson() {
+    const name = deleteNameAsk;
+    if (!name) return;
+    try {
+      setWorkPersons(await api.deleteWorkPerson(name));
+    } catch {
+      setWorkPersons((prev) =>
+        prev.filter((n) => n.toLowerCase() !== name.toLowerCase())
+      );
+    }
+    if (editing) {
+      setEditing({
+        ...editing,
+        lines: editing.lines.map((l) =>
+          l.empNo.trim().toLowerCase() === name.toLowerCase()
+            ? { ...l, empNo: "" }
+            : l
+        ),
+      });
+    }
+    setDeleteNameAsk(null);
+  }
+
+  async function rememberWorkPerson(raw: string) {
+    const name = raw.trim();
+    if (!name) return;
+    const listed = workPersons.some(
+      (n) => n.toLowerCase() === name.toLowerCase()
+    );
+    if (listed) return;
+    try {
+      setWorkPersons(await api.saveWorkPerson(name));
+    } catch {
+      setWorkPersons((prev) =>
+        prev.some((n) => n.toLowerCase() === name.toLowerCase())
+          ? prev
+          : [...prev, name].sort((a, b) => a.localeCompare(b))
+      );
+    }
+  }
+
+  function listedWorkPerson(name: string) {
+    const key = name.trim().toLowerCase();
+    return workPersons.find((n) => n.toLowerCase() === key) ?? "";
+  }
+
+  async function startNew() {
+    await loadWorkPersons();
+
     const inv = emptyInvoice();
     inv.companyNo = company.companyNo;
     inv.proNo = property.proNo;
-    inv.salesDate = invDate || today();
+    inv.salesDate = today();
     try {
       const sys = await api.getSysdata();
       inv.invoice = Math.max(1, sys.nextInvoice || 1);
@@ -118,7 +163,7 @@ export function InvoiceProcess({
       inv.salesDue = d.toISOString().slice(0, 10);
       inv.salesTerm = `Net  ${days} Days`;
     } catch {
-      inv.invoice = inv.invoice || 1;
+      inv.invoice = 1;
       const d = new Date(inv.salesDate);
       d.setDate(d.getDate() + 7);
       inv.salesDue = d.toISOString().slice(0, 10);
@@ -126,104 +171,22 @@ export function InvoiceProcess({
     }
     setEditing({
       invoice: inv,
-      lines: [emptyInvoiceLine(inv, 1)],
+      lines: [blankNewInvoiceLine(inv, 1)],
     });
-    setMode("edit");
-    setMsg("Enter Invoice Information (Esc=Exit) !");
-  }
-
-  async function tryFromOrder() {
-    const no = parseInt(orderNo, 10);
-    if (!no) {
-      setMsg("--> does not exist ! Do you want Manual Invoice (Y/N) ?");
-      setMsgKind("error");
-      setConfirmData(true);
-      return;
-    }
-    const [emps, wts, full] = await Promise.all([
-      api.listEmployees({}),
-      api.listWorkTypes({}),
-      api.findWorkOrder(company.companyNo, property.proNo, no),
-    ]);
-    setEmployees(emps);
-    setWorkTypes(wts);
-
-    if (!full) {
-      setMsg("--> does not exist ! Do you want Manual Invoice (Y/N) ?");
-      setMsgKind("error");
-      setConfirmData(true);
-      return;
-    }
-    if (full.order.voided || full.order.status === "V") {
-      setMsg("--> Void Work Order ! Retry (Y/N) ?");
-      setMsgKind("error");
-      setVoidWoRetry(true);
-      return;
-    }
-    if (full.order.proNo !== property.proNo) {
-      setMsg("--> Differnt Work Order No ! Retry (Y/N) ?");
-      setMsgKind("error");
-      setVoidWoRetry(true);
-      return;
-    }
-
-    const inv = emptyInvoice();
-    inv.companyNo = company.companyNo;
-    inv.proNo = property.proNo;
-    inv.salesDate = invDate || today();
-    inv.orderNo = full.order.orderNo;
-    inv.orderDate = full.order.orderDate;
-    inv.orderMan = full.order.orderMan;
-    inv.salesUnit = full.order.orderUnit;
-    inv.salesSize = full.order.orderSize;
-    inv.custPoNo = full.order.custPoNo;
-    inv.remark1 = full.order.remark1;
-    inv.remark2 = full.order.remark2;
-    try {
-      const sys = await api.getSysdata();
-      inv.invoice = Math.max(1, sys.nextInvoice || 1);
-      const days = sys.termsDays || 7;
-      const d = new Date(inv.salesDate);
-      d.setDate(d.getDate() + days);
-      inv.salesDue = d.toISOString().slice(0, 10);
-      inv.salesTerm = `Net  ${days} Days`;
-    } catch {
-      inv.invoice = inv.invoice || 1;
-      const d = new Date(inv.salesDate);
-      d.setDate(d.getDate() + 7);
-      inv.salesDue = d.toISOString().slice(0, 10);
-      inv.salesTerm = "Net  7 Days";
-    }
-
-    // Copy work-order lines into invoice lines (original build-invoice path)
-    const lines =
-      full.lines.length > 0
-        ? full.lines.map((l, i) => ({
-            ...emptyInvoiceLine(inv, i + 1),
-            codeNo: l.codeNo,
-            description: l.description,
-            workType: l.workType,
-            price: l.price,
-            workDate: full.order.workDate || inv.salesDate,
-          }))
-        : [emptyInvoiceLine(inv, 1)];
-
-    setEditing({ invoice: inv, lines });
+    setIsNewInvoice(true);
     setMode("edit");
     setMsg("Enter Invoice Information (Esc=Exit) !");
     setMsgKind("default");
   }
 
   async function openEdit(inv: Invoice) {
-    const [full, emps, wts] = await Promise.all([
+    const [full] = await Promise.all([
       api.getInvoice(inv.companyNo, inv.proNo, inv.salesDate, inv.invoice),
-      api.listEmployees({}),
-      api.listWorkTypes({}),
+      loadWorkPersons(),
     ]);
-    setEmployees(emps);
-    setWorkTypes(wts);
     if (full) {
       setEditing(full);
+      setIsNewInvoice(false);
       setMode("edit");
       setMsg(
         full.invoice.voided
@@ -241,6 +204,11 @@ export function InvoiceProcess({
       setMsgKind("error");
       return;
     }
+    await Promise.all(
+      [...new Set(editing.lines.map((l) => l.empNo.trim()).filter(Boolean))].map(
+        (name) => rememberWorkPerson(name)
+      )
+    );
     setConfirmSave(true);
     setMsg("Is This Data Correct ? (Y/N)");
   }
@@ -266,6 +234,7 @@ export function InvoiceProcess({
         })),
       });
       setEditing(null);
+      setIsNewInvoice(false);
       setConfirmSave(false);
       setMode("browse");
       setMsg(`Invoice #${no} saved.`);
@@ -362,17 +331,11 @@ export function InvoiceProcess({
     onEscape: () => {
       if (help) setHelp(false);
       else if (voidAsk) setVoidAsk(false);
-      else if (confirmData) setConfirmData(false);
+      else if (deleteNameAsk) setDeleteNameAsk(null);
       else if (confirmSave) setConfirmSave(false);
-      else if (voidWoRetry) setVoidWoRetry(false);
-      else if (addWtAsk) {
-        setAddWtAsk(null);
-        setPendingWtLine(null);
-      } else if (mode === "edit") {
+      else if (mode === "edit") {
         setEditing(null);
-        setMode("browse");
-        setMsg("Ins=Add  Enter=Edit  Del=Void  Esc=Back");
-      } else if (mode === "new-prompt") {
+        setIsNewInvoice(false);
         setMode("browse");
         setMsg("Ins=Add  Enter=Edit  Del=Void  Esc=Back");
       } else onBack();
@@ -402,6 +365,16 @@ export function InvoiceProcess({
       if (mode === "edit") save();
     },
     onChar: (ch) => {
+      if (deleteNameAsk) {
+        if (ch === "y" || ch === "Y") {
+          void confirmDeleteWorkPerson();
+          return true;
+        }
+        if (ch === "n" || ch === "N") {
+          setDeleteNameAsk(null);
+          return true;
+        }
+      }
       if (voidAsk) {
         if (ch === "y" || ch === "Y") {
           doVoid();
@@ -422,61 +395,6 @@ export function InvoiceProcess({
           return true;
         }
       }
-      if (confirmData) {
-        if (ch === "y" || ch === "Y") {
-          setConfirmData(false);
-          openManual();
-          return true;
-        }
-        if (ch === "n" || ch === "N") {
-          setConfirmData(false);
-          setMsgKind("default");
-          return true;
-        }
-      }
-      if (voidWoRetry) {
-        if (ch === "y" || ch === "Y") {
-          setVoidWoRetry(false);
-          setOrderNo("");
-          setMsg("Enter Work Order No (Esc=Exit) !");
-          setMsgKind("default");
-          return true;
-        }
-        if (ch === "n" || ch === "N") {
-          setVoidWoRetry(false);
-          setMode("browse");
-          return true;
-        }
-      }
-      if (addWtAsk) {
-        if (ch === "y" || ch === "Y") {
-          (async () => {
-            const wt = emptyWorkType();
-            wt.codeNo = addWtAsk;
-            wt.workType = "P";
-            await api.saveWorkType(wt);
-            setWorkTypes(await api.listWorkTypes({}));
-            if (editing && pendingWtLine != null) {
-              const lines = [...editing.lines];
-              lines[pendingWtLine] = {
-                ...lines[pendingWtLine],
-                codeNo: addWtAsk,
-              };
-              setEditing({ ...editing, lines });
-            }
-            setAddWtAsk(null);
-            setPendingWtLine(null);
-            setMsgKind("default");
-            setMsg("Worktype added — enter description");
-          })();
-          return true;
-        }
-        if (ch === "n" || ch === "N") {
-          setAddWtAsk(null);
-          setPendingWtLine(null);
-          return true;
-        }
-      }
       return false;
     },
   });
@@ -487,7 +405,7 @@ export function InvoiceProcess({
   return (
     <Screen
       statusKeys={
-        mode === "edit" || mode === "new-prompt"
+        mode === "edit"
           ? [
               { key: "Esc", label: "Cancel" },
               { key: "Ctrl-W", label: "Save" },
@@ -552,49 +470,20 @@ export function InvoiceProcess({
             ))}
             {rows.length === 0 && (
               <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
-                {"  (no invoices — press Ins)"}
+                {"  (no invoices — press Ins or click New Invoice)"}
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {mode === "new-prompt" && (
-        <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "44ch" }}>
-            <div className="menu-body" style={{ padding: "1em 2ch" }}>
-              <div className="dos-form">
-                <DotField label="Invoice Date" width={18}>
-                  <input
-                    className="dos-input w12"
-                    type="date"
-                    value={invDate}
-                    onChange={(e) => setInvDate(e.target.value)}
-                    onFocus={() =>
-                      setMsg("Enter Invoice Date (Esc=Exit) !")
-                    }
-                    autoFocus
-                  />
-                </DotField>
-                <DotField label="Invoice Number" width={18}>
-                  <input
-                    className="dos-input w8"
-                    aria-label="Invoice Number"
-                    value={orderNo}
-                    onChange={(e) => setOrderNo(e.target.value)}
-                    onFocus={() =>
-                      setMsg(" Enter Invoice Number (Esc=Exit) !")
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        tryFromOrder();
-                      }
-                    }}
-                  />
-                </DotField>
-              </div>
-            </div>
+          <div className="dos-browse-footer">
+            <button
+              type="button"
+              className="dos-btn"
+              onClick={() => {
+                void startNew();
+              }}
+            >
+              New Invoice
+            </button>
           </div>
         </div>
       )}
@@ -672,17 +561,18 @@ export function InvoiceProcess({
               </DotField>
             </div>
             <div className="dos-form-row">
-              <DotField label="Order No" width={14}>
+              <DotField label="Invoice Number" width={16}>
                 <input
                   className="dos-input w8"
                   type="number"
-                  value={editing.invoice.orderNo || ""}
+                  aria-label="Invoice Number"
+                  value={editing.invoice.invoice || ""}
                   onChange={(e) =>
                     setEditing({
                       ...editing,
                       invoice: {
                         ...editing.invoice,
-                        orderNo: parseInt(e.target.value, 10) || 0,
+                        invoice: parseInt(e.target.value, 10) || 0,
                       },
                     })
                   }
@@ -737,18 +627,50 @@ export function InvoiceProcess({
                 />
               </DotField>
               <DotField label="Size" width={8}>
+                <select
+                  className="dos-select"
+                  aria-label="Size"
+                  style={{ minWidth: "10ch" }}
+                  value={
+                    isListedUnitSize(editing.invoice.salesSize)
+                      ? normalizeUnitSize(editing.invoice.salesSize) ?? ""
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const salesSize = e.target.value;
+                    const invoice = { ...editing.invoice, salesSize };
+                    setEditing({
+                      invoice,
+                      lines: isNewInvoice
+                        ? applyPresetPrices(salesSize, editing.lines)
+                        : editing.lines,
+                    });
+                  }}
+                >
+                  <option value=""> </option>
+                  {UNIT_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
                 <input
                   className="dos-input w12"
+                  aria-label="Custom size"
+                  readOnly={isListedUnitSize(editing.invoice.salesSize)}
                   value={editing.invoice.salesSize}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    if (isListedUnitSize(editing.invoice.salesSize)) return;
+                    const salesSize = e.target.value;
+                    const invoice = { ...editing.invoice, salesSize };
                     setEditing({
-                      ...editing,
-                      invoice: {
-                        ...editing.invoice,
-                        salesSize: e.target.value,
-                      },
-                    })
-                  }
+                      invoice,
+                      lines: isNewInvoice
+                        ? applyPresetPrices(salesSize, editing.lines)
+                        : editing.lines,
+                    });
+                  }}
+                  placeholder="Type size"
                 />
               </DotField>
               <DotField label="Customer P.O" width={14}>
@@ -802,122 +724,120 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div
-              style={{
-                color: "var(--dos-yellow)",
-                margin: "0.5em 0 0.2em",
-                whiteSpace: "pre",
-              }}
-            >
-              {"Code# Description                                        WorkDate     Price "}
+            <div className="invoice-line-grid invoice-line-head">
+              <span style={{ gridColumn: "1 / 3" }}>Description</span>
+              <span className="invoice-col-center">WorkDate</span>
+              <span className="invoice-col-center">WorkPerson</span>
+              <span className="invoice-col-center">Price</span>
             </div>
             {editing.lines.map((line, idx) => (
               <div
                 key={idx}
-                style={{
-                  display: "flex",
-                  gap: "0.4ch",
-                  marginBottom: "0.12em",
-                  alignItems: "center",
-                }}
+                className="invoice-line-grid"
+                style={{ marginBottom: "0.12em" }}
               >
-                <input
-                  className="dos-input"
-                  style={{ width: "7ch" }}
-                  value={line.codeNo}
-                  title="Enter Job Code No (Esc=Exit, * = Command Input) !"
-                  list="job-codes"
+                <select
+                  className="dos-select"
+                  aria-label={`Line ${idx + 1} description`}
+                  value={
+                    isPresetDescription(line.description)
+                      ? line.description
+                      : ""
+                  }
                   onChange={(e) => {
+                    const description = e.target.value;
                     const lines = [...editing.lines];
-                    lines[idx] = { ...line, codeNo: e.target.value };
+                    const next = { ...line, description };
+                    lines[idx] = description
+                      ? applyPresetPriceToLine(next, editing.invoice.salesSize)
+                      : { ...next, price: 0, empPrice: 0 };
                     setEditing({ ...editing, lines });
                   }}
-                  onBlur={(e) => {
-                    const code = e.target.value.trim();
-                    if (!code || code === "*") return;
-                    const wt = workTypes.find(
-                      (w) => w.codeNo.toUpperCase() === code.toUpperCase()
-                    );
-                    if (!wt) {
-                      setPendingWtLine(idx);
-                      setAddWtAsk(code.toUpperCase());
-                      setMsg(
-                        `${code} --> does not exist !! Do you want Add Worktype(Y/N)?`
-                      );
-                      setMsgKind("error");
-                      return;
-                    }
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      codeNo: wt.codeNo,
-                      description: wt.description || line.description,
-                      workType: wt.workType || line.workType,
-                      price: line.price || wt.price,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <datalist id="job-codes">
-                  <option value="*" />
-                  {workTypes.map((w) => (
-                    <option key={w.codeNo} value={w.codeNo} />
+                >
+                  <option value=""> </option>
+                  {INVOICE_LINE_PRESETS.map((p) => (
+                    <option key={p.id} value={p.description}>
+                      {p.description}
+                    </option>
                   ))}
-                </datalist>
+                </select>
                 <input
                   className="dos-input"
-                  style={{ flex: 1 }}
+                  aria-label={`Line ${idx + 1} custom text`}
+                  readOnly={isPresetDescription(line.description)}
                   value={line.description}
                   onChange={(e) => {
+                    if (isPresetDescription(line.description)) return;
                     const lines = [...editing.lines];
                     lines[idx] = { ...line, description: e.target.value };
                     setEditing({ ...editing, lines });
                   }}
-                  placeholder="* = free description"
+                  placeholder="Type description"
                 />
                 <input
                   className="dos-input w12"
                   type="date"
-                  value={line.workDate || invDate}
+                  aria-label={`Line ${idx + 1} work date`}
+                  value={line.workDate || editing.invoice.salesDate}
                   onChange={(e) => {
                     const lines = [...editing.lines];
                     lines[idx] = { ...line, workDate: e.target.value };
                     setEditing({ ...editing, lines });
                   }}
                 />
-                <select
-                  className="dos-select"
-                  style={{ width: "6ch" }}
-                  title="Work Person"
-                  value={line.empNo}
-                  onChange={(e) => {
-                    const emp = employees.find(
-                      (x) => x.empNo === e.target.value
-                    );
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      empNo: e.target.value,
-                      commission: emp?.commission ?? line.commission,
-                      empPrice:
-                        (line.price * (emp?.commission ?? line.commission)) /
-                        100,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value="">---</option>
-                  {employees.map((e) => (
-                    <option key={e.empNo} value={e.empNo}>
-                      {e.empNo}
-                    </option>
-                  ))}
-                </select>
+                <div className="invoice-work-person">
+                  <select
+                    className="dos-select"
+                    aria-label={`Line ${idx + 1} work person`}
+                    title="Work Person"
+                    value={listedWorkPerson(line.empNo)}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, empNo: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value=""> </option>
+                    {workPersons.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label={`Line ${idx + 1} work person name`}
+                    placeholder="Type name"
+                    value={line.empNo}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, empNo: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                    onBlur={() => {
+                      void rememberWorkPerson(line.empNo);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="dos-btn danger"
+                    aria-label={`Remove ${line.empNo || "work person"} from list`}
+                    disabled={!listedWorkPerson(line.empNo)}
+                    title="Remove name from list"
+                    onClick={() => {
+                      const name = listedWorkPerson(line.empNo);
+                      if (name) setDeleteNameAsk(name);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
                 <input
                   className="dos-input w10 num"
                   type="number"
                   step="0.01"
-                  value={line.price}
+                  aria-label={`Price ${idx + 1}`}
+                  value={line.price || ""}
                   onChange={(e) => {
                     const price = parseFloat(e.target.value) || 0;
                     const lines = [...editing.lines];
@@ -950,10 +870,15 @@ export function InvoiceProcess({
                     ...editing,
                     lines: [
                       ...editing.lines,
-                      emptyInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      ),
+                      isNewInvoice
+                        ? blankNewInvoiceLine(
+                            editing.invoice,
+                            editing.lines.length + 1
+                          )
+                        : emptyInvoiceLine(
+                            editing.invoice,
+                            editing.lines.length + 1
+                          ),
                     ],
                   })
                 }
@@ -998,6 +923,15 @@ export function InvoiceProcess({
         </Dialog>
       )}
 
+      {deleteNameAsk && (
+        <Prompt
+          question={`Remove "${deleteNameAsk}" from Work Person list? (Y/N)`}
+          onYes={() => {
+            void confirmDeleteWorkPerson();
+          }}
+          onNo={() => setDeleteNameAsk(null)}
+        />
+      )}
       {voidAsk && (
         <Prompt
           question={`Do you want Void (Y/N) ?  Invoice #${current?.invoice}`}
@@ -1005,64 +939,11 @@ export function InvoiceProcess({
           onNo={() => setVoidAsk(false)}
         />
       )}
-      {confirmData && (
-        <Prompt
-          question="--> does not exist ! Do you want Manual Invoice (Y/N) ?"
-          onYes={() => {
-            setConfirmData(false);
-            openManual();
-          }}
-          onNo={() => setConfirmData(false)}
-        />
-      )}
       {confirmSave && (
         <Prompt
           question="Is This Data Correct ? (Y/N)"
           onYes={doSave}
           onNo={() => setConfirmSave(false)}
-        />
-      )}
-      {voidWoRetry && (
-        <Prompt
-          question={msg.includes("Differnt") ? "--> Differnt Work Order No ! Retry (Y/N) ?" : "--> Void Work Order ! Retry (Y/N) ?"}
-          onYes={() => {
-            setVoidWoRetry(false);
-            setOrderNo("");
-            setMsg("Enter Work Order No (Esc=Exit) !");
-            setMsgKind("default");
-          }}
-          onNo={() => {
-            setVoidWoRetry(false);
-            setMode("browse");
-          }}
-        />
-      )}
-      {addWtAsk && (
-        <Prompt
-          question={`${addWtAsk} --> does not exist !! Do you want Add Worktype(Y/N)?`}
-          onYes={async () => {
-            const wt = emptyWorkType();
-            wt.codeNo = addWtAsk;
-            wt.workType = "P";
-            await api.saveWorkType(wt);
-            setWorkTypes(await api.listWorkTypes({}));
-            if (editing && pendingWtLine != null) {
-              const lines = [...editing.lines];
-              lines[pendingWtLine] = {
-                ...lines[pendingWtLine],
-                codeNo: addWtAsk,
-              };
-              setEditing({ ...editing, lines });
-            }
-            setAddWtAsk(null);
-            setPendingWtLine(null);
-            setMsgKind("default");
-            setMsg("Worktype added — enter description");
-          }}
-          onNo={() => {
-            setAddWtAsk(null);
-            setPendingWtLine(null);
-          }}
         />
       )}
       {help && <HelpOverlay onClose={() => setHelp(false)} />}

@@ -206,11 +206,25 @@ describe("buildInvoicePdf", () => {
     expect(asText).toContain("SERVICE ADDRESS");
     expect(asText).toContain("SUBTOTAL");
     expect(asText).toContain("NET TO PAY");
+    expect(asText).toContain("PO#/WO#");
+    expect(asText).toContain("PO9");
     expect(asText).toContain("MESA MANAGEMENT");
     expect(asText).toContain("HEATHER APARTMENTS");
     expect(asText).toContain("INTERIOR PAINT");
     // Totals: 445 subtotal / 145 paid (45 deposit + 100 cash) / 300 net
     expect(asText).toMatch(/445\.00|445/);
+  });
+
+  it("prints the work order number when customer P.O. is empty", async () => {
+    const bytes = await buildInvoicePdf(
+      payload({
+        invoice: { ...payload().invoice, custPoNo: "", orderNo: 88, depositRef: "DEP1" },
+      })
+    );
+    const asText = pdfReadableText(bytes);
+    expect(asText).toContain("PO#/WO#");
+    expect(asText).toContain("88");
+    expect(asText).not.toContain("DEP1");
   });
 
   it("rejects when template cannot be loaded", async () => {

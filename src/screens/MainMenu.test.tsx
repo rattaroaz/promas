@@ -70,6 +70,15 @@ describe("MainMenu", () => {
     expect(onSelect).toHaveBeenCalledWith("settings");
   });
 
+  it("opens quit prompt when the Esc Exit status hint is clicked", async () => {
+    const user = userEvent.setup();
+    renderApp(<MainMenu onSelect={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /^Esc Exit$/i }));
+    expect(
+      screen.getAllByText(/Do you want quit \(Y\/N\)/i).length
+    ).toBeGreaterThan(0);
+  });
+
   it("opens quit prompt on Esc and confirms with Y", () => {
     const onSelect = vi.fn();
     renderApp(<MainMenu onSelect={onSelect} />);

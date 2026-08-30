@@ -513,6 +513,51 @@ pub fn delete_employee(state: State<DbState>, emp_no: String) -> Result<(), Stri
     Ok(())
 }
 
+// ─── Work persons (invoice line name list) ────────────────────────────
+
+fn list_work_person_names(conn: &rusqlite::Connection) -> Result<Vec<String>, String> {
+    let mut stmt = conn
+        .prepare("SELECT name FROM work_persons ORDER BY name COLLATE NOCASE")
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+#[tauri::command]
+pub fn list_work_persons(state: State<DbState>) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    list_work_person_names(&conn)
+}
+
+#[tauri::command]
+pub fn save_work_person(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Work person name required".into());
+    }
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        "INSERT OR IGNORE INTO work_persons (name) VALUES (?1)",
+        params![name],
+    )
+    .map_err(map_err)?;
+    list_work_person_names(&conn)
+}
+
+#[tauri::command]
+pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let name = name.trim().to_string();
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        "DELETE FROM work_persons WHERE name = ?1 COLLATE NOCASE",
+        params![name],
+    )
+    .map_err(map_err)?;
+    list_work_person_names(&conn)
+}
+
 // ─── Work Types ───────────────────────────────────────────────────────
 
 #[tauri::command]

@@ -45,5 +45,53 @@ fn companies_and_invoices_round_trip() {
         .unwrap();
     assert_eq!(count, 1);
 
+    let tables: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='work_persons'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(tables, 1);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn work_persons_seed_from_employee_names_when_catalog_empty() {
+    let dir = std::env::temp_dir().join(format!(
+        "promas_work_persons_{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("promas.db");
+    let conn = open_and_migrate(&path).expect("migrate");
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES (?1, ?2)",
+        rusqlite::params!["400", "Jose Ramirez"],
+    )
+    .unwrap();
+    drop(conn);
+
+    let conn = open_and_migrate(&path).expect("migrate again");
+    let name: String = conn
+        .query_row("SELECT name FROM work_persons", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(name, "Jose Ramirez");
+
+    conn.execute(
+        "INSERT OR IGNORE INTO work_persons (name) VALUES (?1)",
+        rusqlite::params!["Ana Cruz"],
+    )
+    .unwrap();
+    drop(conn);
+
+    let conn = open_and_migrate(&path).expect("migrate third");
+    let count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(count, 2);
+
     let _ = std::fs::remove_dir_all(&dir);
 }

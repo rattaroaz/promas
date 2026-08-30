@@ -147,7 +147,6 @@ export async function buildInvoicePdf(
   });
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const { company, property, invoice, lines } = data;
 
   // ── Cover template regions we replace ─────────────────────────────
@@ -159,7 +158,7 @@ export async function buildInvoicePdf(
   whiteOut(page, 14, 208, PAGE_W - 28, PAGE_H - 208 - 4);
 
   // ── Header box values (on template cells at top) ──────────────────
-  draw(page, fontBold, String(invoice.invoice || ""), 385, 68, 11, {
+  draw(page, font, String(invoice.invoice || ""), 385, 68, 11, {
     maxWidth: 90,
     align: "center",
   });
@@ -196,7 +195,7 @@ export async function buildInvoicePdf(
   ] as const;
 
   for (const col of ADDR_COLS) {
-    draw(page, fontBold, col.label, col.x, ADDR_LABEL_TOP, 8);
+    draw(page, font, col.label, col.x, ADDR_LABEL_TOP, 8);
     for (let i = 0; i < ADDR_RULE_COUNT; i++) {
       const ruleTop = ADDR_FIRST_RULE + i * ADDR_LINE_H;
       page.drawLine({
@@ -277,13 +276,13 @@ export async function buildInvoicePdf(
   ) => {
     const size = 8;
     let dx = x + 4;
-    const tw = fontBold.widthOfTextAtSize(text, size);
+    const tw = font.widthOfTextAtSize(text, size);
     if (align === "center") dx = x + (w - tw) / 2;
     page.drawText(text, {
       x: dx,
       y: yTop(tableHeaderTop + 4, size),
       size,
-      font: fontBold,
+      font,
       color: rgb(1, 1, 1),
     });
   };
@@ -376,7 +375,7 @@ export async function buildInvoicePdf(
     { label: "SUBTOTAL", x: left, w: 85 },
     { label: "SALES TAX", x: left + 85, w: 70 },
     { label: "TOTAL", x: left + 155, w: 80 },
-    { label: "PAYMENT REF. NO.", x: left + 235, w: 100 },
+    { label: "PO#/WO#", x: left + 235, w: 100 },
     { label: "AMOUNT PAID", x: left + 335, w: 85 },
     { label: "NET TO PAY", x: left + 420, w: tableW - 420 },
   ];
@@ -384,12 +383,12 @@ export async function buildInvoicePdf(
   fillRect(page, left, totalsTop, tableW, totalsHeaderH, rgb(0.15, 0.15, 0.15));
   for (const c of footCols) {
     const size = 7;
-    const tw = fontBold.widthOfTextAtSize(c.label, size);
+    const tw = font.widthOfTextAtSize(c.label, size);
     page.drawText(c.label, {
       x: c.x + (c.w - tw) / 2,
       y: yTop(totalsTop + 4, size),
       size,
-      font: fontBold,
+      font,
       color: rgb(1, 1, 1),
     });
   }
@@ -427,7 +426,9 @@ export async function buildInvoicePdf(
     invoice.balance != null
       ? invoice.balance
       : Math.round((total - amountPaid) * 100) / 100;
-  const payRef = invoice.depositRef || "";
+  const payRef =
+    (invoice.custPoNo || "").trim() ||
+    (invoice.orderNo > 0 ? String(invoice.orderNo) : "");
   const valTop = valueTop + 5;
 
   draw(page, font, moneyPlain(subtotal), footCols[0].x + 4, valTop, 9, {
@@ -438,7 +439,7 @@ export async function buildInvoicePdf(
     maxWidth: footCols[1].w - 8,
     align: "right",
   });
-  draw(page, fontBold, moneyPlain(total), footCols[2].x + 4, valTop, 9, {
+  draw(page, font, moneyPlain(total), footCols[2].x + 4, valTop, 9, {
     maxWidth: footCols[2].w - 8,
     align: "right",
   });
@@ -450,7 +451,7 @@ export async function buildInvoicePdf(
     maxWidth: footCols[4].w - 8,
     align: "right",
   });
-  draw(page, fontBold, moneyPlain(netToPay), footCols[5].x + 4, valTop, 9, {
+  draw(page, font, moneyPlain(netToPay), footCols[5].x + 4, valTop, 9, {
     maxWidth: footCols[5].w - 8,
     align: "right",
   });
@@ -460,7 +461,7 @@ export async function buildInvoicePdf(
       x: 160,
       y: yTop(tableHeaderTop - 18, 14),
       size: 14,
-      font: fontBold,
+      font,
       color: rgb(0.7, 0, 0),
     });
   }

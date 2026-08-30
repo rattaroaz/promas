@@ -539,6 +539,11 @@ export const api = {
     invoke<Employee[]>("list_employees", { params }),
   saveEmployee: (employee: Employee) => invoke("save_employee", { employee }),
   deleteEmployee: (empNo: string) => invoke("delete_employee", { empNo }),
+  listWorkPersons: () => invoke<string[]>("list_work_persons"),
+  saveWorkPerson: (name: string) =>
+    invoke<string[]>("save_work_person", { name }),
+  deleteWorkPerson: (name: string) =>
+    invoke<string[]>("delete_work_person", { name }),
   listWorkTypes: (params: ListParams = {}) =>
     invoke<WorkType[]>("list_work_types", { params }),
   saveWorkType: (workType: WorkType) =>

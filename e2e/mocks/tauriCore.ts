@@ -80,7 +80,7 @@ export async function invoke<T = unknown>(
       city: "",
       zip: "",
       closeDate: null,
-      nextInvoice: 1,
+      nextInvoice: 2,
       nextOrder: 1,
       nextEstimate: 1,
       termsDays: 7,
@@ -123,6 +123,16 @@ export async function invoke<T = unknown>(
     ] as T;
   }
   if (cmd === "list_employees" || cmd === "list_work_types") {
+    return [] as T;
+  }
+  if (cmd === "list_work_persons") {
+    return [] as T;
+  }
+  if (cmd === "save_work_person") {
+    const name = String(_args?.name ?? "").trim();
+    return (name ? [name] : []) as T;
+  }
+  if (cmd === "delete_work_person") {
     return [] as T;
   }
   if (cmd === "list_work_orders") {

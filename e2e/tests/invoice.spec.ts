@@ -36,4 +36,14 @@ test.describe("invoice process", () => {
       .click();
     await expect(page.getByText(/Invoice No/i)).toBeVisible();
   });
+
+  test("New Invoice skips date/number prompt and opens the form", async ({
+    page,
+  }) => {
+    await openInvoiceBrowse(page);
+    await page.getByRole("button", { name: /^New Invoice$/i }).click();
+    await expect(page.getByText(/Invoice No\.\.\.\.\.\.\.\. 2/i)).toBeVisible();
+    await expect(page.getByLabel("Invoice Number")).toHaveValue("2");
+    await expect(page.getByText(/Due Date/i)).toBeVisible();
+  });
 });

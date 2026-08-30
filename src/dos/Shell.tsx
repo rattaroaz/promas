@@ -1,5 +1,54 @@
 import { ReactNode } from "react";
 
+/** Map a status-bar key caption to a keyboard event useDosKeys understands. */
+export function statusKeyEvent(key: string): KeyboardEventInit | null {
+  switch (key.trim()) {
+    case "Esc":
+      return { key: "Escape" };
+    case "Ins":
+      return { key: "Insert" };
+    case "Del":
+      return { key: "Delete" };
+    case "Enter":
+      return { key: "Enter" };
+    case "F1":
+      return { key: "F1" };
+    case "Home":
+      return { key: "Home" };
+    case "End":
+      return { key: "End" };
+    case "PgUp":
+      return { key: "PageUp" };
+    case "PgDn":
+      return { key: "PageDown" };
+    case "Ctrl-Home":
+    case "Cntr_Home":
+      return { key: "Home", ctrlKey: true };
+    case "Ctrl-W":
+    case "Cntr_W":
+      return { key: "w", ctrlKey: true };
+    case "(A)":
+      return { key: "A" };
+    case "↑↓":
+      return { key: "ArrowDown" };
+    case "?":
+      return { key: "?" };
+    default:
+      if (key.trim().length === 1) return { key: key.trim() };
+      return null;
+  }
+}
+
+/** Fired when a status-bar hint is clicked. WebView ignores synthetic keydowns. */
+export const STATUS_KEY_CLICK = "promas:status-key";
+
+export function activateStatusKey(key: string) {
+  if (statusKeyEvent(key) == null) return;
+  window.dispatchEvent(
+    new CustomEvent(STATUS_KEY_CLICK, { detail: key.trim() })
+  );
+}
+
 export function StatusBar({
   keys,
 }: {
@@ -7,12 +56,38 @@ export function StatusBar({
 }) {
   return (
     <div className="dos-statusbar">
-      {keys.map((k) => (
-        <span key={k.key + k.label}>
-          <span className="key">{k.key}</span>
-          {k.label ? <span className="hint">{k.label}</span> : <span className="hint"> </span>}
-        </span>
-      ))}
+      {keys.map((k) => {
+        const clickable = statusKeyEvent(k.key) != null;
+        const caption = k.label ? `${k.key} ${k.label}` : k.key;
+        if (!clickable) {
+          return (
+            <span key={k.key + k.label}>
+              <span className="key">{k.key}</span>
+              {k.label ? (
+                <span className="hint">{k.label}</span>
+              ) : (
+                <span className="hint"> </span>
+              )}
+            </span>
+          );
+        }
+        return (
+          <button
+            key={k.key + k.label}
+            type="button"
+            className="dos-status-action"
+            onClick={() => activateStatusKey(k.key)}
+            aria-label={caption}
+          >
+            <span className="key">{k.key}</span>
+            {k.label ? (
+              <span className="hint">{k.label}</span>
+            ) : (
+              <span className="hint"> </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
