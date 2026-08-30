@@ -93,6 +93,8 @@ textarea {
   font-size: 0.95em;
   display: flex;
   gap: 0;
+  position: relative;
+  z-index: 60;
 }
 
 .dos-statusbar .key {
@@ -106,6 +108,28 @@ textarea {
 .dos-statusbar .hint {
   color: var(--dos-white-bright);
   margin-right: 1.2ch;
+}
+
+.dos-status-action {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dos-status-action:hover .key,
+.dos-status-action:focus .key {
+  background: var(--dos-yellow);
+}
+
+.dos-status-action:hover .hint,
+.dos-status-action:focus .hint {
+  color: var(--dos-yellow);
 }
 
 .dos-titlebar {
@@ -312,6 +336,12 @@ textarea {
   scrollbar-color: var(--dos-cyan) var(--dos-blue);
 }
 
+.dos-browse-footer {
+  flex-shrink: 0;
+  padding: 0.4em 0.5ch 0.5em;
+  border-top: 1px solid var(--dos-cyan);
+}
+
 .dos-browse-body::-webkit-scrollbar {
   width: 1ch;
 }
@@ -368,6 +398,7 @@ textarea {
   align-items: center;
   justify-content: center;
   z-index: 50;
+  pointer-events: none;
   /* classic shadow dither */
   background: repeating-linear-gradient(
     -45deg,
@@ -376,6 +407,10 @@ textarea {
     rgba(0, 0, 0, 0.15) 2px,
     rgba(0, 0, 0, 0.15) 4px
   );
+}
+
+.dos-overlay > * {
+  pointer-events: auto;
 }
 
 .dos-dialog {
@@ -477,6 +512,7 @@ textarea {
 }
 
 .dos-input:disabled,
+.dos-input:read-only,
 .dos-select:disabled {
   color: var(--dos-white);
   background: transparent;
@@ -499,6 +535,55 @@ textarea {
 .dos-input.w30 { max-width: 32ch; flex: 0 0 32ch; }
 .dos-input.w40 { max-width: 42ch; flex: 0 0 42ch; }
 .dos-input.w50 { max-width: 52ch; flex: 0 0 52ch; }
+
+/* Invoice line columns: labels stay over their fields */
+.invoice-line-grid {
+  display: grid;
+  grid-template-columns: minmax(16ch, 1.1fr) minmax(10ch, 1fr) 16ch minmax(24ch, 30ch) 11ch auto;
+  column-gap: 0.4ch;
+  align-items: center;
+}
+
+.invoice-line-head {
+  color: var(--dos-yellow);
+  margin: 0.5em 0 0.15em;
+  align-items: end;
+}
+
+.invoice-line-head span {
+  white-space: nowrap;
+}
+
+.invoice-line-head .invoice-col-center {
+  text-align: center;
+}
+
+.invoice-line-grid .dos-input,
+.invoice-line-grid .dos-select {
+  width: 100%;
+  max-width: 100%;
+  flex: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.invoice-work-person {
+  display: flex;
+  gap: 0.3ch;
+  min-width: 0;
+  align-items: center;
+}
+
+.invoice-work-person .dos-select,
+.invoice-work-person .dos-input {
+  flex: 1 1 8ch;
+  width: auto;
+}
+
+.invoice-work-person .dos-btn {
+  flex: 0 0 auto;
+  padding: 0 0.4ch;
+}
 .dos-input.num {
   text-align: right;
   color: var(--dos-green-bright);
@@ -660,6 +745,7 @@ textarea {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 /* date input calendar icon hide for cleaner DOS look */

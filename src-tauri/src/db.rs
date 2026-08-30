@@ -569,6 +569,10 @@ fn create_schema(conn: &Connection) -> Result<()> {
             content TEXT NOT NULL DEFAULT ''
         );
 
+        CREATE TABLE IF NOT EXISTS work_persons (
+            name TEXT PRIMARY KEY COLLATE NOCASE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name);
         CREATE INDEX IF NOT EXISTS idx_properties_name ON properties(name);
         CREATE INDEX IF NOT EXISTS idx_invoices_invoice ON invoices(invoice);
@@ -580,6 +584,22 @@ fn create_schema(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_cash_date ON cash_receipts(pay_date);
         CREATE INDEX IF NOT EXISTS idx_materials_emp ON materials(emp_no, mat_date);
         "#,
+    )?;
+    seed_work_persons(conn)?;
+    Ok(())
+}
+
+/// First launch only: copy existing worker names into the invoice Work Person list.
+fn seed_work_persons(conn: &Connection) -> Result<()> {
+    let count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    conn.execute_batch(
+        r#"INSERT OR IGNORE INTO work_persons (name)
+           SELECT DISTINCT TRIM(name) FROM employees
+           WHERE TRIM(COALESCE(name,'')) != ''"#,
     )?;
     Ok(())
 }
