@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cols,
   fmtDate,
   labelDots,
   money,
@@ -15,6 +16,14 @@ describe("padR / padL", () => {
     expect(padR("abcdef", 4)).toBe("abcd");
     expect(padL("ab", 4)).toBe("  ab");
     expect(padL(null, 3)).toBe("   ");
+  });
+});
+
+describe("cols", () => {
+  it("puts three spaces between columns even when a value fills its width", () => {
+    expect(cols(padR("(555)555-1212", 13), padR("ELAINE", 18))).toBe(
+      "(555)555-1212   ELAINE            "
+    );
   });
 });
 
@@ -61,7 +70,9 @@ describe("labelDots / withAccel", () => {
 });
 
 describe("today", () => {
-  it("returns ISO yyyy-mm-dd", () => {
-    expect(today()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  it("returns the local calendar date as yyyy-mm-dd", () => {
+    const d = new Date();
+    const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    expect(today()).toBe(expected);
   });
 });

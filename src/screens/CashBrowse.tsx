@@ -11,7 +11,7 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { padR, padL, money, fmtDate, today } from "../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function CashBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<CashReceipt[]>([]);
@@ -63,7 +63,9 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
   async function openNew() {
     const invs = await api.listInvoices({ limit: 500 });
     setOpenInvs(invs.filter((i) => !i.voided && i.balance > 0.005));
-    setEditing(emptyCashReceipt());
+    const r = emptyCashReceipt();
+    r.payDate = today();
+    setEditing(r);
     setMsg("Enter Your Payment Data(Esc=Cancel) !");
   }
 
@@ -186,7 +188,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Inv#  Inv_Date  Com# Company                       PayDate  PayRefno      Payment"}
+              {"Inv#   Inv_Date   Com#   Company                       PayDate   PayRefno      Payment"}
             </div>
             <div className="dos-browse-body">
               {rows.map((r, i) => (
@@ -196,13 +198,15 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => setIndex(i)}
                 >
-                  {padL(r.invoice, 5)}{" "}
-                  {padR(fmtDate(r.salesDate), 10)}{" "}
-                  {padR(r.companyNo, 4)}{" "}
-                  {padR(r.companyName || "", 28)}{" "}
-                  {padR(fmtDate(r.payDate), 8)}{" "}
-                  {padR(r.payRefNo, 10)}{" "}
-                  {padL(money(r.payment), 10)}
+                  {cols(
+                    padL(r.invoice, 5),
+                    padR(fmtDate(r.salesDate), 10),
+                    padR(r.companyNo, 4),
+                    padR(r.companyName || "", 28),
+                    padR(fmtDate(r.payDate), 8),
+                    padR(r.payRefNo, 10),
+                    padL(money(r.payment), 10)
+                  )}
                 </button>
               ))}
             </div>
@@ -256,6 +260,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
             </DotField>
             <DotField label="Pay Date" width={16}>
               <DateInput
+                aria-label="Pay Date"
                 value={editing.payDate || today()}
                 onChange={(e) =>
                   setEditing({ ...editing, payDate: e.target.value })

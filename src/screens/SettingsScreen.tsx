@@ -11,11 +11,10 @@ import { log } from "../lib/observability";
 
 const SETTINGS_ITEMS: MenuItem[] = [
   { id: "update", num: "1", label: "Update Application", accel: "U" },
-  { id: "export", num: "2", label: "Export Database", accel: "E" },
-  { id: "location", num: "3", label: "Choose Location of Database", accel: "L" },
-  { id: "backup", num: "4", label: "Backup Database", accel: "B" },
-  { id: "import", num: "5", label: "Import Database", accel: "I" },
-  { id: "diagnostics", num: "6", label: "Diagnostics", accel: "D" },
+  { id: "location", num: "2", label: "Choose Location of Database", accel: "L" },
+  { id: "backup", num: "3", label: "Backup Database", accel: "B" },
+  { id: "import", num: "4", label: "Import Database", accel: "I" },
+  { id: "diagnostics", num: "5", label: "Diagnostics", accel: "D" },
 ];
 
 function todayStamp(): string {
@@ -80,28 +79,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     },
     !!screen
   );
-
-  async function doExport() {
-    try {
-      const dest = await save({
-        title: "Export Database",
-        defaultPath: `promas-export-${todayStamp()}.db`,
-        filters: [{ name: "SQLite Database", extensions: ["db"] }],
-      });
-      if (!dest) return;
-      setBusy(true);
-      setMsg("Exporting database…");
-      setMsgKind("info");
-      await api.exportDatabase(dest);
-      setMsg(`Exported to: ${dest}`);
-      setMsgKind("info");
-    } catch (e) {
-      setMsg(String(e));
-      setMsgKind("error");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function doBackup() {
     try {
@@ -243,21 +220,18 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   }
 
   const titles: Record<string, string> = {
-    export: " Export Database ",
     location: " Choose Location of Database ",
     backup: " Backup Database ",
     import: " Import Database ",
   };
 
   const blurbs: Record<string, string> = {
-    export:
-      "Save a full copy of the current SQLite database to a file you choose.",
     location:
       "Open an existing .db (used as-is — never overwritten), or create a new empty database file. The path is remembered for next startup.",
     backup:
       "Create a dated backup copy of the current database.",
     import:
-      "Replace the current database with a previously exported or backed-up .db file. A .db.bak safety copy is kept.",
+      "Replace the current database with a previously backed-up .db file. A .db.bak safety copy is kept.",
   };
 
   return (
@@ -272,7 +246,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       messageKind={msgKind}
     >
       <div className="dos-main-wrap">
-        <div className="dos-menu-frame" style={{ minWidth: "56ch" }}>
+        <div className="dos-menu-frame" style={{ minWidth: "min(56ch, 100%)" }}>
           <div className="menu-header">{titles[screen]}</div>
           <div className="menu-body" style={{ padding: "1em 2ch" }}>
             <div style={{ color: "var(--dos-yellow)", marginBottom: "1em" }}>
@@ -288,16 +262,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
             >
               Current database: {dbPath || "…"}
             </div>
-            {screen === "export" && (
-              <button
-                className="dos-btn"
-                disabled={busy}
-                onClick={() => void doExport()}
-                autoFocus
-              >
-                {busy ? "Exporting…" : "Choose File & Export"}
-              </button>
-            )}
             {screen === "backup" && (
               <button
                 className="dos-btn"

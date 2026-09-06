@@ -1,4 +1,5 @@
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useLayoutEffect, useCallback, useState, useRef } from "react";
+import type { RefObject } from "react";
 import { STATUS_KEY_CLICK } from "./Shell";
 
 export type KeyHandler = (e: KeyboardEvent) => boolean | void;
@@ -48,6 +49,12 @@ export function useDosKeys(
         h.onEscape?.();
         return;
       }
+      if (e.key === "Insert") {
+        e.preventDefault();
+        e.stopPropagation();
+        h.onInsert?.();
+        return;
+      }
       if (e.key === "F1") {
         e.preventDefault();
         h.onF1?.();
@@ -73,10 +80,6 @@ export function useDosKeys(
           if (inField && tag === "TEXTAREA") return;
           e.preventDefault();
           h.onEnter?.();
-          break;
-        case "Insert":
-          e.preventDefault();
-          h.onInsert?.();
           break;
         case "Delete":
           if (inField && !h.forceNav) return;
@@ -220,4 +223,90 @@ export function useBrowseIndex(count: number) {
   );
 
   return { index, setIndex, up, down, pageUp, pageDown, home, end };
+}
+
+const FIT_MIN = 0.45;
+
+/** Scale so `needed` content width fits inside `avail` window width. */
+export function computeFitScale(
+  avail: number,
+  needed: number,
+  current = 1
+): number {
+  if (avail <= 0 || needed <= 0) return 1;
+  if (needed <= avail) {
+    if (current >= 1) return 1;
+    if (needed >= avail * 0.97) return current;
+    return Math.min(1, current * (avail / needed));
+  }
+  return Math.max(FIT_MIN, current * (avail / needed));
+}
+
+function maxScrollWidth(root: HTMLElement): number {
+  let max = 0;
+  const walk = (el: Element) => {
+    if (!(el instanceof HTMLElement)) return;
+    if (el.classList.contains("print-preview-overlay")) return;
+    max = Math.max(max, el.scrollWidth);
+    for (const child of el.children) walk(child);
+  };
+  walk(root);
+  return max;
+}
+
+/**
+ * Shrinks root type (`--fit-scale`) whenever a screen is wider than the window.
+ * Type grows back to 1 when the window (or a narrower screen) has room.
+ */
+export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const doc = document.documentElement;
+    let frame = 0;
+    let applying = false;
+
+    const apply = () => {
+      if (applying) return;
+      applying = true;
+      const current =
+        parseFloat(doc.style.getPropertyValue("--fit-scale")) || 1;
+      const next = computeFitScale(
+        root.clientWidth,
+        maxScrollWidth(root),
+        current
+      );
+      if (Math.abs(next - current) > 0.004) {
+        doc.style.setProperty("--fit-scale", next.toFixed(4));
+      }
+      requestAnimationFrame(() => {
+        applying = false;
+      });
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(apply);
+    };
+
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(schedule)
+        : null;
+    ro?.observe(root);
+    const mo =
+      typeof MutationObserver !== "undefined"
+        ? new MutationObserver(schedule)
+        : null;
+    mo?.observe(root, { childList: true, subtree: true, characterData: true });
+    window.addEventListener("resize", schedule);
+    apply();
+    return () => {
+      ro?.disconnect();
+      mo?.disconnect();
+      window.removeEventListener("resize", schedule);
+      cancelAnimationFrame(frame);
+      doc.style.removeProperty("--fit-scale");
+    };
+  }, [rootRef]);
 }

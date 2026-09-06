@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFitToWidth } from "./dos/hooks";
 import { MainMenu, MainAction } from "./screens/MainMenu";
 import { Prompt } from "./dos/Shell";
 import {
@@ -31,7 +32,7 @@ import "./App.css";
  *    1 Estimate Process      → Company → Property → Proposal
  *    2 Work Order Process    → Company → Property → Orders
  *    3 Invoice Process       → Company → Property → Invoices
- *    4 Cash Receipts Process → Company → Property → Ledger/Pay
+ *    4 Cash Receipts Process → Company → Ledger/Pay
  *    5 Material Process      → sub-menu
  *    6 Reports Menu          → sub-menu
  *    7 Miscellaneous         → Change System Date / Reindex / Form Management / Import Database
@@ -54,6 +55,8 @@ type Screen =
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "main" });
   const [quitAsk, setQuitAsk] = useState(false);
+  const appRef = useRef<HTMLDivElement>(null);
+  useFitToWidth(appRef);
 
   useEffect(() => {
     log.info("app", "session start", {
@@ -142,7 +145,7 @@ export default function App() {
   }
 
   return (
-    <div className="dos-app">
+    <div className="dos-app" ref={appRef}>
       <UpdateDialog />
       <PrintPreviewOverlay />
       {screen.name === "main" && <MainMenu onSelect={handleMain} />}

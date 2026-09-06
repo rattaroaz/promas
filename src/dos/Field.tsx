@@ -12,7 +12,7 @@ export function DotField({
 }) {
   return (
     <div className="dos-field">
-      <label style={{ minWidth: `${width + 1}ch` }}>
+      <label style={{ minWidth: `min(${width + 1}ch, 100%)` }}>
         {label}
         <span className="dots">
           {".".repeat(Math.max(1, width - label.length))}
@@ -36,7 +36,7 @@ export function ColonField({
   const text = label.length >= width - 1 ? label : label.padEnd(width - 1, " ");
   return (
     <div className="dos-field">
-      <label style={{ minWidth: `${width}ch`, whiteSpace: "pre" }}>
+      <label style={{ minWidth: `min(${width}ch, 100%)`, whiteSpace: "pre" }}>
         {text}:
       </label>
       {children}

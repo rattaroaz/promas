@@ -21,7 +21,7 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { padR, padL, money, fmtDate, today } from "../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<Invoice[]>([]);
@@ -258,30 +258,36 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Inv_Date  Inv#  PO           Co#  Pro Unit     Size     Inv_Amount   PayTotal    Balance"}
+              {"Inv_Date   Inv#   PO           Co#   Pro   Unit     Size     Inv_Amount   PayTotal    Balance"}
             </div>
             <div className="dos-browse-body">
               {rows.map((inv, i) => (
                 <button
                   key={`${inv.companyNo}-${inv.invoice}-${inv.salesDate}`}
-                  className={`dos-row ${i === index ? "selected" : ""} ${inv.voided ? "voided" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${inv.voided ? "voided" : ""} ${
+                    !inv.voided && inv.balance > 0.005
+                      ? "invoice-open"
+                      : "invoice-paid"
+                  }`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
                     openEdit(inv);
                   }}
                 >
-                  {padR(fmtDate(inv.salesDate), 10)}{" "}
-                  {padL(inv.invoice, 5)}{" "}
-                  {padR(inv.custPoNo ?? "", 12)}{" "}
-                  {padR(inv.companyNo, 4)}{" "}
-                  {padR(inv.proNo, 3)}{" "}
-                  {padR(inv.salesUnit, 8)}{" "}
-                  {padR(inv.salesSize, 8)}{" "}
-                  {padL(money(inv.salesTotal), 11)}{" "}
-                  {padL(money(inv.payTotal), 10)}{" "}
-                  {padL(money(inv.balance), 10)}
-                  {inv.voided ? " V" : inv.balance <= 0 ? " *" : "  "}
+                  {cols(
+                    padR(fmtDate(inv.salesDate), 10),
+                    padL(inv.invoice, 5),
+                    padR(inv.custPoNo ?? "", 12),
+                    padR(inv.companyNo, 4),
+                    padR(inv.proNo, 3),
+                    padR(inv.salesUnit, 8),
+                    padR(inv.salesSize, 8),
+                    padL(money(inv.salesTotal), 11),
+                    padL(money(inv.payTotal), 10),
+                    padL(money(inv.balance), 10) +
+                      (inv.voided ? " V" : inv.balance <= 0 ? " *" : "  ")
+                  )}
                 </button>
               ))}
             </div>

@@ -10,11 +10,31 @@ import {
   LedgerLine,
   MissingInvoiceRow,
   Company,
+  Invoice,
 } from "../api";
-import { useDosKeys } from "../dos/hooks";
+import { useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
-import { padR, padL, money, fmtDate } from "../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 import { SubMenu, MenuItem } from "./SubMenu";
+import { save } from "@tauri-apps/plugin-dialog";
+import {
+  agingExcelFileName,
+  buildAgingSummaryWorkbook,
+  buildOutstandingInvoicesWorkbook,
+  outstandingExcelFileName,
+} from "../lib/agingExcel";
+
+type AgingDetail = {
+  company: AgingRow;
+  invoices: Invoice[];
+};
+
+/** `?` lists every company with an open balance, same as Clipper first/all. */
+export function agingSearchQuery(raw: string): string | undefined {
+  const q = raw.trim();
+  if (!q || q === "?") return undefined;
+  return q;
+}
 
 const REPORT_ITEMS: MenuItem[] = [
   { id: "ledger", num: "1", label: "Customer Ledger", accel: "L" },
@@ -35,6 +55,8 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [search, setSearch] = useState("");
   const [labelMode, setLabelMode] = useState<"C" | "P">("C");
   const [text, setText] = useState("");
+  const [agingRows, setAgingRows] = useState<AgingRow[] | null>(null);
+  const [agingDetail, setAgingDetail] = useState<AgingDetail | null>(null);
   const [msg, setMsg] = useState("");
   const [help, setHelp] = useState(false);
   const [running, setRunning] = useState(false);
@@ -43,14 +65,24 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     {
       onEscape: () => {
         if (help) setHelp(false);
-        else if (report) {
+        else if (agingDetail) {
+          setAgingDetail(null);
+          setMsg(
+            "Click a company number for outstanding invoice items  Enter=Run  (X)cel  Esc=Back"
+          );
+        } else if (report) {
           setReport(null);
           setText("");
+          setAgingRows(null);
+          setAgingDetail(null);
         } else onBack();
       },
       onF1: () => setHelp(true),
-      onEnd: () => window.print(),
+      onEnd: () => {
+        if (!agingDetail) window.print();
+      },
       onEnter: () => {
+        if (agingDetail) return;
         if (report) runReport(report);
       },
       onChar: (ch) => {
@@ -60,6 +92,15 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         }
         if (report && (ch === "p" || ch === "P")) {
           window.print();
+          return true;
+        }
+        if (report === "aging" && (ch === "x" || ch === "X")) {
+          void downloadAgingExcel();
+          return true;
+        }
+        if (report === "aging" && ch === "?") {
+          setSearch("?");
+          void runReport("aging");
           return true;
         }
         if (report === "labels") {
@@ -83,13 +124,17 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     setMsg("Generating report...");
     try {
       if (id === "aging") {
-        setText(formatAging(await api.reportAging(undefined, search)));
+        setAgingDetail(null);
+        setAgingRows(await api.reportAging(undefined, agingSearchQuery(search)));
+        setText("");
       } else if (id === "sales" || id === "invoice") {
         const rows = await api.reportSalesAnalysis({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
           companyNo: companyNo || undefined,
         });
+        setAgingRows(null);
+        setAgingDetail(null);
         setText(
           formatSales(
             rows,
@@ -117,6 +162,8 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         t +=
           "--------------------------------------------------------------------------------\n";
         t += `Cash Receipts Total Counts  : ${rows.length}\n                    Amounts : ${money(tot)}\n`;
+        setAgingRows(null);
+        setAgingDetail(null);
         setText(t);
       } else if (id === "ledger") {
         if (!companyNo.trim()) {
@@ -126,16 +173,22 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         }
         const co = await api.getCompany(companyNo.trim());
         const lines = await api.reportCustomerLedger(companyNo.trim());
+        setAgingRows(null);
+        setAgingDetail(null);
         setText(formatLedger(co, lines));
       } else if (id === "customer") {
         const cos = await api.listCompanies({ limit: 5000 });
         const props = await api.listProperties({ limit: 10000 });
+        setAgingRows(null);
+        setAgingDetail(null);
         setText(formatCustomerFile(cos, props));
       } else if (id === "missing") {
         const rows = await api.reportMissingInvoices({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
         });
+        setAgingRows(null);
+        setAgingDetail(null);
         setText(formatMissing(rows));
       } else if (id === "labels") {
         if (labelMode === "C") {
@@ -145,17 +198,88 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           const props = await api.listProperties({ limit: 10000 });
           setText(formatLabelsProperty(props));
         }
+        setAgingRows(null);
+        setAgingDetail(null);
       } else {
         const rows = await api.reportWorkerWages({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
         });
+        setAgingRows(null);
+        setAgingDetail(null);
         setText(formatWages(rows));
       }
-      setMsg("Selection (Esc=Exit,(P)rint,(S)creen)?");
+      setMsg(
+        id === "aging"
+          ? "Click a company number for outstanding invoice items  Esc=Exit  (P)rint  (X)cel"
+          : "Selection (Esc=Exit,(P)rint,(S)creen)?"
+      );
     } catch (e) {
       setMsg(String(e));
       setText("");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function openAgingDetail(row: AgingRow) {
+    setRunning(true);
+    setMsg(`Loading outstanding invoices for ${row.companyNo}...`);
+    try {
+      const invs = await api.listInvoices({
+        companyNo: row.companyNo,
+        limit: 5000,
+      });
+      const open = invs
+        .filter((i) => !i.voided && i.balance > 0.005)
+        .sort(
+          (a, b) =>
+            a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice
+        );
+      setAgingDetail({ company: row, invoices: open });
+      setMsg("Esc=Back to aging  (P)rint  (X)cel");
+    } catch (e) {
+      setMsg(String(e));
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function downloadAgingExcel() {
+    try {
+      const detail = agingDetail;
+      let rows = agingRows;
+      if (!detail && !rows) {
+        setRunning(true);
+        setMsg("Generating report...");
+        rows = await api.reportAging(undefined, agingSearchQuery(search));
+        setAgingRows(rows);
+        setText("");
+      }
+      const dest = await save({
+        title: "Save to Excel",
+        defaultPath: detail
+          ? outstandingExcelFileName(detail.company.companyNo)
+          : agingExcelFileName(),
+        filters: [{ name: "Excel Workbook", extensions: ["xls"] }],
+      });
+      if (!dest) {
+        setMsg(
+          detail
+            ? "Esc=Back to aging  (P)rint  (X)cel"
+            : "Click a company number for outstanding invoice items  Esc=Exit  (P)rint  (X)cel"
+        );
+        return;
+      }
+      setRunning(true);
+      setMsg("Saving Excel workbook...");
+      const body = detail
+        ? buildOutstandingInvoicesWorkbook(detail.company, detail.invoices)
+        : buildAgingSummaryWorkbook(rows ?? []);
+      await api.saveTextFile(dest, body);
+      setMsg(`Excel saved to: ${dest}`);
+    } catch (e) {
+      setMsg(String(e));
     } finally {
       setRunning(false);
     }
@@ -170,11 +294,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         onSelect={(id) => {
           setReport(id);
           setText("");
+          setAgingRows(null);
+          setAgingDetail(null);
           setMsg(
             id === "ledger"
               ? "Enter Company No, then Enter to run"
               : id === "aging"
-                ? "Search company NO, name, contact, or property address (optional), then Enter to run"
+                ? "? = all companies that owe money, or search company / address, then Enter"
               : id === "cash"
                 ? "Search company or property address (optional), then Enter to run"
               : id === "labels"
@@ -192,15 +318,19 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   return (
     <Screen
       statusKeys={[
-        { key: "Esc", label: "Exit" },
-        { key: "Enter", label: "Run" },
+        { key: "Esc", label: agingDetail ? "Back" : "Exit" },
+        { key: "Enter", label: agingDetail ? "" : "Run" },
         { key: "P", label: "Print" },
-        { key: "End", label: "Print" },
+        ...(report === "aging" ? [{ key: "X", label: "Excel" }] : []),
+        { key: "End", label: agingDetail ? "" : "Print" },
         { key: "F1", label: "Help" },
       ]}
       title={`*****   ${title}   *****`}
       message={msg || (running ? "Working..." : "Enter=Run  P=Print  Esc=Back")}
+      left={agingDetail?.company.companyNo}
+      right={agingDetail?.company.companyName.slice(0, 24)}
     >
+      {!agingDetail && (
       <div className="dos-searchline">
         {(report === "aging" || report === "cash") && (
           <>
@@ -211,7 +341,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={
                 report === "aging"
-                  ? "Company NO, Name, Contact, or Property Address"
+                  ? "? = all companies that owe, or Company NO, Name, Contact, Address"
                   : "Company, Contact, or Property Address"
               }
               aria-label={
@@ -281,9 +411,24 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         <button className="dos-btn" onClick={() => window.print()}>
           Print
         </button>
+        {report === "aging" && (
+          <button className="dos-btn" onClick={() => void downloadAgingExcel()}>
+            Excel
+          </button>
+        )}
       </div>
+      )}
+      {agingDetail ? (
+        <AgingInvoiceList
+          company={agingDetail.company}
+          invoices={agingDetail.invoices}
+          onExcel={() => void downloadAgingExcel()}
+        />
+      ) : (
       <div className="dos-report">
-        {text ? (
+        {report === "aging" && agingRows ? (
+          <AgingReport rows={agingRows} onCompany={openAgingDetail} />
+        ) : text ? (
           text
         ) : (
           <span style={{ color: "var(--dos-yellow)" }}>
@@ -293,17 +438,22 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           </span>
         )}
       </div>
+      )}
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
     </Screen>
   );
 }
 
-function formatAging(rows: AgingRow[]): string {
-  let t = `*****   Open Receivable Aging  *****\nDate : ${fmtDate(new Date().toISOString().slice(0, 10))}\n\n`;
-  t +=
-    "Company#  Company Name                     Contact            Phone         Current     >30      >60      >90     >120   Open Bal\n";
-  t +=
-    "====================================================================================================================================\n";
+const AGING_SEP =
+  "====================================================================================================================================\n";
+
+function AgingReport({
+  rows,
+  onCompany,
+}: {
+  rows: AgingRow[];
+  onCompany: (row: AgingRow) => void;
+}) {
   let tc = 0,
     t30 = 0,
     t60 = 0,
@@ -311,7 +461,6 @@ function formatAging(rows: AgingRow[]): string {
     t120 = 0,
     to = 0;
   for (const r of rows) {
-    t += `${padR(r.companyNo, 8)}  ${padR(r.companyName, 32)} ${padR(r.contact ?? "", 18)} ${padR(r.phone, 13)} ${padL(money(r.current), 9)} ${padL(money(r.days30), 8)} ${padL(money(r.days60), 8)} ${padL(money(r.days90), 8)} ${padL(money(r.days120), 8)} ${padL(money(r.openBal), 10)}\n`;
     tc += r.current;
     t30 += r.days30;
     t60 += r.days60;
@@ -319,10 +468,118 @@ function formatAging(rows: AgingRow[]): string {
     t120 += r.days120;
     to += r.openBal;
   }
-  t +=
-    "====================================================================================================================================\n";
-  t += `              Grand Total: ${padL(money(tc), 9)} ${padL(money(t30), 8)} ${padL(money(t60), 8)} ${padL(money(t90), 8)} ${padL(money(t120), 8)} ${padL(money(to), 10)}\n`;
-  return t;
+  return (
+    <>
+      {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n\n`}
+      <span className="hdr">
+        {
+          "Company#  Company Name                     Contact            Phone         Current     >30      >60      >90     >120   Open Bal\n"
+        }
+      </span>
+      {AGING_SEP}
+      {rows.map((r) => (
+        <div key={r.companyNo} className="aging-row">
+          <button
+            type="button"
+            className="aging-cono"
+            aria-label={`Company ${r.companyNo} outstanding invoices`}
+            onClick={() => onCompany(r)}
+          >
+            {padR(r.companyNo, 8)}
+          </button>
+          {`  ${padR(r.companyName, 32)} ${padR(r.contact ?? "", 18)} ${padR(r.phone, 13)} ${padL(money(r.current), 9)} ${padL(money(r.days30), 8)} ${padL(money(r.days60), 8)} ${padL(money(r.days90), 8)} ${padL(money(r.days120), 8)} ${padL(money(r.openBal), 10)}\n`}
+        </div>
+      ))}
+      {AGING_SEP}
+      <span className="total">
+        {`              Grand Total: ${padL(money(tc), 9)} ${padL(money(t30), 8)} ${padL(money(t60), 8)} ${padL(money(t90), 8)} ${padL(money(t120), 8)} ${padL(money(to), 10)}\n`}
+      </span>
+    </>
+  );
+}
+
+export function formatAgingInvoiceRow(inv: Invoice): string {
+  const addr = (inv.propertyStreet || inv.propertyName || "").trim();
+  return cols(
+    padL(inv.invoice, 5),
+    padR(fmtDate(inv.salesDate), 10),
+    padL(money(inv.salesTotal), 11),
+    padR(addr, 40),
+    padR(inv.salesUnit, 8),
+    padR(inv.custPoNo, 12)
+  );
+}
+
+function AgingInvoiceList({
+  company,
+  invoices,
+  onExcel,
+}: {
+  company: AgingRow;
+  invoices: Invoice[];
+  onExcel: () => void;
+}) {
+  const { index, setIndex, up, down, pageUp, pageDown, home, end } =
+    useBrowseIndex(invoices.length);
+
+  useDosKeys({
+    forceNav: true,
+    onArrowUp: up,
+    onArrowDown: down,
+    onPageUp: pageUp,
+    onPageDown: pageDown,
+    onHome: home,
+    onEnd: end,
+  });
+
+  return (
+    <>
+      <div
+        style={{
+          color: "var(--dos-yellow)",
+          padding: "0.3em 0.5ch",
+          whiteSpace: "pre",
+        }}
+      >
+        {`*****   Outstanding Invoices   *****
+Company NO : ${company.companyNo}  ${company.companyName}
+Open Balance.... ${money(company.openBal)}`}
+        <div>
+          <button className="dos-btn" onClick={onExcel}>
+            Excel
+          </button>
+        </div>
+      </div>
+      <div className="dos-browse">
+        <div className="dos-browse-header">
+          {cols(
+            padR("Inv_#", 5),
+            padR("Inv_Date", 10),
+            padR("Inv_amount", 11),
+            padR("Address", 40),
+            padR("Unit", 8),
+            padR("PO_No", 12)
+          )}
+        </div>
+        <div className="dos-browse-body">
+          {invoices.map((inv, i) => (
+            <div
+              key={`${inv.invoice}-${inv.salesDate}-${inv.proNo}`}
+              className={`dos-row ${i === index ? "selected" : ""}`}
+              onMouseEnter={() => setIndex(i)}
+            >
+              {formatAgingInvoiceRow(inv)}
+            </div>
+          ))}
+          {invoices.length === 0 && (
+            <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              {"  --> does not exsit in Receivable File !! Press Enter to Exit ..."}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
 function formatSales(rows: SalesAnalysisRow[], title: string): string {

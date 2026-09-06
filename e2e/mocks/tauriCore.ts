@@ -96,6 +96,9 @@ export async function invoke<T = unknown>(
   if (cmd === "get_company") {
     return fixtureCompany as T;
   }
+  if (cmd === "next_company_no") {
+    return "1001" as T;
+  }
   if (cmd === "list_properties") {
     return [
       {

@@ -10,7 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { padR, padL, money } from "../dos/utils";
+import { cols, padR, padL, money } from "../dos/utils";
 
 export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<WorkType[]>([]);
@@ -129,7 +129,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Code NO......Description.......................W/T......Price"}
+              {"Code NO......   Description.......................   W/T......   Price"}
             </div>
             <div className="dos-browse-body">
               {rows.map((w, i) => (
@@ -142,8 +142,12 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
                     setEditing({ ...w });
                   }}
                 >
-                  {padR(w.codeNo, 12)} {padR(w.description, 32)}{" "}
-                  {padR(w.workType, 8)} {padL(money(w.price), 10)}
+                  {cols(
+                    padR(w.codeNo, 12),
+                    padR(w.description, 32),
+                    padR(w.workType, 8),
+                    padL(money(w.price), 10)
+                  )}
                 </button>
               ))}
             </div>

@@ -97,7 +97,11 @@ describe("InvoiceProcess", () => {
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /A1\s+1\+1/i })).toBeInTheDocument();
     expect(api.listInvoices).toHaveBeenCalledWith(
-      expect.objectContaining({ companyNo: "1000" })
+      expect.objectContaining({
+        companyNo: "1000",
+        proNo: "01",
+        includeVoided: true,
+      })
     );
   });
 
@@ -167,7 +171,7 @@ describe("InvoiceProcess", () => {
     expect(onBack).toHaveBeenCalled();
   });
 
-  it("leaves price empty until size is entered for a preset description", async () => {
+  it("fills a preset description price from size and leaves Occupied blank", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -185,28 +189,9 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(null);
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(245);
-  });
-
-  it("updates preset price when size changes", async () => {
-    const user = userEvent.setup();
-    renderApp(
-      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
-    );
-    await screen.findByText(/1 invoices/i);
-    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    await user.selectOptions(
-      await screen.findByLabelText("Line 1 description"),
-      INTERIOR_PAINT_WALL_CLOSET
-    );
-    const size = screen.getByLabelText(/^Size$/i);
-    await user.selectOptions(size, "single");
-    expect(screen.getByLabelText("Custom size")).toHaveAttribute("readonly");
-    expect(screen.getByLabelText("Custom size")).toHaveValue("single");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(220);
-    await user.selectOptions(size, "");
+    await user.selectOptions(screen.getByLabelText(/^Size$/i), "Occupied");
+    expect(screen.getByLabelText("Custom size")).toHaveValue("Occupied");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(null);
-    await user.selectOptions(screen.getByLabelText(/^Size$/i), "4+2");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(545);
   });
 
   it("allows a custom description and a manually edited price", async () => {
@@ -245,8 +230,20 @@ describe("InvoiceProcess", () => {
     const values = Array.from(size.querySelectorAll("option")).map(
       (o) => o.getAttribute("value") ?? ""
     );
-    expect(values).toEqual(["", "single", "1+1", "2+1", "2+2", "3+2", "4+2"]);
+    expect(values).toEqual([
+      "",
+      "single",
+      "1+1",
+      "2+1",
+      "2+2",
+      "3+2",
+      "4+2",
+      "Occupied",
+    ]);
     expect(screen.getByLabelText("Custom size")).not.toHaveAttribute("readonly");
+    expect(size).toHaveClass("dos-choice");
+    expect(screen.getByLabelText("Line 1 description")).toHaveClass("dos-choice");
+    expect(screen.getByLabelText("Line 1 work person")).toHaveClass("dos-choice");
     const desc = screen.getByLabelText("Line 1 description");
     const descriptions = Array.from(desc.querySelectorAll("option")).map(
       (o) => o.getAttribute("value") ?? ""
@@ -320,7 +317,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Line 1 work person name")).toHaveValue("");
   });
 
-  it("fills a fixed kitchen cabinet price without using size", async () => {
+  it("fills kitchen cabinet and color-change prices from the description", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -334,26 +331,32 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(130);
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "4+2");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(130);
+    await user.selectOptions(
+      screen.getByLabelText("Line 1 description"),
+      COLOR_CHANGE_CEILING_SWISS_COFFEE
+    );
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(156);
   });
 
-  it("prices color-change descriptions at 80% of the related paint item", async () => {
-    const user = userEvent.setup();
+  it("bolds outstanding invoices and not paid ones", async () => {
+    const paid = {
+      ...fixture,
+      invoice: 8,
+      balance: 0,
+      payTotal: 250,
+      custPoNo: "PAID-8",
+    };
+    vi.mocked(api.listInvoices).mockResolvedValue([fixture, paid]);
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
-    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    await user.selectOptions(
-      await screen.findByLabelText("Line 1 description"),
-      COLOR_CHANGE_CEILING_SWISS_COFFEE
+    expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PO-441/i })).toHaveClass(
+      "invoice-open"
     );
-    await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(92);
-    await user.selectOptions(
-      screen.getByLabelText("Line 1 description"),
-      COLOR_CHANGE_WALLS_NAVAJO_WHITE
+    expect(screen.getByRole("button", { name: /PAID-8/i })).toHaveClass(
+      "invoice-paid"
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(196);
   });
 
   it("saves a new invoice after Ctrl-W confirm", async () => {
@@ -398,6 +401,30 @@ describe("InvoiceProcess", () => {
         1
       );
     });
+  });
+
+  it("lists every invoice for the property and skips other sites", async () => {
+    const older = {
+      ...fixture,
+      salesDate: "2024-06-01",
+      invoice: 9,
+      custPoNo: "OLD-9",
+      voided: true,
+    };
+    const otherSite = {
+      ...fixture,
+      proNo: "02",
+      invoice: 3,
+      custPoNo: "OTHER",
+    };
+    vi.mocked(api.listInvoices).mockResolvedValue([fixture, older, otherSite]);
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /OLD-9/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /OTHER/i })).not.toBeInTheDocument();
   });
 
   it("shows an empty-state when the property has no invoices", async () => {

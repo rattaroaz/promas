@@ -51,6 +51,7 @@ async function invoke<T>(
 export interface ListParams {
   search?: string;
   companyNo?: string;
+  proNo?: string;
   fromDate?: string;
   toDate?: string;
   includeVoided?: boolean;
@@ -527,7 +528,8 @@ export const api = {
     invoke<Company[]>("list_companies", { params }),
   getCompany: (companyNo: string) =>
     invoke<Company | null>("get_company", { companyNo }),
-  saveCompany: (company: Company) => invoke("save_company", { company }),
+  nextCompanyNo: () => invoke<string>("next_company_no"),
+  saveCompany: (company: Company) => invoke<string>("save_company", { company }),
   deleteCompany: (companyNo: string) =>
     invoke("delete_company", { companyNo }),
   listProperties: (params: ListParams = {}) =>
@@ -636,14 +638,16 @@ export const api = {
   reportMissingInvoices: (params: ListParams = {}) =>
     invoke<MissingInvoiceRow[]>("report_missing_invoices", { params }),
   reportAging: async (asOf?: string, search?: string) => {
+    const q = search?.trim() ?? "";
+    const needle = !q || q === "?" ? null : q;
     const rows = await invoke<AgingRow[]>("report_aging", {
       asOf: asOf ?? null,
-      search: search?.trim() ? search.trim() : null,
+      search: needle,
     });
     log.info("db", "report_aging completed", {
       rows: rows.length,
       asOf: asOf ?? null,
-      search: search?.trim() || null,
+      search: needle,
     });
     return rows;
   },
@@ -673,10 +677,6 @@ export const api = {
     return result;
   },
   getDbPath: () => invoke<string>("get_db_path"),
-  exportDatabase: async (destPath: string) => {
-    await invoke("export_database", { destPath });
-    log.info("db", "database exported", { destPath });
-  },
   backupDatabase: async (destPath: string) => {
     await invoke("backup_database", { destPath });
     log.info("db", "database backed up", { destPath });

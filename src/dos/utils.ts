@@ -12,6 +12,13 @@ export function padL(s: string | number | null | undefined, n: number): string {
   return " ".repeat(n - t.length) + t;
 }
 
+/** Join fixed-width columns with three spaces so values never run together. */
+export function cols(
+  ...parts: Array<string | number | null | undefined>
+): string {
+  return parts.map((p) => String(p ?? "")).join("   ");
+}
+
 export function money(n: number | null | undefined): string {
   const v = n ?? 0;
   const neg = v < 0;
@@ -30,7 +37,11 @@ export function fmtDate(d: string | null | undefined): string {
 }
 
 export function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function labelDots(label: string, width = 16): string {

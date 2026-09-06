@@ -9,7 +9,7 @@ import {
 import { useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, BROWSE_KEYS, Dialog, FORM_KEYS, Prompt, HelpOverlay } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { padR, fmtDate, today } from "../dos/utils";
+import { cols, padR, fmtDate, today } from "../dos/utils";
 
 type Mode = "list" | "edit" | "detail" | "props" | "propedit";
 
@@ -87,11 +87,20 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       },
       onF1: () => setHelp(true),
       onInsert: () => {
-        if (mode === "list") {
-          setIsNew(true);
-          setEdit(emptyCompany());
-          setMode("edit");
-          setMsg("Enter Company Information (Esc=Cancel, Ctrl-W=Save & Exit)");
+        if (mode === "edit" || mode === "propedit") return;
+        if (mode === "list" || mode === "detail") {
+          void (async () => {
+            const blank = emptyCompany();
+            try {
+              blank.companyNo = await api.nextCompanyNo();
+            } catch {
+              blank.companyNo = "1000";
+            }
+            setIsNew(true);
+            setEdit(blank);
+            setMode("edit");
+            setMsg("Enter Company Information (Esc=Cancel, Ctrl-W=Save & Exit)");
+          })();
         } else if (mode === "props" && current) {
           setPropEdit(emptyProperty(current.companyNo));
           setMode("propedit");
@@ -149,10 +158,17 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
   );
 
   async function saveCompany() {
-    if (!edit?.companyNo.trim() || !edit.name.trim()) {
-      setMsg("--> Company NO and Name required !!");
+    if (!edit?.name.trim()) {
+      setMsg("--> Company Name required !!");
       setMsgKind("error");
       return;
+    }
+    if (!edit.companyNo.trim()) {
+      try {
+        edit.companyNo = await api.nextCompanyNo();
+      } catch {
+        edit.companyNo = "1000";
+      }
     }
     try {
       await api.saveCompany(edit);
@@ -197,7 +213,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
   }
 
   const header =
-    "Co#  Company Name                   City            Phone         Contact";
+    "Co#   Company Name                   City             Phone          Contact";
 
   const visibleProps = props.filter((p) => {
     const q = propSearch.trim().toUpperCase();
@@ -261,11 +277,13 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                     setMode("edit");
                   }}
                 >
-                  {padR(c.companyNo, 5)}
-                  {padR(c.name, 30)}{" "}
-                  {padR(c.city, 15)}{" "}
-                  {padR(c.phone, 13)}{" "}
-                  {padR(c.contact, 20)}
+                  {cols(
+                    padR(c.companyNo, 5),
+                    padR(c.name, 30),
+                    padR(c.city, 15),
+                    padR(c.phone, 13),
+                    padR(c.contact, 20)
+                  )}
                 </button>
               ))}
               {rows.length === 0 && (
@@ -295,7 +313,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
           </div>
         <div className="dos-browse">
           <div className="dos-browse-header">
-            {"Pro# Name                           Street                         Phone"}
+            {"Pro#   Name                           Street               Phone"}
           </div>
           <div className="dos-browse-body">
             {visibleProps.map((p, i) => (
@@ -307,8 +325,12 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                   setMode("propedit");
                 }}
               >
-                {padR(p.proNo, 4)} {padR(p.name, 28)} {padR(p.street, 24)}{" "}
-                {padR(p.phone, 13)}
+                {cols(
+                  padR(p.proNo, 4),
+                  padR(p.name, 28),
+                  padR(p.street, 20),
+                  padR(p.phone, 13)
+                )}
               </button>
             ))}
             {visibleProps.length === 0 && props.length > 0 && (
@@ -346,11 +368,8 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               <input
                 className="dos-input w5"
                 value={edit.companyNo}
-                disabled={!isNew || mode === "detail"}
-                onChange={(e) =>
-                  setEdit({ ...edit, companyNo: e.target.value })
-                }
-                autoFocus={isNew}
+                disabled
+                readOnly
               />
             </DotField>
             <DotField label="Company Name" width={14}>
@@ -359,6 +378,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 value={edit.name}
                 disabled={mode === "detail"}
                 onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                autoFocus={isNew}
               />
             </DotField>
             <DotField label="Class" width={14}>

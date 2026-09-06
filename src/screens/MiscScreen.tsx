@@ -12,7 +12,7 @@ import { useDosKeys } from "../dos/hooks";
 import { Screen, FORM_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { SubMenu, MenuItem } from "./SubMenu";
-import { padR } from "../dos/utils";
+import { cols, padR } from "../dos/utils";
 import { log } from "../lib/observability";
 
 const MISC_ITEMS: MenuItem[] = [
@@ -365,7 +365,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         messageKind={msgKind}
       >
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "58ch" }}>
+          <div className="dos-menu-frame" style={{ minWidth: "min(58ch, 100%)" }}>
             <div className="menu-header">
               {isImport ? " Import Original Database " : " Reindex Data Files "}
             </div>
@@ -460,7 +460,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         {!editForm ? (
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Form #............  Content preview"}
+              {"Form #............   Content preview"}
             </div>
             <div className="dos-browse-body">
               {forms.map((f) => (
@@ -469,7 +469,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                   className="dos-row"
                   onClick={() => setEditForm({ ...f })}
                 >
-                  {padR(f.formNo, 16)} {padR(f.content.slice(0, 40), 40)}
+                  {cols(padR(f.formNo, 16), padR(f.content, 40))}
                 </button>
               ))}
               {forms.length === 0 && (
@@ -481,7 +481,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
           </div>
         ) : (
           <div className="dos-main-wrap">
-            <div className="dos-dialog" style={{ minWidth: "50ch" }}>
+            <div className="dos-dialog" style={{ minWidth: "min(50ch, 100%)" }}>
               <div className="dlg-title"> Enter Form </div>
               <div className="dlg-body">
                 <div className="dos-form">

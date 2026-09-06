@@ -1,7 +1,7 @@
 use crate::db::DbState;
 use crate::import::import_promas_folder;
 use crate::models::*;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::path::PathBuf;
 use tauri::{Manager, State};
 
@@ -266,9 +266,31 @@ pub fn get_company(state: State<DbState>, company_no: String) -> Result<Option<C
     .map_err(map_err)
 }
 
+fn next_company_no_conn(conn: &Connection) -> Result<String, String> {
+    let max: i64 = conn
+        .query_row(
+            r#"SELECT COALESCE(MAX(CAST(company_no AS INTEGER)), 999)
+               FROM companies
+               WHERE TRIM(company_no) != '' AND company_no GLOB '[0-9]*'"#,
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(999);
+    Ok((max + 1).to_string())
+}
+
 #[tauri::command]
-pub fn save_company(state: State<DbState>, company: Company) -> Result<(), String> {
+pub fn next_company_no(state: State<DbState>) -> Result<String, String> {
     let conn = state.0.lock().map_err(map_err)?;
+    next_company_no_conn(&conn)
+}
+
+#[tauri::command]
+pub fn save_company(state: State<DbState>, mut company: Company) -> Result<String, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    if company.company_no.trim().is_empty() {
+        company.company_no = next_company_no_conn(&conn)?;
+    }
     conn.execute(
         r#"INSERT INTO companies
            (company_no,name,class,street,city,state,zip,phone,phone2,phone3,phone4,
@@ -301,7 +323,7 @@ pub fn save_company(state: State<DbState>, company: Company) -> Result<(), Strin
         ],
     )
     .map_err(map_err)?;
-    Ok(())
+    Ok(company.company_no)
 }
 
 #[tauri::command]
@@ -628,6 +650,7 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
     let include_voided = params.include_voided.unwrap_or(false);
     let search = params.search.unwrap_or_default();
     let company_no = params.company_no.unwrap_or_default();
+    let pro_no = params.pro_no.unwrap_or_default();
     let from_date = params.from_date.unwrap_or_default();
     let to_date = params.to_date.unwrap_or_default();
     let limit = params.limit.unwrap_or(200);
@@ -645,14 +668,15 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
                LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
                WHERE (?1 OR i.voided=0)
                  AND (?2='' OR i.company_no=?2)
-                 AND (?3='' OR i.sales_date>=?3)
-                 AND (?4='' OR i.sales_date<=?4)
-                 AND (?5='' OR CAST(i.invoice AS TEXT) LIKE ?6 OR i.sales_unit LIKE ?6
-                      OR c.name LIKE ?6 OR c.contact LIKE ?6 OR i.cust_po_no LIKE ?6
-                      OR p.street LIKE ?6 OR p.city LIKE ?6 OR p.zip LIKE ?6 OR p.name LIKE ?6
-                      OR p.contact LIKE ?6 OR p.manager LIKE ?6)
+                 AND (?3='' OR i.pro_no=?3)
+                 AND (?4='' OR i.sales_date>=?4)
+                 AND (?5='' OR i.sales_date<=?5)
+                 AND (?6='' OR CAST(i.invoice AS TEXT) LIKE ?7 OR i.sales_unit LIKE ?7
+                      OR c.name LIKE ?7 OR c.contact LIKE ?7 OR i.cust_po_no LIKE ?7
+                      OR p.street LIKE ?7 OR p.city LIKE ?7 OR p.zip LIKE ?7 OR p.name LIKE ?7
+                      OR p.contact LIKE ?7 OR p.manager LIKE ?7)
                ORDER BY i.sales_date DESC, i.invoice DESC
-               LIMIT ?7 OFFSET ?8"#,
+               LIMIT ?8 OFFSET ?9"#,
         )
         .map_err(map_err)?;
     let rows = stmt
@@ -660,6 +684,7 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
             params![
                 include_voided,
                 company_no,
+                pro_no,
                 from_date,
                 to_date,
                 search,
@@ -1042,26 +1067,15 @@ pub fn get_db_path(app: tauri::AppHandle) -> Result<String, String> {
 fn vacuum_into(state: &State<DbState>, dest_path: &str) -> Result<(), String> {
     let dest = PathBuf::from(dest_path);
     if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("create export dir: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("create backup dir: {e}"))?;
     }
     if dest.exists() {
         std::fs::remove_file(&dest).map_err(|e| format!("remove existing file: {e}"))?;
     }
     let conn = state.0.lock().map_err(map_err)?;
     conn.execute("VACUUM INTO ?1", [dest.display().to_string()])
-        .map_err(|e| format!("export database: {e}"))?;
+        .map_err(|e| format!("backup database: {e}"))?;
     Ok(())
-}
-
-/// Export a consistent copy of the live database to `dest_path` (VACUUM INTO).
-#[tauri::command]
-pub fn export_database(state: State<DbState>, dest_path: String) -> Result<(), String> {
-    log::info!(target: "promas::db", "export_database → {dest_path}");
-    let result = vacuum_into(&state, &dest_path);
-    if let Err(ref e) = result {
-        log::error!(target: "promas::db", "export_database failed: {e}");
-    }
-    result
 }
 
 /// Backup the live database to `dest_path`.

@@ -4,6 +4,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root {
+  --fit-scale: 1;
   --dos-blue: #0000aa;
   --dos-blue-bright: #0000ff;
   --dos-cyan: #00aaaa;
@@ -39,7 +40,8 @@ body,
   background: var(--dos-black);
   color: var(--dos-white-bright);
   font-family: var(--font-dos);
-  font-size: 16px;
+  /* 2× at the default window; grows with the viewport; --fit-scale keeps screens on-width */
+  font-size: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
   line-height: var(--row);
   -webkit-font-smoothing: none;
   font-smooth: never;
@@ -65,6 +67,7 @@ textarea {
 .dos-app {
   height: 100%;
   width: 100%;
+  max-width: 100%;
   background: var(--dos-blue);
   color: var(--dos-white-bright);
   display: flex;
@@ -77,6 +80,9 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   padding: 0;
   position: relative;
 }
@@ -232,6 +238,11 @@ textarea {
   justify-content: center;
   background: var(--dos-blue);
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 1ch;
+  box-sizing: border-box;
 }
 
 .dos-menu-frame {
@@ -239,7 +250,9 @@ textarea {
   color: var(--dos-white-bright);
   border: 2px double var(--dos-cyan-bright);
   padding: 0;
-  min-width: 42ch;
+  min-width: min(42ch, 100%);
+  max-width: 100%;
+  box-sizing: border-box;
   box-shadow: 4px 4px 0 #000055;
 }
 
@@ -303,7 +316,8 @@ textarea {
   color: var(--dos-cyan-bright);
   text-align: center;
   font-size: 0.9em;
-  white-space: pre;
+  white-space: pre-wrap;
+  max-width: 100%;
 }
 
 /* ─── List browser (browse screen) ──────────────────────── */
@@ -313,8 +327,12 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   background: var(--dos-blue);
   padding: 0.4em 1ch 0;
+  box-sizing: border-box;
 }
 
 .dos-browse-header {
@@ -324,6 +342,7 @@ textarea {
   border-bottom: 1px solid var(--dos-cyan);
   padding-bottom: 0;
   margin-bottom: 0;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -332,6 +351,8 @@ textarea {
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   scrollbar-width: thin;
   scrollbar-color: var(--dos-cyan) var(--dos-blue);
 }
@@ -388,6 +409,14 @@ textarea {
   background: var(--dos-white);
 }
 
+.dos-row.invoice-open {
+  font-weight: bold;
+}
+
+.dos-row.invoice-paid {
+  font-weight: normal;
+}
+
 /* ─── Forms / dialogs ───────────────────────────────────── */
 
 .dos-overlay {
@@ -399,6 +428,8 @@ textarea {
   justify-content: center;
   z-index: 50;
   pointer-events: none;
+  padding: 1ch;
+  min-width: 0;
   /* classic shadow dither */
   background: repeating-linear-gradient(
     -45deg,
@@ -417,17 +448,18 @@ textarea {
   background: var(--dos-blue);
   border: 2px double var(--dos-white-bright);
   box-shadow: 3px 3px 0 #000044;
-  min-width: 48ch;
-  max-width: 92ch;
+  min-width: 0;
+  width: min(92ch, 100%);
+  max-width: 100%;
   max-height: 90%;
   display: flex;
   flex-direction: column;
   color: var(--dos-white-bright);
+  box-sizing: border-box;
 }
 
 .dos-dialog.wide {
-  min-width: 76ch;
-  width: 90%;
+  width: min(90%, 100%);
 }
 
 .dos-dialog.red {
@@ -460,7 +492,7 @@ textarea {
   padding: 0.3em 1ch;
   color: var(--dos-yellow);
   text-align: center;
-  white-space: pre;
+  white-space: pre-wrap;
   font-size: 0.95em;
 }
 
@@ -476,13 +508,16 @@ textarea {
   align-items: baseline;
   gap: 0.5ch;
   min-height: 1.2em;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dos-field label {
   color: var(--dos-white-bright);
   white-space: pre;
-  flex-shrink: 0;
-  min-width: 16ch;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dos-field label .dots {
@@ -525,23 +560,67 @@ textarea {
   border: 1px solid var(--dos-cyan);
 }
 
-.dos-input.w4 { max-width: 5ch; flex: 0 0 5ch; }
-.dos-input.w5 { max-width: 6ch; flex: 0 0 6ch; }
-.dos-input.w8 { max-width: 10ch; flex: 0 0 10ch; }
-.dos-input.w10 { max-width: 12ch; flex: 0 0 12ch; }
-.dos-input.w12 { max-width: 14ch; flex: 0 0 14ch; }
-.dos-input.w15 { max-width: 17ch; flex: 0 0 17ch; }
-.dos-input.w20 { max-width: 22ch; flex: 0 0 22ch; }
-.dos-input.w30 { max-width: 32ch; flex: 0 0 32ch; }
-.dos-input.w40 { max-width: 42ch; flex: 0 0 42ch; }
-.dos-input.w50 { max-width: 52ch; flex: 0 0 52ch; }
+.dos-input.w4 { max-width: min(5ch, 100%); flex: 1 1 5ch; }
+.dos-input.w5 { max-width: min(6ch, 100%); flex: 1 1 6ch; }
+.dos-input.w8 { max-width: min(10ch, 100%); flex: 1 1 10ch; }
+.dos-input.w10 { max-width: min(12ch, 100%); flex: 1 1 12ch; }
+.dos-input.w12 { max-width: min(14ch, 100%); flex: 1 1 14ch; }
+.dos-input.w15 { max-width: min(17ch, 100%); flex: 1 1 17ch; }
+.dos-input.w20 { max-width: min(22ch, 100%); flex: 1 1 22ch; }
+.dos-input.w30 { max-width: min(32ch, 100%); flex: 1 1 32ch; }
+.dos-input.w40 { max-width: min(42ch, 100%); flex: 1 1 42ch; }
+.dos-input.w50 { max-width: min(52ch, 100%); flex: 1 1 52ch; }
+
+/* Select + typed value: picker is a small box, value uses the rest */
+.dos-choice-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.3ch;
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
+.dos-choice {
+  flex: 0 0 1.45em;
+  width: 1.45em;
+  min-width: 1.45em;
+  max-width: 1.45em;
+  padding: 0;
+  color: transparent;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.dos-choice:focus {
+  color: transparent;
+  background: var(--dos-cyan-bright);
+}
+
+.dos-choice option {
+  color: var(--dos-black);
+  background: var(--dos-cyan-bright);
+}
+
+.dos-choice-pair > .dos-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.dos-field > .dos-choice-pair {
+  flex: 1 1 auto;
+}
 
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  grid-template-columns: minmax(16ch, 1.1fr) minmax(10ch, 1fr) 16ch minmax(24ch, 30ch) 11ch auto;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 16ch) minmax(0, 1.6fr) minmax(0, 11ch) auto;
   column-gap: 0.4ch;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .invoice-line-head {
@@ -552,6 +631,9 @@ textarea {
 
 .invoice-line-head span {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
 }
 
 .invoice-line-head .invoice-col-center {
@@ -567,6 +649,12 @@ textarea {
   box-sizing: border-box;
 }
 
+.invoice-line-grid .dos-choice {
+  width: 1.45em;
+  max-width: 1.45em;
+  flex: 0 0 1.45em;
+}
+
 .invoice-work-person {
   display: flex;
   gap: 0.3ch;
@@ -574,9 +662,13 @@ textarea {
   align-items: center;
 }
 
-.invoice-work-person .dos-select,
+.invoice-work-person .dos-choice {
+  flex: 0 0 1.45em;
+  width: 1.45em;
+}
+
 .invoice-work-person .dos-input {
-  flex: 1 1 8ch;
+  flex: 1 1 auto;
   width: auto;
 }
 
@@ -599,8 +691,8 @@ textarea {
 }
 
 .dos-form-row .dos-field {
-  flex: 1;
-  min-width: 20ch;
+  flex: 1 1 16ch;
+  min-width: 0;
 }
 
 /* ─── Prompt / yes-no ───────────────────────────────────── */
@@ -611,7 +703,10 @@ textarea {
   color: var(--dos-white-bright);
   padding: 0.8em 2ch;
   text-align: center;
-  min-width: 36ch;
+  min-width: 0;
+  width: min(48ch, calc(100% - 2ch));
+  max-width: calc(100% - 2ch);
+  box-sizing: border-box;
   box-shadow: 3px 3px 0 #440000;
 }
 
@@ -638,6 +733,50 @@ textarea {
   gap: 1ch;
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dos-company-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1ch;
+  padding: 0.25em 1ch;
+  flex-shrink: 0;
+  color: var(--dos-cyan-bright);
+  background: var(--dos-black);
+}
+
+.dos-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7em;
+  height: 1.5em;
+  padding: 0;
+  border: 1px solid var(--dos-white-bright);
+  background: var(--dos-cyan);
+  color: var(--dos-black);
+  cursor: pointer;
+}
+
+.dos-icon-btn svg {
+  width: 1em;
+  height: 1em;
+}
+
+.dos-icon-btn.danger {
+  background: var(--dos-red);
+  color: var(--dos-white-bright);
+}
+
+.dos-icon-btn:hover,
+.dos-icon-btn:focus {
+  background: var(--dos-yellow);
+  color: var(--dos-black);
 }
 
 .dos-searchline label {
@@ -669,6 +808,9 @@ textarea {
   font-family: var(--font-dos);
   line-height: 1.15;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .dos-report .hdr {
@@ -681,6 +823,28 @@ textarea {
   font-weight: bold;
 }
 
+.dos-report .aging-row {
+  display: block;
+  white-space: pre;
+}
+
+.dos-report .aging-cono {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dos-cyan-bright);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.dos-report .aging-cono:hover,
+.dos-report .aging-cono:focus {
+  color: var(--dos-yellow);
+}
+
 /* ─── Help screen ───────────────────────────────────────── */
 
 .dos-help {
@@ -688,8 +852,10 @@ textarea {
   border: 2px double var(--dos-yellow);
   color: var(--dos-white-bright);
   padding: 0.5em 2ch 1em;
-  min-width: 50ch;
-  max-width: 70ch;
+  min-width: 0;
+  width: min(70ch, calc(100% - 2ch));
+  max-width: calc(100% - 2ch);
+  box-sizing: border-box;
 }
 
 .dos-help h3 {
@@ -701,9 +867,10 @@ textarea {
 
 .dos-help pre {
   color: var(--dos-cyan-bright);
-  white-space: pre;
+  white-space: pre-wrap;
   font-family: var(--font-dos);
   line-height: 1.35;
+  max-width: 100%;
 }
 
 /* ─── Inline text buttons (rarely used) ─────────────────── */
@@ -744,6 +911,9 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   overflow: hidden;
   position: relative;
 }

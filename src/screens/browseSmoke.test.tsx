@@ -109,7 +109,7 @@ describe("browse screen smoke", () => {
       dbPath: "C:\\mock\\promas.db",
       logDir: "C:\\mock\\logs",
       rustVersion: "1.80.0",
-      crateVersion: "2.5.4",
+      crateVersion: "2.6.0",
       targetTriple: "x86_64-pc-windows-msvc",
     });
   });

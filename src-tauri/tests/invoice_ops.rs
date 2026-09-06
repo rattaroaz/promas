@@ -270,6 +270,10 @@ fn report_aging_buckets_by_age() {
     let miss =
         ops::report_aging(&conn, Some("2026-02-01".into()), Some("NOPE".into())).unwrap();
     assert!(miss.is_empty());
+    let by_qmark =
+        ops::report_aging(&conn, Some("2026-02-01".into()), Some("?".into())).unwrap();
+    assert_eq!(by_qmark.len(), 1);
+    assert_eq!(by_qmark[0].open_bal, 150.0);
 
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -292,6 +296,7 @@ fn report_sales_analysis_lists_open_invoices() {
         &ListParams {
             search: None,
             company_no: Some("1000".into()),
+            pro_no: None,
             from_date: Some("2026-01-01".into()),
             to_date: Some("2026-12-31".into()),
             include_voided: None,
@@ -381,6 +386,7 @@ fn voided_invoices_excluded_from_aging_and_sales() {
         &ListParams {
             search: None,
             company_no: Some("1000".into()),
+            pro_no: None,
             from_date: None,
             to_date: None,
             include_voided: None,
@@ -423,6 +429,7 @@ fn report_worker_wages_includes_emp_lines() {
         &ListParams {
             search: Some("E1".into()),
             company_no: None,
+            pro_no: None,
             from_date: None,
             to_date: None,
             include_voided: None,
@@ -610,6 +617,7 @@ fn list_cash_receipts_matches_property_address() {
     let empty = ListParams {
         search: None,
         company_no: None,
+        pro_no: None,
         from_date: None,
         to_date: None,
         include_voided: None,

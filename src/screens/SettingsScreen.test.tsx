@@ -20,7 +20,6 @@ vi.mock("../api", async () => {
     api: {
       ...actual.api,
       getDbPath: vi.fn().mockResolvedValue("C:\\mock\\promas.db"),
-      exportDatabase: vi.fn().mockResolvedValue(undefined),
       backupDatabase: vi.fn().mockResolvedValue(undefined),
       setDbLocation: vi.fn().mockResolvedValue({
         path: "D:\\data\\promas.db",
@@ -43,7 +42,6 @@ describe("SettingsScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.getDbPath).mockResolvedValue("C:\\mock\\promas.db");
-    vi.mocked(api.exportDatabase).mockResolvedValue(undefined);
     vi.mocked(api.backupDatabase).mockResolvedValue(undefined);
     vi.mocked(api.setDbLocation).mockResolvedValue({
       path: "D:\\data\\promas.db",
@@ -55,7 +53,7 @@ describe("SettingsScreen", () => {
   it("shows settings options including Diagnostics", () => {
     renderApp(<SettingsScreen onBack={vi.fn()} />);
     expect(screen.getByText(/Update Application/i)).toBeInTheDocument();
-    expect(screen.getByText(/Export Database/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Export Database/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Choose Location of Database/i)).toBeInTheDocument();
     expect(screen.getByText(/Backup Database/i)).toBeInTheDocument();
     expect(screen.getByText(/Import Database/i)).toBeInTheDocument();
@@ -70,24 +68,11 @@ describe("SettingsScreen", () => {
     expect(checkForUpdatesAndApply).toHaveBeenCalled();
   });
 
-  it("opens export panel and returns on Esc via onBack from menu", async () => {
+  it("opens backup panel from the settings menu", async () => {
     const user = userEvent.setup();
-    const onBack = vi.fn();
-    renderApp(<SettingsScreen onBack={onBack} />);
-    await user.click(screen.getByRole("button", { name: /Export Database/i }));
-    expect(screen.getByText(/Choose File & Export/i)).toBeInTheDocument();
-  });
-
-  it("exports when dialog returns a path", async () => {
-    const user = userEvent.setup();
-    vi.mocked(save).mockResolvedValue("C:\\exports\\promas-export.db");
     renderApp(<SettingsScreen onBack={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: /Export Database/i }));
-    await user.click(screen.getByRole("button", { name: /Choose File & Export/i }));
-    await waitFor(() => {
-      expect(api.exportDatabase).toHaveBeenCalledWith("C:\\exports\\promas-export.db");
-    });
-    expect(await screen.findByText(/Exported to: C:\\exports\\promas-export.db/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Backup Database/i }));
+    expect(screen.getByText(/Choose File & Backup/i)).toBeInTheDocument();
   });
 
   it("backs up when dialog returns a path", async () => {
@@ -154,25 +139,25 @@ describe("SettingsScreen", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows error when export fails", async () => {
+  it("shows error when backup fails", async () => {
     const user = userEvent.setup();
-    vi.mocked(save).mockResolvedValue("C:\\exports\\fail.db");
-    vi.mocked(api.exportDatabase).mockRejectedValue(new Error("disk full"));
+    vi.mocked(save).mockResolvedValue("C:\\backups\\fail.db");
+    vi.mocked(api.backupDatabase).mockRejectedValue(new Error("disk full"));
     renderApp(<SettingsScreen onBack={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: /Export Database/i }));
-    await user.click(screen.getByRole("button", { name: /Choose File & Export/i }));
+    await user.click(screen.getByRole("button", { name: /Backup Database/i }));
+    await user.click(screen.getByRole("button", { name: /Choose File & Backup/i }));
     expect(await screen.findByText(/disk full/i)).toBeInTheDocument();
   });
 
-  it("no-ops export when dialog is cancelled", async () => {
+  it("no-ops backup when dialog is cancelled", async () => {
     const user = userEvent.setup();
     vi.mocked(save).mockResolvedValue(null);
     renderApp(<SettingsScreen onBack={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: /Export Database/i }));
-    await user.click(screen.getByRole("button", { name: /Choose File & Export/i }));
+    await user.click(screen.getByRole("button", { name: /Backup Database/i }));
+    await user.click(screen.getByRole("button", { name: /Choose File & Backup/i }));
     await waitFor(() => {
       expect(save).toHaveBeenCalled();
     });
-    expect(api.exportDatabase).not.toHaveBeenCalled();
+    expect(api.backupDatabase).not.toHaveBeenCalled();
   });
 });

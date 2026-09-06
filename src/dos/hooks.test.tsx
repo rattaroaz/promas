@@ -1,7 +1,25 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useBrowseIndex, useDosKeys } from "./hooks";
+import { computeFitScale, useBrowseIndex, useDosKeys } from "./hooks";
 import { STATUS_KEY_CLICK } from "./Shell";
+
+describe("computeFitScale", () => {
+  it("stays at 1 when content already fits", () => {
+    expect(computeFitScale(1024, 800, 1)).toBe(1);
+  });
+
+  it("shrinks so wide content matches the window", () => {
+    expect(computeFitScale(400, 800, 1)).toBeCloseTo(0.5);
+  });
+
+  it("holds a fitted scale instead of shrinking further", () => {
+    expect(computeFitScale(400, 400, 0.5)).toBe(0.5);
+  });
+
+  it("grows back toward 1 when there is slack", () => {
+    expect(computeFitScale(800, 400, 0.5)).toBe(1);
+  });
+});
 
 describe("useBrowseIndex", () => {
   it("starts at 0 and clamps when count shrinks", () => {
@@ -111,6 +129,19 @@ describe("useDosKeys", () => {
     expect(onPageDown).toHaveBeenCalledOnce();
     expect(onHome).toHaveBeenCalledOnce();
     expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("inserts even while an input is focused", () => {
+    const onInsert = vi.fn();
+    renderHook(() => useDosKeys({ onInsert }));
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
+    );
+    expect(onInsert).toHaveBeenCalledOnce();
+    document.body.removeChild(input);
   });
 
   it("does not navigate while typing in an input unless forceNav", () => {

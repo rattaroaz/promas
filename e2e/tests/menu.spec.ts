@@ -11,7 +11,7 @@ test.describe("main menu", () => {
     await page.goto("/");
     await page.getByRole("button", { name: /8\.\s*Settings/i }).click();
     await expect(page.getByText("Update Application")).toBeVisible();
-    await expect(page.getByText("Export Database")).toBeVisible();
+    await expect(page.getByText("Backup Database")).toBeVisible();
     await expect(page.getByText("Import Database")).toBeVisible();
   });
 });

@@ -11,7 +11,7 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { padR, padL } from "../dos/utils";
+import { cols, padR, padL } from "../dos/utils";
 
 export function WorkerBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<Employee[]>([]);
@@ -128,7 +128,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-            {"Worker No....Worker Name........................Phone........"}
+            {"Worker No....   Worker Name........................   Phone........"}
             </div>
             <div className="dos-browse-body">
               {rows.map((e, i) => (
@@ -141,8 +141,12 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
                     setEditing({ ...e });
                   }}
                 >
-                  {padR(e.empNo, 12)} {padR(e.name, 32)} {padR(e.phone, 13)}{" "}
-                  {padL(e.commission.toFixed(2), 6)}
+                  {cols(
+                    padR(e.empNo, 12),
+                    padR(e.name, 32),
+                    padR(e.phone, 13),
+                    padL(e.commission.toFixed(2), 6)
+                  )}
                 </button>
               ))}
             </div>
