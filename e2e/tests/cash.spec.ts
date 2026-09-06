@@ -10,16 +10,11 @@ async function openCashLedger(page: Page) {
   await companyNo.press("Enter");
   await page.getByRole("button", { name: /1000\s+ACME/i }).click();
 
-  const propertyNo = page.getByPlaceholder("? = first");
-  await propertyNo.fill("?");
-  await propertyNo.press("Enter");
-  await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-
   await expect(page.getByText(/Ending Balance/i)).toBeVisible();
 }
 
 test.describe("cash receipts process", () => {
-  test("opens ledger after company/property gate", async ({ page }) => {
+  test("opens ledger after company gate", async ({ page }) => {
     await openCashLedger(page);
     await expect(page.getByText(/Open 250\.00/i)).toBeVisible();
   });

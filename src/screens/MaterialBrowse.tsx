@@ -17,7 +17,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { padR, padL, money, fmtDate, today } from "../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export type MaterialSort = "default" | "worker" | "date" | "desc";
 
@@ -148,12 +148,12 @@ export function MaterialBrowse({
 
   const header =
     sort === "worker"
-      ? "TransDate  Material Description            Material Amount"
+      ? "TransDate   Material Description            Material Amount"
       : sort === "desc"
         ? "Empno      Trans Date                         Material Amount"
         : sort === "date"
           ? "Empno      Material Description            Material Amount"
-          : "Mat_Date.....Material Description................Mater.Amount";
+          : "Mat_Date.....   Material Description................   Mater.Amount";
 
   return (
     <Screen
@@ -194,27 +194,29 @@ export function MaterialBrowse({
                     setEditing({ ...m });
                   }}
                 >
-                  {sort === "worker" ? (
-                    <>
-                      {padR(fmtDate(m.matDate), 10)} {padR(m.description, 36)}{" "}
-                      {padL(money(m.amount), 16)}
-                    </>
-                  ) : sort === "desc" ? (
-                    <>
-                      {padR(m.empNo, 10)} {padR(fmtDate(m.matDate), 12)}{" "}
-                      {padL(money(m.amount), 16)}
-                    </>
-                  ) : sort === "date" ? (
-                    <>
-                      {padR(m.empNo, 10)} {padR(m.description, 36)}{" "}
-                      {padL(money(m.amount), 16)}
-                    </>
-                  ) : (
-                    <>
-                      {padR(fmtDate(m.matDate), 12)} {padR(m.description, 36)}{" "}
-                      {padL(money(m.amount), 12)}
-                    </>
-                  )}
+                  {sort === "worker"
+                    ? cols(
+                        padR(fmtDate(m.matDate), 10),
+                        padR(m.description, 36),
+                        padL(money(m.amount), 16)
+                      )
+                    : sort === "desc"
+                      ? cols(
+                          padR(m.empNo, 10),
+                          padR(fmtDate(m.matDate), 12),
+                          padL(money(m.amount), 16)
+                        )
+                      : sort === "date"
+                        ? cols(
+                            padR(m.empNo, 10),
+                            padR(m.description, 36),
+                            padL(money(m.amount), 16)
+                          )
+                        : cols(
+                            padR(fmtDate(m.matDate), 12),
+                            padR(m.description, 36),
+                            padL(money(m.amount), 12)
+                          )}
                 </button>
               ))}
               {rows.length === 0 && (

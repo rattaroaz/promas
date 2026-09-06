@@ -2,9 +2,9 @@
  * Original PROMAS gateway shared by Estimate / Work Order / Invoice / Cash:
  *   Company NO / Name / Phone / Contact / Property Street / Property Contact
  *   then Property NO / Name / Phone / Contact → select or add
- * Then hand off company+property to the process screen.
+ * Cash skips property and hands off the company only.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   api,
   Company,
@@ -22,7 +22,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, today } from "../../dos/utils";
+import { cols, padR, today } from "../../dos/utils";
 
 export type ProcessKind =
   | "invoice"
@@ -87,19 +87,39 @@ export function formatPropertySearchRow(
 ): string {
   const addr = formatPropertyAddress(p) || p.name;
   if (includeCompanyNo) {
-    return `${padR(p.companyNo, 6)}${padR(p.proNo, 6)}${padR(addr, 28)}${padR(companyContact, 14)}`;
+    return cols(
+      padR(p.companyNo, 6),
+      padR(p.proNo, 6),
+      padR(addr, 40),
+      padR(companyContact, 14)
+    );
   }
-  return `${padR(p.proNo, 6)}${padR(p.name, 16)}${padR(addr, 24)}${padR(companyContact, 14)}`;
+  return cols(
+    padR(p.proNo, 6),
+    padR(p.name, 16),
+    padR(addr, 40),
+    padR(companyContact, 14)
+  );
 }
+
+const STACK_PHASES: Phase[] = [
+  "co-search",
+  "co-browse",
+  "pr-search",
+  "pr-browse",
+];
 
 export function CompanyPropertyGate({
   process,
   onBack,
   onReady,
+  active = true,
 }: {
   process: ProcessKind;
   onBack: () => void;
-  onReady: (company: Company, property: Property) => void;
+  onReady: (company: Company, property?: Property) => void;
+  /** When false, state is kept but the gate is hidden and keys are ignored. */
+  active?: boolean;
 }) {
   const title = PROCESS_TITLE[process];
   const [phase, setPhase] = useState<Phase>("co-search");
@@ -121,6 +141,7 @@ export function CompanyPropertyGate({
     "default"
   );
   const [askAdd, setAskAdd] = useState(false);
+  const [askDeleteCompany, setAskDeleteCompany] = useState(false);
   const [help, setHelp] = useState(false);
   const [companyContacts, setCompanyContacts] = useState<Record<string, string>>(
     {}
@@ -128,6 +149,50 @@ export function CompanyPropertyGate({
 
   const coBrowse = useBrowseIndex(companies.length);
   const prBrowse = useBrowseIndex(properties.length);
+  const trailRef = useRef<Phase[]>([]);
+
+  function pushPhase(next: Phase) {
+    setPhase((cur) => {
+      if (cur !== next && STACK_PHASES.includes(cur)) {
+        trailRef.current.push(cur);
+      }
+      return next;
+    });
+  }
+
+  function resetToCompanySearch(message?: string) {
+    trailRef.current = [];
+    setCompany(null);
+    setProperty(null);
+    setProperties([]);
+    setQuery("");
+    setFirstKind("company");
+    setPhase("co-search");
+    setMsgKind("default");
+    if (message) setMsg(message);
+  }
+
+  function goBackScreen() {
+    const prev = trailRef.current.pop();
+    if (!prev) {
+      onBack();
+      return;
+    }
+    setEditCo(null);
+    setEditPr(null);
+    setAskAdd(false);
+    setQuery("");
+    setMsgKind("default");
+    if (prev === "co-search") {
+      setCompany(null);
+      setProperty(null);
+    } else if (prev === "co-browse") {
+      setMsg("Enter=Select  Ins=Add  Ctrl-Home=Edit  Esc=Back");
+    } else if (prev === "pr-browse") {
+      setMsg("Enter=Select  Ins=Add  Esc=Back");
+    }
+    setPhase(prev);
+  }
 
   useEffect(() => {
     if (phase === "co-search") {
@@ -167,7 +232,7 @@ export function CompanyPropertyGate({
       const all = await api.listCompanies({ limit: 2000 });
       setCompanies(all);
       coBrowse.setIndex(0);
-      setPhase("co-browse");
+      pushPhase("co-browse");
       setMsg(
         all.length
           ? "Ins=Add  Ctrl-Home=Edit  Enter=Select  Esc=Back"
@@ -213,13 +278,11 @@ export function CompanyPropertyGate({
       setMsg(`--> Does not exist !! Do you want Add Company (Y/N) ?`);
       setMsgKind("error");
       setAskAdd(true);
-      setIsNew(true);
-      const blank = emptyCompany();
-      if (coField === "no") blank.companyNo = q;
-      if (coField === "name") blank.name = q;
-      if (coField === "phone") blank.phone = q;
-      if (coField === "contact") blank.contact = q;
-      setEditCo(blank);
+      await prepareNewCompany({
+        name: coField === "name" ? q : "",
+        phone: coField === "phone" ? q : "",
+        contact: coField === "contact" ? q : "",
+      });
       return;
     }
     if (list.length === 1 && (coField === "no" || coField === "contact")) {
@@ -228,20 +291,57 @@ export function CompanyPropertyGate({
     }
     setCompanies(list);
     coBrowse.setIndex(0);
-    setPhase("co-browse");
+    pushPhase("co-browse");
     setMsg("Enter=Select  Ins=Add  Ctrl-Home=Edit  Esc=Back");
     setMsgKind("default");
+  }
+
+  async function nextAssignedCompanyNo(): Promise<string> {
+    try {
+      return await api.nextCompanyNo();
+    } catch {
+      return "1000";
+    }
+  }
+
+  async function prepareNewCompany(seed?: Partial<Company>) {
+    const blank = { ...emptyCompany(), ...seed };
+    blank.companyNo = await nextAssignedCompanyNo();
+    setIsNew(true);
+    setEditCo(blank);
+    return blank;
+  }
+
+  async function beginNewCompany(seed?: Partial<Company>) {
+    await prepareNewCompany(seed);
+    pushPhase("co-edit");
+    setMsg("Enter Company Information (Esc=exit) !");
   }
 
   async function selectCompany(c: Company) {
     setCompany(c);
     setProperty(null);
     setQuery("");
-    setPhase("pr-search");
     setPrField("no");
     setMsgKind("default");
-    setMsg(
-      `Company ${c.companyNo} ${c.name}  —  Enter Property NO(Esc=Exit,?=First)`
+    if (process === "cash") {
+      onReady(c);
+      return;
+    }
+    const all = await api.listProperties({
+      companyNo: c.companyNo,
+      limit: 2000,
+    });
+    if (all.length === 0) {
+      pushPhase("pr-search");
+      setMsg(
+        `Company ${c.companyNo} ${c.name}  —  Enter Property NO(Esc=Exit,?=First)`
+      );
+      return;
+    }
+    await showPropertyBrowse(
+      all,
+      `Company ${c.companyNo} ${c.name}  —  Enter=Select  Ins=Add  Esc=Back`
     );
   }
 
@@ -406,21 +506,23 @@ export function CompanyPropertyGate({
     setProperties(list);
     prBrowse.setIndex(0);
     await loadCompanyContacts(list);
-    setPhase("pr-browse");
+    pushPhase("pr-browse");
     setMsg(browseMsg);
     setMsgKind("default");
   }
 
   async function saveCompany() {
-    if (!editCo?.companyNo.trim() || !editCo.name.trim()) {
-      setMsg("--> Company NO and Name required !!");
+    if (!editCo?.name.trim()) {
+      setMsg("--> Company Name required !!");
       setMsgKind("error");
       return;
+    }
+    if (!editCo.companyNo.trim()) {
+      editCo.companyNo = await nextAssignedCompanyNo();
     }
     try {
       if (!editCo.enterDate) editCo.enterDate = today();
       await api.saveCompany(editCo);
-      setPhase("co-search");
       setEditCo(null);
       await selectCompany(editCo);
     } catch (e) {
@@ -445,6 +547,48 @@ export function CompanyPropertyGate({
     }
   }
 
+  async function confirmDeleteCompany() {
+    if (!company) return;
+    try {
+      await api.deleteCompany(company.companyNo);
+      const gone = company.companyNo;
+      setAskDeleteCompany(false);
+      resetToCompanySearch(
+        `Company ${gone} deleted. Enter Search Company NO (Esc=Exit, ?=First)`
+      );
+    } catch (e) {
+      setAskDeleteCompany(false);
+      setMsg(String(e));
+      setMsgKind("error");
+    }
+  }
+
+  function deleteCompanyToolbar() {
+    if (process !== "invoice" || !company) return null;
+    if (phase !== "pr-browse" && phase !== "pr-search") return null;
+    return (
+      <div className="dos-company-toolbar">
+        <span>
+          {company.companyNo} {company.name}
+        </span>
+        <button
+          type="button"
+          className="dos-icon-btn danger"
+          aria-label="Delete company"
+          title="Delete company"
+          onClick={() => setAskDeleteCompany(true)}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M6 1h4l1 1.5H15v2H1v-2h4L6 1zm1 5h2v7H7V6zm4 0h2v7h-2V6zM3 6h2v7H3V6zm1 9h8l1-8H3l1 8z"
+            />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
   useDosKeys({
     forceNav: phase === "co-browse" || phase === "pr-browse",
     onEscape: () => {
@@ -458,53 +602,29 @@ export function CompanyPropertyGate({
         setEditPr(null);
         return;
       }
-      if (phase === "co-edit") {
-        setPhase(companies.length ? "co-browse" : "co-search");
-        setEditCo(null);
+      if (askDeleteCompany) {
+        setAskDeleteCompany(false);
         return;
       }
-      if (phase === "pr-edit") {
-        setPhase(properties.length ? "pr-browse" : "pr-search");
-        setEditPr(null);
-        return;
-      }
-      if (phase === "co-browse") {
-        setPhase("co-search");
-        setQuery("");
-        return;
-      }
-      if (phase === "pr-browse" || phase === "pr-search") {
-        if (phase === "pr-browse") {
-          if (!company) {
-            setPhase("co-search");
-            setQuery("");
-            setFirstKind("property");
-            return;
-          }
-          setPhase("pr-search");
-          setQuery("");
-          return;
-        }
-        setCompany(null);
-        setPhase("co-search");
-        setQuery("");
-        setMsg("Enter Search Company NO (Esc=Exit, ?=First)");
-        return;
-      }
-      onBack();
+      goBackScreen();
     },
     onF1: () => setHelp(true),
     onInsert: () => {
+      if (help || askAdd || askDeleteCompany) return;
+      if (phase === "co-edit" || phase === "pr-edit") return;
       if (phase === "co-search" || phase === "co-browse") {
-        setIsNew(true);
-        setEditCo(emptyCompany());
-        setPhase("co-edit");
-        setMsg("Enter Company Information (Esc=exit) !");
-      } else if (phase === "pr-search" || phase === "pr-browse") {
-        if (!company) return;
+        void beginNewCompany();
+        return;
+      }
+      if (phase === "pr-search" || phase === "pr-browse") {
+        if (!company) {
+          setMsg("Select a company first, then Ins to add a property.");
+          setMsgKind("error");
+          return;
+        }
         setIsNew(true);
         setEditPr(emptyProperty(company.companyNo));
-        setPhase("pr-edit");
+        pushPhase("pr-edit");
         setMsg("Enter Property Information (Esc=Exit) !");
       }
     },
@@ -512,12 +632,12 @@ export function CompanyPropertyGate({
       if (phase === "co-browse" && companies[coBrowse.index]) {
         setIsNew(false);
         setEditCo({ ...companies[coBrowse.index] });
-        setPhase("co-edit");
+        pushPhase("co-edit");
         setMsg("Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key");
       } else if (phase === "pr-browse" && properties[prBrowse.index]) {
         setIsNew(false);
         setEditPr({ ...properties[prBrowse.index] });
-        setPhase("pr-edit");
+        pushPhase("pr-edit");
         setMsg("Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key");
       }
     },
@@ -541,12 +661,12 @@ export function CompanyPropertyGate({
       if (phase === "co-browse" && companies[coBrowse.index]) {
         setIsNew(false);
         setEditCo({ ...companies[coBrowse.index] });
-        setPhase("co-edit");
+        pushPhase("co-edit");
         setMsg("Detaill Company Information — Esc=Cancel, Ctrl-W=Save");
       } else if (phase === "pr-browse" && properties[prBrowse.index]) {
         setIsNew(false);
         setEditPr({ ...properties[prBrowse.index] });
-        setPhase("pr-edit");
+        pushPhase("pr-edit");
       } else if (phase === "co-browse") coBrowse.home();
       else if (phase === "pr-browse") prBrowse.home();
     },
@@ -581,11 +701,22 @@ export function CompanyPropertyGate({
           ? prBrowse.end
           : undefined,
     onChar: (ch) => {
+      if (askDeleteCompany) {
+        if (ch === "y" || ch === "Y") {
+          void confirmDeleteCompany();
+          return true;
+        }
+        if (ch === "n" || ch === "N") {
+          setAskDeleteCompany(false);
+          return true;
+        }
+        return true;
+      }
       if (askAdd) {
         if (ch === "y" || ch === "Y") {
           setAskAdd(false);
-          if (editCo && !editPr) setPhase("co-edit");
-          else if (editPr) setPhase("pr-edit");
+          if (editCo && !editPr) pushPhase("co-edit");
+          else if (editPr) pushPhase("pr-edit");
           setMsg(
             editPr
               ? "Enter Property Information (Esc=Exit) !"
@@ -604,7 +735,9 @@ export function CompanyPropertyGate({
       }
       return false;
     },
-  });
+  }, active);
+
+  if (!active) return null;
 
   const statusKeys =
     phase === "co-edit" || phase === "pr-edit"
@@ -613,6 +746,7 @@ export function CompanyPropertyGate({
         ? SEARCH_BROWSE_KEYS
         : [
             { key: "Esc", label: "Exit" },
+            { key: "Ins", label: "Add" },
             { key: "Enter", label: "Search" },
             { key: "?", label: "First" },
             { key: "F1", label: "Help" },
@@ -653,7 +787,7 @@ export function CompanyPropertyGate({
       {/* ── Company search ─────────────────────────────── */}
       {phase === "co-search" && (
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "48ch" }}>
+          <div className="dos-menu-frame" style={{ minWidth: "min(48ch, 100%)" }}>
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
                 <DotField label="Company NO" width={16}>
@@ -827,7 +961,7 @@ export function CompanyPropertyGate({
       {phase === "co-browse" && (
         <div className="dos-browse">
           <div className="dos-browse-header">
-            {"Company NO...Company Name.......................Phone........Contact"}
+            {"Company NO...   Company Name.......................   Phone........   Contact"}
           </div>
           <div className="dos-browse-body">
             {companies.map((c, i) => (
@@ -838,10 +972,12 @@ export function CompanyPropertyGate({
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
               >
-                {padR(c.companyNo, 12)}
-                {padR(c.name, 35)}
-                {padR(c.phone, 13)}
-                {padR(c.contact, 18)}
+                {cols(
+                  padR(c.companyNo, 12),
+                  padR(c.name, 35),
+                  padR(c.phone, 13),
+                  padR(c.contact, 18)
+                )}
               </button>
             ))}
           </div>
@@ -849,9 +985,10 @@ export function CompanyPropertyGate({
       )}
 
       {/* ── Property search ────────────────────────────── */}
+      {deleteCompanyToolbar()}
       {phase === "pr-search" && company && (
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "48ch" }}>
+          <div className="dos-menu-frame" style={{ minWidth: "min(48ch, 100%)" }}>
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
                 <DotField label="Property NO" width={16}>
@@ -949,8 +1086,18 @@ export function CompanyPropertyGate({
         <div className="dos-browse">
           <div className="dos-browse-header">
             {company
-              ? "ProNO  Name            Address                  Co.Contact"
-              : "CoNO  ProNO  Address                      Co.Contact"}
+              ? cols(
+                  padR("ProNO", 6),
+                  padR("Name", 16),
+                  padR("Address", 40),
+                  padR("Co.Contact", 14)
+                )
+              : cols(
+                  padR("CoNO", 6),
+                  padR("ProNO", 6),
+                  padR("Address", 40),
+                  padR("Co.Contact", 14)
+                )}
           </div>
           <div className="dos-browse-body">
             {properties.map((p, i) => (
@@ -985,11 +1132,8 @@ export function CompanyPropertyGate({
               <input
                 className="dos-input w5"
                 value={editCo.companyNo}
-                disabled={!isNew}
-                onChange={(e) =>
-                  setEditCo({ ...editCo, companyNo: e.target.value })
-                }
-                autoFocus
+                disabled
+                readOnly
               />
             </DotField>
             <DotField label="Company Name" width={14}>
@@ -997,6 +1141,7 @@ export function CompanyPropertyGate({
                 className="dos-input w30"
                 value={editCo.name}
                 onChange={(e) => setEditCo({ ...editCo, name: e.target.value })}
+                autoFocus={isNew}
               />
             </DotField>
             <DotField label="Class" width={14}>
@@ -1237,6 +1382,13 @@ export function CompanyPropertyGate({
         </Dialog>
       )}
 
+      {askDeleteCompany && company && (
+        <Prompt
+          question={`Are you sure you want to delete company ${company.companyNo} ${company.name} (Y/N) ?`}
+          onYes={() => void confirmDeleteCompany()}
+          onNo={() => setAskDeleteCompany(false)}
+        />
+      )}
       {askAdd && (
         <Prompt
           question={
@@ -1246,8 +1398,8 @@ export function CompanyPropertyGate({
           }
           onYes={() => {
             setAskAdd(false);
-            if (editPr) setPhase("pr-edit");
-            else setPhase("co-edit");
+            if (editPr) pushPhase("pr-edit");
+            else pushPhase("co-edit");
           }}
           onNo={() => {
             setAskAdd(false);

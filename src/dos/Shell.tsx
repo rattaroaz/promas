@@ -231,7 +231,7 @@ Press any key to continue ...
 
 export const BROWSE_KEYS = [
   { key: "Esc", label: "" },
-  { key: "Ins", label: "" },
+  { key: "Ins", label: "Add" },
   { key: "Ctrl-Home", label: "" },
   { key: "Del", label: "" },
   { key: "PgUp", label: "" },
@@ -242,7 +242,7 @@ export const BROWSE_KEYS = [
 
 /** Company / property pick-list: Ins  Ctrl-Home  PgUp  PgDn  Esc */
 export const SEARCH_BROWSE_KEYS = [
-  { key: "Ins", label: "" },
+  { key: "Ins", label: "Add" },
   { key: "Ctrl-Home", label: "" },
   { key: "PgUp", label: "" },
   { key: "PgDn", label: "" },
@@ -251,7 +251,7 @@ export const SEARCH_BROWSE_KEYS = [
 
 /** Cash receipts: Ins  Home  PgUp  PgDn  Esc  (A)uto_Receipt */
 export const CASH_KEYS = [
-  { key: "Ins", label: "" },
+  { key: "Ins", label: "Add" },
   { key: "Home", label: "" },
   { key: "PgUp", label: "" },
   { key: "PgDn", label: "" },

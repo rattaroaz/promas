@@ -20,7 +20,7 @@ import {
   FORM_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, padL, fmtDate, today } from "../../dos/utils";
+import { cols, padR, padL, fmtDate, today } from "../../dos/utils";
 
 export function EstimateProcess({
   company,
@@ -110,6 +110,7 @@ export function EstimateProcess({
     },
     onF1: () => setHelp(true),
     onInsert: () => {
+      if (help || voidAsk) return;
       if (!editing) openNew();
     },
     onEnter: () => {
@@ -173,7 +174,7 @@ export function EstimateProcess({
             {property.name}
           </div>
           <div className="dos-browse-header">
-            {"Proposal #........  Proposal Date.....  Form #............"}
+            {"Proposal #........   Proposal Date.....   Form #............"}
           </div>
           <div className="dos-browse-body">
             {rows.map((e, i) => (
@@ -186,10 +187,12 @@ export function EstimateProcess({
                   setEditing({ ...e });
                 }}
               >
-                {padL(e.estNo, 16)}{" "}
-                {padR(fmtDate(e.estDate), 18)}{" "}
-                {padR(e.formNo, 18)}{" "}
-                {e.voided ? "VOID" : e.status || ""}
+                {cols(
+                  padL(e.estNo, 16),
+                  padR(fmtDate(e.estDate), 18),
+                  padR(e.formNo, 18),
+                  e.voided ? "VOID" : e.status || ""
+                )}
               </button>
             ))}
             {rows.length === 0 && (

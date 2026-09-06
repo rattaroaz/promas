@@ -8,9 +8,11 @@ export const UNIT_SIZE_OPTIONS = [
   "2+2",
   "3+2",
   "4+2",
+  "Occupied",
 ] as const;
 
 export type UnitSizeOption = (typeof UNIT_SIZE_OPTIONS)[number];
+export type PricedUnitSize = Exclude<UnitSizeOption, "Occupied">;
 
 function prices(
   single: number,
@@ -19,7 +21,7 @@ function prices(
   twoTwo: number,
   threeTwo: number,
   fourTwo: number
-): Record<UnitSizeOption, number> {
+): Record<PricedUnitSize, number> {
   return {
     single,
     "1+1": oneOne,
@@ -58,9 +60,9 @@ const CEILING_PAINT_PRICES = prices(75, 115, 125, 150, 175, 195);
 const COLOR_CHANGE_FACTOR = 0.8;
 
 function scalePrices(
-  source: Record<UnitSizeOption, number>,
+  source: Record<PricedUnitSize, number>,
   factor: number
-): Record<UnitSizeOption, number> {
+): Record<PricedUnitSize, number> {
   return prices(
     source.single * factor,
     source["1+1"] * factor,
@@ -154,6 +156,7 @@ export function normalizeUnitSize(raw: string): string | null {
   const s = raw.trim().toLowerCase().replace(/\s+/g, "");
   if (!s) return null;
   if (s === "single") return "single";
+  if (s === "occupied") return "Occupied";
   const m = s.match(/^(\d+)\+(\d+)$/);
   if (m) return `${m[1]}+${m[2]}`;
   return null;

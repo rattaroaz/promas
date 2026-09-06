@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   api,
   Company,
-  Property,
   Invoice,
   CashReceipt,
   emptyCashReceipt,
@@ -20,15 +19,14 @@ import {
   CASH_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, padL, money, fmtDate, today } from "../../dos/utils";
+import { DateInput } from "../../dos/DateInput";
+import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
 
 export function CashProcess({
   company,
-  property,
   onBack,
 }: {
   company: Company;
-  property: Property;
   onBack: () => void;
 }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -125,7 +123,10 @@ export function CashProcess({
       return;
     }
     try {
-      await api.saveCashReceipt(editing);
+      await api.saveCashReceipt({
+        ...editing,
+        payDate: editing.payDate || today(),
+      });
       setEditing(null);
       setMsg("Receipt posted.");
       setMsgKind("info");
@@ -172,7 +173,7 @@ export function CashProcess({
           invoice: inv.invoice,
           payment: Math.round(pay * 100) / 100,
           payRefNo: autoRef,
-          payDate: autoDate,
+          payDate: autoDate || today(),
           voided: false,
         });
         remaining = Math.round((remaining - pay) * 100) / 100;
@@ -205,6 +206,7 @@ export function CashProcess({
     },
     onF1: () => setHelp(true),
     onInsert: () => {
+      if (help) return;
       if (!editing && !autoMode) startPayment();
     },
     onEnter: () => {
@@ -243,8 +245,8 @@ export function CashProcess({
       title=" Cash Receipts Process "
       message={msg}
       messageKind={msgKind}
-      left={`${company.companyNo}/${property.proNo}`}
-      right={property.name.slice(0, 24)}
+      left={company.companyNo}
+      right={company.name.slice(0, 24)}
     >
       {!editing && !autoMode && (
         <>
@@ -264,7 +266,7 @@ Ending Balance... ${money(endingBalance)}`}
           <div className="dos-browse">
             <div className="dos-browse-header">
               {
-                "Inv_#  Inv_Date  Inv_amount  PayDate   Check/Ref   Payamount    Balance  OK"
+                "Inv_#   Inv_Date   Inv_amount   PayDate   Check/Ref   Payamount    Balance   OK"
               }
             </div>
             <div className="dos-browse-body">
@@ -278,12 +280,15 @@ Ending Balance... ${money(endingBalance)}`}
                     startPayment(inv);
                   }}
                 >
-                  {padL(inv.invoice, 5)}{" "}
-                  {padR(fmtDate(inv.salesDate), 10)}{" "}
-                  {padL(money(inv.salesTotal), 11)}{" "}
-                  {padR("", 9)} {padR("", 10)}{" "}
-                  {padL(money(inv.payTotal), 10)}{" "}
-                  {padL(money(inv.balance), 10)}
+                  {cols(
+                    padL(inv.invoice, 5),
+                    padR(fmtDate(inv.salesDate), 10),
+                    padL(money(inv.salesTotal), 11),
+                    padR("", 9),
+                    padR("", 10),
+                    padL(money(inv.payTotal), 10),
+                    padL(money(inv.balance), 10)
+                  )}
                   {inv.balance <= 0 ? " *" : "  "}
                 </button>
               ))}
@@ -352,9 +357,8 @@ Ending Balance... ${money(endingBalance)}`}
               />
             </DotField>
             <DotField label="Pay Date" width={16}>
-              <input
-                className="dos-input w12"
-                type="date"
+              <DateInput
+                aria-label="Pay Date"
                 value={editing.payDate || today()}
                 onChange={(e) =>
                   setEditing({ ...editing, payDate: e.target.value })
@@ -399,10 +403,9 @@ Ending Balance... ${money(endingBalance)}`}
               Ending Balance Due: {money(endingBalance)}
             </div>
             <DotField label="Pay Date" width={16}>
-              <input
-                className="dos-input w12"
-                type="date"
-                value={autoDate}
+              <DateInput
+                aria-label="Pay Date"
+                value={autoDate || today()}
                 onChange={(e) => setAutoDate(e.target.value)}
                 autoFocus
               />

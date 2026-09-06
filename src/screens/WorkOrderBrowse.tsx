@@ -18,7 +18,7 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { padR, padL, money, fmtDate, today } from "../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 
 export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<WorkOrder[]>([]);
@@ -173,7 +173,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {"Ord#  OrdDate    Comp Pro Order By        Unit/Size          Property"}
+              {"Ord#   OrdDate    Comp   Pro   Order By        Unit/Size          Property"}
             </div>
             <div className="dos-browse-body">
               {rows.map((w, i) => (
@@ -182,16 +182,18 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                   className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""}`}
                   onMouseEnter={() => setIndex(i)}
                 >
-                  {padL(w.orderNo, 5)}{" "}
-                  {padR(fmtDate(w.orderDate), 10)}{" "}
-                  {padR(w.companyNo, 4)}{" "}
-                  {padR(w.proNo, 3)}{" "}
-                  {padR(w.orderBy || w.orderMan, 14)}{" "}
-                  {padR(
-                    `${w.orderUnit}${w.orderSize ? "/" + w.orderSize : ""}`,
-                    16
-                  )}{" "}
-                  {padR(w.propertyName || "", 24)}
+                  {cols(
+                    padL(w.orderNo, 5),
+                    padR(fmtDate(w.orderDate), 10),
+                    padR(w.companyNo, 4),
+                    padR(w.proNo, 3),
+                    padR(w.orderBy || w.orderMan, 14),
+                    padR(
+                      `${w.orderUnit}${w.orderSize ? "/" + w.orderSize : ""}`,
+                      16
+                    ),
+                    padR(w.propertyName || "", 24)
+                  )}
                 </button>
               ))}
             </div>

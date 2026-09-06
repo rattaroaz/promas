@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { CashProcess } from "./CashProcess";
-import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
+import { api, emptyCompany, emptyInvoice } from "../../api";
+import { today } from "../../dos/utils";
 
 vi.mock("../../api", async () => {
   const actual = await vi.importActual<typeof import("../../api")>("../../api");
@@ -22,8 +23,6 @@ const company = {
   name: "ACME",
   phone: "555-0100",
 };
-const property = { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" };
-
 const openInv = {
   ...emptyInvoice(),
   companyNo: "1000",
@@ -45,7 +44,7 @@ describe("CashProcess", () => {
 
   it("shows customer ledger with open balance", async () => {
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     expect(await screen.findByText(/Customer Ledger/i)).toBeInTheDocument();
     expect(screen.getByText(/Ending Balance/i)).toBeInTheDocument();
@@ -57,7 +56,7 @@ describe("CashProcess", () => {
   it("opens payment entry with Ins and posts via Ctrl-W", async () => {
     const user = userEvent.setup();
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
 
@@ -72,13 +71,16 @@ describe("CashProcess", () => {
       ).toBeGreaterThan(0);
     });
 
+    expect(screen.getByLabelText("Pay Date")).toHaveValue(today());
     await user.keyboard("{Control>}w{/Control}");
+
     await waitFor(() => {
       expect(api.saveCashReceipt).toHaveBeenCalledWith(
         expect.objectContaining({
           companyNo: "1000",
           invoice: 1,
           payment: 250,
+          payDate: today(),
         })
       );
     });
@@ -86,7 +88,7 @@ describe("CashProcess", () => {
 
   it("starts Auto Receipt with A", async () => {
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
     act(() => {
@@ -99,12 +101,13 @@ describe("CashProcess", () => {
         screen.getAllByText(/Enter Automatic Receipt Data/i).length
       ).toBeGreaterThan(0);
     });
+    expect(screen.getByLabelText("Pay Date")).toHaveValue(today());
   });
 
   it("rejects a payment that exceeds the invoice balance", async () => {
     const user = userEvent.setup();
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
     await user.click(screen.getByRole("button", { name: /250\.00/ }));
@@ -124,7 +127,7 @@ describe("CashProcess", () => {
   it("rejects a zero payment", async () => {
     const user = userEvent.setup();
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
     await user.click(screen.getByRole("button", { name: /250\.00/ }));
@@ -144,7 +147,7 @@ describe("CashProcess", () => {
       { ...openInv, balance: 0, payTotal: 250 },
     ]);
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
     act(() => {
@@ -174,7 +177,7 @@ describe("CashProcess", () => {
     };
     vi.mocked(api.listInvoices).mockResolvedValue([newer, older]);
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
     await user.click(screen.getByRole("button", { name: /\(A\)/i }));
@@ -200,7 +203,7 @@ describe("CashProcess", () => {
   it("shows an empty receivable file", async () => {
     vi.mocked(api.listInvoices).mockResolvedValue([]);
     renderApp(
-      <CashProcess company={company} property={property} onBack={vi.fn()} />
+      <CashProcess company={company} onBack={vi.fn()} />
     );
     expect(
       await screen.findByText(/does not exsit in Receivable File/i)

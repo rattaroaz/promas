@@ -3,6 +3,7 @@ import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../test/render";
 import { CashBrowse } from "./CashBrowse";
 import { api, emptyCashReceipt, emptyInvoice } from "../api";
+import { today } from "../dos/utils";
 
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
@@ -60,6 +61,7 @@ describe("CashBrowse", () => {
     expect(
       (await screen.findAllByText(/Enter Your Payment Data/i)).length
     ).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Pay Date")).toHaveValue(today());
     await user.selectOptions(
       screen.getByRole("combobox"),
       "1"

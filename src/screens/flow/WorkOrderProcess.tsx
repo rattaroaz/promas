@@ -22,7 +22,7 @@ import {
   FORM_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, padL, money, fmtDate, today } from "../../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
 
 export function WorkOrderProcess({
   company,
@@ -203,6 +203,7 @@ export function WorkOrderProcess({
     },
     onF1: () => setHelp(true),
     onInsert: () => {
+      if (help || voidAsk || confirmSave || addWtAsk) return;
       if (!editing) openNew();
     },
     onEnter: () => {
@@ -281,7 +282,7 @@ export function WorkOrderProcess({
             {company.name} — {property.name} {property.street}
           </div>
           <div className="dos-browse-header">
-            {"Ord#  OrdDate    Unit/Size          Order By        Status"}
+            {"Ord#   OrdDate    Unit/Size          Order By        Status"}
           </div>
           <div className="dos-browse-body">
             {rows.map((w, i) => (
@@ -291,14 +292,16 @@ export function WorkOrderProcess({
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => openEdit(w)}
               >
-                {padL(w.orderNo, 5)}{" "}
-                {padR(fmtDate(w.orderDate), 10)}{" "}
-                {padR(
-                  `${w.orderUnit}${w.orderSize ? "/" + w.orderSize : ""}`,
-                  16
-                )}{" "}
-                {padR(w.orderBy || w.orderMan, 14)}{" "}
-                {w.voided ? "VOID" : w.status || "OK"}
+                {cols(
+                  padL(w.orderNo, 5),
+                  padR(fmtDate(w.orderDate), 10),
+                  padR(
+                    `${w.orderUnit}${w.orderSize ? "/" + w.orderSize : ""}`,
+                    16
+                  ),
+                  padR(w.orderBy || w.orderMan, 14),
+                  w.voided ? "VOID" : w.status || "OK"
+                )}
               </button>
             ))}
             {rows.length === 0 && (

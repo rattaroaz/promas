@@ -106,8 +106,8 @@ Pushing a `v*` tag runs the **Release** workflow, which builds **NSIS `.exe` / M
 
 ```bash
 git push origin main
-git tag v2.4.6          # bump version files first if needed
-git push origin v2.4.6
+git tag v2.6.0          # bump version files first if needed
+git push origin v2.6.0
 ```
 
 Then open **Actions → Release**. When green, download `PROMAS_*_x64-setup.exe` from the Release assets — ignore “Source code”.
@@ -135,3 +135,4 @@ promas/
 - Soft-delete uses a `voided` flag (matching original Void behavior).  
 - Some original date fields had century quirks; the importer normalizes YYYYMMDD dates.  
 - SQLite file lives in the OS app data directory (shown on the Settings page).
+

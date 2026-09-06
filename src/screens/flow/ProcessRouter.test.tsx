@@ -16,6 +16,8 @@ vi.mock("../../api", async () => {
       listWorkOrders: vi.fn(),
       listEstimates: vi.fn(),
       getCompany: vi.fn(),
+      getSysdata: vi.fn(),
+      listWorkPersons: vi.fn(),
     },
   };
 });
@@ -45,7 +47,6 @@ describe("ProcessRouter observability", () => {
 
     await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
     await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
-    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
     await user.click(await screen.findByRole("button", { name: /01\s+Bldg A/i }));
 
     await waitFor(() => {
@@ -53,9 +54,77 @@ describe("ProcessRouter observability", () => {
     });
   });
 
+  it("Esc from the invoice list returns to the property list, not company search", async () => {
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process="invoice" onBack={vi.fn()} />);
+
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+    await user.click(await screen.findByRole("button", { name: /01\s+Bldg A/i }));
+    expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+    expect(await screen.findByRole("button", { name: /01\s+Bldg A/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /New Invoice/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Company NO" })).not.toBeInTheDocument();
+  });
+
+  it("Ins on the invoice list opens a new invoice form", async () => {
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+    vi.mocked(api.getSysdata).mockResolvedValue({
+      company: "Test Co",
+      address1: "",
+      address2: "",
+      city: "",
+      zip: "",
+      closeDate: null,
+      nextInvoice: 2,
+      nextOrder: 1,
+      nextEstimate: 1,
+      termsDays: 7,
+      interestRate: 1.5,
+    });
+    vi.mocked(api.listWorkPersons).mockResolvedValue([]);
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process="invoice" onBack={vi.fn()} />);
+
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+    await user.click(await screen.findByRole("button", { name: /01\s+Bldg A/i }));
+    expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Ins Add$/i }));
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+  });
+
   it.each([
     ["workorder", "workorder/process", "Work Order Process"],
-    ["cash", "cash/process", "Cash Receipts Process"],
     ["estimate", "estimate/process", "Estimate Process"],
   ] as const)("routes %s after company and property", async (process, screenName, title) => {
     resetObservabilityForTests();
@@ -78,12 +147,39 @@ describe("ProcessRouter observability", () => {
     renderApp(<ProcessRouter process={process} onBack={vi.fn()} />);
     await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
     await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
-    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
     await user.click(await screen.findByRole("button", { name: /01\s+Bldg A/i }));
 
     await waitFor(() => {
       expect(getAppState().currentScreen).toBe(screenName);
     });
     expect(screen.getByText(new RegExp(title, "i"))).toBeInTheDocument();
+  });
+
+  it("routes cash after company only", async () => {
+    resetObservabilityForTests();
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process="cash" onBack={vi.fn()} />);
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+
+    await waitFor(() => {
+      expect(getAppState().currentScreen).toBe("cash/process");
+    });
+    expect(screen.getByText(/Cash Receipts Process/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Customer Ledger/i).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /01\s+Bldg A/i })).not.toBeInTheDocument();
+    expect(api.listInvoices).toHaveBeenCalledWith(
+      expect.objectContaining({ companyNo: "1000" })
+    );
   });
 });

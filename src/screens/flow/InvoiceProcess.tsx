@@ -21,7 +21,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, padL, money, fmtDate, today } from "../../dos/utils";
+import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
@@ -69,9 +69,10 @@ export function InvoiceProcess({
   const load = useCallback(async () => {
     const data = await api.listInvoices({
       companyNo: company.companyNo,
-      limit: 500,
+      proNo: property.proNo,
+      includeVoided: true,
+      limit: 100000,
     });
-    // filter this property
     const mine = data.filter((i) => i.proNo === property.proNo);
     setRows(mine);
     setMsg(
@@ -342,7 +343,8 @@ export function InvoiceProcess({
     },
     onF1: () => setHelp(true),
     onInsert: () => {
-      if (mode === "browse") startNew();
+      if (help || voidAsk || confirmSave || deleteNameAsk) return;
+      if (mode === "browse") void startNew();
     },
     onEnter: () => {
       if (mode === "browse" && current) openEdit(current);
@@ -438,34 +440,40 @@ export function InvoiceProcess({
               whiteSpace: "pre",
             }}
           >
-            {padR(company.name, 30)} {padR(property.street, 30)}
+            {padR(company.name, 30)} {padR(property.street, 20)}
             {"\n"}
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
           <div className="dos-browse-header">
-            {"Inv_Date  Inv#  PO           Unit     Size     Total      Paid     Balance St"}
+            {"Inv_Date   Inv#   PO           Unit     Size     Total      Paid     Balance   St"}
           </div>
           <div className="dos-browse-body">
             {rows.map((inv, i) => (
               <button
                 key={`${inv.invoice}-${inv.salesDate}`}
-                className={`dos-row ${i === index ? "selected" : ""} ${inv.voided ? "voided" : ""}`}
+                className={`dos-row ${i === index ? "selected" : ""} ${inv.voided ? "voided" : ""} ${
+                  !inv.voided && inv.balance > 0.005
+                    ? "invoice-open"
+                    : "invoice-paid"
+                }`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
                   openEdit(inv);
                 }}
               >
-                {padR(fmtDate(inv.salesDate), 10)}{" "}
-                {padL(inv.invoice, 5)}{" "}
-                {padR(inv.custPoNo ?? "", 12)}{" "}
-                {padR(inv.salesUnit, 8)}{" "}
-                {padR(inv.salesSize, 8)}{" "}
-                {padL(money(inv.salesTotal), 10)}{" "}
-                {padL(money(inv.payTotal), 9)}{" "}
-                {padL(money(inv.balance), 10)}{" "}
-                {inv.voided ? "V" : inv.balance <= 0 ? "*" : " "}
+                {cols(
+                  padR(fmtDate(inv.salesDate), 10),
+                  padL(inv.invoice, 5),
+                  padR(inv.custPoNo ?? "", 12),
+                  padR(inv.salesUnit, 8),
+                  padR(inv.salesSize, 8),
+                  padL(money(inv.salesTotal), 10),
+                  padL(money(inv.payTotal), 9),
+                  padL(money(inv.balance), 10),
+                  inv.voided ? "V" : inv.balance <= 0 ? "*" : " "
+                )}
               </button>
             ))}
             {rows.length === 0 && (
@@ -627,51 +635,52 @@ export function InvoiceProcess({
                 />
               </DotField>
               <DotField label="Size" width={8}>
-                <select
-                  className="dos-select"
-                  aria-label="Size"
-                  style={{ minWidth: "10ch" }}
-                  value={
-                    isListedUnitSize(editing.invoice.salesSize)
-                      ? normalizeUnitSize(editing.invoice.salesSize) ?? ""
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const salesSize = e.target.value;
-                    const invoice = { ...editing.invoice, salesSize };
-                    setEditing({
-                      invoice,
-                      lines: isNewInvoice
-                        ? applyPresetPrices(salesSize, editing.lines)
-                        : editing.lines,
-                    });
-                  }}
-                >
-                  <option value=""> </option>
-                  {UNIT_SIZE_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="dos-input w12"
-                  aria-label="Custom size"
-                  readOnly={isListedUnitSize(editing.invoice.salesSize)}
-                  value={editing.invoice.salesSize}
-                  onChange={(e) => {
-                    if (isListedUnitSize(editing.invoice.salesSize)) return;
-                    const salesSize = e.target.value;
-                    const invoice = { ...editing.invoice, salesSize };
-                    setEditing({
-                      invoice,
-                      lines: isNewInvoice
-                        ? applyPresetPrices(salesSize, editing.lines)
-                        : editing.lines,
-                    });
-                  }}
-                  placeholder="Type size"
-                />
+                <div className="dos-choice-pair">
+                  <select
+                    className="dos-select dos-choice"
+                    aria-label="Size"
+                    value={
+                      isListedUnitSize(editing.invoice.salesSize)
+                        ? normalizeUnitSize(editing.invoice.salesSize) ?? ""
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const salesSize = e.target.value;
+                      const invoice = { ...editing.invoice, salesSize };
+                      setEditing({
+                        invoice,
+                        lines: isNewInvoice
+                          ? applyPresetPrices(salesSize, editing.lines)
+                          : editing.lines,
+                      });
+                    }}
+                  >
+                    <option value=""> </option>
+                    {UNIT_SIZE_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label="Custom size"
+                    readOnly={isListedUnitSize(editing.invoice.salesSize)}
+                    value={editing.invoice.salesSize}
+                    onChange={(e) => {
+                      if (isListedUnitSize(editing.invoice.salesSize)) return;
+                      const salesSize = e.target.value;
+                      const invoice = { ...editing.invoice, salesSize };
+                      setEditing({
+                        invoice,
+                        lines: isNewInvoice
+                          ? applyPresetPrices(salesSize, editing.lines)
+                          : editing.lines,
+                      });
+                    }}
+                    placeholder="Type size"
+                  />
+                </div>
               </DotField>
               <DotField label="Customer P.O" width={14}>
                 <input
@@ -725,7 +734,7 @@ export function InvoiceProcess({
             </div>
 
             <div className="invoice-line-grid invoice-line-head">
-              <span style={{ gridColumn: "1 / 3" }}>Description</span>
+              <span>Description</span>
               <span className="invoice-col-center">WorkDate</span>
               <span className="invoice-col-center">WorkPerson</span>
               <span className="invoice-col-center">Price</span>
@@ -736,44 +745,46 @@ export function InvoiceProcess({
                 className="invoice-line-grid"
                 style={{ marginBottom: "0.12em" }}
               >
-                <select
-                  className="dos-select"
-                  aria-label={`Line ${idx + 1} description`}
-                  value={
-                    isPresetDescription(line.description)
-                      ? line.description
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const description = e.target.value;
-                    const lines = [...editing.lines];
-                    const next = { ...line, description };
-                    lines[idx] = description
-                      ? applyPresetPriceToLine(next, editing.invoice.salesSize)
-                      : { ...next, price: 0, empPrice: 0 };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value=""> </option>
-                  {INVOICE_LINE_PRESETS.map((p) => (
-                    <option key={p.id} value={p.description}>
-                      {p.description}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="dos-input"
-                  aria-label={`Line ${idx + 1} custom text`}
-                  readOnly={isPresetDescription(line.description)}
-                  value={line.description}
-                  onChange={(e) => {
-                    if (isPresetDescription(line.description)) return;
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, description: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                  placeholder="Type description"
-                />
+                <div className="dos-choice-pair">
+                  <select
+                    className="dos-select dos-choice"
+                    aria-label={`Line ${idx + 1} description`}
+                    value={
+                      isPresetDescription(line.description)
+                        ? line.description
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const description = e.target.value;
+                      const lines = [...editing.lines];
+                      const next = { ...line, description };
+                      lines[idx] = description
+                        ? applyPresetPriceToLine(next, editing.invoice.salesSize)
+                        : { ...next, price: 0, empPrice: 0 };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value=""> </option>
+                    {INVOICE_LINE_PRESETS.map((p) => (
+                      <option key={p.id} value={p.description}>
+                        {p.description}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label={`Line ${idx + 1} custom text`}
+                    readOnly={isPresetDescription(line.description)}
+                    value={line.description}
+                    onChange={(e) => {
+                      if (isPresetDescription(line.description)) return;
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, description: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                    placeholder="Type description"
+                  />
+                </div>
                 <input
                   className="dos-input w12"
                   type="date"
@@ -787,7 +798,7 @@ export function InvoiceProcess({
                 />
                 <div className="invoice-work-person">
                   <select
-                    className="dos-select"
+                    className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} work person`}
                     title="Work Person"
                     value={listedWorkPerson(line.empNo)}

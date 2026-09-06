@@ -644,6 +644,11 @@ pub fn report_aging(
 ) -> Result<Vec<AgingRow>, String> {
     let as_of = as_of.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
     let search = search.unwrap_or_default();
+    let search = if search.trim() == "?" {
+        String::new()
+    } else {
+        search
+    };
     let like = format!("%{}%", search);
 
     // Age from invoice date (original invoice register / aging used Inv_Date).
@@ -1427,6 +1432,7 @@ mod tests {
             &ListParams {
                 search: Some("400".into()),
                 company_no: None,
+                pro_no: None,
                 from_date: Some("2020-01-01".into()),
                 to_date: Some("2020-12-31".into()),
                 include_voided: None,
@@ -1472,6 +1478,7 @@ mod tests {
             &ListParams {
                 search: None,
                 company_no: None,
+                pro_no: None,
                 from_date: None,
                 to_date: None,
                 include_voided: None,
@@ -1488,6 +1495,7 @@ mod tests {
             &ListParams {
                 search: None,
                 company_no: Some("1000".into()),
+                pro_no: None,
                 from_date: None,
                 to_date: None,
                 include_voided: None,

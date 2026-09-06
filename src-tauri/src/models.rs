@@ -306,6 +306,7 @@ pub struct ImportResult {
 pub struct ListParams {
     pub search: Option<String>,
     pub company_no: Option<String>,
+    pub pro_no: Option<String>,
     pub from_date: Option<String>,
     pub to_date: Option<String>,
     pub include_voided: Option<bool>,

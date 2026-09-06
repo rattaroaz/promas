@@ -9,10 +9,6 @@ async function openEstimates(page: Page) {
   await companyNo.fill("?");
   await companyNo.press("Enter");
   await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-
-  const propertyNo = page.getByPlaceholder("? = first");
-  await propertyNo.fill("?");
-  await propertyNo.press("Enter");
   await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
 
   await expect(page.getByText(/1 proposals/i)).toBeVisible();

@@ -58,7 +58,7 @@ describe("instrumented api invoke", () => {
     ).toBe(true);
   });
 
-  it("records database location and export breadcrumbs", async () => {
+  it("records database location and backup breadcrumbs", async () => {
     rawInvoke.mockResolvedValue({ path: "D:\\data\\acct.db", created: false });
     const { api } = await import("./api");
     await api.setDbLocation("D:\\data\\acct.db");
@@ -69,10 +69,10 @@ describe("instrumented api invoke", () => {
     ).toBe(true);
 
     rawInvoke.mockResolvedValue(undefined);
-    await api.exportDatabase("D:\\out\\copy.db");
+    await api.backupDatabase("D:\\out\\copy.db");
     expect(
       log.getRecent().some(
-        (e) => e.category === "db" && e.message === "database exported"
+        (e) => e.category === "db" && e.message === "database backed up"
       )
     ).toBe(true);
   });

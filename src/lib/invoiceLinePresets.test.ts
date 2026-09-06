@@ -28,6 +28,8 @@ describe("normalizeUnitSize", () => {
     expect(normalizeUnitSize("Single")).toBe("single");
     expect(normalizeUnitSize("1+1")).toBe("1+1");
     expect(normalizeUnitSize(" 2 + 2 ")).toBe("2+2");
+    expect(normalizeUnitSize("Occupied")).toBe("Occupied");
+    expect(normalizeUnitSize("occupied")).toBe("Occupied");
     expect(normalizeUnitSize("")).toBeNull();
     expect(normalizeUnitSize("studio")).toBeNull();
   });

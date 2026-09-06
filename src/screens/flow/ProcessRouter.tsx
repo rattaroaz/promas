@@ -1,6 +1,9 @@
 /**
  * Wraps the original process path:
  *   Main menu item → Company/Property gate → process screen
+ *
+ * The gate stays mounted after a company (cash) or company+property is chosen
+ * so Esc from the process list returns to that list instead of a fresh search.
  */
 import { useEffect, useState } from "react";
 import { Company, Property } from "../../api";
@@ -23,57 +26,68 @@ export function ProcessRouter({
 }) {
   const [ctx, setCtx] = useState<{
     company: Company;
-    property: Property;
+    property?: Property;
   } | null>(null);
 
   useEffect(() => {
     setCurrentScreen(ctx ? `${process}/process` : `${process}/gate`);
   }, [process, ctx]);
 
-  if (!ctx) {
-    return (
+  const backToGate = () => setCtx(null);
+
+  let processScreen = null;
+  if (ctx) {
+    switch (process) {
+      case "invoice":
+        if (ctx.property) {
+          processScreen = (
+            <InvoiceProcess
+              company={ctx.company}
+              property={ctx.property}
+              onBack={backToGate}
+            />
+          );
+        }
+        break;
+      case "workorder":
+        if (ctx.property) {
+          processScreen = (
+            <WorkOrderProcess
+              company={ctx.company}
+              property={ctx.property}
+              onBack={backToGate}
+            />
+          );
+        }
+        break;
+      case "cash":
+        processScreen = (
+          <CashProcess company={ctx.company} onBack={backToGate} />
+        );
+        break;
+      case "estimate":
+        if (ctx.property) {
+          processScreen = (
+            <EstimateProcess
+              company={ctx.company}
+              property={ctx.property}
+              onBack={backToGate}
+            />
+          );
+        }
+        break;
+    }
+  }
+
+  return (
+    <>
       <CompanyPropertyGate
         process={process}
         onBack={onBack}
         onReady={(company, property) => setCtx({ company, property })}
+        active={!ctx}
       />
-    );
-  }
-
-  const backToGate = () => setCtx(null);
-
-  switch (process) {
-    case "invoice":
-      return (
-        <InvoiceProcess
-          company={ctx.company}
-          property={ctx.property}
-          onBack={backToGate}
-        />
-      );
-    case "workorder":
-      return (
-        <WorkOrderProcess
-          company={ctx.company}
-          property={ctx.property}
-          onBack={backToGate}
-        />
-      );
-    case "cash":
-      return (
-        <CashProcess
-          company={ctx.company}
-          property={ctx.property}
-          onBack={backToGate}
-        />
-      );
-    case "estimate":
-      return (
-        <EstimateProcess
-          company={ctx.company}
-          property={ctx.property}
-          onBack={backToGate}
-        />
-      );
-  }
+      {processScreen}
+    </>
+  );
 }

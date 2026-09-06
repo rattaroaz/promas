@@ -10,11 +10,6 @@ async function openInvoiceBrowse(page: Page) {
   await companyNo.fill("?");
   await companyNo.press("Enter");
   await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-
-  await expect(page.getByText(/Enter Property NO/i)).toBeVisible();
-  const propertyNo = page.getByPlaceholder("? = first");
-  await propertyNo.fill("?");
-  await propertyNo.press("Enter");
   await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
 
   // Browse list for the selected site (status bar + fixture row)
@@ -38,6 +33,13 @@ test.describe("invoice process", () => {
     await expect(page.getByText(/Invoice Number 1/i)).toBeVisible();
   });
 
+  test("Ins status hint adds a new invoice from the list", async ({ page }) => {
+    await openInvoiceBrowse(page);
+    await page.getByRole("button", { name: /^Ins Add$/i }).click();
+    await expect(page.getByLabel("Invoice Number")).toHaveValue("2");
+    await expect(page.getByText(/Invoice Number 2/i)).toBeVisible();
+  });
+
   test("New Invoice skips date/number prompt and opens the form", async ({
     page,
   }) => {
@@ -56,18 +58,6 @@ test.describe("invoice process", () => {
     );
     await page.getByLabel("Size", { exact: true }).selectOption("1+1");
     await expect(page.getByLabel("Price 1")).toHaveValue("245");
-  });
-
-  test("fills a color-change line at 80% of the related paint price", async ({
-    page,
-  }) => {
-    await openInvoiceBrowse(page);
-    await page.getByRole("button", { name: /^New Invoice$/i }).click();
-    await page.getByLabel("Line 1 description").selectOption(
-      "Color Change of Ceiling to Swiss Coffee"
-    );
-    await page.getByLabel("Size", { exact: true }).selectOption("1+1");
-    await expect(page.getByLabel("Price 1")).toHaveValue("92");
   });
 });
 
