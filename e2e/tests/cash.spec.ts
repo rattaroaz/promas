@@ -21,7 +21,7 @@ test.describe("cash receipts process", () => {
 
   test("posts a receipt for the open invoice", async ({ page }) => {
     await openCashLedger(page);
-    await page.getByRole("button", { name: /^Ins$/i }).click();
+    await page.getByRole("button", { name: /^Ins Add$/i }).click();
     await expect(page.locator(".dlg-title")).toContainText(
       "Enter Your Payment Data"
     );

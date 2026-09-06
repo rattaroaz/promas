@@ -31,7 +31,7 @@ test.describe("estimate process", () => {
 
   test("creates a new proposal from Ins and saves it", async ({ page }) => {
     await openEstimates(page);
-    await page.getByRole("button", { name: /^Ins$/i }).click();
+    await page.getByRole("button", { name: /^Ins Add$/i }).click();
     await expect(page.locator('input[value="EST-1"]')).toBeVisible();
     await page.getByRole("button", { name: /Cntr_W Save/i }).click();
     await expect(page.getByRole("button", { name: /EST-1/i })).toBeVisible();
