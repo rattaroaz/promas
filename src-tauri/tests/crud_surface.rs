@@ -212,6 +212,8 @@ fn aging_report_after_open_invoice() {
         discount_on: 0,
         discount: 0.0,
         deposit_ref: "".into(),
+        material_cost: 0.0,
+        paint_supply_co: "".into(),
         remark1: "".into(),
         remark2: "".into(),
         status: "".into(),

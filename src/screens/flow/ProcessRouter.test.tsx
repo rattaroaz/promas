@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { ProcessRouter } from "./ProcessRouter";
-import { api, emptyCompany, emptyProperty } from "../../api";
+import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 import { getAppState, resetObservabilityForTests } from "../../lib/observability";
 
 vi.mock("../../api", async () => {
@@ -18,6 +18,7 @@ vi.mock("../../api", async () => {
       getCompany: vi.fn(),
       getSysdata: vi.fn(),
       listWorkPersons: vi.fn(),
+      listPaintSupplyCos: vi.fn(),
     },
   };
 });
@@ -110,6 +111,7 @@ describe("ProcessRouter observability", () => {
       interestRate: 1.5,
     });
     vi.mocked(api.listWorkPersons).mockResolvedValue([]);
+    vi.mocked(api.listPaintSupplyCos).mockResolvedValue([]);
 
     const user = userEvent.setup();
     renderApp(<ProcessRouter process="invoice" onBack={vi.fn()} />);
@@ -181,5 +183,44 @@ describe("ProcessRouter observability", () => {
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({ companyNo: "1000" })
     );
+  });
+
+  it("opens previous invoices when searching by invoice number", async () => {
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+    const found = {
+      ...emptyInvoice(),
+      companyNo: "1000",
+      proNo: "01",
+      salesDate: "2026-01-15",
+      invoice: 42,
+      custPoNo: "PO-42",
+      salesTotal: 100,
+      balance: 100,
+    };
+    vi.mocked(api.listInvoices).mockImplementation(async (params) => {
+      if (params.search === "42" || params.companyNo === "1000") {
+        return [found];
+      }
+      return [];
+    });
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process="invoice" onBack={vi.fn()} />);
+    await user.type(
+      screen.getByRole("textbox", { name: "Invoice Number" }),
+      "42{Enter}"
+    );
+    expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /PO-42/i })).toBeInTheDocument();
   });
 });

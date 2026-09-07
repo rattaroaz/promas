@@ -38,6 +38,8 @@ const fixtureInvoice = {
   discountOn: 0,
   discount: 0,
   depositRef: "",
+  materialCost: 0,
+  paintSupplyCo: "",
   remark1: "",
   remark2: "",
   status: "",
@@ -136,6 +138,22 @@ export async function invoke<T = unknown>(
     return (name ? [name] : []) as T;
   }
   if (cmd === "delete_work_person") {
+    return [] as T;
+  }
+  if (cmd === "list_paint_supply_cos") {
+    return [] as T;
+  }
+  if (cmd === "save_paint_supply_co") {
+    const name = String(_args?.name ?? "").trim();
+    return (name ? [name] : []) as T;
+  }
+  if (cmd === "delete_paint_supply_co") {
+    return [] as T;
+  }
+  if (cmd === "report_paint_usage") {
+    return [] as T;
+  }
+  if (cmd === "report_payroll") {
     return [] as T;
   }
   if (cmd === "list_work_orders") {

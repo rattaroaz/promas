@@ -5,7 +5,7 @@ import {
   CompanyPropertyGate,
   formatPropertySearchRow,
 } from "./CompanyPropertyGate";
-import { api, emptyCompany, emptyProperty } from "../../api";
+import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 
 vi.mock("../../api", async () => {
   const actual = await vi.importActual<typeof import("../../api")>("../../api");
@@ -15,6 +15,7 @@ vi.mock("../../api", async () => {
       ...actual.api,
       listCompanies: vi.fn(),
       listProperties: vi.fn(),
+      listInvoices: vi.fn(),
       getCompany: vi.fn(),
       saveCompany: vi.fn(),
       nextCompanyNo: vi.fn(),
@@ -63,6 +64,7 @@ describe("CompanyPropertyGate", () => {
     vi.mocked(api.nextCompanyNo).mockResolvedValue("1001");
     vi.mocked(api.saveProperty).mockResolvedValue(undefined);
     vi.mocked(api.deleteCompany).mockResolvedValue(undefined);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
   });
 
   it("shows company search for invoice process", () => {
@@ -77,6 +79,7 @@ describe("CompanyPropertyGate", () => {
     expect(screen.getByRole("textbox", { name: "Company Name" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Company Phone" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Company Contact" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Invoice Number" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Property Street" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Property Contact" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("? = first")).toBeInTheDocument();
@@ -120,6 +123,8 @@ describe("CompanyPropertyGate", () => {
         onReady={onReady}
       />
     );
+
+    expect(screen.queryByRole("textbox", { name: "Invoice Number" })).not.toBeInTheDocument();
 
     const companyNo = screen.getByPlaceholderText("? = first");
     await user.clear(companyNo);
@@ -607,5 +612,110 @@ describe("CompanyPropertyGate", () => {
       await screen.findByRole("textbox", { name: "Company NO" })
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /01\s+Bldg A/i })).not.toBeInTheDocument();
+  });
+
+  it("searches by invoice number and opens that property", async () => {
+    const user = userEvent.setup();
+    const onReady = vi.fn();
+    vi.mocked(api.listInvoices).mockResolvedValue([
+      {
+        ...emptyInvoice(),
+        companyNo: "1000",
+        proNo: "01",
+        salesDate: "2026-01-15",
+        invoice: 42,
+        propertyStreet: "1105 QUAIL ST.",
+      },
+    ]);
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={onReady}
+      />
+    );
+    await user.type(screen.getByRole("textbox", { name: "Invoice Number" }), "42{Enter}");
+    await waitFor(() => {
+      expect(api.listInvoices).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "42" })
+      );
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "1000" }),
+        expect.objectContaining({ proNo: "01" }),
+        { focusInvoice: 42 }
+      );
+    });
+  });
+
+  it("lists matching invoice sites when the number exists on more than one property", async () => {
+    const user = userEvent.setup();
+    const onReady = vi.fn();
+    vi.mocked(api.getCompany).mockImplementation(async (no) =>
+      no === "2000"
+        ? { ...emptyCompany(), companyNo: "2000", name: "BETA" }
+        : company
+    );
+    vi.mocked(api.listProperties).mockImplementation(async (params) =>
+      params.companyNo === "2000"
+        ? [
+            {
+              ...emptyProperty("2000"),
+              proNo: "02",
+              name: "Shop",
+              street: "88 MAIN ST.",
+            },
+          ]
+        : [property]
+    );
+    vi.mocked(api.listInvoices).mockResolvedValue([
+      {
+        ...emptyInvoice(),
+        companyNo: "1000",
+        proNo: "01",
+        salesDate: "2026-01-15",
+        invoice: 7,
+        propertyStreet: "1105 QUAIL ST.",
+      },
+      {
+        ...emptyInvoice(),
+        companyNo: "2000",
+        proNo: "02",
+        salesDate: "2026-02-01",
+        invoice: 7,
+        propertyStreet: "88 MAIN ST.",
+      },
+    ]);
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={onReady}
+      />
+    );
+    await user.type(screen.getByRole("textbox", { name: "Invoice Number" }), "7{Enter}");
+    expect(await screen.findByRole("button", { name: /1105 QUAIL ST/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /88 MAIN ST/i })).toBeInTheDocument();
+    expect(onReady).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /88 MAIN ST/i }));
+    await waitFor(() => {
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "2000" }),
+        expect.objectContaining({ proNo: "02" }),
+        { focusInvoice: 7 }
+      );
+    });
+  });
+
+  it("reports when the invoice number is not on file", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+    await user.type(screen.getByRole("textbox", { name: "Invoice Number" }), "999{Enter}");
+    expect(await screen.findByText(/Invoice #999 does not exist/i)).toBeInTheDocument();
   });
 });

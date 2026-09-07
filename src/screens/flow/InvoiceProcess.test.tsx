@@ -34,6 +34,9 @@ vi.mock("../../api", async () => {
       listWorkPersons: vi.fn(),
       saveWorkPerson: vi.fn(),
       deleteWorkPerson: vi.fn(),
+      listPaintSupplyCos: vi.fn(),
+      savePaintSupplyCo: vi.fn(),
+      deletePaintSupplyCo: vi.fn(),
       getSysdata: vi.fn(),
       saveInvoice: vi.fn(),
       voidInvoice: vi.fn(),
@@ -69,6 +72,14 @@ describe("InvoiceProcess", () => {
       return n ? ["Jose Ramirez", n].filter((v, i, a) => a.indexOf(v) === i) : ["Jose Ramirez"];
     });
     vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
+    vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
+    vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) => {
+      const n = name.trim();
+      return n
+        ? ["Dunn-Edwards", n].filter((v, i, a) => a.indexOf(v) === i)
+        : ["Dunn-Edwards"];
+    });
+    vi.mocked(api.deletePaintSupplyCo).mockResolvedValue([]);
     vi.mocked(api.getSysdata).mockResolvedValue({
       company: "Test",
       address1: "",
@@ -136,6 +147,67 @@ describe("InvoiceProcess", () => {
     ) as HTMLInputElement;
     expect(dateInput.value).toBe(new Date().toISOString().slice(0, 10));
     expect(api.getSysdata).toHaveBeenCalled();
+  });
+
+  it("saves material costs and paint supply company", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    const cost = await screen.findByLabelText("Material Costs");
+    const supplier = screen.getByLabelText("Paint Supply Co.");
+    await user.clear(cost);
+    await user.type(cost, "42.5");
+    await user.type(supplier, "Kelly-Moore");
+    await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    await waitFor(() => {
+      expect(api.saveInvoice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoice: expect.objectContaining({
+            materialCost: 42.5,
+            paintSupplyCo: "Kelly-Moore",
+          }),
+        })
+      );
+      expect(api.savePaintSupplyCo).toHaveBeenCalledWith("Kelly-Moore");
+    });
+  });
+
+  it("lets the user pick a previous paint supply company from the list", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    const list = await screen.findByLabelText("Paint Supply Co. list");
+    await user.selectOptions(list, "Dunn-Edwards");
+    expect(screen.getByLabelText("Paint Supply Co.")).toHaveValue("Dunn-Edwards");
+  });
+
+  it("removes a paint supply company from the list after confirm", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    await user.selectOptions(
+      await screen.findByLabelText("Paint Supply Co. list"),
+      "Dunn-Edwards"
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: /Remove Dunn-Edwards from list/i,
+      })
+    );
+    await user.click(screen.getByRole("button", { name: /^Y$/i }));
+    await waitFor(() => {
+      expect(api.deletePaintSupplyCo).toHaveBeenCalledWith("Dunn-Edwards");
+    });
   });
 
   it("opens a new invoice form from the New Invoice button", async () => {
@@ -243,7 +315,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Custom size")).not.toHaveAttribute("readonly");
     expect(size).toHaveClass("dos-choice");
     expect(screen.getByLabelText("Line 1 description")).toHaveClass("dos-choice");
-    expect(screen.getByLabelText("Line 1 work person")).toHaveClass("dos-choice");
+    expect(screen.getByLabelText("Work Person list")).toHaveClass("dos-choice");
     const desc = screen.getByLabelText("Line 1 description");
     const descriptions = Array.from(desc.querySelectorAll("option")).map(
       (o) => o.getAttribute("value") ?? ""
@@ -268,7 +340,7 @@ describe("InvoiceProcess", () => {
     ]);
   });
 
-  it("places WorkDate and WorkPerson labels over their line fields", async () => {
+  it("places WorkDate over line fields and Work Person on the invoice", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -276,9 +348,9 @@ describe("InvoiceProcess", () => {
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(screen.getByText("WorkDate")).toBeInTheDocument();
-    expect(screen.getByText("WorkPerson")).toBeInTheDocument();
+    expect(screen.getByLabelText("Work Person")).toBeInTheDocument();
     expect(screen.getByLabelText("Line 1 work date")).toBeInTheDocument();
-    expect(screen.getByLabelText("Line 1 work person")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Line 1 work person")).not.toBeInTheDocument();
   });
 
   it("lets the user pick, type, save, and delete work person names", async () => {
@@ -288,22 +360,20 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    const pick = await screen.findByLabelText("Line 1 work person");
+    const pick = await screen.findByLabelText("Work Person list");
     expect(Array.from(pick.querySelectorAll("option")).map((o) => o.textContent)).toEqual(
       [" ", "Jose Ramirez"]
     );
     await user.selectOptions(pick, "Jose Ramirez");
-    expect(screen.getByLabelText("Line 1 work person name")).toHaveValue(
-      "Jose Ramirez"
-    );
+    expect(screen.getByLabelText("Work Person")).toHaveValue("Jose Ramirez");
 
-    await user.clear(screen.getByLabelText("Line 1 work person name"));
-    await user.type(screen.getByLabelText("Line 1 work person name"), "Ana Cruz");
+    await user.clear(screen.getByLabelText("Work Person"));
+    await user.type(screen.getByLabelText("Work Person"), "Ana Cruz");
     await user.tab();
     expect(api.saveWorkPerson).toHaveBeenCalledWith("Ana Cruz");
 
     await user.selectOptions(
-      screen.getByLabelText("Line 1 work person"),
+      screen.getByLabelText("Work Person list"),
       "Jose Ramirez"
     );
     await user.click(
@@ -314,7 +384,7 @@ describe("InvoiceProcess", () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     expect(api.deleteWorkPerson).toHaveBeenCalledWith("Jose Ramirez");
-    expect(screen.getByLabelText("Line 1 work person name")).toHaveValue("");
+    expect(screen.getByLabelText("Work Person")).toHaveValue("");
   });
 
   it("fills kitchen cabinet and color-change prices from the description", async () => {
@@ -359,6 +429,28 @@ describe("InvoiceProcess", () => {
     );
   });
 
+  it("selects the focused invoice when opened from invoice-number search", async () => {
+    const older = {
+      ...fixture,
+      invoice: 9,
+      salesDate: "2025-06-01",
+      custPoNo: "PO-9",
+    };
+    vi.mocked(api.listInvoices).mockResolvedValue([fixture, older]);
+    renderApp(
+      <InvoiceProcess
+        company={company}
+        property={property}
+        onBack={vi.fn()}
+        focusInvoice={9}
+      />
+    );
+    expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PO-9/i })).toHaveClass(
+      "selected"
+    );
+  });
+
   it("saves a new invoice after Ctrl-W confirm", async () => {
     const user = userEvent.setup();
     renderApp(
@@ -366,7 +458,8 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    await user.type(screen.getByLabelText("Line 1 work person name"), "Ana Cruz");
+    await user.type(screen.getByLabelText("Work Person"), "Ana Cruz");
+    await user.click(screen.getByRole("button", { name: /^\+ Line$/i }));
     await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
@@ -380,6 +473,10 @@ describe("InvoiceProcess", () => {
           proNo: "01",
           invoice: 2,
         }),
+        lines: [
+          expect.objectContaining({ empNo: "Ana Cruz" }),
+          expect.objectContaining({ empNo: "Ana Cruz" }),
+        ],
       })
     );
   });

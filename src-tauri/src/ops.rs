@@ -105,15 +105,16 @@ pub fn save_invoice(conn: &mut Connection, data: InvoiceWithLines) -> Result<i64
         r#"INSERT INTO invoices
            (company_no,pro_no,sales_date,invoice,order_no,order_date,order_man,sales_unit,sales_size,
             sales_total,sales_pay,sales_bal,pay_total,balance,sales_term,sales_due,cust_po_no,
-            discount_on,discount,deposit_ref,remark1,remark2,status,voided)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            discount_on,discount,deposit_ref,material_cost,paint_supply_co,remark1,remark2,status,voided)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
            ON CONFLICT(company_no,pro_no,sales_date,invoice) DO UPDATE SET
              order_no=excluded.order_no,order_date=excluded.order_date,order_man=excluded.order_man,
              sales_unit=excluded.sales_unit,sales_size=excluded.sales_size,sales_total=excluded.sales_total,
              sales_pay=excluded.sales_pay,sales_bal=excluded.sales_bal,pay_total=excluded.pay_total,
              balance=excluded.balance,sales_term=excluded.sales_term,sales_due=excluded.sales_due,
              cust_po_no=excluded.cust_po_no,discount_on=excluded.discount_on,discount=excluded.discount,
-             deposit_ref=excluded.deposit_ref,remark1=excluded.remark1,remark2=excluded.remark2,
+             deposit_ref=excluded.deposit_ref,material_cost=excluded.material_cost,
+             paint_supply_co=excluded.paint_supply_co,remark1=excluded.remark1,remark2=excluded.remark2,
              status=excluded.status,voided=excluded.voided"#,
         params![
             inv.company_no,
@@ -136,6 +137,8 @@ pub fn save_invoice(conn: &mut Connection, data: InvoiceWithLines) -> Result<i64
             inv.discount_on,
             inv.discount,
             inv.deposit_ref,
+            inv.material_cost,
+            inv.paint_supply_co,
             inv.remark1,
             inv.remark2,
             inv.status,
@@ -345,19 +348,22 @@ pub fn report_sales_analysis(
     let to_date = params.to_date.clone().unwrap_or_default();
     let company_no = params.company_no.clone().unwrap_or_default();
 
+    let like = format!("%{}%", company_no);
+
     let mut stmt = conn
         .prepare(
-            r#"SELECT sales_date,invoice,company_no,pro_no,sales_total,sales_pay,sales_bal,pay_total,balance
-               FROM invoices
-               WHERE voided=0
-                 AND (?1='' OR company_no=?1)
-                 AND (?2='' OR sales_date>=?2)
-                 AND (?3='' OR sales_date<=?3)
-               ORDER BY sales_date, invoice"#,
+            r#"SELECT i.sales_date,i.invoice,i.company_no,i.pro_no,i.sales_total,i.sales_pay,i.sales_bal,i.pay_total,i.balance
+               FROM invoices i
+               LEFT JOIN companies c ON c.company_no=i.company_no
+               WHERE i.voided=0
+                 AND (?1='' OR i.company_no=?1 OR i.company_no LIKE ?4 OR COALESCE(c.name,'') LIKE ?4)
+                 AND (?2='' OR i.sales_date>=?2)
+                 AND (?3='' OR i.sales_date<=?3)
+               ORDER BY i.sales_date, i.invoice"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![company_no, from_date, to_date], |r| {
+        .query_map(params![company_no, from_date, to_date, like], |r| {
             Ok(SalesAnalysisRow {
                 sales_date: r.get(0)?,
                 invoice: r.get(1)?,
@@ -370,6 +376,153 @@ pub fn report_sales_analysis(
                 balance: r.get(8)?,
             })
         })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+pub fn report_payroll(
+    conn: &Connection,
+    params: &ListParams,
+) -> Result<Vec<PayrollRow>, String> {
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let worker = params.search.clone().unwrap_or_default();
+    let worker_like = format!("%{}%", worker);
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT
+                 i.sales_date,
+                 i.invoice,
+                 i.sales_total,
+                 COALESCE(i.material_cost, 0),
+                 COALESCE(NULLIF(TRIM(p.street), ''), p.name, ''),
+                 COALESCE((
+                   SELECT GROUP_CONCAT(d, ' / ')
+                   FROM (
+                     SELECT TRIM(l.description) AS d
+                     FROM invoice_lines l
+                     WHERE l.company_no=i.company_no AND l.pro_no=i.pro_no
+                       AND l.sales_date=i.sales_date AND l.invoice=i.invoice
+                       AND TRIM(COALESCE(l.description,'')) != ''
+                     ORDER BY l.line_no
+                   )
+                 ), ''),
+                 i.sales_unit,
+                 i.company_no,
+                 i.pro_no
+               FROM invoices i
+               LEFT JOIN properties p
+                 ON p.company_no=i.company_no AND p.pro_no=i.pro_no
+               WHERE i.voided=0
+                 AND (?1='' OR i.sales_date>=?1)
+                 AND (?2='' OR i.sales_date<=?2)
+                 AND (?3='' OR EXISTS (
+                   SELECT 1 FROM invoice_lines l
+                   WHERE l.company_no=i.company_no AND l.pro_no=i.pro_no
+                     AND l.sales_date=i.sales_date AND l.invoice=i.invoice
+                     AND l.emp_no LIKE ?4 COLLATE NOCASE
+                 ))
+               ORDER BY i.sales_date, i.invoice"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![from_date, to_date, worker, worker_like], |r| {
+            Ok(PayrollRow {
+                sales_date: r.get(0)?,
+                invoice: r.get(1)?,
+                invoice_total: r.get(2)?,
+                material_cost: r.get(3)?,
+                property_address: r.get(4)?,
+                job_description: r.get(5)?,
+                sales_unit: r.get(6)?,
+                company_no: r.get(7)?,
+                pro_no: r.get(8)?,
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+pub fn report_paint_usage(
+    conn: &Connection,
+    params: &ListParams,
+) -> Result<Vec<PaintUsageRow>, String> {
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let paint = params.paint_supply_co.clone().unwrap_or_default();
+    let worker = params.search.clone().unwrap_or_default();
+    let paint_like = format!("%{}%", paint);
+    let worker_like = format!("%{}%", worker);
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT
+                 COALESCE((
+                   SELECT TRIM(w.emp_no)
+                   FROM invoice_lines w
+                   WHERE w.company_no=i.company_no AND w.pro_no=i.pro_no
+                     AND w.sales_date=i.sales_date AND w.invoice=i.invoice
+                     AND TRIM(COALESCE(w.emp_no,'')) != ''
+                   ORDER BY w.line_no
+                   LIMIT 1
+                 ), '') AS work_person,
+                 COALESCE(i.material_cost, 0),
+                 i.invoice,
+                 i.sales_total,
+                 COALESCE(i.paint_supply_co, '') AS paint_supply_co,
+                 COALESCE(
+                   MIN(CASE
+                     WHEN (?1='' OR COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)>=?1)
+                      AND (?2='' OR COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)<=?2)
+                     THEN COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)
+                   END),
+                   MIN(COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)),
+                   i.sales_date
+                 ) AS work_date
+               FROM invoices i
+               LEFT JOIN invoice_lines l
+                 ON l.company_no=i.company_no AND l.pro_no=i.pro_no
+                AND l.sales_date=i.sales_date AND l.invoice=i.invoice
+               WHERE i.voided=0
+                 AND (?3='' OR i.paint_supply_co LIKE ?4 COLLATE NOCASE)
+                 AND (?5='' OR EXISTS (
+                   SELECT 1 FROM invoice_lines w
+                   WHERE w.company_no=i.company_no AND w.pro_no=i.pro_no
+                     AND w.sales_date=i.sales_date AND w.invoice=i.invoice
+                     AND w.emp_no LIKE ?6 COLLATE NOCASE
+                 ))
+               GROUP BY i.company_no, i.pro_no, i.sales_date, i.invoice
+               HAVING
+                 (?1='' AND ?2='')
+                 OR MAX(CASE
+                   WHEN l.line_no IS NOT NULL
+                    AND (?1='' OR COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)>=?1)
+                    AND (?2='' OR COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)<=?2)
+                   THEN 1
+                   WHEN l.line_no IS NULL
+                    AND (?1='' OR i.sales_date>=?1)
+                    AND (?2='' OR i.sales_date<=?2)
+                   THEN 1
+                   ELSE 0
+                 END) = 1
+               ORDER BY work_date, i.invoice"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(
+            params![from_date, to_date, paint, paint_like, worker, worker_like],
+            |r| {
+                Ok(PaintUsageRow {
+                    work_person: r.get(0)?,
+                    material_cost: r.get(1)?,
+                    invoice: r.get(2)?,
+                    invoice_total: r.get(3)?,
+                    paint_supply_co: r.get(4)?,
+                    work_date: r.get(5)?,
+                })
+            },
+        )
         .map_err(map_err)?;
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
@@ -758,6 +911,8 @@ mod tests {
                 discount_on: 0,
                 discount: 0.0,
                 deposit_ref: "".into(),
+                material_cost: 0.0,
+                paint_supply_co: "".into(),
                 remark1: "".into(),
                 remark2: "".into(),
                 status: "".into(),
@@ -1439,6 +1594,7 @@ mod tests {
                 limit: None,
                 offset: None,
                 sort: None,
+                paint_supply_co: None,
             },
         )
         .unwrap();
@@ -1485,6 +1641,7 @@ mod tests {
                 limit: None,
                 offset: None,
                 sort: None,
+                paint_supply_co: None,
             },
         )
         .unwrap();
@@ -1502,6 +1659,7 @@ mod tests {
                 limit: None,
                 offset: None,
                 sort: None,
+                paint_supply_co: None,
             },
         )
         .unwrap();

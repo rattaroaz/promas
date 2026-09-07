@@ -115,6 +115,10 @@ pub struct Invoice {
     pub discount_on: i64,
     pub discount: f64,
     pub deposit_ref: String,
+    #[serde(default)]
+    pub material_cost: f64,
+    #[serde(default)]
+    pub paint_supply_co: String,
     pub remark1: String,
     pub remark2: String,
     pub status: String,
@@ -222,20 +226,6 @@ pub struct Estimate {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LedgerLine {
-    pub invoice: i64,
-    pub inv_date: String,
-    pub inv_amount: f64,
-    pub pay_date: Option<String>,
-    pub pay_ref_no: Option<String>,
-    pub pay_amount: Option<f64>,
-    pub balance: f64,
-    pub unit: String,
-    pub pro_no: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct MissingInvoiceRow {
     pub order_no: i64,
     pub order_date: String,
@@ -301,7 +291,7 @@ pub struct ImportResult {
     pub messages: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListParams {
     pub search: Option<String>,
@@ -314,6 +304,8 @@ pub struct ListParams {
     pub offset: Option<i64>,
     /// materials sort: "worker" | "date" | "desc" | default
     pub sort: Option<String>,
+    #[serde(default)]
+    pub paint_supply_co: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -342,6 +334,31 @@ pub struct SalesAnalysisRow {
     pub sales_bal: f64,
     pub pay_total: f64,
     pub balance: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PayrollRow {
+    pub sales_date: String,
+    pub invoice: i64,
+    pub invoice_total: f64,
+    pub material_cost: f64,
+    pub property_address: String,
+    pub job_description: String,
+    pub sales_unit: String,
+    pub company_no: String,
+    pub pro_no: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaintUsageRow {
+    pub work_person: String,
+    pub material_cost: f64,
+    pub invoice: i64,
+    pub invoice_total: f64,
+    pub paint_supply_co: String,
+    pub work_date: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

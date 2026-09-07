@@ -33,6 +33,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
+  const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
   );
@@ -76,11 +77,39 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
 
   const current = rows[index] ?? null;
 
+  async function loadPaintSupplyCos() {
+    try {
+      setPaintSupplyCos((await api.listPaintSupplyCos()) ?? []);
+    } catch {
+      setPaintSupplyCos([]);
+    }
+  }
+
+  async function rememberPaintSupplyCo(raw: string) {
+    const name = raw.trim();
+    if (!name) return;
+    try {
+      setPaintSupplyCos(await api.savePaintSupplyCo(name));
+    } catch {
+      setPaintSupplyCos((prev) =>
+        prev.some((n) => n.toLowerCase() === name.toLowerCase())
+          ? prev
+          : [...prev, name].sort((a, b) => a.localeCompare(b))
+      );
+    }
+  }
+
+  function listedPaintSupplyCo(name: string) {
+    const key = name.trim().toLowerCase();
+    return paintSupplyCos.find((n) => n.toLowerCase() === key) ?? "";
+  }
+
   async function openNew() {
     const [cos, emps, wts] = await Promise.all([
       api.listCompanies({ limit: 2000 }),
       api.listEmployees({}),
       api.listWorkTypes({}),
+      loadPaintSupplyCos(),
     ]);
     setCompanies(cos);
     setEmployees(emps);
@@ -104,6 +133,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
       api.listEmployees({}),
       api.listWorkTypes({}),
       api.listProperties({ companyNo: inv.companyNo, limit: 500 }),
+      loadPaintSupplyCos(),
     ]);
     setCompanies(cos);
     setEmployees(emps);
@@ -174,6 +204,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
       setMsgKind("error");
       return;
     }
+    await rememberPaintSupplyCo(inv.paintSupplyCo);
     try {
       const no = await api.saveInvoice({
         invoice: inv,
@@ -455,6 +486,69 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     })
                   }
                 />
+              </DotField>
+            </div>
+            <div className="dos-form-row">
+              <DotField label="Material Costs" width={14}>
+                <input
+                  className="dos-input w10 num"
+                  type="number"
+                  step="0.01"
+                  aria-label="Material Costs"
+                  value={editing.invoice.materialCost ?? 0}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      invoice: {
+                        ...editing.invoice,
+                        materialCost: parseFloat(e.target.value) || 0,
+                      },
+                    })
+                  }
+                />
+              </DotField>
+              <DotField label="Paint Supply Co." width={16}>
+                <div className="invoice-work-person">
+                  <select
+                    className="dos-select dos-choice"
+                    aria-label="Paint Supply Co. list"
+                    value={listedPaintSupplyCo(editing.invoice.paintSupplyCo ?? "")}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        invoice: {
+                          ...editing.invoice,
+                          paintSupplyCo: e.target.value,
+                        },
+                      })
+                    }
+                  >
+                    <option value=""> </option>
+                    {paintSupplyCos.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label="Paint Supply Co."
+                    placeholder="Type name"
+                    value={editing.invoice.paintSupplyCo ?? ""}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        invoice: {
+                          ...editing.invoice,
+                          paintSupplyCo: e.target.value,
+                        },
+                      })
+                    }
+                    onBlur={() => {
+                      void rememberPaintSupplyCo(editing.invoice.paintSupplyCo);
+                    }}
+                  />
+                </div>
               </DotField>
             </div>
 

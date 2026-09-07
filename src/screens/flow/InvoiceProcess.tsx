@@ -43,17 +43,21 @@ export function InvoiceProcess({
   company,
   property,
   onBack,
+  focusInvoice,
 }: {
   company: Company;
   property: Property;
   onBack: () => void;
+  focusInvoice?: number;
 }) {
   const [rows, setRows] = useState<Invoice[]>([]);
   const [mode, setMode] = useState<Mode>("browse");
   const [editing, setEditing] = useState<InvoiceWithLines | null>(null);
   const [isNewInvoice, setIsNewInvoice] = useState(false);
   const [workPersons, setWorkPersons] = useState<string[]>([]);
+  const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
   const [deleteNameAsk, setDeleteNameAsk] = useState<string | null>(null);
+  const [deletePaintAsk, setDeletePaintAsk] = useState<string | null>(null);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
   );
@@ -75,12 +79,16 @@ export function InvoiceProcess({
     });
     const mine = data.filter((i) => i.proNo === property.proNo);
     setRows(mine);
+    if (focusInvoice != null) {
+      const i = mine.findIndex((inv) => inv.invoice === focusInvoice);
+      if (i >= 0) setIndex(i);
+    }
     setMsg(
       mine.length
         ? `${mine.length} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
         : "No invoices for this property. Press Ins or click New Invoice."
     );
-  }, [company.companyNo, property.proNo]);
+  }, [company.companyNo, property.proNo, focusInvoice, setIndex]);
 
   useEffect(() => {
     load();
@@ -89,7 +97,7 @@ export function InvoiceProcess({
   useEffect(() => {
     document
       .querySelector(".dos-row.selected")
-      ?.scrollIntoView({ block: "nearest" });
+      ?.scrollIntoView?.({ block: "nearest" });
   }, [index]);
 
   const current = rows[index] ?? null;
@@ -99,6 +107,14 @@ export function InvoiceProcess({
       setWorkPersons(await api.listWorkPersons());
     } catch {
       setWorkPersons([]);
+    }
+  }
+
+  async function loadPaintSupplyCos() {
+    try {
+      setPaintSupplyCos((await api.listPaintSupplyCos()) ?? []);
+    } catch {
+      setPaintSupplyCos([]);
     }
   }
 
@@ -148,8 +164,62 @@ export function InvoiceProcess({
     return workPersons.find((n) => n.toLowerCase() === key) ?? "";
   }
 
+  function invoiceWorkPerson(lines: InvoiceLine[]) {
+    return lines.find((l) => l.empNo.trim())?.empNo ?? "";
+  }
+
+  function setInvoiceWorkPerson(name: string) {
+    if (!editing) return;
+    setEditing({
+      ...editing,
+      lines: editing.lines.map((l) => ({ ...l, empNo: name })),
+    });
+  }
+
+  async function confirmDeletePaintSupplyCo() {
+    const name = deletePaintAsk;
+    if (!name) return;
+    try {
+      setPaintSupplyCos(await api.deletePaintSupplyCo(name));
+    } catch {
+      setPaintSupplyCos((prev) =>
+        prev.filter((n) => n.toLowerCase() !== name.toLowerCase())
+      );
+    }
+    if (editing?.invoice.paintSupplyCo.trim().toLowerCase() === name.toLowerCase()) {
+      setEditing({
+        ...editing,
+        invoice: { ...editing.invoice, paintSupplyCo: "" },
+      });
+    }
+    setDeletePaintAsk(null);
+  }
+
+  async function rememberPaintSupplyCo(raw: string) {
+    const name = raw.trim();
+    if (!name) return;
+    const listed = paintSupplyCos.some(
+      (n) => n.toLowerCase() === name.toLowerCase()
+    );
+    if (listed) return;
+    try {
+      setPaintSupplyCos(await api.savePaintSupplyCo(name));
+    } catch {
+      setPaintSupplyCos((prev) =>
+        prev.some((n) => n.toLowerCase() === name.toLowerCase())
+          ? prev
+          : [...prev, name].sort((a, b) => a.localeCompare(b))
+      );
+    }
+  }
+
+  function listedPaintSupplyCo(name: string) {
+    const key = name.trim().toLowerCase();
+    return paintSupplyCos.find((n) => n.toLowerCase() === key) ?? "";
+  }
+
   async function startNew() {
-    await loadWorkPersons();
+    await Promise.all([loadWorkPersons(), loadPaintSupplyCos()]);
 
     const inv = emptyInvoice();
     inv.companyNo = company.companyNo;
@@ -184,6 +254,7 @@ export function InvoiceProcess({
     const [full] = await Promise.all([
       api.getInvoice(inv.companyNo, inv.proNo, inv.salesDate, inv.invoice),
       loadWorkPersons(),
+      loadPaintSupplyCos(),
     ]);
     if (full) {
       setEditing(full);
@@ -205,11 +276,10 @@ export function InvoiceProcess({
       setMsgKind("error");
       return;
     }
-    await Promise.all(
-      [...new Set(editing.lines.map((l) => l.empNo.trim()).filter(Boolean))].map(
-        (name) => rememberWorkPerson(name)
-      )
-    );
+    await Promise.all([
+      rememberWorkPerson(invoiceWorkPerson(editing.lines)),
+      rememberPaintSupplyCo(inv.paintSupplyCo),
+    ]);
     setConfirmSave(true);
     setMsg("Is This Data Correct ? (Y/N)");
   }
@@ -218,6 +288,8 @@ export function InvoiceProcess({
     if (!editing) return;
     const inv = editing.invoice;
     try {
+      const rawPerson = invoiceWorkPerson(editing.lines);
+      const workPerson = listedWorkPerson(rawPerson) || rawPerson.trim();
       const no = await api.saveInvoice({
         invoice: {
           ...inv,
@@ -230,6 +302,7 @@ export function InvoiceProcess({
           proNo: property.proNo,
           salesDate: inv.salesDate,
           lineNo: i + 1,
+          empNo: workPerson,
           empPrice:
             l.empPrice || (l.price * (l.commission || 65)) / 100,
         })),
@@ -333,6 +406,7 @@ export function InvoiceProcess({
       if (help) setHelp(false);
       else if (voidAsk) setVoidAsk(false);
       else if (deleteNameAsk) setDeleteNameAsk(null);
+      else if (deletePaintAsk) setDeletePaintAsk(null);
       else if (confirmSave) setConfirmSave(false);
       else if (mode === "edit") {
         setEditing(null);
@@ -343,7 +417,7 @@ export function InvoiceProcess({
     },
     onF1: () => setHelp(true),
     onInsert: () => {
-      if (help || voidAsk || confirmSave || deleteNameAsk) return;
+      if (help || voidAsk || confirmSave || deleteNameAsk || deletePaintAsk) return;
       if (mode === "browse") void startNew();
     },
     onEnter: () => {
@@ -374,6 +448,16 @@ export function InvoiceProcess({
         }
         if (ch === "n" || ch === "N") {
           setDeleteNameAsk(null);
+          return true;
+        }
+      }
+      if (deletePaintAsk) {
+        if (ch === "y" || ch === "Y") {
+          void confirmDeletePaintSupplyCo();
+          return true;
+        }
+        if (ch === "n" || ch === "N") {
+          setDeletePaintAsk(null);
           return true;
         }
       }
@@ -699,44 +783,134 @@ export function InvoiceProcess({
               </DotField>
             </div>
             <div className="dos-form-row">
-              <DotField label="Deposit" width={14}>
+              <DotField label="Material Costs" width={14}>
                 <input
                   className="dos-input w10 num"
                   type="number"
                   step="0.01"
-                  value={editing.invoice.salesPay}
+                  aria-label="Material Costs"
+                  value={editing.invoice.materialCost ?? 0}
                   onChange={(e) =>
                     setEditing({
                       ...editing,
                       invoice: {
                         ...editing.invoice,
-                        salesPay: parseFloat(e.target.value) || 0,
+                        materialCost: parseFloat(e.target.value) || 0,
                       },
                     })
                   }
                 />
               </DotField>
-              <DotField label="Deposit Ref" width={12}>
-                <input
-                  className="dos-input w12"
-                  value={editing.invoice.depositRef}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      invoice: {
-                        ...editing.invoice,
-                        depositRef: e.target.value,
-                      },
-                    })
-                  }
-                />
+              <DotField label="Paint Supply Co." width={16}>
+                <div className="invoice-work-person">
+                  <select
+                    className="dos-select dos-choice"
+                    aria-label="Paint Supply Co. list"
+                    title="Paint Supply Co."
+                    value={listedPaintSupplyCo(editing.invoice.paintSupplyCo ?? "")}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        invoice: {
+                          ...editing.invoice,
+                          paintSupplyCo: e.target.value,
+                        },
+                      })
+                    }
+                  >
+                    <option value=""> </option>
+                    {paintSupplyCos.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label="Paint Supply Co."
+                    placeholder="Type name"
+                    value={editing.invoice.paintSupplyCo ?? ""}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        invoice: {
+                          ...editing.invoice,
+                          paintSupplyCo: e.target.value,
+                        },
+                      })
+                    }
+                    onBlur={() => {
+                      void rememberPaintSupplyCo(editing.invoice.paintSupplyCo);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="dos-btn danger"
+                    aria-label={`Remove ${editing.invoice.paintSupplyCo || "paint supply company"} from list`}
+                    disabled={!listedPaintSupplyCo(editing.invoice.paintSupplyCo ?? "")}
+                    title="Remove name from list"
+                    onClick={() => {
+                      const name = listedPaintSupplyCo(
+                        editing.invoice.paintSupplyCo ?? ""
+                      );
+                      if (name) setDeletePaintAsk(name);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </DotField>
+              <DotField label="Work Person" width={14}>
+                <div className="invoice-work-person">
+                  <select
+                    className="dos-select dos-choice"
+                    aria-label="Work Person list"
+                    title="Work Person"
+                    value={listedWorkPerson(invoiceWorkPerson(editing.lines))}
+                    onChange={(e) => setInvoiceWorkPerson(e.target.value)}
+                  >
+                    <option value=""> </option>
+                    {workPersons.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label="Work Person"
+                    placeholder="Type name"
+                    value={invoiceWorkPerson(editing.lines)}
+                    onChange={(e) => setInvoiceWorkPerson(e.target.value)}
+                    onBlur={() => {
+                      const raw = invoiceWorkPerson(editing.lines);
+                      const canon = listedWorkPerson(raw) || raw.trim();
+                      if (canon !== raw) setInvoiceWorkPerson(canon);
+                      void rememberWorkPerson(canon);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="dos-btn danger"
+                    aria-label={`Remove ${invoiceWorkPerson(editing.lines) || "work person"} from list`}
+                    disabled={!listedWorkPerson(invoiceWorkPerson(editing.lines))}
+                    title="Remove name from list"
+                    onClick={() => {
+                      const name = listedWorkPerson(
+                        invoiceWorkPerson(editing.lines)
+                      );
+                      if (name) setDeleteNameAsk(name);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               </DotField>
             </div>
 
             <div className="invoice-line-grid invoice-line-head">
               <span>Description</span>
               <span className="invoice-col-center">WorkDate</span>
-              <span className="invoice-col-center">WorkPerson</span>
               <span className="invoice-col-center">Price</span>
             </div>
             {editing.lines.map((line, idx) => (
@@ -796,53 +970,6 @@ export function InvoiceProcess({
                     setEditing({ ...editing, lines });
                   }}
                 />
-                <div className="invoice-work-person">
-                  <select
-                    className="dos-select dos-choice"
-                    aria-label={`Line ${idx + 1} work person`}
-                    title="Work Person"
-                    value={listedWorkPerson(line.empNo)}
-                    onChange={(e) => {
-                      const lines = [...editing.lines];
-                      lines[idx] = { ...line, empNo: e.target.value };
-                      setEditing({ ...editing, lines });
-                    }}
-                  >
-                    <option value=""> </option>
-                    {workPersons.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    className="dos-input"
-                    aria-label={`Line ${idx + 1} work person name`}
-                    placeholder="Type name"
-                    value={line.empNo}
-                    onChange={(e) => {
-                      const lines = [...editing.lines];
-                      lines[idx] = { ...line, empNo: e.target.value };
-                      setEditing({ ...editing, lines });
-                    }}
-                    onBlur={() => {
-                      void rememberWorkPerson(line.empNo);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="dos-btn danger"
-                    aria-label={`Remove ${line.empNo || "work person"} from list`}
-                    disabled={!listedWorkPerson(line.empNo)}
-                    title="Remove name from list"
-                    onClick={() => {
-                      const name = listedWorkPerson(line.empNo);
-                      if (name) setDeleteNameAsk(name);
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
                 <input
                   className="dos-input w10 num"
                   type="number"
@@ -876,23 +1003,23 @@ export function InvoiceProcess({
             <div style={{ marginTop: "0.4em" }}>
               <button
                 className="dos-btn"
-                onClick={() =>
+                onClick={() => {
+                  const person = invoiceWorkPerson(editing.lines);
+                  const next = isNewInvoice
+                    ? blankNewInvoiceLine(
+                        editing.invoice,
+                        editing.lines.length + 1
+                      )
+                    : emptyInvoiceLine(
+                        editing.invoice,
+                        editing.lines.length + 1
+                      );
+                  next.empNo = person;
                   setEditing({
                     ...editing,
-                    lines: [
-                      ...editing.lines,
-                      isNewInvoice
-                        ? blankNewInvoiceLine(
-                            editing.invoice,
-                            editing.lines.length + 1
-                          )
-                        : emptyInvoiceLine(
-                            editing.invoice,
-                            editing.lines.length + 1
-                          ),
-                    ],
-                  })
-                }
+                    lines: [...editing.lines, next],
+                  });
+                }}
               >
                 + Line
               </button>
@@ -941,6 +1068,15 @@ export function InvoiceProcess({
             void confirmDeleteWorkPerson();
           }}
           onNo={() => setDeleteNameAsk(null)}
+        />
+      )}
+      {deletePaintAsk && (
+        <Prompt
+          question={`Remove "${deletePaintAsk}" from Paint Supply Co. list? (Y/N)`}
+          onYes={() => {
+            void confirmDeletePaintSupplyCo();
+          }}
+          onNo={() => setDeletePaintAsk(null)}
         />
       )}
       {voidAsk && (

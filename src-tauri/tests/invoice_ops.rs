@@ -53,6 +53,8 @@ fn blank_invoice() -> Invoice {
         discount_on: 0,
         discount: 0.0,
         deposit_ref: "".into(),
+        material_cost: 0.0,
+        paint_supply_co: "".into(),
         remark1: "".into(),
         remark2: "".into(),
         status: "".into(),
@@ -133,6 +135,34 @@ fn save_invoice_allocates_number_and_totals() {
         )
         .unwrap();
     assert_eq!(lines, 2);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn save_invoice_stores_material_cost_and_paint_supply() {
+    let (dir, mut conn) = temp_conn("mat_cost");
+    seed_company(&conn);
+    let mut inv = blank_invoice();
+    inv.material_cost = 37.5;
+    inv.paint_supply_co = "Dunn-Edwards".into();
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: inv,
+            lines: vec![line(100.0)],
+        },
+    )
+    .unwrap();
+    let (cost, supplier): (f64, String) = conn
+        .query_row(
+            "SELECT material_cost, paint_supply_co FROM invoices WHERE invoice=?",
+            params![inv_no],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(cost, 37.5);
+    assert_eq!(supplier, "Dunn-Edwards");
 
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -303,12 +333,50 @@ fn report_sales_analysis_lists_open_invoices() {
             limit: None,
             offset: None,
             sort: None,
+            paint_supply_co: None,
         },
     )
     .unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].invoice, 1);
     assert_eq!(rows[0].sales_amount, 250.0);
+
+    let by_name = ops::report_sales_analysis(
+        &conn,
+        &ListParams {
+            search: None,
+            company_no: Some("ACME".into()),
+            pro_no: None,
+            from_date: Some("2026-01-01".into()),
+            to_date: Some("2026-12-31".into()),
+            include_voided: None,
+            limit: None,
+            offset: None,
+            sort: None,
+            paint_supply_co: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(by_name.len(), 1);
+    assert_eq!(by_name[0].company_no, "1000");
+
+    let miss = ops::report_sales_analysis(
+        &conn,
+        &ListParams {
+            search: None,
+            company_no: Some("NOPE".into()),
+            pro_no: None,
+            from_date: None,
+            to_date: None,
+            include_voided: None,
+            limit: None,
+            offset: None,
+            sort: None,
+            paint_supply_co: None,
+        },
+    )
+    .unwrap();
+    assert!(miss.is_empty());
 
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -393,6 +461,7 @@ fn voided_invoices_excluded_from_aging_and_sales() {
             limit: None,
             offset: None,
             sort: None,
+            paint_supply_co: None,
         },
     )
     .unwrap();
@@ -436,6 +505,7 @@ fn report_worker_wages_includes_emp_lines() {
             limit: None,
             offset: None,
             sort: None,
+            paint_supply_co: None,
         },
     )
     .unwrap();
@@ -624,6 +694,7 @@ fn list_cash_receipts_matches_property_address() {
         limit: None,
         offset: None,
         sort: None,
+        paint_supply_co: None,
     };
     let by_street = ops::list_cash_receipts(
         &conn,
@@ -651,6 +722,194 @@ fn list_cash_receipts_matches_property_address() {
         &ListParams {
             search: Some("NOPE".into()),
             ..empty
+        },
+    )
+    .unwrap();
+    assert!(miss.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn report_paint_usage_filters_by_supply_work_date_and_person() {
+    let (dir, mut conn) = temp_conn("paint_usage");
+    seed_company(&conn);
+
+    let mut inv = blank_invoice();
+    inv.material_cost = 40.0;
+    inv.paint_supply_co = "Dunn-Edwards".into();
+
+    let mut jose = line(150.0);
+    jose.emp_no = "Jose Ramirez".into();
+    jose.work_date = Some("2026-01-20".into());
+
+    let mut jose_dup = line(25.0);
+    jose_dup.line_no = 2;
+    jose_dup.emp_no = "Jose Ramirez".into();
+    jose_dup.work_date = Some("2026-01-20".into());
+
+    let mut maria = line(80.0);
+    maria.line_no = 3;
+    maria.emp_no = "Maria Lopez".into();
+    maria.work_date = Some("2026-01-22".into());
+
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: inv,
+            lines: vec![jose, jose_dup, maria],
+        },
+    )
+    .unwrap();
+
+    let mut other = blank_invoice();
+    other.material_cost = 12.0;
+    other.paint_supply_co = "Sherwin-Williams".into();
+    let mut pat = line(90.0);
+    pat.emp_no = "Pat Worker".into();
+    pat.work_date = Some("2026-02-05".into());
+    ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: other,
+            lines: vec![pat],
+        },
+    )
+    .unwrap();
+
+    let by_supply = ops::report_paint_usage(
+        &conn,
+        &ListParams {
+            paint_supply_co: Some("Dunn".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_supply.len(), 1);
+    assert_eq!(by_supply[0].invoice, inv_no);
+    assert_eq!(by_supply[0].work_person, "Jose Ramirez");
+    assert_eq!(by_supply[0].paint_supply_co, "Dunn-Edwards");
+    assert!((by_supply[0].material_cost - 40.0).abs() < 0.01);
+    assert!((by_supply[0].invoice_total - 255.0).abs() < 0.01);
+
+    let by_person = ops::report_paint_usage(
+        &conn,
+        &ListParams {
+            search: Some("jose".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_person.len(), 1);
+    assert_eq!(by_person[0].work_person, "Jose Ramirez");
+    assert_eq!(by_person[0].work_date, "2026-01-20");
+
+    let by_person_case = ops::report_paint_usage(
+        &conn,
+        &ListParams {
+            search: Some("JOSE RAMIREZ".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_person_case.len(), 1);
+    assert_eq!(by_person_case[0].invoice, inv_no);
+
+    let by_work_date = ops::report_paint_usage(
+        &conn,
+        &ListParams {
+            from_date: Some("2026-01-21".into()),
+            to_date: Some("2026-01-31".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_work_date.len(), 1);
+    assert_eq!(by_work_date[0].invoice, inv_no);
+    assert_eq!(by_work_date[0].work_person, "Jose Ramirez");
+    assert_eq!(by_work_date[0].work_date, "2026-01-22");
+
+    let miss_person = ops::report_paint_usage(
+        &conn,
+        &ListParams {
+            search: Some("Nobody".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(miss_person.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn report_payroll_filters_by_invoice_date_and_work_person() {
+    let (dir, mut conn) = temp_conn("payroll");
+    seed_company(&conn);
+
+    let mut inv = blank_invoice();
+    inv.material_cost = 40.0;
+    inv.sales_unit = "A1".into();
+    let mut jose = line(250.0);
+    jose.emp_no = "Jose Ramirez".into();
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: inv,
+            lines: vec![jose],
+        },
+    )
+    .unwrap();
+
+    let mut other = blank_invoice();
+    other.sales_date = "2026-02-01".into();
+    other.material_cost = 12.0;
+    let mut pat = line(90.0);
+    pat.emp_no = "Pat Worker".into();
+    pat.sales_date = "2026-02-01".into();
+    ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: other,
+            lines: vec![pat],
+        },
+    )
+    .unwrap();
+
+    let by_person = ops::report_payroll(
+        &conn,
+        &ListParams {
+            search: Some("jose".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_person.len(), 1);
+    assert_eq!(by_person[0].invoice, inv_no);
+    assert_eq!(by_person[0].sales_date, "2026-01-15");
+    assert_eq!(by_person[0].sales_unit, "A1");
+    assert_eq!(by_person[0].property_address, "1105 QUAIL ST.");
+    assert_eq!(by_person[0].job_description, "Paint");
+    assert!((by_person[0].material_cost - 40.0).abs() < 0.01);
+    assert!((by_person[0].invoice_total - 250.0).abs() < 0.01);
+
+    let by_date = ops::report_payroll(
+        &conn,
+        &ListParams {
+            from_date: Some("2026-01-01".into()),
+            to_date: Some("2026-01-31".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_date.len(), 1);
+    assert_eq!(by_date[0].invoice, inv_no);
+
+    let miss = ops::report_payroll(
+        &conn,
+        &ListParams {
+            search: Some("Nobody".into()),
+            ..Default::default()
         },
     )
     .unwrap();
