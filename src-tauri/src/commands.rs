@@ -118,7 +118,7 @@ pub fn get_dashboard(state: State<DbState>) -> Result<DashboardStats, String> {
             r#"SELECT i.company_no,i.pro_no,i.sales_date,i.invoice,i.order_no,i.order_date,i.order_man,
                i.sales_unit,i.sales_size,i.sales_total,i.sales_pay,i.sales_bal,i.pay_total,i.balance,
                i.sales_term,i.sales_due,i.cust_po_no,i.discount_on,i.discount,i.deposit_ref,
-               i.remark1,i.remark2,i.status,i.voided,c.name,p.name,p.street
+               i.remark1,i.remark2,i.status,i.voided,i.material_cost,i.paint_supply_co,c.name,p.name,p.street
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
@@ -170,9 +170,11 @@ fn map_invoice(r: &rusqlite::Row<'_>) -> rusqlite::Result<Invoice> {
         remark2: r.get(21)?,
         status: r.get(22)?,
         voided: r.get::<_, i64>(23)? != 0,
-        company_name: r.get(24)?,
-        property_name: r.get(25)?,
-        property_street: r.get(26)?,
+        material_cost: r.get(24)?,
+        paint_supply_co: r.get(25)?,
+        company_name: r.get(26)?,
+        property_name: r.get(27)?,
+        property_street: r.get(28)?,
     })
 }
 
@@ -580,6 +582,51 @@ pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<Str
     list_work_person_names(&conn)
 }
 
+// ─── Paint supply companies (invoice header list) ─────────────────────
+
+fn list_paint_supply_names(conn: &rusqlite::Connection) -> Result<Vec<String>, String> {
+    let mut stmt = conn
+        .prepare("SELECT name FROM paint_supply_cos ORDER BY name COLLATE NOCASE")
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+#[tauri::command]
+pub fn list_paint_supply_cos(state: State<DbState>) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    list_paint_supply_names(&conn)
+}
+
+#[tauri::command]
+pub fn save_paint_supply_co(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Paint supply company required".into());
+    }
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        "INSERT OR IGNORE INTO paint_supply_cos (name) VALUES (?1)",
+        params![name],
+    )
+    .map_err(map_err)?;
+    list_paint_supply_names(&conn)
+}
+
+#[tauri::command]
+pub fn delete_paint_supply_co(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let name = name.trim().to_string();
+    let conn = state.0.lock().map_err(map_err)?;
+    conn.execute(
+        "DELETE FROM paint_supply_cos WHERE name = ?1 COLLATE NOCASE",
+        params![name],
+    )
+    .map_err(map_err)?;
+    list_paint_supply_names(&conn)
+}
+
 // ─── Work Types ───────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -662,7 +709,7 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
             r#"SELECT i.company_no,i.pro_no,i.sales_date,i.invoice,i.order_no,i.order_date,i.order_man,
                i.sales_unit,i.sales_size,i.sales_total,i.sales_pay,i.sales_bal,i.pay_total,i.balance,
                i.sales_term,i.sales_due,i.cust_po_no,i.discount_on,i.discount,i.deposit_ref,
-               i.remark1,i.remark2,i.status,i.voided,c.name,p.name,p.street
+               i.remark1,i.remark2,i.status,i.voided,i.material_cost,i.paint_supply_co,c.name,p.name,p.street
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
@@ -712,7 +759,7 @@ pub fn get_invoice(
             r#"SELECT i.company_no,i.pro_no,i.sales_date,i.invoice,i.order_no,i.order_date,i.order_man,
                i.sales_unit,i.sales_size,i.sales_total,i.sales_pay,i.sales_bal,i.pay_total,i.balance,
                i.sales_term,i.sales_due,i.cust_po_no,i.discount_on,i.discount,i.deposit_ref,
-               i.remark1,i.remark2,i.status,i.voided,c.name,p.name,p.street
+               i.remark1,i.remark2,i.status,i.voided,i.material_cost,i.paint_supply_co,c.name,p.name,p.street
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
@@ -1026,6 +1073,24 @@ pub fn report_sales_analysis(
 }
 
 #[tauri::command]
+pub fn report_payroll(
+    state: State<DbState>,
+    params: ListParams,
+) -> Result<Vec<PayrollRow>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    crate::ops::report_payroll(&conn, &params)
+}
+
+#[tauri::command]
+pub fn report_paint_usage(
+    state: State<DbState>,
+    params: ListParams,
+) -> Result<Vec<PaintUsageRow>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    crate::ops::report_paint_usage(&conn, &params)
+}
+
+#[tauri::command]
 pub fn report_worker_wages(
     state: State<DbState>,
     params: ListParams,
@@ -1305,120 +1370,6 @@ pub fn reindex_data_files(state: State<DbState>) -> Result<String, String> {
     )
     .map_err(map_err)?;
     Ok("Reindexing Data Files...... done.".into())
-}
-
-// ─── Customer Ledger report ────────────────────────────────────────────
-
-#[tauri::command]
-pub fn report_customer_ledger(
-    state: State<DbState>,
-    company_no: String,
-) -> Result<Vec<LedgerLine>, String> {
-    let conn = state.0.lock().map_err(map_err)?;
-    // Use sales_bal (after deposit) as the opening AR amount, then subtract cash.
-    let mut invs = conn
-        .prepare(
-            r#"SELECT invoice,sales_date,sales_total,sales_pay,sales_bal,balance,sales_unit,pro_no
-               FROM invoices
-               WHERE company_no=? AND voided=0
-               ORDER BY sales_date, invoice"#,
-        )
-        .map_err(map_err)?;
-    let invoices: Vec<(i64, String, f64, f64, f64, f64, String, String)> = invs
-        .query_map(params![company_no], |r| {
-            Ok((
-                r.get(0)?,
-                r.get(1)?,
-                r.get(2)?,
-                r.get(3)?,
-                r.get(4)?,
-                r.get(5)?,
-                r.get(6)?,
-                r.get(7)?,
-            ))
-        })
-        .map_err(map_err)?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    let mut lines = Vec::new();
-    for (invoice, inv_date, inv_amount, sales_pay, sales_bal, balance, unit, pro_no) in invoices {
-        let mut pays = conn
-            .prepare(
-                r#"SELECT pay_date,pay_ref_no,payment FROM cash_receipts
-                   WHERE company_no=? AND invoice=? AND voided=0
-                   ORDER BY pay_date, id"#,
-            )
-            .map_err(map_err)?;
-        let payments: Vec<(String, String, f64)> = pays
-            .query_map(params![company_no, invoice], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-            })
-            .map_err(map_err)?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        if payments.is_empty() {
-            lines.push(LedgerLine {
-                invoice,
-                inv_date: inv_date.clone(),
-                inv_amount,
-                pay_date: None,
-                pay_ref_no: None,
-                pay_amount: None,
-                balance,
-                unit: unit.clone(),
-                pro_no: pro_no.clone(),
-            });
-        } else {
-            // Opening balance for cash application is amount after deposit (sales_bal).
-            let mut first = true;
-            let mut running = sales_bal;
-            // Show deposit as a pseudo-payment line when present
-            if sales_pay > 0.0005 {
-                lines.push(LedgerLine {
-                    invoice,
-                    inv_date: inv_date.clone(),
-                    inv_amount,
-                    pay_date: Some(inv_date.clone()),
-                    pay_ref_no: Some("DEPOSIT".into()),
-                    pay_amount: Some(sales_pay),
-                    balance: sales_bal,
-                    unit: unit.clone(),
-                    pro_no: pro_no.clone(),
-                });
-                first = false;
-            }
-            for (pay_date, pay_ref, payment) in payments {
-                running = ((running - payment) * 100.0).round() / 100.0;
-                lines.push(LedgerLine {
-                    invoice: if first { invoice } else { 0 },
-                    inv_date: if first {
-                        inv_date.clone()
-                    } else {
-                        String::new()
-                    },
-                    inv_amount: if first { inv_amount } else { 0.0 },
-                    pay_date: Some(pay_date),
-                    pay_ref_no: Some(pay_ref),
-                    pay_amount: Some(payment),
-                    balance: running,
-                    unit: if first {
-                        unit.clone()
-                    } else {
-                        String::new()
-                    },
-                    pro_no: if first {
-                        pro_no.clone()
-                    } else {
-                        String::new()
-                    },
-                });
-                first = false;
-            }
-        }
-    }
-    Ok(lines)
 }
 
 // ─── Check Missing Invoice ─────────────────────────────────────────────

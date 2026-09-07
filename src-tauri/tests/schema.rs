@@ -54,6 +54,15 @@ fn companies_and_invoices_round_trip() {
         .unwrap();
     assert_eq!(tables, 1);
 
+    let paint: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='paint_supply_cos'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(paint, 1);
+
     let _ = std::fs::remove_dir_all(&dir);
 }
 

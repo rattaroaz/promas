@@ -59,6 +59,7 @@ export interface ListParams {
   offset?: number;
   /** materials: "worker" | "date" | "desc" */
   sort?: string;
+  paintSupplyCo?: string;
 }
 
 export interface SysData {
@@ -164,6 +165,8 @@ export interface Invoice {
   discountOn: number;
   discount: number;
   depositRef: string;
+  materialCost: number;
+  paintSupplyCo: string;
   remark1: string;
   remark2: string;
   status: string;
@@ -292,6 +295,27 @@ export interface SalesAnalysisRow {
   balance: number;
 }
 
+export interface PayrollRow {
+  salesDate: string;
+  invoice: number;
+  invoiceTotal: number;
+  materialCost: number;
+  propertyAddress: string;
+  jobDescription: string;
+  salesUnit: string;
+  companyNo: string;
+  proNo: string;
+}
+
+export interface PaintUsageRow {
+  workPerson: string;
+  materialCost: number;
+  invoice: number;
+  invoiceTotal: number;
+  paintSupplyCo: string;
+  workDate: string;
+}
+
 export interface WorkerWageRow {
   empNo: string;
   empName: string;
@@ -329,18 +353,6 @@ export interface Estimate {
   memo: string;
   status: string;
   voided: boolean;
-}
-
-export interface LedgerLine {
-  invoice: number;
-  invDate: string;
-  invAmount: number;
-  payDate?: string | null;
-  payRefNo?: string | null;
-  payAmount?: number | null;
-  balance: number;
-  unit: string;
-  proNo: string;
 }
 
 export interface MissingInvoiceRow {
@@ -461,6 +473,8 @@ export const emptyInvoice = (): Invoice => ({
   discountOn: 0,
   discount: 0,
   depositRef: "",
+  materialCost: 0,
+  paintSupplyCo: "",
   remark1: "",
   remark2: "",
   status: "",
@@ -546,6 +560,11 @@ export const api = {
     invoke<string[]>("save_work_person", { name }),
   deleteWorkPerson: (name: string) =>
     invoke<string[]>("delete_work_person", { name }),
+  listPaintSupplyCos: () => invoke<string[]>("list_paint_supply_cos"),
+  savePaintSupplyCo: (name: string) =>
+    invoke<string[]>("save_paint_supply_co", { name }),
+  deletePaintSupplyCo: (name: string) =>
+    invoke<string[]>("delete_paint_supply_co", { name }),
   listWorkTypes: (params: ListParams = {}) =>
     invoke<WorkType[]>("list_work_types", { params }),
   saveWorkType: (workType: WorkType) =>
@@ -633,8 +652,6 @@ export const api = {
   listForms: () => invoke<FormRecord[]>("list_forms"),
   saveForm: (form: FormRecord) => invoke("save_form", { form }),
   reindexDataFiles: () => invoke<string>("reindex_data_files"),
-  reportCustomerLedger: (companyNo: string) =>
-    invoke<LedgerLine[]>("report_customer_ledger", { companyNo }),
   reportMissingInvoices: (params: ListParams = {}) =>
     invoke<MissingInvoiceRow[]>("report_missing_invoices", { params }),
   reportAging: async (asOf?: string, search?: string) => {
@@ -657,6 +674,18 @@ export const api = {
       { params }
     );
     log.info("db", "report_sales_analysis completed", { rows: rows.length });
+    return rows;
+  },
+  reportPayroll: async (params: ListParams = {}) => {
+    const rows = await invoke<PayrollRow[]>("report_payroll", { params });
+    log.info("db", "report_payroll completed", { rows: rows.length });
+    return rows;
+  },
+  reportPaintUsage: async (params: ListParams = {}) => {
+    const rows = await invoke<PaintUsageRow[]>("report_paint_usage", {
+      params,
+    });
+    log.info("db", "report_paint_usage completed", { rows: rows.length });
     return rows;
   },
   reportWorkerWages: async (params: ListParams = {}) => {

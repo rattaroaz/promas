@@ -117,6 +117,8 @@ function payload(overrides?: Partial<InvoicePrintPayload>): InvoicePrintPayload 
     discountOn: 0,
     discount: 0,
     depositRef: "DEP1",
+    materialCost: 0,
+    paintSupplyCo: "",
     remark1: "",
     remark2: "",
     status: "",

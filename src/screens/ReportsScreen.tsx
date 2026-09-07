@@ -1,16 +1,18 @@
 /**
- * Original Reports Menu (8 items) with proper report logic.
+ * Original Reports Menu (9 items) with proper report logic.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   api,
   AgingRow,
   SalesAnalysisRow,
-  WorkerWageRow,
-  LedgerLine,
+  PaintUsageRow,
+  PayrollRow,
   MissingInvoiceRow,
   Company,
   Invoice,
+  emptyCompany,
+  emptyProperty,
 } from "../api";
 import { useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
@@ -23,11 +25,46 @@ import {
   buildOutstandingInvoicesWorkbook,
   outstandingExcelFileName,
 } from "../lib/agingExcel";
+import {
+  downloadInvoicePdf,
+  printInvoiceOnTemplate,
+} from "../lib/invoicePrint";
 
 type AgingDetail = {
   company: AgingRow;
   invoices: Invoice[];
 };
+
+export type SalesSortKey = "date" | "company";
+export type SalesSortDir = "asc" | "desc";
+
+function cmpCompanyNo(a: string, b: string): number {
+  return a
+    .trim()
+    .localeCompare(b.trim(), undefined, { numeric: true, sensitivity: "base" });
+}
+
+export function sortSalesRows(
+  rows: SalesAnalysisRow[],
+  key: SalesSortKey,
+  dir: SalesSortDir
+): SalesAnalysisRow[] {
+  const sign = dir === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    if (key === "company") {
+      return (
+        sign * cmpCompanyNo(a.companyNo, b.companyNo) ||
+        a.salesDate.localeCompare(b.salesDate) ||
+        a.invoice - b.invoice
+      );
+    }
+    return (
+      sign * a.salesDate.localeCompare(b.salesDate) ||
+      a.invoice - b.invoice ||
+      cmpCompanyNo(a.companyNo, b.companyNo)
+    );
+  });
+}
 
 /** `?` lists every company with an open balance, same as Clipper first/all. */
 export function agingSearchQuery(raw: string): string | undefined {
@@ -37,7 +74,7 @@ export function agingSearchQuery(raw: string): string | undefined {
 }
 
 const REPORT_ITEMS: MenuItem[] = [
-  { id: "ledger", num: "1", label: "Customer Ledger", accel: "L" },
+  { id: "payroll", num: "1", label: "Payroll Report", accel: "Y" },
   { id: "customer", num: "2", label: "Customer File", accel: "C" },
   { id: "invoice", num: "3", label: "Invoice Register", accel: "I" },
   { id: "cash", num: "4", label: "Cash Receipts Register", accel: "R" },
@@ -45,6 +82,7 @@ const REPORT_ITEMS: MenuItem[] = [
   { id: "sales", num: "6", label: "Sales Analysis", accel: "S" },
   { id: "missing", num: "7", label: "Check Missing Invoice", accel: "M" },
   { id: "labels", num: "8", label: "Mailing Labels", accel: "A" },
+  { id: "paint", num: "9", label: "Paint Usage Report", accel: "U" },
 ];
 
 export function ReportsScreen({ onBack }: { onBack: () => void }) {
@@ -53,13 +91,41 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [toDate, setToDate] = useState("");
   const [companyNo, setCompanyNo] = useState("");
   const [search, setSearch] = useState("");
+  const [paintSupply, setPaintSupply] = useState("");
+  const [workPerson, setWorkPerson] = useState("");
+  const [paintSupplyOptions, setPaintSupplyOptions] = useState<string[]>([]);
+  const [workPersonOptions, setWorkPersonOptions] = useState<string[]>([]);
   const [labelMode, setLabelMode] = useState<"C" | "P">("C");
   const [text, setText] = useState("");
   const [agingRows, setAgingRows] = useState<AgingRow[] | null>(null);
   const [agingDetail, setAgingDetail] = useState<AgingDetail | null>(null);
+  const [salesRows, setSalesRows] = useState<SalesAnalysisRow[] | null>(null);
+  const [payrollRows, setPayrollRows] = useState<PayrollRow[] | null>(null);
+  const [salesSort, setSalesSort] = useState<{
+    key: SalesSortKey;
+    dir: SalesSortDir;
+  }>({ key: "date", dir: "asc" });
   const [msg, setMsg] = useState("");
   const [help, setHelp] = useState(false);
   const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    if (report !== "paint" && report !== "payroll") return;
+    void (async () => {
+      if (report === "paint") {
+        try {
+          setPaintSupplyOptions((await api.listPaintSupplyCos()) ?? []);
+        } catch {
+          setPaintSupplyOptions([]);
+        }
+      }
+      try {
+        setWorkPersonOptions((await api.listWorkPersons()) ?? []);
+      } catch {
+        setWorkPersonOptions([]);
+      }
+    })();
+  }, [report]);
 
   useDosKeys(
     {
@@ -75,6 +141,8 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setText("");
           setAgingRows(null);
           setAgingDetail(null);
+          setSalesRows(null);
+          setPayrollRows(null);
         } else onBack();
       },
       onF1: () => setHelp(true),
@@ -103,6 +171,20 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           void runReport("aging");
           return true;
         }
+        if (
+          (report === "sales" || report === "invoice") &&
+          (ch === "c" || ch === "C")
+        ) {
+          toggleSalesSort("company");
+          return true;
+        }
+        if (
+          (report === "sales" || report === "invoice") &&
+          (ch === "d" || ch === "D")
+        ) {
+          toggleSalesSort("date");
+          return true;
+        }
         if (report === "labels") {
           if (ch === "c" || ch === "C") {
             setLabelMode("C");
@@ -119,28 +201,44 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     !!report
   );
 
+  function salesSortMessage(key: SalesSortKey, dir: SalesSortDir) {
+    const by = key === "company" ? "company#" : "invoice date";
+    return `Sorted by ${by} ${dir === "asc" ? "↑" : "↓"}  click invoice# to view  (C)ompany  (D)ate`;
+  }
+
+  function toggleSalesSort(key: SalesSortKey) {
+    setSalesSort((cur) => {
+      const next = {
+        key,
+        dir: (cur.key === key && cur.dir === "asc" ? "desc" : "asc") as SalesSortDir,
+      };
+      setMsg(salesSortMessage(next.key, next.dir));
+      return next;
+    });
+  }
+
+  function clearOutputs() {
+    setAgingDetail(null);
+    setAgingRows(null);
+    setSalesRows(null);
+    setPayrollRows(null);
+    setText("");
+  }
+
   async function runReport(id: string) {
     setRunning(true);
     setMsg("Generating report...");
     try {
+      clearOutputs();
       if (id === "aging") {
-        setAgingDetail(null);
         setAgingRows(await api.reportAging(undefined, agingSearchQuery(search)));
-        setText("");
       } else if (id === "sales" || id === "invoice") {
         const rows = await api.reportSalesAnalysis({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
-          companyNo: companyNo || undefined,
+          companyNo: companyNo.trim() || undefined,
         });
-        setAgingRows(null);
-        setAgingDetail(null);
-        setText(
-          formatSales(
-            rows,
-            id === "invoice" ? "Invoice Register" : "Sales Analysis"
-          )
-        );
+        setSalesRows(rows);
       } else if (id === "cash") {
         const rows = await api.listCashReceipts({
           fromDate: fromDate || undefined,
@@ -162,34 +260,36 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         t +=
           "--------------------------------------------------------------------------------\n";
         t += `Cash Receipts Total Counts  : ${rows.length}\n                    Amounts : ${money(tot)}\n`;
-        setAgingRows(null);
-        setAgingDetail(null);
         setText(t);
-      } else if (id === "ledger") {
-        if (!companyNo.trim()) {
-          setMsg("From Company No : required for Customer Ledger");
-          setRunning(false);
-          return;
-        }
-        const co = await api.getCompany(companyNo.trim());
-        const lines = await api.reportCustomerLedger(companyNo.trim());
-        setAgingRows(null);
-        setAgingDetail(null);
-        setText(formatLedger(co, lines));
+      } else if (id === "payroll") {
+        setPayrollRows(
+          await api.reportPayroll({
+            fromDate: fromDate || undefined,
+            toDate: toDate || undefined,
+            search: workPerson.trim() || undefined,
+          })
+        );
       } else if (id === "customer") {
         const cos = await api.listCompanies({ limit: 5000 });
         const props = await api.listProperties({ limit: 10000 });
-        setAgingRows(null);
-        setAgingDetail(null);
         setText(formatCustomerFile(cos, props));
       } else if (id === "missing") {
         const rows = await api.reportMissingInvoices({
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
         });
-        setAgingRows(null);
-        setAgingDetail(null);
         setText(formatMissing(rows));
+      } else if (id === "paint") {
+        setText(
+          formatPaintUsage(
+            await api.reportPaintUsage({
+              fromDate: fromDate || undefined,
+              toDate: toDate || undefined,
+              paintSupplyCo: paintSupply.trim() || undefined,
+              search: workPerson.trim() || undefined,
+            })
+          )
+        );
       } else if (id === "labels") {
         if (labelMode === "C") {
           const cos = await api.listCompanies({ limit: 5000 });
@@ -198,25 +298,22 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           const props = await api.listProperties({ limit: 10000 });
           setText(formatLabelsProperty(props));
         }
-        setAgingRows(null);
-        setAgingDetail(null);
       } else {
-        const rows = await api.reportWorkerWages({
-          fromDate: fromDate || undefined,
-          toDate: toDate || undefined,
-        });
-        setAgingRows(null);
-        setAgingDetail(null);
-        setText(formatWages(rows));
+        setMsg("Unknown report");
+        return;
       }
       setMsg(
         id === "aging"
           ? "Click a company number for outstanding invoice items  Esc=Exit  (P)rint  (X)cel"
-          : "Selection (Esc=Exit,(P)rint,(S)creen)?"
+          : id === "sales" || id === "invoice"
+            ? salesSortMessage(salesSort.key, salesSort.dir)
+            : id === "payroll"
+              ? "Click invoice# to view  Esc=Exit  (P)rint"
+            : "Selection (Esc=Exit,(P)rint,(S)creen)?"
       );
     } catch (e) {
       setMsg(String(e));
-      setText("");
+      clearOutputs();
     } finally {
       setRunning(false);
     }
@@ -237,9 +334,92 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice
         );
       setAgingDetail({ company: row, invoices: open });
-      setMsg("Esc=Back to aging  (P)rint  (X)cel");
+      setMsg("Click invoice# to view form  Esc=Back  (P)rint  (X)cel");
     } catch (e) {
       setMsg(String(e));
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function previewAgingInvoice(inv: {
+    companyNo: string;
+    proNo: string;
+    salesDate: string;
+    invoice: number;
+    propertyName?: string | null;
+    propertyStreet?: string | null;
+  }) {
+    setRunning(true);
+    setMsg(`Loading invoice #${inv.invoice}...`);
+    try {
+      const full = await api.getInvoice(
+        inv.companyNo,
+        inv.proNo,
+        inv.salesDate,
+        inv.invoice
+      );
+      if (!full) {
+        setMsg("--> does not exist in Invoice File !!!");
+        return;
+      }
+      const co =
+        (await api.getCompany(inv.companyNo)) ??
+        ({
+          ...emptyCompany(),
+          companyNo: inv.companyNo,
+          name: agingDetail?.company.companyName ?? "",
+          contact: agingDetail?.company.contact ?? "",
+          phone: agingDetail?.company.phone ?? "",
+        } satisfies Company);
+      const props = await api.listProperties({
+        companyNo: inv.companyNo,
+        limit: 2000,
+      });
+      const property =
+        props.find((p) => p.proNo === inv.proNo) ??
+        ({
+          ...emptyProperty(inv.companyNo),
+          proNo: inv.proNo,
+          name: inv.propertyName ?? "",
+          street: inv.propertyStreet ?? "",
+        });
+      await printInvoiceOnTemplate({
+        company: co,
+        property,
+        invoice: full.invoice,
+        lines: full.lines,
+      });
+      setMsg(
+        `Invoice #${inv.invoice}  Esc=close form  click invoice# to view`
+      );
+    } catch (e) {
+      setMsg(String(e));
+      try {
+        const full = await api.getInvoice(
+          inv.companyNo,
+          inv.proNo,
+          inv.salesDate,
+          inv.invoice
+        );
+        if (!full) return;
+        const co =
+          (await api.getCompany(inv.companyNo)) ?? emptyCompany();
+        await downloadInvoicePdf({
+          company: { ...co, companyNo: inv.companyNo },
+          property: {
+            ...emptyProperty(inv.companyNo),
+            proNo: inv.proNo,
+            name: inv.propertyName ?? "",
+            street: inv.propertyStreet ?? "",
+          },
+          invoice: full.invoice,
+          lines: full.lines,
+        });
+        setMsg("Print window blocked — PDF downloaded instead.");
+      } catch {
+        /* already reported */
+      }
     } finally {
       setRunning(false);
     }
@@ -296,15 +476,22 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setText("");
           setAgingRows(null);
           setAgingDetail(null);
+          setSalesRows(null);
+          setPayrollRows(null);
+          setSalesSort({ key: "date", dir: "asc" });
           setMsg(
-            id === "ledger"
-              ? "Enter Company No, then Enter to run"
+            id === "payroll"
+              ? "Work person and invoice date range (optional), then Enter. Click invoice# to view."
               : id === "aging"
                 ? "? = all companies that owe money, or search company / address, then Enter"
               : id === "cash"
                 ? "Search company or property address (optional), then Enter to run"
+              : id === "sales" || id === "invoice"
+                ? "Company NO or Name (optional), date range, then Enter. Click Inv_Date or Com to sort."
               : id === "labels"
                 ? "Enter Seletion (Esc=Exit,(C)ustomer,(P)roperty)?"
+                : id === "paint"
+                  ? "Paint supply, work date, or work person (optional), then Enter"
                 : "Enter date range (optional) then press Enter to run"
           );
         }}
@@ -322,6 +509,12 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         { key: "Enter", label: agingDetail ? "" : "Run" },
         { key: "P", label: "Print" },
         ...(report === "aging" ? [{ key: "X", label: "Excel" }] : []),
+        ...((report === "sales" || report === "invoice") && salesRows
+          ? [
+              { key: "C", label: "Co#" },
+              { key: "D", label: "Date" },
+            ]
+          : []),
         { key: "End", label: agingDetail ? "" : "Print" },
         { key: "F1", label: "Help" },
       ]}
@@ -358,37 +551,125 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             />
           </>
         )}
-        {(report === "ledger" ||
-          report === "invoice" ||
+        {(report === "invoice" ||
           report === "cash" ||
           report === "sales") && (
           <>
-            <label>From Company No :</label>
+            <label>
+              {report === "sales" || report === "invoice"
+                ? "Company :"
+                : "From Company No :"}
+            </label>
             <input
-              className="dos-input w8"
+              className={
+                report === "sales" || report === "invoice"
+                  ? "dos-input w20"
+                  : "dos-input w8"
+              }
               value={companyNo}
               onChange={(e) => setCompanyNo(e.target.value)}
+              placeholder={
+                report === "sales" || report === "invoice"
+                  ? "Company NO or Name"
+                  : undefined
+              }
+              aria-label={
+                report === "sales" || report === "invoice"
+                  ? "Sales company search"
+                  : undefined
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
             />
+          </>
+        )}
+        {report === "paint" && (
+          <>
+            <label>Paint Supply Co. :</label>
+            <input
+              className="dos-input w20"
+              list="paint-usage-supply-list"
+              value={paintSupply}
+              onChange={(e) => setPaintSupply(e.target.value)}
+              placeholder="Painting Supply Co"
+              aria-label="Paint supply search"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            />
+            <datalist id="paint-usage-supply-list">
+              {paintSupplyOptions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          </>
+        )}
+        {(report === "paint" || report === "payroll") && (
+          <>
+            <label>Work Person :</label>
+            <input
+              className="dos-input w20"
+              list="report-work-person-list"
+              value={workPerson}
+              onChange={(e) => setWorkPerson(e.target.value)}
+              placeholder="Work person"
+              aria-label="Work person search"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            />
+            <datalist id="report-work-person-list">
+              {workPersonOptions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </>
         )}
         {report !== "aging" &&
           report !== "customer" &&
-          report !== "labels" &&
-          report !== "ledger" && (
+          report !== "labels" && (
             <>
-              <label>From Date :</label>
+              <label>
+                {report === "paint" ? "From Work Date :" : "From Date :"}
+              </label>
               <input
                 className="dos-input w12"
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
+                aria-label={
+                  report === "paint"
+                    ? "From work date"
+                    : report === "payroll"
+                      ? "From invoice date"
+                      : undefined
+                }
               />
-              <label>To Date :</label>
+              <label>
+                {report === "paint" ? "To Work Date :" : "To Date :"}
+              </label>
               <input
                 className="dos-input w12"
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
+                aria-label={
+                  report === "paint"
+                    ? "To work date"
+                    : report === "payroll"
+                      ? "To invoice date"
+                      : undefined
+                }
               />
             </>
           )}
@@ -423,11 +704,38 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           company={agingDetail.company}
           invoices={agingDetail.invoices}
           onExcel={() => void downloadAgingExcel()}
+          onInvoice={(inv) => void previewAgingInvoice(inv)}
         />
       ) : (
-      <div className="dos-report">
+      <>
+      {report === "payroll" && (
+        <style>{`@page { size: landscape; }`}</style>
+      )}
+      <div
+        className={
+          report === "payroll" ? "dos-report payroll-landscape" : "dos-report"
+        }
+      >
         {report === "aging" && agingRows ? (
           <AgingReport rows={agingRows} onCompany={openAgingDetail} />
+        ) : (report === "sales" || report === "invoice") && salesRows ? (
+          <SalesReport
+            title={report === "invoice" ? "Invoice Register" : "Sales Analysis"}
+            rows={salesRows}
+            sort={salesSort}
+            onSort={toggleSalesSort}
+            onInvoice={(r) => void previewAgingInvoice(r)}
+          />
+        ) : report === "payroll" && payrollRows ? (
+          <PayrollReport
+            rows={payrollRows}
+            onInvoice={(r) =>
+              void previewAgingInvoice({
+                ...r,
+                propertyStreet: r.propertyAddress,
+              })
+            }
+          />
         ) : text ? (
           text
         ) : (
@@ -438,6 +746,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           </span>
         )}
       </div>
+      </>
       )}
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
     </Screen>
@@ -514,10 +823,12 @@ function AgingInvoiceList({
   company,
   invoices,
   onExcel,
+  onInvoice,
 }: {
   company: AgingRow;
   invoices: Invoice[];
   onExcel: () => void;
+  onInvoice: (inv: Invoice) => void;
 }) {
   const { index, setIndex, up, down, pageUp, pageDown, home, end } =
     useBrowseIndex(invoices.length);
@@ -530,6 +841,10 @@ function AgingInvoiceList({
     onPageDown: pageDown,
     onHome: home,
     onEnd: end,
+    onEnter: () => {
+      const inv = invoices[index];
+      if (inv) onInvoice(inv);
+    },
   });
 
   return (
@@ -568,7 +883,21 @@ Open Balance.... ${money(company.openBal)}`}
               className={`dos-row ${i === index ? "selected" : ""}`}
               onMouseEnter={() => setIndex(i)}
             >
-              {formatAgingInvoiceRow(inv)}
+              <button
+                type="button"
+                className="aging-invno"
+                aria-label={`Invoice ${inv.invoice}`}
+                onClick={() => onInvoice(inv)}
+              >
+                {padL(inv.invoice, 5)}
+              </button>
+              {`   ${cols(
+                padR(fmtDate(inv.salesDate), 10),
+                padL(money(inv.salesTotal), 11),
+                padR((inv.propertyStreet || inv.propertyName || "").trim(), 40),
+                padR(inv.salesUnit, 8),
+                padR(inv.custPoNo, 12)
+              )}`}
             </div>
           ))}
           {invoices.length === 0 && (
@@ -582,79 +911,173 @@ Open Balance.... ${money(company.openBal)}`}
   );
 }
 
-function formatSales(rows: SalesAnalysisRow[], title: string): string {
-  let t = `       *****   ${title}   *****\n\n`;
-  t +=
-    "Inv_Date   InvNo Com  Pro   Sales_Amt    Deposit  Sales_Bal   PayTotal    Balance\n";
-  t +=
-    "--------------------------------------------------------------------------------\n";
+function SalesReport({
+  title,
+  rows,
+  sort,
+  onSort,
+  onInvoice,
+}: {
+  title: string;
+  rows: SalesAnalysisRow[];
+  sort: { key: SalesSortKey; dir: SalesSortDir };
+  onSort: (key: SalesSortKey) => void;
+  onInvoice: (row: SalesAnalysisRow) => void;
+}) {
+  const sorted = sortSalesRows(rows, sort.key, sort.dir);
+  const mark = (key: SalesSortKey) =>
+    sort.key === key ? (sort.dir === "asc" ? "↑" : "↓") : " ";
   let sa = 0,
     dep = 0,
     pay = 0,
     bal = 0;
   for (const r of rows) {
-    t += `${padR(fmtDate(r.salesDate), 10)} ${padL(r.invoice, 5)} ${padR(r.companyNo, 4)} ${padR(r.proNo, 3)}  ${padL(money(r.salesAmount), 10)} ${padL(money(r.deposit), 9)} ${padL(money(r.salesBal), 10)} ${padL(money(r.payTotal), 10)} ${padL(money(r.balance), 10)}\n`;
     sa += r.salesAmount;
     dep += r.deposit;
     pay += r.payTotal;
     bal += r.balance;
   }
-  t +=
-    "--------------------------------------------------------------------------------\n";
-  t += `Total Counts: ${rows.length}  Amounts: ${money(sa)}  Deposit: ${money(dep)}  Payment: ${money(pay)}  Balance: ${money(bal)}\n`;
-  return t;
+  return (
+    <>
+      {`       *****   ${title}   *****\n\n`}
+      <span className="hdr">
+        <button
+          type="button"
+          className="sales-sort"
+          aria-label="Sort by invoice date"
+          onClick={() => onSort("date")}
+        >
+          {`Inv_Date${mark("date")}`}
+        </button>
+        {` InvNo `}
+        <button
+          type="button"
+          className="sales-sort"
+          aria-label="Sort by company number"
+          onClick={() => onSort("company")}
+        >
+          {`Com${mark("company")}`}
+        </button>
+        {`  Pro   Sales_Amt    Deposit  Sales_Bal   PayTotal    Balance\n`}
+      </span>
+      {"--------------------------------------------------------------------------------\n"}
+      {sorted.map((r) => (
+        <button
+          type="button"
+          key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
+          className="sales-inv"
+          aria-label={`Invoice ${r.invoice}`}
+          onClick={() => onInvoice(r)}
+        >
+          {padR(fmtDate(r.salesDate), 10)}{" "}
+          <span className="sales-invno">{padL(r.invoice, 5)}</span>
+          {` ${padR(r.companyNo, 4)} ${padR(r.proNo, 3)}  ${padL(money(r.salesAmount), 10)} ${padL(money(r.deposit), 9)} ${padL(money(r.salesBal), 10)} ${padL(money(r.payTotal), 10)} ${padL(money(r.balance), 10)}\n`}
+        </button>
+      ))}
+      {"--------------------------------------------------------------------------------\n"}
+      <span className="total">
+        {`Total Counts: ${rows.length}  Amounts: ${money(sa)}  Deposit: ${money(dep)}  Payment: ${money(pay)}  Balance: ${money(bal)}\n`}
+      </span>
+    </>
+  );
 }
 
-function formatWages(rows: WorkerWageRow[]): string {
-  let t = `*****   Worker Wages Report  *****\n\n`;
-  t +=
-    "Worker   WorkDate   Inv#  Co/Pro  Inv_Amnt  Rate%     Wages   Description\n";
-  t +=
-    "--------------------------------------------------------------------------------\n";
-  let tw = 0;
+function PayrollReport({
+  rows,
+  onInvoice,
+}: {
+  rows: PayrollRow[];
+  onInvoice: (row: PayrollRow) => void;
+}) {
+  let tot = 0;
+  let mat = 0;
   for (const r of rows) {
-    t += `${padR(r.empNo, 6)} ${padR(fmtDate(r.workDate || r.invDate), 10)} ${padL(r.invoice, 5)} ${padR(r.companyNo + "/" + r.proNo, 7)} ${padL(money(r.invAmount), 9)} ${padL(r.rate.toFixed(1), 6)} ${padL(money(r.wages), 9)}  ${padR(r.description, 30)}\n`;
-    tw += r.wages;
+    tot += r.invoiceTotal;
+    mat += r.materialCost;
   }
-  t +=
-    "--------------------------------------------------------------------------------\n";
-  t += `Grand Total Wages: ${money(tw)}\n`;
-  return t;
+  return (
+    <div className="payroll-wrap">
+      <div className="hdr">*****   Payroll Report   *****</div>
+      <table className="payroll-grid">
+        <colgroup>
+          <col className="payroll-col-date" />
+          <col className="payroll-col-inv" />
+          <col className="payroll-col-addr" />
+          <col className="payroll-col-unit" />
+          <col className="payroll-col-amt" />
+          <col className="payroll-col-amt" />
+          <col className="payroll-col-blank" />
+          <col className="payroll-col-blank" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Inv_Date</th>
+            <th>Inv#</th>
+            <th>Address</th>
+            <th>Unit</th>
+            <th className="num">Inv_Total</th>
+            <th className="num">Mat_Cost</th>
+            <th className="blank" aria-label="Blank column 1" />
+            <th className="blank" aria-label="Blank column 2" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr
+              key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
+              className="payroll-row"
+            >
+              <td>{fmtDate(r.salesDate)}</td>
+              <td>
+                <button
+                  type="button"
+                  className="sales-invno"
+                  aria-label={`Invoice ${r.invoice}`}
+                  onClick={() => onInvoice(r)}
+                >
+                  {r.invoice}
+                </button>
+              </td>
+              <td className="addr">
+                <div>{r.propertyAddress}</div>
+                {r.jobDescription ? (
+                  <div className="payroll-job">{r.jobDescription}</div>
+                ) : null}
+              </td>
+              <td>{r.salesUnit}</td>
+              <td className="num">{money(r.invoiceTotal)}</td>
+              <td className="num">{money(r.materialCost)}</td>
+              <td className="blank" />
+              <td className="blank" />
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="total">
+            <td colSpan={4}>{`Total Counts: ${rows.length}`}</td>
+            <td className="num">{money(tot)}</td>
+            <td className="num">{money(mat)}</td>
+            <td className="blank" />
+            <td className="blank" />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
 }
 
-function formatLedger(
-  co: Company | null,
-  lines: LedgerLine[]
-): string {
-  let t = `      *****   Customer Ledger   *****\n`;
-  t += `Company NO : ${co?.companyNo || ""}  ${co?.name || ""}\n`;
-  t += `Phone      : ${co?.phone || ""}\n\n`;
+export function formatPaintUsage(rows: PaintUsageRow[]): string {
+  let t = `*****   Paint Usage Report   *****\n\n`;
   t +=
-    "Invoice#  Inv_Date  Inv_amount  PayDate   Payrefno   Payamount     Balance\n";
+    "Work Person          Mat_Cost  Inv#  Inv_Total  Paint Supply Co.           Work Date\n";
   t +=
-    "------------------------------------------------------------------------------\n";
-  let invTot = 0;
-  let payTot = 0;
-  let ending = 0;
-  // Track last balance per invoice group for ending open AR
-  let lastBal = 0;
-  for (const l of lines) {
-    if (l.invoice) {
-      invTot += l.invAmount;
-      ending += lastBal;
-      lastBal = l.balance;
-    } else {
-      lastBal = l.balance;
-    }
-    if (l.payAmount && l.payRefNo !== "DEPOSIT") payTot += l.payAmount;
-    t += `${l.invoice ? padL(l.invoice, 8) : "        "}  ${padR(fmtDate(l.invDate), 10)}  ${l.invAmount ? padL(money(l.invAmount), 10) : "          "}  ${padR(fmtDate(l.payDate), 9)} ${padR(l.payRefNo || "", 10)} ${l.payAmount != null ? padL(money(l.payAmount), 10) : "          "} ${padL(money(l.balance), 10)}\n`;
+    "-------------------------------------------------------------------------------------\n";
+  for (const r of rows) {
+    t += `${padR(r.workPerson, 20)} ${padL(money(r.materialCost), 8)} ${padL(r.invoice, 5)} ${padL(money(r.invoiceTotal), 10)}  ${padR(r.paintSupplyCo, 26)} ${padR(fmtDate(r.workDate), 10)}\n`;
   }
-  ending += lastBal;
   t +=
-    "------------------------------------------------------------------------------\n";
-  t += `Invoice Total.... ${money(invTot)}\n`;
-  t += `Receipt Total.... ${money(payTot)}\n`;
-  t += `Ending Balance... ${money(ending)}\n`;
+    "-------------------------------------------------------------------------------------\n";
+  t += `Total Counts: ${rows.length}\n`;
   return t;
 }
 

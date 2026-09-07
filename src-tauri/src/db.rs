@@ -173,6 +173,32 @@ mod tests {
     use std::sync::Mutex;
 
     #[test]
+    fn add_column_if_missing_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE invoices (invoice INTEGER);")
+            .unwrap();
+        add_column_if_missing(&conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")
+            .unwrap();
+        add_column_if_missing(&conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")
+            .unwrap();
+        add_column_if_missing(
+            &conn,
+            "invoices",
+            "paint_supply_co",
+            "TEXT NOT NULL DEFAULT ''",
+        )
+        .unwrap();
+        let mut stmt = conn.prepare("PRAGMA table_info(invoices)").unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(1))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+        assert!(cols.iter().any(|c| c == "material_cost"));
+        assert!(cols.iter().any(|c| c == "paint_supply_co"));
+    }
+
+    #[test]
     fn open_and_migrate_creates_schema_and_sysdata() {
         let dir = std::env::temp_dir().join(format!("promas_db_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -474,6 +500,8 @@ fn create_schema(conn: &Connection) -> Result<()> {
             discount_on INTEGER NOT NULL DEFAULT 0,
             discount REAL NOT NULL DEFAULT 0,
             deposit_ref TEXT NOT NULL DEFAULT '',
+            material_cost REAL NOT NULL DEFAULT 0,
+            paint_supply_co TEXT NOT NULL DEFAULT '',
             remark1 TEXT NOT NULL DEFAULT '',
             remark2 TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT '',
@@ -573,6 +601,10 @@ fn create_schema(conn: &Connection) -> Result<()> {
             name TEXT PRIMARY KEY COLLATE NOCASE
         );
 
+        CREATE TABLE IF NOT EXISTS paint_supply_cos (
+            name TEXT PRIMARY KEY COLLATE NOCASE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name);
         CREATE INDEX IF NOT EXISTS idx_properties_name ON properties(name);
         CREATE INDEX IF NOT EXISTS idx_invoices_invoice ON invoices(invoice);
@@ -586,6 +618,34 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "#,
     )?;
     seed_work_persons(conn)?;
+    add_column_if_missing(conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")?;
+    add_column_if_missing(
+        conn,
+        "invoices",
+        "paint_supply_co",
+        "TEXT NOT NULL DEFAULT ''",
+    )?;
+    seed_paint_supply_cos(conn)?;
+    Ok(())
+}
+
+fn add_column_if_missing(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    decl: &str,
+) -> Result<()> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let exists = stmt
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .any(|name| name == column);
+    if !exists {
+        conn.execute(
+            &format!("ALTER TABLE {table} ADD COLUMN {column} {decl}"),
+            [],
+        )?;
+    }
     Ok(())
 }
 
@@ -600,6 +660,21 @@ fn seed_work_persons(conn: &Connection) -> Result<()> {
         r#"INSERT OR IGNORE INTO work_persons (name)
            SELECT DISTINCT TRIM(name) FROM employees
            WHERE TRIM(COALESCE(name,'')) != ''"#,
+    )?;
+    Ok(())
+}
+
+/// First launch only: copy paint companies already stored on invoices.
+fn seed_paint_supply_cos(conn: &Connection) -> Result<()> {
+    let count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM paint_supply_cos", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    conn.execute_batch(
+        r#"INSERT OR IGNORE INTO paint_supply_cos (name)
+           SELECT DISTINCT TRIM(paint_supply_co) FROM invoices
+           WHERE TRIM(COALESCE(paint_supply_co,'')) != ''"#,
     )?;
     Ok(())
 }

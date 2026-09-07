@@ -27,6 +27,7 @@ export function ProcessRouter({
   const [ctx, setCtx] = useState<{
     company: Company;
     property?: Property;
+    focusInvoice?: number;
   } | null>(null);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export function ProcessRouter({
               company={ctx.company}
               property={ctx.property}
               onBack={backToGate}
+              focusInvoice={ctx.focusInvoice}
             />
           );
         }
@@ -84,7 +86,9 @@ export function ProcessRouter({
       <CompanyPropertyGate
         process={process}
         onBack={onBack}
-        onReady={(company, property) => setCtx({ company, property })}
+        onReady={(company, property, extras) =>
+          setCtx({ company, property, focusInvoice: extras?.focusInvoice })
+        }
         active={!ctx}
       />
       {processScreen}

@@ -615,7 +615,7 @@ textarea {
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 16ch) minmax(0, 1.6fr) minmax(0, 11ch) auto;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 16ch) minmax(0, 11ch) auto;
   column-gap: 0.4ch;
   align-items: center;
   width: 100%;
@@ -843,6 +843,227 @@ textarea {
 .dos-report .aging-cono:hover,
 .dos-report .aging-cono:focus {
   color: var(--dos-yellow);
+}
+
+.aging-invno {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dos-cyan-bright);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.aging-invno:hover,
+.aging-invno:focus {
+  color: var(--dos-yellow);
+}
+
+.dos-report .sales-row {
+  display: block;
+  white-space: pre;
+}
+
+.dos-report .sales-inv {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: pre;
+}
+
+.dos-report .sales-inv:hover,
+.dos-report .sales-inv:focus {
+  color: var(--dos-yellow);
+}
+
+.dos-report .sales-invno {
+  color: var(--dos-cyan-bright);
+  text-decoration: underline;
+}
+
+.dos-report .sales-inv:hover .sales-invno,
+.dos-report .sales-inv:focus .sales-invno {
+  color: var(--dos-yellow);
+}
+
+.dos-report .sales-sort {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dos-cyan-bright);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.dos-report .sales-sort:hover,
+.dos-report .sales-sort:focus {
+  color: var(--dos-yellow);
+}
+
+.dos-report.payroll-landscape {
+  overflow-x: auto;
+  min-width: 0;
+  white-space: normal;
+}
+
+.payroll-wrap {
+  width: 100%;
+  min-width: 110ch;
+}
+
+.payroll-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: inherit;
+  color: inherit;
+}
+
+.payroll-grid th,
+.payroll-grid td {
+  border-left: 1px solid var(--dos-cyan-bright);
+  border-right: 1px solid var(--dos-cyan-bright);
+  border-top: 1px solid var(--dos-cyan);
+  border-bottom: 1px solid var(--dos-cyan);
+  padding: 0.12em 0.7ch;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payroll-grid thead th {
+  color: var(--dos-yellow);
+  font-weight: bold;
+  border-top: 1px solid var(--dos-cyan-bright);
+  border-bottom: 1px solid var(--dos-cyan-bright);
+}
+
+.payroll-grid tfoot td {
+  color: var(--dos-cyan-bright);
+  font-weight: bold;
+  border-top: 1px solid var(--dos-cyan-bright);
+  border-bottom: 1px solid var(--dos-cyan-bright);
+}
+
+.payroll-grid .num {
+  text-align: right;
+}
+
+.payroll-grid .addr {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.payroll-grid .payroll-job {
+  color: var(--dos-white);
+  margin-top: 0.1em;
+}
+
+.payroll-col-date { width: 12ch; }
+.payroll-col-inv { width: 7ch; }
+.payroll-col-addr { width: auto; }
+.payroll-col-unit { width: 9ch; }
+.payroll-col-amt { width: 12ch; }
+.payroll-col-blank { width: 14ch; }
+
+.payroll-grid .blank {
+  background: transparent;
+}
+
+.payroll-grid tbody tr.payroll-row:hover td {
+  color: var(--dos-yellow);
+}
+
+.payroll-grid .sales-invno {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dos-cyan-bright);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.payroll-grid tbody tr.payroll-row:hover .sales-invno {
+  color: var(--dos-yellow);
+}
+
+@media print {
+  html,
+  body,
+  #root,
+  .dos-screen,
+  .dos-content,
+  .dos-report,
+  .payroll-wrap {
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .dos-statusbar,
+  .dos-statusbar .hint,
+  .dos-titlebar,
+  .dos-titlebar .left,
+  .dos-titlebar .right,
+  .dos-messagebar,
+  .dos-searchline,
+  .dos-searchline label,
+  .dos-report,
+  .dos-report .hdr,
+  .dos-report .total,
+  .dos-report .aging-cono,
+  .dos-report .sales-inv,
+  .dos-report .sales-invno,
+  .dos-report .sales-sort,
+  .payroll-grid,
+  .payroll-grid th,
+  .payroll-grid td,
+  .payroll-grid tfoot td,
+  .payroll-grid .payroll-job,
+  .payroll-grid .sales-invno,
+  .aging-invno {
+    color: #000 !important;
+    font-weight: normal;
+  }
+
+  .dos-report .hdr,
+  .dos-report .total,
+  .payroll-grid thead th,
+  .payroll-grid tfoot td {
+    font-weight: bold;
+  }
+
+  .dos-report.payroll-landscape {
+    overflow: visible;
+  }
+
+  .payroll-grid th,
+  .payroll-grid td {
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    background: #fff !important;
+  }
 }
 
 /* ─── Help screen ───────────────────────────────────────── */

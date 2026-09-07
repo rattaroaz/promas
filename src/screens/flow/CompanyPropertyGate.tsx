@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   api,
   Company,
+  Invoice,
   Property,
   emptyCompany,
   emptyProperty,
@@ -22,7 +23,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, today } from "../../dos/utils";
+import { cols, padR, padL, fmtDate, today } from "../../dos/utils";
 
 export type ProcessKind =
   | "invoice"
@@ -43,11 +44,12 @@ type Phase =
   | "co-edit"
   | "pr-search"
   | "pr-browse"
-  | "pr-edit";
+  | "pr-edit"
+  | "inv-browse";
 
 type CoField = "no" | "name" | "phone" | "contact";
 type PrField = "no" | "name" | "phone" | "street" | "contact";
-type FirstKind = "company" | "property";
+type FirstKind = "company" | "property" | "invoice";
 
 function matchesPropertyContact(p: Property, q: string): boolean {
   const needle = q.trim().toUpperCase();
@@ -107,6 +109,7 @@ const STACK_PHASES: Phase[] = [
   "co-browse",
   "pr-search",
   "pr-browse",
+  "inv-browse",
 ];
 
 export function CompanyPropertyGate({
@@ -117,7 +120,11 @@ export function CompanyPropertyGate({
 }: {
   process: ProcessKind;
   onBack: () => void;
-  onReady: (company: Company, property?: Property) => void;
+  onReady: (
+    company: Company,
+    property?: Property,
+    extras?: { focusInvoice?: number }
+  ) => void;
   /** When false, state is kept but the gate is hidden and keys are ignored. */
   active?: boolean;
 }) {
@@ -146,9 +153,11 @@ export function CompanyPropertyGate({
   const [companyContacts, setCompanyContacts] = useState<Record<string, string>>(
     {}
   );
+  const [invoiceHits, setInvoiceHits] = useState<Invoice[]>([]);
 
   const coBrowse = useBrowseIndex(companies.length);
   const prBrowse = useBrowseIndex(properties.length);
+  const invBrowse = useBrowseIndex(invoiceHits.length);
   const trailRef = useRef<Phase[]>([]);
 
   function pushPhase(next: Phase) {
@@ -204,13 +213,15 @@ export function CompanyPropertyGate({
         );
       } else {
         setMsg(
-          coField === "no"
-            ? "Enter Search Company NO (Esc=Exit, ?=First)"
-            : coField === "name"
-              ? "Enter Search Company Name (Esc=Exit, ?=First)"
-              : coField === "phone"
-                ? "Enter Search Company Phone (Esc=Exit, ?=First)"
-                : "Enter Search Company Contact (Esc=Exit, ?=First)"
+          firstKind === "invoice"
+            ? "Enter Search Invoice NO (Esc=Exit)"
+            : coField === "no"
+              ? "Enter Search Company NO (Esc=Exit, ?=First)"
+              : coField === "name"
+                ? "Enter Search Company Name (Esc=Exit, ?=First)"
+                : coField === "phone"
+                  ? "Enter Search Company Phone (Esc=Exit, ?=First)"
+                  : "Enter Search Company Contact (Esc=Exit, ?=First)"
         );
       }
     } else if (phase === "pr-search") {
@@ -402,7 +413,10 @@ export function CompanyPropertyGate({
     );
   }
 
-  async function pickPropertyWithCompany(p: Property) {
+  async function pickPropertyWithCompany(
+    p: Property,
+    extras?: { focusInvoice?: number }
+  ) {
     let co = company;
     if (!co || co.companyNo !== p.companyNo) {
       co = (await api.getCompany(p.companyNo)) ?? null;
@@ -414,7 +428,63 @@ export function CompanyPropertyGate({
     }
     setCompany(co);
     setProperty(p);
-    onReady(co, p);
+    if (extras) onReady(co, p, extras);
+    else onReady(co, p);
+  }
+
+  async function pickInvoiceSite(inv: Invoice) {
+    const props = await api.listProperties({
+      companyNo: inv.companyNo,
+      limit: 2000,
+    });
+    const pr =
+      props.find((p) => p.proNo === inv.proNo) ??
+      ({
+        ...emptyProperty(inv.companyNo),
+        proNo: inv.proNo,
+        name: inv.propertyName ?? "",
+        street: inv.propertyStreet ?? "",
+      } satisfies Property);
+    await pickPropertyWithCompany(pr, { focusInvoice: inv.invoice });
+  }
+
+  async function searchByInvoiceNumber(raw: string) {
+    const q = raw.trim();
+    if (!q) {
+      setMsg("--> enter invoice number !!");
+      setMsgKind("error");
+      return;
+    }
+    const n = Number.parseInt(q, 10);
+    if (!Number.isFinite(n) || n < 1) {
+      setMsg("--> enter invoice number !!");
+      setMsgKind("error");
+      return;
+    }
+    const data = await api.listInvoices({
+      search: String(n),
+      includeVoided: true,
+      limit: 2000,
+    });
+    const hits = data.filter((i) => i.invoice === n);
+    if (hits.length === 0) {
+      setMsg(`--> Invoice #${n} does not exist !!`);
+      setMsgKind("error");
+      return;
+    }
+    const sameSite = hits.every(
+      (i) =>
+        i.companyNo === hits[0].companyNo && i.proNo === hits[0].proNo
+    );
+    if (sameSite) {
+      await pickInvoiceSite(hits[0]);
+      return;
+    }
+    setInvoiceHits(hits);
+    invBrowse.setIndex(0);
+    pushPhase("inv-browse");
+    setMsg("Enter=Select  Esc=Back  (matched invoices)");
+    setMsgKind("default");
   }
 
   function selectProperty(p: Property) {
@@ -590,7 +660,10 @@ export function CompanyPropertyGate({
   }
 
   useDosKeys({
-    forceNav: phase === "co-browse" || phase === "pr-browse",
+    forceNav:
+      phase === "co-browse" ||
+      phase === "pr-browse" ||
+      phase === "inv-browse",
     onEscape: () => {
       if (help) {
         setHelp(false);
@@ -646,8 +719,11 @@ export function CompanyPropertyGate({
         selectCompany(companies[coBrowse.index]);
       } else if (phase === "pr-browse" && properties[prBrowse.index]) {
         selectProperty(properties[prBrowse.index]);
+      } else if (phase === "inv-browse" && invoiceHits[invBrowse.index]) {
+        void pickInvoiceSite(invoiceHits[invBrowse.index]);
       } else if (phase === "co-search") {
-        if (firstKind === "property") void searchPropertiesGlobal(query);
+        if (firstKind === "invoice") void searchByInvoiceNumber(query);
+        else if (firstKind === "property") void searchPropertiesGlobal(query);
         else void searchCompanies(query);
       } else if (phase === "pr-search") {
         searchProperties(query);
@@ -675,31 +751,41 @@ export function CompanyPropertyGate({
         ? coBrowse.up
         : phase === "pr-browse"
           ? prBrowse.up
-          : undefined,
+          : phase === "inv-browse"
+            ? invBrowse.up
+            : undefined,
     onArrowDown:
       phase === "co-browse"
         ? coBrowse.down
         : phase === "pr-browse"
           ? prBrowse.down
-          : undefined,
+          : phase === "inv-browse"
+            ? invBrowse.down
+            : undefined,
     onPageUp:
       phase === "co-browse"
         ? coBrowse.pageUp
         : phase === "pr-browse"
           ? prBrowse.pageUp
-          : undefined,
+          : phase === "inv-browse"
+            ? invBrowse.pageUp
+            : undefined,
     onPageDown:
       phase === "co-browse"
         ? coBrowse.pageDown
         : phase === "pr-browse"
           ? prBrowse.pageDown
-          : undefined,
+          : phase === "inv-browse"
+            ? invBrowse.pageDown
+            : undefined,
     onEnd:
       phase === "co-browse"
         ? coBrowse.end
         : phase === "pr-browse"
           ? prBrowse.end
-          : undefined,
+          : phase === "inv-browse"
+            ? invBrowse.end
+            : undefined,
     onChar: (ch) => {
       if (askDeleteCompany) {
         if (ch === "y" || ch === "Y") {
@@ -742,7 +828,7 @@ export function CompanyPropertyGate({
   const statusKeys =
     phase === "co-edit" || phase === "pr-edit"
       ? FORM_KEYS
-      : phase === "co-browse" || phase === "pr-browse"
+      : phase === "co-browse" || phase === "pr-browse" || phase === "inv-browse"
         ? SEARCH_BROWSE_KEYS
         : [
             { key: "Esc", label: "Exit" },
@@ -773,7 +859,9 @@ export function CompanyPropertyGate({
               : prField === "contact"
                 ? " Property Contact Order "
                 : " Property NO Order "
-        : title;
+        : phase === "inv-browse"
+          ? " Invoice Number Order "
+          : title;
 
   return (
     <Screen
@@ -893,6 +981,30 @@ export function CompanyPropertyGate({
                     }}
                   />
                 </DotField>
+                {process === "invoice" && (
+                  <DotField label="Invoice Number" width={16}>
+                    <input
+                      className="dos-input w15"
+                      aria-label="Invoice Number"
+                      value={firstKind === "invoice" ? query : ""}
+                      onFocus={() => {
+                        setFirstKind("invoice");
+                        setQuery("");
+                      }}
+                      onChange={(e) => {
+                        setFirstKind("invoice");
+                        setQuery(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          setFirstKind("invoice");
+                          void searchByInvoiceNumber(e.currentTarget.value);
+                        }
+                      }}
+                    />
+                  </DotField>
+                )}
                 <DotField label="Property Street" width={16}>
                   <input
                     className="dos-input w30"
@@ -977,6 +1089,33 @@ export function CompanyPropertyGate({
                   padR(c.name, 35),
                   padR(c.phone, 13),
                   padR(c.contact, 18)
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Invoice number browse ──────────────────────── */}
+      {phase === "inv-browse" && (
+        <div className="dos-browse">
+          <div className="dos-browse-header">
+            {"Inv#    Inv_Date    Co#    Pro   Address"}
+          </div>
+          <div className="dos-browse-body">
+            {invoiceHits.map((inv, i) => (
+              <button
+                key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
+                className={`dos-row ${i === invBrowse.index ? "selected" : ""}`}
+                onMouseEnter={() => invBrowse.setIndex(i)}
+                onClick={() => void pickInvoiceSite(inv)}
+              >
+                {cols(
+                  padL(inv.invoice, 5),
+                  padR(fmtDate(inv.salesDate), 10),
+                  padR(inv.companyNo, 6),
+                  padR(inv.proNo, 5),
+                  padR(inv.propertyStreet || inv.propertyName || "", 40)
                 )}
               </button>
             ))}
