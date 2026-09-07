@@ -9,6 +9,7 @@ import {
   Company,
   Property,
   Invoice,
+  InvoiceLine,
   InvoiceWithLines,
   emptyInvoice,
   emptyInvoiceLine,
