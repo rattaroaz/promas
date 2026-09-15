@@ -480,8 +480,8 @@ describe("ReportsScreen sales analysis", () => {
     const rows = () =>
       screen.getAllByText(/01\/15\/2026|02\/01\/2026/).map((el) => el.textContent);
 
-    expect(rows()[0]).toMatch(/01\/15\/2026/);
-    expect(rows()[0]).toMatch(/2000/);
+    expect(rows()[0]).toMatch(/02\/01\/2026/);
+    expect(rows()[0]).toMatch(/1000/);
 
     await user.click(companyBtn);
     expect(rows()[0]).toMatch(/1000/);
@@ -542,6 +542,9 @@ describe("sortSalesRows", () => {
   };
 
   it("orders by invoice date then company number", () => {
+    expect(sortSalesRows([a, b], "date", "desc").map((r) => r.invoice)).toEqual([
+      2, 1,
+    ]);
     expect(sortSalesRows([a, b], "date", "asc").map((r) => r.invoice)).toEqual([
       1, 2,
     ]);

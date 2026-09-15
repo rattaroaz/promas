@@ -124,9 +124,11 @@ describe("CompanyPropertyGate", () => {
       />
     );
 
-    expect(screen.getByRole("textbox", { name: "Invoice Number" })).toBeInTheDocument();
-
+    const invoiceNo = screen.getByRole("textbox", { name: "Invoice Number" });
     const companyNo = screen.getByPlaceholderText("? = first");
+    expect(invoiceNo.compareDocumentPosition(companyNo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(invoiceNo).toHaveFocus();
+
     await user.clear(companyNo);
     await user.type(companyNo, "?{Enter}");
     await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
