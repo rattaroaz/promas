@@ -25,9 +25,11 @@ import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
 export function CashProcess({
   company,
   onBack,
+  focusInvoice,
 }: {
   company: Company;
   onBack: () => void;
+  focusInvoice?: number;
 }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [editing, setEditing] = useState<CashReceipt | null>(null);
@@ -58,11 +60,15 @@ export function CashProcess({
       return a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice;
     });
     setInvoices(mine);
+    if (focusInvoice != null) {
+      const i = mine.findIndex((inv) => inv.invoice === focusInvoice);
+      if (i >= 0) setIndex(i);
+    }
     const open = mine.reduce((s, i) => s + Math.max(0, i.balance), 0);
     setMsg(
       `*****   Customer Ledger   *****  Open ${money(open)}  Ins=Pay  A=Auto  Esc=Back`
     );
-  }, [company.companyNo]);
+  }, [company.companyNo, focusInvoice, setIndex]);
 
   useEffect(() => {
     load();

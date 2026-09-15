@@ -19,6 +19,19 @@ test.describe("cash receipts process", () => {
     await expect(page.getByText(/Open 250\.00/i)).toBeVisible();
   });
 
+  test("opens ledger by invoice number", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /4\.\s*Cash Receipts Process/i }).click();
+    await expect(page.getByText(/Enter Search Company NO/i)).toBeVisible();
+
+    const invoiceNo = page.getByRole("textbox", { name: "Invoice Number" });
+    await invoiceNo.fill("1");
+    await invoiceNo.press("Enter");
+
+    await expect(page.getByText(/Ending Balance/i)).toBeVisible();
+    await expect(page.locator(".dos-row.selected")).toContainText("1");
+  });
+
   test("posts a receipt for the open invoice", async ({ page }) => {
     await openCashLedger(page);
     await page.getByRole("button", { name: /^Ins Add$/i }).click();

@@ -200,6 +200,23 @@ describe("CashProcess", () => {
     );
   });
 
+  it("selects the focused invoice in the ledger", async () => {
+    const later = {
+      ...openInv,
+      salesDate: "2026-02-01",
+      invoice: 42,
+      salesTotal: 80,
+      balance: 80,
+    };
+    vi.mocked(api.listInvoices).mockResolvedValue([openInv, later]);
+    renderApp(
+      <CashProcess company={company} onBack={vi.fn()} focusInvoice={42} />
+    );
+    await screen.findByText(/Customer Ledger/i);
+    const selected = document.querySelector(".dos-row.selected");
+    expect(selected?.textContent).toMatch(/42/);
+  });
+
   it("shows an empty receivable file", async () => {
     vi.mocked(api.listInvoices).mockResolvedValue([]);
     renderApp(
