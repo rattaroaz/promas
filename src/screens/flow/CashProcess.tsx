@@ -52,7 +52,9 @@ export function CashProcess({
       companyNo: company.companyNo,
       limit: 2000,
     });
-    const mine = invs.filter((i) => !i.voided);
+    const mine = invs.filter(
+      (i) => !i.voided && (focusInvoice == null || i.invoice === focusInvoice)
+    );
     // open first, then paid
     mine.sort((a, b) => {
       if (a.balance > 0 && b.balance <= 0) return -1;
@@ -60,10 +62,7 @@ export function CashProcess({
       return a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice;
     });
     setInvoices(mine);
-    if (focusInvoice != null) {
-      const i = mine.findIndex((inv) => inv.invoice === focusInvoice);
-      if (i >= 0) setIndex(i);
-    }
+    if (focusInvoice != null && mine.length) setIndex(0);
     const open = mine.reduce((s, i) => s + Math.max(0, i.balance), 0);
     setMsg(
       `*****   Customer Ledger   *****  Open ${money(open)}  Ins=Pay  A=Auto  Esc=Back`

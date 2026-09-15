@@ -197,6 +197,16 @@ describe("ProcessRouter observability", () => {
       companyNo: "1000",
       name: "ACME",
     });
+    const other = {
+      ...emptyInvoice(),
+      companyNo: "1000",
+      proNo: "01",
+      salesDate: "2026-01-10",
+      invoice: 1,
+      custPoNo: "PO-1",
+      salesTotal: 50,
+      balance: 50,
+    };
     const found = {
       ...emptyInvoice(),
       companyNo: "1000",
@@ -209,7 +219,7 @@ describe("ProcessRouter observability", () => {
     };
     vi.mocked(api.listInvoices).mockImplementation(async (params) => {
       if (params.search === "42" || params.companyNo === "1000") {
-        return [found];
+        return [other, found];
       }
       return [];
     });
@@ -222,6 +232,7 @@ describe("ProcessRouter observability", () => {
     );
     expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /PO-42/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /PO-1/i })).not.toBeInTheDocument();
   });
 
   it("opens the cash ledger on the invoice found by number", async () => {
@@ -270,7 +281,8 @@ describe("ProcessRouter observability", () => {
     expect(
       (await screen.findAllByText(/Customer Ledger/i)).length
     ).toBeGreaterThan(0);
-    const selected = document.querySelector(".dos-row.selected");
-    expect(selected?.textContent).toMatch(/42/);
+    const rows = document.querySelectorAll(".dos-browse-body .dos-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toMatch(/42/);
   });
 });

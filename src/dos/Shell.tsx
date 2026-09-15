@@ -49,45 +49,97 @@ export function activateStatusKey(key: string) {
   );
 }
 
+/** Left-to-right order for every status bar. Esc is always first. */
+const STATUS_KEY_RANK: Record<string, number> = {
+  Esc: 0,
+  Enter: 1,
+  Ins: 2,
+  "Ctrl-Home": 3,
+  Cntr_Home: 3,
+  Home: 4,
+  Del: 5,
+  PgUp: 6,
+  PgDn: 7,
+  End: 8,
+  "Ctrl-W": 9,
+  Cntr_W: 9,
+  F1: 10,
+  "↑↓": 11,
+  "?": 12,
+  "1-9": 13,
+};
+
+function statusKeyRank(key: string): number {
+  const k = key.trim();
+  if (k in STATUS_KEY_RANK) return STATUS_KEY_RANK[k];
+  const letter = k.replace(/[()]/g, "");
+  if (letter.length === 1) return 20 + letter.toUpperCase().charCodeAt(0);
+  return 50;
+}
+
+export function orderStatusKeys<T extends { key: string; label?: string }>(
+  keys: T[]
+): T[] {
+  const esc = keys.find((k) => k.key.trim() === "Esc");
+  const rest = keys
+    .filter((k) => k.key.trim() !== "Esc")
+    .sort((a, b) => statusKeyRank(a.key) - statusKeyRank(b.key));
+  const head = (esc ?? ({ key: "Esc", label: "Exit" } as T));
+  return [head, ...rest];
+}
+
+function StatusKey({
+  k,
+  pinned,
+}: {
+  k: { key: string; label: string };
+  pinned?: boolean;
+}) {
+  const clickable = statusKeyEvent(k.key) != null;
+  const caption = k.label ? `${k.key} ${k.label}` : k.key;
+  const className = [
+    clickable ? "dos-status-action" : "",
+    pinned ? "dos-status-esc" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const inner = (
+    <>
+      <span className="key">{k.key}</span>
+      {k.label ? <span className="hint">{k.label}</span> : <span className="hint"> </span>}
+    </>
+  );
+  if (!clickable) {
+    return (
+      <span key={k.key + k.label} className={className || undefined}>
+        {inner}
+      </span>
+    );
+  }
+  return (
+    <button
+      key={k.key + k.label}
+      type="button"
+      className={className}
+      onClick={() => activateStatusKey(k.key)}
+      aria-label={caption}
+    >
+      {inner}
+    </button>
+  );
+}
+
 export function StatusBar({
   keys,
 }: {
   keys: { key: string; label: string }[];
 }) {
+  const ordered = orderStatusKeys(keys);
   return (
     <div className="dos-statusbar">
-      {keys.map((k) => {
-        const clickable = statusKeyEvent(k.key) != null;
-        const caption = k.label ? `${k.key} ${k.label}` : k.key;
-        if (!clickable) {
-          return (
-            <span key={k.key + k.label}>
-              <span className="key">{k.key}</span>
-              {k.label ? (
-                <span className="hint">{k.label}</span>
-              ) : (
-                <span className="hint"> </span>
-              )}
-            </span>
-          );
-        }
-        return (
-          <button
-            key={k.key + k.label}
-            type="button"
-            className="dos-status-action"
-            onClick={() => activateStatusKey(k.key)}
-            aria-label={caption}
-          >
-            <span className="key">{k.key}</span>
-            {k.label ? (
-              <span className="hint">{k.label}</span>
-            ) : (
-              <span className="hint"> </span>
-            )}
-          </button>
-        );
-      })}
+      {ordered.map((k, i) => (
+        <StatusKey key={k.key + k.label} k={k} pinned={i === 0} />
+      ))}
     </div>
   );
 }
@@ -143,7 +195,7 @@ export function Screen({
 }) {
   return (
     <div className="dos-screen">
-      {statusKeys && <StatusBar keys={statusKeys} />}
+      <StatusBar keys={statusKeys ?? [{ key: "Esc", label: "Exit" }]} />
       {title && <TitleBar title={title} left={left} right={right} />}
       <div className="dos-content">{children}</div>
       <MessageBar text={message ?? ""} kind={messageKind} />
@@ -234,37 +286,37 @@ export const BROWSE_KEYS = [
   { key: "Ins", label: "Add" },
   { key: "Ctrl-Home", label: "" },
   { key: "Del", label: "" },
+  { key: "Home", label: "" },
   { key: "PgUp", label: "" },
   { key: "PgDn", label: "" },
-  { key: "Home", label: "" },
   { key: "End", label: "" },
 ];
 
-/** Company / property pick-list: Ins  Ctrl-Home  PgUp  PgDn  Esc */
+/** Company / property pick-list. */
 export const SEARCH_BROWSE_KEYS = [
+  { key: "Esc", label: "" },
   { key: "Ins", label: "Add" },
   { key: "Ctrl-Home", label: "" },
   { key: "PgUp", label: "" },
   { key: "PgDn", label: "" },
-  { key: "Esc", label: "" },
 ];
 
-/** Cash receipts: Ins  Home  PgUp  PgDn  Esc  (A)uto_Receipt */
+/** Cash receipts ledger. */
 export const CASH_KEYS = [
+  { key: "Esc", label: "" },
   { key: "Ins", label: "Add" },
   { key: "Home", label: "" },
   { key: "PgUp", label: "" },
   { key: "PgDn", label: "" },
-  { key: "Esc", label: "" },
   { key: "(A)", label: "uto_Receipt" },
 ];
 
 export const MENU_KEYS = [
-  { key: "↑↓", label: "Select" },
-  { key: "Enter", label: "Run" },
   { key: "Esc", label: "Exit" },
-  { key: "1-9", label: "Jump" },
+  { key: "Enter", label: "Run" },
   { key: "F1", label: "Help" },
+  { key: "↑↓", label: "Select" },
+  { key: "1-9", label: "Jump" },
 ];
 
 export const FORM_KEYS = [

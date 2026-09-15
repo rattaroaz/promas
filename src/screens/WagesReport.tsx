@@ -27,13 +27,6 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
     onF1: () => setHelp(true),
     onEnter: () => run(),
     onEnd: () => window.print(),
-    onChar: (ch) => {
-      if (ch === "p" || ch === "P") {
-        window.print();
-        return true;
-      }
-      return false;
-    },
   });
 
   async function run() {
@@ -47,7 +40,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
       setRan(true);
       const tw = data.reduce((s, r) => s + r.wages, 0);
       setMsg(
-        `*****   Worker Wages Report  *****  Total Wages: ${money(tw)}  (P)rint  Esc=Exit`
+        `*****   Worker Wages Report  *****  Total Wages: ${money(tw)}  End=Print  Esc=Exit`
       );
     } catch (e) {
       setMsg(String(e));
@@ -62,7 +55,6 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
       statusKeys={[
         { key: "Esc", label: "Exit" },
         { key: "Enter", label: "Run" },
-        { key: "P", label: "Print" },
         { key: "End", label: "Print" },
         { key: "F1", label: "Help" },
       ]}

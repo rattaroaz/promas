@@ -429,7 +429,7 @@ describe("InvoiceProcess", () => {
     );
   });
 
-  it("selects the focused invoice when opened from invoice-number search", async () => {
+  it("shows only the focused invoice when opened from invoice-number search", async () => {
     const older = {
       ...fixture,
       invoice: 9,
@@ -445,10 +445,9 @@ describe("InvoiceProcess", () => {
         focusInvoice={9}
       />
     );
-    expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /PO-9/i })).toHaveClass(
-      "selected"
-    );
+    expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /PO-9/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /PO-441/i })).not.toBeInTheDocument();
   });
 
   it("saves a new invoice after Ctrl-W confirm", async () => {

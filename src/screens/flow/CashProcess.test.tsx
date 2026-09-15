@@ -200,7 +200,7 @@ describe("CashProcess", () => {
     );
   });
 
-  it("selects the focused invoice in the ledger", async () => {
+  it("shows only the focused invoice in the ledger", async () => {
     const later = {
       ...openInv,
       salesDate: "2026-02-01",
@@ -213,8 +213,10 @@ describe("CashProcess", () => {
       <CashProcess company={company} onBack={vi.fn()} focusInvoice={42} />
     );
     await screen.findByText(/Customer Ledger/i);
-    const selected = document.querySelector(".dos-row.selected");
-    expect(selected?.textContent).toMatch(/42/);
+    const rows = document.querySelectorAll(".dos-browse-body .dos-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toMatch(/42/);
+    expect(rows[0].textContent).not.toMatch(/01\/15\/2026/);
   });
 
   it("shows an empty receivable file", async () => {

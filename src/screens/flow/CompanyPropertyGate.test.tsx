@@ -79,7 +79,13 @@ describe("CompanyPropertyGate", () => {
     expect(screen.getByRole("textbox", { name: "Company Name" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Company Phone" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Company Contact" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Invoice Number" })).toBeInTheDocument();
+    const invoiceNo = screen.getByRole("textbox", { name: "Invoice Number" });
+    const companyNo = screen.getByRole("textbox", { name: "Company NO" });
+    expect(
+      invoiceNo.compareDocumentPosition(companyNo) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(invoiceNo).toHaveFocus();
     expect(screen.getByRole("textbox", { name: "Property Street" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Property Contact" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("? = first")).toBeInTheDocument();

@@ -160,10 +160,6 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setHelp(false);
           return true;
         }
-        if (report && (ch === "p" || ch === "P")) {
-          window.print();
-          return true;
-        }
         if (report === "aging" && (ch === "x" || ch === "X")) {
           void downloadAgingExcel();
           return true;
@@ -305,12 +301,12 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       }
       setMsg(
         id === "aging"
-          ? "Click a company number for outstanding invoice items  Esc=Exit  (P)rint  (X)cel"
+          ? "Click a company number for outstanding invoice items  Esc=Exit  End=Print  (X)cel"
           : id === "sales" || id === "invoice"
             ? salesSortMessage(salesSort.key, salesSort.dir)
             : id === "payroll"
-              ? "Click invoice# to view  Esc=Exit  (P)rint"
-            : "Selection (Esc=Exit,(P)rint,(S)creen)?"
+              ? "Click invoice# to view  Esc=Exit  End=Print"
+            : "Selection (Esc=Exit, End=Print)?"
       );
     } catch (e) {
       setMsg(String(e));
@@ -335,7 +331,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice
         );
       setAgingDetail({ company: row, invoices: open });
-      setMsg("Click invoice# to view form  Esc=Back  (P)rint  (X)cel");
+      setMsg("Click invoice# to view form  Esc=Back  End=Print  (X)cel");
     } catch (e) {
       setMsg(String(e));
     } finally {
@@ -447,8 +443,8 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       if (!dest) {
         setMsg(
           detail
-            ? "Esc=Back to aging  (P)rint  (X)cel"
-            : "Click a company number for outstanding invoice items  Esc=Exit  (P)rint  (X)cel"
+            ? "Esc=Back to aging  End=Print  (X)cel"
+            : "Click a company number for outstanding invoice items  Esc=Exit  End=Print  (X)cel"
         );
         return;
       }
@@ -509,7 +505,6 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       statusKeys={[
         { key: "Esc", label: agingDetail ? "Back" : "Exit" },
         { key: "Enter", label: agingDetail ? "" : "Run" },
-        { key: "P", label: "Print" },
         ...(report === "aging" ? [{ key: "X", label: "Excel" }] : []),
         ...((report === "sales" || report === "invoice") && salesRows
           ? [
@@ -521,7 +516,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         { key: "F1", label: "Help" },
       ]}
       title={`*****   ${title}   *****`}
-      message={msg || (running ? "Working..." : "Enter=Run  P=Print  Esc=Back")}
+      message={msg || (running ? "Working..." : "Enter=Run  End=Print  Esc=Back")}
       left={agingDetail?.company.companyNo}
       right={agingDetail?.company.companyName.slice(0, 24)}
     >
