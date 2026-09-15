@@ -60,7 +60,7 @@ export function sortSalesRows(
     }
     return (
       sign * a.salesDate.localeCompare(b.salesDate) ||
-      a.invoice - b.invoice ||
+      sign * (a.invoice - b.invoice) ||
       cmpCompanyNo(a.companyNo, b.companyNo)
     );
   });
@@ -105,7 +105,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [salesSort, setSalesSort] = useState<{
     key: SalesSortKey;
     dir: SalesSortDir;
-  }>({ key: "date", dir: "asc" });
+  }>({ key: "date", dir: "desc" });
   const [msg, setMsg] = useState("");
   const [help, setHelp] = useState(false);
   const [running, setRunning] = useState(false);
@@ -480,7 +480,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setSalesRows(null);
           setPayrollRows(null);
           setPaintRows(null);
-          setSalesSort({ key: "date", dir: "asc" });
+          setSalesSort({ key: "date", dir: "desc" });
           setMsg(
             id === "payroll"
               ? "Work person and invoice date range (optional), then Enter. Click invoice# to view."

@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 async function openCashLedger(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: /4\.\s*Cash Receipts Process/i }).click();
-  await expect(page.getByText(/Enter Search Company NO/i)).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Invoice Number" })).toBeFocused();
 
   const companyNo = page.getByPlaceholder("? = first").first();
   await companyNo.fill("?");
@@ -22,9 +22,10 @@ test.describe("cash receipts process", () => {
   test("opens ledger by invoice number", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /4\.\s*Cash Receipts Process/i }).click();
-    await expect(page.getByText(/Enter Search Company NO/i)).toBeVisible();
 
     const invoiceNo = page.getByRole("textbox", { name: "Invoice Number" });
+    await expect(invoiceNo).toBeFocused();
+    await expect(page.getByText(/Enter Search Invoice NO/i)).toBeVisible();
     await invoiceNo.fill("1");
     await invoiceNo.press("Enter");
 

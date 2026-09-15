@@ -838,6 +838,32 @@ export function CompanyPropertyGate({
             { key: "F1", label: "Help" },
           ];
 
+  const invoiceNumberField = (
+    <DotField label="Invoice Number" width={16}>
+      <input
+        className="dos-input w15"
+        aria-label="Invoice Number"
+        value={firstKind === "invoice" ? query : ""}
+        autoFocus={process === "cash"}
+        onFocus={() => {
+          setFirstKind("invoice");
+          setQuery("");
+        }}
+        onChange={(e) => {
+          setFirstKind("invoice");
+          setQuery(e.target.value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            setFirstKind("invoice");
+            void searchByInvoiceNumber(e.currentTarget.value);
+          }
+        }}
+      />
+    </DotField>
+  );
+
   const screenTitle =
     phase === "co-browse"
       ? coField === "name"
@@ -878,6 +904,7 @@ export function CompanyPropertyGate({
           <div className="dos-menu-frame" style={{ minWidth: "min(48ch, 100%)" }}>
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
+                {process === "cash" && invoiceNumberField}
                 <DotField label="Company NO" width={16}>
                   <input
                     className="dos-input w15"
@@ -902,7 +929,7 @@ export function CompanyPropertyGate({
                         );
                       }
                     }}
-                    autoFocus={coField === "no"}
+                    autoFocus={process !== "cash" && coField === "no"}
                     placeholder="? = first"
                   />
                 </DotField>
@@ -981,30 +1008,7 @@ export function CompanyPropertyGate({
                     }}
                   />
                 </DotField>
-                {(process === "invoice" || process === "cash") && (
-                  <DotField label="Invoice Number" width={16}>
-                    <input
-                      className="dos-input w15"
-                      aria-label="Invoice Number"
-                      value={firstKind === "invoice" ? query : ""}
-                      onFocus={() => {
-                        setFirstKind("invoice");
-                        setQuery("");
-                      }}
-                      onChange={(e) => {
-                        setFirstKind("invoice");
-                        setQuery(e.target.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          setFirstKind("invoice");
-                          void searchByInvoiceNumber(e.currentTarget.value);
-                        }
-                      }}
-                    />
-                  </DotField>
-                )}
+                {process === "invoice" && invoiceNumberField}
                 <DotField label="Property Street" width={16}>
                   <input
                     className="dos-input w30"
