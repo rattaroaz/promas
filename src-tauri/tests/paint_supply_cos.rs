@@ -70,3 +70,24 @@ fn empty_catalog_is_valid() {
     assert!(names(&conn).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn migrate_copies_paint_supply_from_invoices() {
+    let (dir, conn) = temp_conn("from_inv");
+    conn.execute(
+        "INSERT INTO companies (company_no, name) VALUES ('1000', 'ACME')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO invoices (company_no, pro_no, sales_date, invoice, paint_supply_co)
+         VALUES ('1000', '01', '2026-01-15', 1, 'Kelly-Moore')",
+        [],
+    )
+    .unwrap();
+    let path = dir.join("promas.db");
+    drop(conn);
+    let conn = open_and_migrate(&path).expect("migrate again");
+    assert!(names(&conn).contains(&"Kelly-Moore".to_string()));
+    let _ = std::fs::remove_dir_all(&dir);
+}

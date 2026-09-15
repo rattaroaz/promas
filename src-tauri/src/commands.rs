@@ -586,7 +586,16 @@ pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<Str
 
 fn list_paint_supply_names(conn: &rusqlite::Connection) -> Result<Vec<String>, String> {
     let mut stmt = conn
-        .prepare("SELECT name FROM paint_supply_cos ORDER BY name COLLATE NOCASE")
+        .prepare(
+            r#"SELECT name FROM (
+                 SELECT TRIM(name) AS name FROM paint_supply_cos
+                 UNION
+                 SELECT DISTINCT TRIM(paint_supply_co) FROM invoices
+                 WHERE TRIM(COALESCE(paint_supply_co,'')) != ''
+               )
+               WHERE TRIM(name) != ''
+               ORDER BY name COLLATE NOCASE"#,
+        )
         .map_err(map_err)?;
     let rows = stmt
         .query_map([], |r| r.get::<_, String>(0))

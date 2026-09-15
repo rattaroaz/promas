@@ -414,6 +414,33 @@ describe("ReportsScreen sales analysis", () => {
     expect(screen.getAllByText(/250\.00/).length).toBeGreaterThan(0);
   });
 
+  it("searches sales analysis by invoice date, not pay date", async () => {
+    const user = userEvent.setup();
+    renderApp(<ReportsScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /Sales Analysis/i }));
+
+    expect(screen.getByText(/From Invoice Date/i)).toBeInTheDocument();
+    expect(screen.getByText(/To Invoice Date/i)).toBeInTheDocument();
+    expect(screen.queryByText(/From Pay Date/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("From invoice date"), {
+      target: { value: "2026-01-01" },
+    });
+    fireEvent.change(screen.getByLabelText("To invoice date"), {
+      target: { value: "2026-01-31" },
+    });
+    await user.click(screen.getByRole("button", { name: /^Run$/i }));
+
+    await waitFor(() => {
+      expect(api.reportSalesAnalysis).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromDate: "2026-01-01",
+          toDate: "2026-01-31",
+        })
+      );
+    });
+  });
+
   it("sorts sales analysis by company number and invoice date", async () => {
     vi.mocked(api.reportSalesAnalysis).mockResolvedValue([
       {
@@ -559,7 +586,10 @@ describe("ReportsScreen paint usage", () => {
     );
 
     const supply = await screen.findByLabelText("Paint supply search");
-    await user.type(supply, "Dunn");
+    expect(
+      await screen.findByRole("option", { name: "Dunn-Edwards" })
+    ).toBeInTheDocument();
+    await user.selectOptions(supply, "Dunn-Edwards");
     const person = screen.getByLabelText("Work person search");
     await user.type(person, "JOSE");
     fireEvent.change(screen.getByLabelText("From work date"), {
@@ -573,7 +603,7 @@ describe("ReportsScreen paint usage", () => {
     await waitFor(() => {
       expect(api.reportPaintUsage).toHaveBeenCalledWith(
         expect.objectContaining({
-          paintSupplyCo: "Dunn",
+          paintSupplyCo: "Dunn-Edwards",
           search: "JOSE",
           fromDate: "2026-01-01",
           toDate: "2026-01-31",
@@ -582,10 +612,11 @@ describe("ReportsScreen paint usage", () => {
     });
     const reportBody = await screen.findByText(/Jose Ramirez/);
     expect(reportBody).toBeInTheDocument();
-    expect(reportBody.textContent).toContain("Dunn-Edwards");
-    expect(reportBody.textContent).toContain("Mat_Cost");
-    expect(reportBody.textContent).toContain("Inv_Total");
-    expect(reportBody.textContent).toContain("Work Date");
+    expect(screen.getByText("Paint Supply Co.")).toBeInTheDocument();
+    expect(screen.getAllByText("Dunn-Edwards").length).toBeGreaterThan(0);
+    expect(screen.getByText("Mat_Cost")).toBeInTheDocument();
+    expect(screen.getByText("Inv_Total")).toBeInTheDocument();
+    expect(screen.getByText("Work Date")).toBeInTheDocument();
   });
 
   it("formats paint usage columns", () => {

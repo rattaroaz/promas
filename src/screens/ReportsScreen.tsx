@@ -101,6 +101,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [agingDetail, setAgingDetail] = useState<AgingDetail | null>(null);
   const [salesRows, setSalesRows] = useState<SalesAnalysisRow[] | null>(null);
   const [payrollRows, setPayrollRows] = useState<PayrollRow[] | null>(null);
+  const [paintRows, setPaintRows] = useState<PaintUsageRow[] | null>(null);
   const [salesSort, setSalesSort] = useState<{
     key: SalesSortKey;
     dir: SalesSortDir;
@@ -143,6 +144,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setAgingDetail(null);
           setSalesRows(null);
           setPayrollRows(null);
+          setPaintRows(null);
         } else onBack();
       },
       onF1: () => setHelp(true),
@@ -222,6 +224,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     setAgingRows(null);
     setSalesRows(null);
     setPayrollRows(null);
+    setPaintRows(null);
     setText("");
   }
 
@@ -280,15 +283,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         });
         setText(formatMissing(rows));
       } else if (id === "paint") {
-        setText(
-          formatPaintUsage(
-            await api.reportPaintUsage({
-              fromDate: fromDate || undefined,
-              toDate: toDate || undefined,
-              paintSupplyCo: paintSupply.trim() || undefined,
-              search: workPerson.trim() || undefined,
-            })
-          )
+        setPaintRows(
+          await api.reportPaintUsage({
+            fromDate: fromDate || undefined,
+            toDate: toDate || undefined,
+            paintSupplyCo: paintSupply.trim() || undefined,
+            search: workPerson.trim() || undefined,
+          })
         );
       } else if (id === "labels") {
         if (labelMode === "C") {
@@ -478,6 +479,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           setAgingDetail(null);
           setSalesRows(null);
           setPayrollRows(null);
+          setPaintRows(null);
           setSalesSort({ key: "date", dir: "asc" });
           setMsg(
             id === "payroll"
@@ -487,7 +489,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               : id === "cash"
                 ? "Search company or property address (optional), then Enter to run"
               : id === "sales" || id === "invoice"
-                ? "Company NO or Name (optional), date range, then Enter. Click Inv_Date or Com to sort."
+                ? "Company NO or Name (optional), invoice date range, then Enter. Click Inv_Date or Com to sort."
               : id === "labels"
                 ? "Enter Seletion (Esc=Exit,(C)ustomer,(P)roperty)?"
                 : id === "paint"
@@ -590,25 +592,19 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         {report === "paint" && (
           <>
             <label>Paint Supply Co. :</label>
-            <input
-              className="dos-input w20"
-              list="paint-usage-supply-list"
+            <select
+              className="dos-select"
+              aria-label="Paint supply search"
               value={paintSupply}
               onChange={(e) => setPaintSupply(e.target.value)}
-              placeholder="Painting Supply Co"
-              aria-label="Paint supply search"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runReport(report);
-                }
-              }}
-            />
-            <datalist id="paint-usage-supply-list">
+            >
+              <option value="">All</option>
               {paintSupplyOptions.map((name) => (
-                <option key={name} value={name} />
+                <option key={name} value={name}>
+                  {name}
+                </option>
               ))}
-            </datalist>
+            </select>
           </>
         )}
         {(report === "paint" || report === "payroll") && (
@@ -640,7 +636,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           report !== "labels" && (
             <>
               <label>
-                {report === "paint" ? "From Work Date :" : "From Date :"}
+                {report === "paint"
+                  ? "From Work Date :"
+                  : report === "sales" || report === "invoice"
+                    ? "From Invoice Date :"
+                    : report === "cash"
+                      ? "From Pay Date :"
+                      : "From Date :"}
               </label>
               <input
                 className="dos-input w12"
@@ -650,13 +652,23 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                 aria-label={
                   report === "paint"
                     ? "From work date"
-                    : report === "payroll"
+                    : report === "payroll" ||
+                        report === "sales" ||
+                        report === "invoice"
                       ? "From invoice date"
-                      : undefined
+                      : report === "cash"
+                        ? "From pay date"
+                        : undefined
                 }
               />
               <label>
-                {report === "paint" ? "To Work Date :" : "To Date :"}
+                {report === "paint"
+                  ? "To Work Date :"
+                  : report === "sales" || report === "invoice"
+                    ? "To Invoice Date :"
+                    : report === "cash"
+                      ? "To Pay Date :"
+                      : "To Date :"}
               </label>
               <input
                 className="dos-input w12"
@@ -666,9 +678,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                 aria-label={
                   report === "paint"
                     ? "To work date"
-                    : report === "payroll"
+                    : report === "payroll" ||
+                        report === "sales" ||
+                        report === "invoice"
                       ? "To invoice date"
-                      : undefined
+                      : report === "cash"
+                        ? "To pay date"
+                        : undefined
                 }
               />
             </>
@@ -708,12 +724,14 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         />
       ) : (
       <>
-      {report === "payroll" && (
+      {(report === "payroll" || report === "paint") && (
         <style>{`@page { size: landscape; }`}</style>
       )}
       <div
         className={
-          report === "payroll" ? "dos-report payroll-landscape" : "dos-report"
+          report === "payroll" || report === "paint"
+            ? "dos-report payroll-landscape"
+            : "dos-report"
         }
       >
         {report === "aging" && agingRows ? (
@@ -736,6 +754,8 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               })
             }
           />
+        ) : report === "paint" && paintRows ? (
+          <PaintUsageReport rows={paintRows} />
         ) : text ? (
           text
         ) : (
@@ -1059,6 +1079,54 @@ function PayrollReport({
             <td className="num">{money(mat)}</td>
             <td className="blank" />
             <td className="blank" />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
+  return (
+    <div className="payroll-wrap">
+      <div className="hdr">*****   Paint Usage Report   *****</div>
+      <table className="payroll-grid paint-usage-grid">
+        <colgroup>
+          <col className="paint-col-person" />
+          <col className="paint-col-amt" />
+          <col className="paint-col-inv" />
+          <col className="paint-col-amt" />
+          <col className="paint-col-supply" />
+          <col className="paint-col-date" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Work Person</th>
+            <th className="num">Mat_Cost</th>
+            <th>Inv#</th>
+            <th className="num">Inv_Total</th>
+            <th>Paint Supply Co.</th>
+            <th>Work Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr
+              key={`${r.invoice}-${r.workDate}-${r.workPerson}-${i}`}
+              className="payroll-row"
+            >
+              <td>{r.workPerson}</td>
+              <td className="num">{money(r.materialCost)}</td>
+              <td>{r.invoice}</td>
+              <td className="num">{money(r.invoiceTotal)}</td>
+              <td className="paint-co">{r.paintSupplyCo}</td>
+              <td>{fmtDate(r.workDate)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="total">
+            <td colSpan={6}>{`Total Counts: ${rows.length}`}</td>
           </tr>
         </tfoot>
       </table>
