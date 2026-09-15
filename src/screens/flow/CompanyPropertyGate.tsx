@@ -981,7 +981,7 @@ export function CompanyPropertyGate({
                     }}
                   />
                 </DotField>
-                {process === "invoice" && (
+                {(process === "invoice" || process === "cash") && (
                   <DotField label="Invoice Number" width={16}>
                     <input
                       className="dos-input w15"

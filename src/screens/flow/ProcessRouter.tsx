@@ -64,7 +64,11 @@ export function ProcessRouter({
         break;
       case "cash":
         processScreen = (
-          <CashProcess company={ctx.company} onBack={backToGate} />
+          <CashProcess
+            company={ctx.company}
+            onBack={backToGate}
+            focusInvoice={ctx.focusInvoice}
+          />
         );
         break;
       case "estimate":

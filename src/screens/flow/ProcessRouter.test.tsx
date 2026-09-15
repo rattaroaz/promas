@@ -223,4 +223,54 @@ describe("ProcessRouter observability", () => {
     expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /PO-42/i })).toBeInTheDocument();
   });
+
+  it("opens the cash ledger on the invoice found by number", async () => {
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+    const older = {
+      ...emptyInvoice(),
+      companyNo: "1000",
+      proNo: "01",
+      salesDate: "2026-01-10",
+      invoice: 1,
+      salesTotal: 50,
+      balance: 50,
+    };
+    const found = {
+      ...emptyInvoice(),
+      companyNo: "1000",
+      proNo: "01",
+      salesDate: "2026-01-15",
+      invoice: 42,
+      salesTotal: 100,
+      balance: 100,
+    };
+    vi.mocked(api.listInvoices).mockImplementation(async (params) => {
+      if (params.search === "42" || params.companyNo === "1000") {
+        return [older, found];
+      }
+      return [];
+    });
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process="cash" onBack={vi.fn()} />);
+    await user.type(
+      screen.getByRole("textbox", { name: "Invoice Number" }),
+      "42{Enter}"
+    );
+    expect(
+      (await screen.findAllByText(/Customer Ledger/i)).length
+    ).toBeGreaterThan(0);
+    const selected = document.querySelector(".dos-row.selected");
+    expect(selected?.textContent).toMatch(/42/);
+  });
 });
