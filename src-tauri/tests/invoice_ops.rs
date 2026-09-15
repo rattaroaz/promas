@@ -382,6 +382,78 @@ fn report_sales_analysis_lists_open_invoices() {
 }
 
 #[test]
+fn report_sales_analysis_filters_by_invoice_date_not_pay_date() {
+    let (dir, mut conn) = temp_conn("sales_invdate");
+    seed_company(&conn);
+    let inv_no = ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: blank_invoice(),
+            lines: vec![line(250.0)],
+        },
+    )
+    .unwrap();
+    ops::save_cash_receipt(
+        &mut conn,
+        CashReceipt {
+            id: None,
+            company_no: "1000".into(),
+            sales_date: "2026-01-15".into(),
+            invoice: inv_no,
+            payment: 50.0,
+            pay_ref_no: "CHK".into(),
+            pay_date: "2026-03-01".into(),
+            voided: false,
+            company_name: None,
+        },
+    )
+    .unwrap();
+
+    let by_pay_month = ops::report_sales_analysis(
+        &conn,
+        &ListParams {
+            search: None,
+            company_no: Some("1000".into()),
+            pro_no: None,
+            from_date: Some("2026-02-01".into()),
+            to_date: Some("2026-03-31".into()),
+            include_voided: None,
+            limit: None,
+            offset: None,
+            sort: None,
+            paint_supply_co: None,
+        },
+    )
+    .unwrap();
+    assert!(
+        by_pay_month.is_empty(),
+        "pay date in March must not include a January invoice"
+    );
+
+    let by_invoice_month = ops::report_sales_analysis(
+        &conn,
+        &ListParams {
+            search: None,
+            company_no: Some("1000".into()),
+            pro_no: None,
+            from_date: Some("2026-01-01".into()),
+            to_date: Some("2026-01-31".into()),
+            include_voided: None,
+            limit: None,
+            offset: None,
+            sort: None,
+            paint_supply_co: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(by_invoice_month.len(), 1);
+    assert_eq!(by_invoice_month[0].invoice, inv_no);
+    assert_eq!(by_invoice_month[0].sales_date, "2026-01-15");
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn deposit_and_cash_combine_for_balance() {
     let (dir, mut conn) = temp_conn("deposit");
     seed_company(&conn);

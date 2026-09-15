@@ -350,6 +350,8 @@ pub fn report_sales_analysis(
 
     let like = format!("%{}%", company_no);
 
+    // Original Sales Analysis / Invoice Register date range is Inv_Date
+    // (i.sales_date), not cash receipt pay_date.
     let mut stmt = conn
         .prepare(
             r#"SELECT i.sales_date,i.invoice,i.company_no,i.pro_no,i.sales_total,i.sales_pay,i.sales_bal,i.pay_total,i.balance
@@ -470,7 +472,7 @@ pub fn report_paint_usage(
                  COALESCE(i.material_cost, 0),
                  i.invoice,
                  i.sales_total,
-                 COALESCE(i.paint_supply_co, '') AS paint_supply_co,
+                 COALESCE(MIN(i.paint_supply_co), '') AS paint_supply_co,
                  COALESCE(
                    MIN(CASE
                      WHEN (?1='' OR COALESCE(NULLIF(TRIM(l.work_date), ''), i.sales_date)>=?1)

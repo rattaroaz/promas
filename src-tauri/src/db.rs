@@ -664,13 +664,8 @@ fn seed_work_persons(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// First launch only: copy paint companies already stored on invoices.
+/// Keep the Paint Supply Co. list in sync with companies stored on invoices.
 fn seed_paint_supply_cos(conn: &Connection) -> Result<()> {
-    let count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM paint_supply_cos", [], |r| r.get(0))?;
-    if count > 0 {
-        return Ok(());
-    }
     conn.execute_batch(
         r#"INSERT OR IGNORE INTO paint_supply_cos (name)
            SELECT DISTINCT TRIM(paint_supply_co) FROM invoices

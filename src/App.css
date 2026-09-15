@@ -980,6 +980,18 @@ textarea {
 .payroll-col-unit { width: 9ch; }
 .payroll-col-amt { width: 12ch; }
 .payroll-col-blank { width: 14ch; }
+.paint-col-person { width: 18ch; }
+.paint-col-amt { width: 11ch; }
+.paint-col-inv { width: 7ch; }
+.paint-col-supply { width: auto; }
+.paint-col-date { width: 12ch; }
+
+.payroll-grid .paint-co {
+  text-align: left;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
 
 .payroll-grid .blank {
   background: transparent;
