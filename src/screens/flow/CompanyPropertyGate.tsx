@@ -844,7 +844,7 @@ export function CompanyPropertyGate({
         className="dos-input w15"
         aria-label="Invoice Number"
         value={firstKind === "invoice" ? query : ""}
-        autoFocus={process === "cash"}
+        autoFocus={process === "cash" || process === "invoice"}
         onFocus={() => {
           setFirstKind("invoice");
           setQuery("");
@@ -904,7 +904,8 @@ export function CompanyPropertyGate({
           <div className="dos-menu-frame" style={{ minWidth: "min(48ch, 100%)" }}>
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
-                {process === "cash" && invoiceNumberField}
+                {(process === "cash" || process === "invoice") &&
+                  invoiceNumberField}
                 <DotField label="Company NO" width={16}>
                   <input
                     className="dos-input w15"
@@ -929,7 +930,11 @@ export function CompanyPropertyGate({
                         );
                       }
                     }}
-                    autoFocus={process !== "cash" && coField === "no"}
+                    autoFocus={
+                      process !== "cash" &&
+                      process !== "invoice" &&
+                      coField === "no"
+                    }
                     placeholder="? = first"
                   />
                 </DotField>
@@ -1008,7 +1013,6 @@ export function CompanyPropertyGate({
                     }}
                   />
                 </DotField>
-                {process === "invoice" && invoiceNumberField}
                 <DotField label="Property Street" width={16}>
                   <input
                     className="dos-input w30"

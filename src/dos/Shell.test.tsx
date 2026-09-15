@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { STATUS_KEY_CLICK, StatusBar, statusKeyEvent } from "./Shell";
+import {
+  STATUS_KEY_CLICK,
+  StatusBar,
+  orderStatusKeys,
+  statusKeyEvent,
+} from "./Shell";
 import { useDosKeys } from "./hooks";
 
 describe("statusKeyEvent", () => {
@@ -42,7 +47,49 @@ function KeyProbe({
   );
 }
 
+describe("orderStatusKeys", () => {
+  it("puts Esc first and keeps the same key family order", () => {
+    const ordered = orderStatusKeys([
+      { key: "Ins", label: "Add" },
+      { key: "(A)", label: "uto_Receipt" },
+      { key: "Esc", label: "Exit" },
+      { key: "Enter", label: "Run" },
+      { key: "PgDn", label: "" },
+    ]);
+    expect(ordered.map((k) => k.key)).toEqual([
+      "Esc",
+      "Enter",
+      "Ins",
+      "PgDn",
+      "(A)",
+    ]);
+  });
+
+  it("inserts Esc when a screen omits it", () => {
+    expect(orderStatusKeys([{ key: "Ins", label: "Add" }]).map((k) => k.key)).toEqual([
+      "Esc",
+      "Ins",
+    ]);
+  });
+});
+
 describe("StatusBar", () => {
+  it("renders Esc as the first status action even when passed last", () => {
+    render(
+      <StatusBar
+        keys={[
+          { key: "Ins", label: "Add" },
+          { key: "Enter", label: "Run" },
+          { key: "Esc", label: "Exit" },
+        ]}
+      />
+    );
+    const buttons = screen.getAllByRole("button");
+    expect(buttons[0]).toHaveAccessibleName(/^Esc Exit$/i);
+    expect(buttons[1]).toHaveAccessibleName(/^Enter Run$/i);
+    expect(buttons[2]).toHaveAccessibleName(/^Ins Add$/i);
+  });
+
   it("runs the matching handler when a hint is clicked", async () => {
     const user = userEvent.setup();
     const onEscape = vi.fn();

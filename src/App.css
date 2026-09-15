@@ -92,7 +92,7 @@ textarea {
 .dos-statusbar {
   background: var(--dos-black);
   color: var(--dos-white-bright);
-  padding: 0 0.5ch;
+  padding: 0 0.5ch 0 0;
   white-space: nowrap;
   overflow: hidden;
   flex-shrink: 0;
@@ -101,6 +101,14 @@ textarea {
   gap: 0;
   position: relative;
   z-index: 60;
+}
+
+.dos-status-esc {
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--dos-black);
 }
 
 .dos-statusbar .key {

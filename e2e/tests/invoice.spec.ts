@@ -4,7 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 async function openInvoiceBrowse(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
-  await expect(page.getByText(/Enter Search Company NO/i)).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Invoice Number" })).toBeFocused();
 
   const companyNo = page.getByPlaceholder("? = first").first();
   await companyNo.fill("?");

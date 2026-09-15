@@ -78,12 +78,13 @@ export function InvoiceProcess({
       includeVoided: true,
       limit: 100000,
     });
-    const mine = data.filter((i) => i.proNo === property.proNo);
+    const mine = data.filter(
+      (i) =>
+        i.proNo === property.proNo &&
+        (focusInvoice == null || i.invoice === focusInvoice)
+    );
     setRows(mine);
-    if (focusInvoice != null) {
-      const i = mine.findIndex((inv) => inv.invoice === focusInvoice);
-      if (i >= 0) setIndex(i);
-    }
+    if (focusInvoice != null && mine.length) setIndex(0);
     setMsg(
       mine.length
         ? `${mine.length} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
