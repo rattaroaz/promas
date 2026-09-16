@@ -4,6 +4,7 @@ import {
   fmtDate,
   labelDots,
   money,
+  naturalCompare,
   padL,
   padR,
   today,
@@ -74,5 +75,33 @@ describe("today", () => {
     const d = new Date();
     const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     expect(today()).toBe(expected);
+  });
+});
+
+describe("naturalCompare", () => {
+  it("sorts numbers numerically", () => {
+    const units = ["10", "2", "1", "20", "3"];
+    expect(units.sort(naturalCompare)).toEqual(["1", "2", "3", "10", "20"]);
+  });
+
+  it("sorts alphanumeric units correctly", () => {
+    const units = ["A10", "A2", "A1", "B2", "1A", "10A"];
+    expect(units.sort(naturalCompare)).toEqual(["1A", "10A", "A1", "A2", "A10", "B2"]);
+  });
+
+  it("handles mixed formats", () => {
+    const units = ["12", "1A", "2", "10", "B2", "A1"];
+    expect(units.sort(naturalCompare)).toEqual(["1A", "2", "10", "12", "A1", "B2"]);
+  });
+
+  it("handles empty strings", () => {
+    expect(naturalCompare("", "A1")).toBe(-1);
+    expect(naturalCompare("A1", "")).toBe(1);
+    expect(naturalCompare("", "")).toBe(0);
+  });
+
+  it("handles null and undefined", () => {
+    expect(naturalCompare(null as any, "A1")).toBe(-1);
+    expect(naturalCompare("A1", null as any)).toBe(1);
   });
 });

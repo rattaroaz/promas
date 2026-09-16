@@ -59,3 +59,40 @@ export function withAccel(text: string, accel: string): { before: string; accel:
     after: text.slice(i + 1),
   };
 }
+
+/**
+ * Natural/numeric-aware comparison for strings containing numbers.
+ * Handles units like "1", "1A", "2", "10", "12", "B2" so that
+ * "2" comes before "10" rather than lexicographic "10" before "2".
+ */
+export function naturalCompare(a: string, b: string): number {
+  const aStr = String(a ?? "").trim();
+  const bStr = String(b ?? "").trim();
+
+  if (aStr === bStr) return 0;
+  if (!aStr) return -1;
+  if (!bStr) return 1;
+
+  const aParts = aStr.match(/(\d+|\D+)/g) || [];
+  const bParts = bStr.match(/(\d+|\D+)/g) || [];
+
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+    const aPart = aParts[i] || "";
+    const bPart = bParts[i] || "";
+
+    if (!aPart) return -1;
+    if (!bPart) return 1;
+
+    const aNum = parseInt(aPart, 10);
+    const bNum = parseInt(bPart, 10);
+
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      if (aNum !== bNum) return aNum - bNum;
+    } else {
+      const cmp = aPart.localeCompare(bPart);
+      if (cmp !== 0) return cmp;
+    }
+  }
+
+  return 0;
+}

@@ -3,7 +3,7 @@
  * Browse invoices for the site; Ins or New Invoice opens the entry form
  * with date and next invoice number already filled.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   api,
   Company,
@@ -22,7 +22,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
+import { cols, padR, padL, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
@@ -68,6 +68,7 @@ export function InvoiceProcess({
   const [voidAsk, setVoidAsk] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [help, setHelp] = useState(false);
+  const [unitSortDirection, setUnitSortDirection] = useState<"asc" | "desc" | null>(null);
   const { index, setIndex, up, down, pageUp, pageDown, home } =
     useBrowseIndex(rows.length);
 
@@ -92,6 +93,25 @@ export function InvoiceProcess({
     );
   }, [company.companyNo, property.proNo, focusInvoice, setIndex]);
 
+  const toggleUnitSort = useCallback(() => {
+    setUnitSortDirection((prev) => {
+      if (prev === null || prev === "desc") return "asc";
+      return "desc";
+    });
+    setIndex(0);
+  }, [setIndex]);
+
+  const sortedRows = useMemo(() => {
+    if (unitSortDirection === null) return rows;
+    
+    const sorted = [...rows].sort((a, b) => {
+      const cmp = naturalCompare(a.salesUnit, b.salesUnit);
+      return unitSortDirection === "asc" ? cmp : -cmp;
+    });
+    
+    return sorted;
+  }, [rows, unitSortDirection]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -102,7 +122,7 @@ export function InvoiceProcess({
       ?.scrollIntoView?.({ block: "nearest" });
   }, [index]);
 
-  const current = rows[index] ?? null;
+  const current = sortedRows[index] ?? null;
 
   async function loadWorkPersons() {
     try {
@@ -532,10 +552,32 @@ export function InvoiceProcess({
             {property.paintTime}
           </div>
           <div className="dos-browse-header">
-            {"Inv_Date   Inv#   PO           Unit     Size     Total      Paid     Balance   St"}
+            <span style={{ whiteSpace: "pre" }}>
+              {"Inv_Date   Inv#   PO           "}
+              <button
+                type="button"
+                className="dos-header-btn"
+                onClick={toggleUnitSort}
+                title="Click to sort by unit number"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "inherit",
+                  font: "inherit",
+                  cursor: "pointer",
+                  padding: 0,
+                  textDecoration: unitSortDirection ? "underline" : "none",
+                }}
+              >
+                {"Unit"}
+                {unitSortDirection === "asc" && " ↑"}
+                {unitSortDirection === "desc" && " ↓"}
+              </button>
+              {"     Size     Total      Paid     Balance   St"}
+            </span>
           </div>
           <div className="dos-browse-body">
-            {rows.map((inv, i) => (
+            {sortedRows.map((inv, i) => (
               <button
                 key={`${inv.invoice}-${inv.salesDate}`}
                 className={`dos-row ${i === index ? "selected" : ""} ${inv.voided ? "voided" : ""} ${
