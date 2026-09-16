@@ -104,7 +104,8 @@ describe("InvoiceProcess", () => {
     );
     expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
     expect(screen.getByText(/Inv#\s+PO/i)).toBeInTheDocument();
-    expect(screen.getByText(/Unit\s+Size/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Unit/i })).toBeInTheDocument();
+    expect(screen.getByText(/Size\s+Total/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /A1\s+1\+1/i })).toBeInTheDocument();
     expect(api.listInvoices).toHaveBeenCalledWith(
@@ -532,6 +533,51 @@ describe("InvoiceProcess", () => {
       await screen.findByText(/No invoices for this property/i)
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^New Invoice$/i })).toBeInTheDocument();
+  });
+
+  it("sorts invoices by unit number when Unit header is clicked", async () => {
+    const inv2 = { ...fixture, invoice: 2, salesUnit: "10", custPoNo: "PO-2" };
+    const inv3 = { ...fixture, invoice: 3, salesUnit: "2", custPoNo: "PO-3" };
+    const inv4 = { ...fixture, invoice: 4, salesUnit: "1A", custPoNo: "PO-4" };
+    vi.mocked(api.listInvoices).mockResolvedValue([fixture, inv2, inv3, inv4]);
+    
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    
+    await screen.findByText(/4 invoices/i);
+    
+    const rows = screen.getAllByRole("button").filter(btn => 
+      btn.textContent?.includes("PO-")
+    );
+    expect(rows[0].textContent).toContain("A1");
+    expect(rows[1].textContent).toContain("10");
+    expect(rows[2].textContent).toContain("2");
+    expect(rows[3].textContent).toContain("1A");
+    
+    const unitHeader = screen.getByRole("button", { name: /Unit/i });
+    await user.click(unitHeader);
+    
+    const sortedRowsAsc = screen.getAllByRole("button").filter(btn => 
+      btn.textContent?.includes("PO-")
+    );
+    expect(sortedRowsAsc[0].textContent).toContain("1A");
+    expect(sortedRowsAsc[1].textContent).toContain("2");
+    expect(sortedRowsAsc[2].textContent).toContain("10");
+    expect(sortedRowsAsc[3].textContent).toContain("A1");
+    expect(unitHeader.textContent).toContain("↑");
+    
+    await user.click(unitHeader);
+    
+    const sortedRowsDesc = screen.getAllByRole("button").filter(btn => 
+      btn.textContent?.includes("PO-")
+    );
+    expect(sortedRowsDesc[0].textContent).toContain("A1");
+    expect(sortedRowsDesc[1].textContent).toContain("10");
+    expect(sortedRowsDesc[2].textContent).toContain("2");
+    expect(sortedRowsDesc[3].textContent).toContain("1A");
+    expect(unitHeader.textContent).toContain("↓");
   });
 
   it("activates new-invoice status hints when they are clicked", async () => {
