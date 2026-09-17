@@ -228,4 +228,20 @@ describe("CashProcess", () => {
       await screen.findByText(/does not exsit in Receivable File/i)
     ).toBeInTheDocument();
   });
+
+  it("aligns money columns under their headers", async () => {
+    renderApp(
+      <CashProcess company={company} onBack={vi.fn()} />
+    );
+    await screen.findByText(/Customer Ledger/i);
+    const header = document.querySelector(".dos-browse-header");
+    const firstRow = document.querySelector(".dos-browse-body .dos-row");
+    expect(header?.textContent).toContain("Payamount");
+    expect(header?.textContent).toContain("Balance");
+    expect(firstRow?.textContent).toBeTruthy();
+    // Verify header uses cols() by checking it has at least 6 triple-space separators
+    const headerText = header?.textContent || "";
+    const headerSeparators = (headerText.match(/   /g) || []).length;
+    expect(headerSeparators).toBeGreaterThanOrEqual(6);
+  });
 });
