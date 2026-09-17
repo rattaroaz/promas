@@ -270,9 +270,16 @@ Ending Balance... ${money(endingBalance)}`}
           </div>
           <div className="dos-browse">
             <div className="dos-browse-header">
-              {
-                "Inv_#   Inv_Date   Inv_amount   PayDate   Check/Ref   Payamount    Balance   OK"
-              }
+              {cols(
+                padL("Inv_#", 5),
+                padR("Inv_Date", 10),
+                padL("Inv_amount", 11),
+                padR("PayDate", 9),
+                padR("Check/Ref", 10),
+                padL("Payamount", 10),
+                padL("Balance", 10)
+              )}
+              {"   OK"}
             </div>
             <div className="dos-browse-body">
               {invoices.map((inv, i) => (
