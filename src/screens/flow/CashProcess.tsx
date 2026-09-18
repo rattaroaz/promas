@@ -276,7 +276,7 @@ export function CashProcess({
       message={msg}
       messageKind={msgKind}
       left={company.companyNo}
-      right={company.name.slice(0, 24)}
+      right={company.name.slice(0, 40)}
     >
       {!editing && !autoMode && (
         <>
