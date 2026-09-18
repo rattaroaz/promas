@@ -887,6 +887,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
+                    style={{ width: "40ch" }}
                     value={editing.invoice.paintSupplyCo ?? ""}
                     onChange={(e) =>
                       setEditing({
@@ -938,6 +939,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Work Person"
                     placeholder="Type name"
+                    style={{ width: "40ch" }}
                     value={invoiceWorkPerson(editing.lines)}
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                     onBlur={() => {
@@ -1020,7 +1022,7 @@ export function InvoiceProcess({
                   <input
                     className="dos-input"
                     type="date"
-                    style={{ width: "100%" }}
+                    style={{ width: "12ch" }}
                     aria-label={`Line ${idx + 1} work date`}
                     value={line.workDate || editing.invoice.salesDate}
                     onChange={(e) => {
@@ -1035,7 +1037,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     type="number"
                     step="0.01"
-                    style={{ width: "100%" }}
+                    style={{ width: "10ch" }}
                     aria-label={`Price ${idx + 1}`}
                     value={line.price || ""}
                     onChange={(e) => {
