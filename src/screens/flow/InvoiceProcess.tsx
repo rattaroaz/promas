@@ -573,7 +573,7 @@ export function InvoiceProcess({
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 6ch 12ch 12ch 12ch 4ch" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}>
             <div>Inv_Date</div>
             <div>Inv#</div>
             <div>PO</div>
@@ -600,7 +600,7 @@ export function InvoiceProcess({
                     ? "invoice-open"
                     : "invoice-paid"
                 } browse-grid`}
-                style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 6ch 12ch 12ch 12ch 4ch" }}
+                style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
@@ -664,7 +664,7 @@ export function InvoiceProcess({
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
                 <input
-                  className="dos-input w12"
+                  className="dos-input w15"
                   type="date"
                   value={editing.invoice.salesDate}
                   onChange={(e) =>
@@ -680,7 +680,7 @@ export function InvoiceProcess({
               </DotField>
               <DotField label="Due Date" width={12}>
                 <input
-                  className="dos-input w12"
+                  className="dos-input w15"
                   type="date"
                   value={editing.invoice.salesDue || ""}
                   onChange={(e) =>
@@ -713,7 +713,7 @@ export function InvoiceProcess({
             <div className="dos-form-row">
               <DotField label="Invoice Number" width={16}>
                 <input
-                  className="dos-input w8"
+                  className="dos-input w12"
                   type="number"
                   aria-label="Invoice Number"
                   value={editing.invoice.invoice || ""}
@@ -730,7 +730,7 @@ export function InvoiceProcess({
               </DotField>
               <DotField label="Order Date" width={12}>
                 <input
-                  className="dos-input w12"
+                  className="dos-input w15"
                   type="date"
                   value={editing.invoice.orderDate || ""}
                   onChange={(e) =>
@@ -887,7 +887,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
-                    style={{ width: "40ch" }}
+                    style={{ width: "100%", minWidth: "30ch" }}
                     value={editing.invoice.paintSupplyCo ?? ""}
                     onChange={(e) =>
                       setEditing({
@@ -939,7 +939,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Work Person"
                     placeholder="Type name"
-                    style={{ width: "40ch" }}
+                    style={{ width: "100%", minWidth: "30ch" }}
                     value={invoiceWorkPerson(editing.lines)}
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                     onBlur={() => {
@@ -968,14 +968,14 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "30ch 12ch 12ch 4ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "30ch 14ch 12ch 4ch" }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "30ch 12ch 12ch 4ch" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "30ch 14ch 12ch 4ch" }}>
                 <div style={{ display: "flex", gap: "4px", minWidth: 0 }}>
                   <select
                     className="dos-select dos-choice"
@@ -1022,7 +1022,7 @@ export function InvoiceProcess({
                   <input
                     className="dos-input"
                     type="date"
-                    style={{ width: "12ch" }}
+                    style={{ width: "14ch" }}
                     aria-label={`Line ${idx + 1} work date`}
                     value={line.workDate || editing.invoice.salesDate}
                     onChange={(e) => {
@@ -1068,7 +1068,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "30ch 12ch 12ch 4ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "30ch 14ch 12ch 4ch" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"

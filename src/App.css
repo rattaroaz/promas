@@ -431,7 +431,7 @@ textarea {
 .dos-browse-body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   scrollbar-gutter: stable;
   min-height: 0;
   min-width: 0;
@@ -758,7 +758,7 @@ textarea {
 
 .invoice-work-person .dos-input {
   flex: 1 1 auto;
-  width: auto;
+  min-width: 30ch;
 }
 
 .invoice-work-person .dos-btn {
