@@ -257,7 +257,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr auto auto auto" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content 30ch max-content max-content max-content" }}>
               {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
@@ -265,7 +265,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 <button
                   key={c.companyNo}
                   className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "auto 1fr auto auto auto" }}
+                  style={{ gridTemplateColumns: "max-content 30ch max-content max-content max-content" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
@@ -312,7 +312,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content 30ch 30ch max-content" }}>
             <div>Pro#</div>
             <div>Name</div>
             <div>Street</div>
@@ -323,7 +323,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               <button
                 key={p.proNo}
                 className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}
+                style={{ gridTemplateColumns: "max-content 30ch 30ch max-content" }}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
