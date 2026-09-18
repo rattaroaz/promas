@@ -52,6 +52,7 @@ export function InvoiceProcess({
   focusInvoice?: number;
 }) {
   const [rows, setRows] = useState<Invoice[]>([]);
+  const [originalRows, setOriginalRows] = useState<Invoice[]>([]);
   const [mode, setMode] = useState<Mode>("browse");
   const [editing, setEditing] = useState<InvoiceWithLines | null>(null);
   const [isNewInvoice, setIsNewInvoice] = useState(false);
@@ -85,6 +86,8 @@ export function InvoiceProcess({
         (focusInvoice == null || i.invoice === focusInvoice)
     );
     setRows(mine);
+    setOriginalRows(mine);
+    setUnitSortDirection(null);
     if (focusInvoice != null && mine.length) setIndex(0);
     setMsg(
       mine.length
@@ -95,22 +98,41 @@ export function InvoiceProcess({
 
   const toggleUnitSort = useCallback(() => {
     setUnitSortDirection((prev) => {
-      if (prev === null || prev === "desc") return "asc";
-      return "desc";
+      if (prev === null) return "asc";
+      if (prev === "asc") return "desc";
+      return null;
     });
     setIndex(0);
   }, [setIndex]);
 
   const sortedRows = useMemo(() => {
-    if (unitSortDirection === null) return rows;
+    if (unitSortDirection === null) return originalRows;
     
-    const sorted = [...rows].sort((a, b) => {
+    const sorted = [...originalRows].sort((a, b) => {
       const cmp = naturalCompare(a.salesUnit, b.salesUnit);
       return unitSortDirection === "asc" ? cmp : -cmp;
     });
     
     return sorted;
-  }, [rows, unitSortDirection]);
+  }, [originalRows, unitSortDirection]);
+
+  useEffect(() => {
+    if (mode !== "browse") return;
+    const count = originalRows.length;
+    if (count === 0) {
+      setMsg("No invoices for this property. Press Ins or click New Invoice.");
+      return;
+    }
+    
+    let sortMsg = "";
+    if (unitSortDirection === "asc") {
+      sortMsg = "Sorted by unit, ascending  ";
+    } else if (unitSortDirection === "desc") {
+      sortMsg = "Sorted by unit, descending  ";
+    }
+    
+    setMsg(`${sortMsg}${count} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`);
+  }, [mode, originalRows.length, unitSortDirection]);
 
   useEffect(() => {
     load();
@@ -551,30 +573,23 @@ export function InvoiceProcess({
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
-          <div className="dos-browse-header">
-            <span style={{ whiteSpace: "pre" }}>
-              {"Inv_Date   Inv#   PO           "}
-              <button
-                type="button"
-                className="dos-header-btn"
-                onClick={toggleUnitSort}
-                title="Click to sort by unit number"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "inherit",
-                  font: "inherit",
-                  cursor: "pointer",
-                  padding: 0,
-                  textDecoration: unitSortDirection ? "underline" : "none",
-                }}
-              >
-                {"Unit"}
-                {unitSortDirection === "asc" && " ↑"}
-                {unitSortDirection === "desc" && " ↓"}
-              </button>
-              {"     Size     Total      Paid     Balance   St"}
-            </span>
+          <div className="invoice-ledger-grid invoice-ledger-header">
+            <div>Inv_Date</div>
+            <div>Inv#</div>
+            <div>PO</div>
+            <button
+              type="button"
+              className="unit-sort-btn"
+              onClick={toggleUnitSort}
+              title="Click to sort by unit number"
+            >
+              Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
+            </button>
+            <div>Size</div>
+            <div>Total</div>
+            <div>Paid</div>
+            <div>Balance</div>
+            <div>St</div>
           </div>
           <div className="dos-browse-body">
             {sortedRows.map((inv, i) => (
@@ -584,27 +599,25 @@ export function InvoiceProcess({
                   !inv.voided && inv.balance > 0.005
                     ? "invoice-open"
                     : "invoice-paid"
-                }`}
+                } invoice-ledger-grid`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
                   openEdit(inv);
                 }}
               >
-                {cols(
-                  padR(fmtDate(inv.salesDate), 10),
-                  padL(inv.invoice, 5),
-                  padR(inv.custPoNo ?? "", 12),
-                  padR(inv.salesUnit, 8),
-                  padR(inv.salesSize, 8),
-                  padL(money(inv.salesTotal), 10),
-                  padL(money(inv.payTotal), 9),
-                  padL(money(inv.balance), 10),
-                  inv.voided ? "V" : inv.balance <= 0 ? "*" : " "
-                )}
+                <div>{fmtDate(inv.salesDate)}</div>
+                <div className="num">{inv.invoice}</div>
+                <div>{inv.custPoNo ?? ""}</div>
+                <div>{inv.salesUnit}</div>
+                <div>{inv.salesSize}</div>
+                <div className="num">{money(inv.salesTotal)}</div>
+                <div className="num">{money(inv.payTotal)}</div>
+                <div className="num">{money(inv.balance)}</div>
+                <div>{inv.voided ? "V" : inv.balance <= 0 ? "*" : " "}</div>
               </button>
             ))}
-            {rows.length === 0 && (
+            {originalRows.length === 0 && (
               <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
                 {"  (no invoices — press Ins or click New Invoice)"}
               </div>

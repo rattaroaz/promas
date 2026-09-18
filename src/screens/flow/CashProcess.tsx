@@ -20,7 +20,12 @@ import {
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { DateInput } from "../../dos/DateInput";
-import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
+import { money, fmtDate, today } from "../../dos/utils";
+
+interface InvoiceWithLatestReceipt extends Invoice {
+  latestReceiptDate?: string;
+  latestReceiptRef?: string;
+}
 
 export function CashProcess({
   company,
@@ -31,7 +36,7 @@ export function CashProcess({
   onBack: () => void;
   focusInvoice?: number;
 }) {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceWithLatestReceipt[]>([]);
   const [editing, setEditing] = useState<CashReceipt | null>(null);
   const [autoMode, setAutoMode] = useState(false);
   const [autoAmount, setAutoAmount] = useState(0);
@@ -61,9 +66,29 @@ export function CashProcess({
       if (a.balance <= 0 && b.balance > 0) return 1;
       return a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice;
     });
-    setInvoices(mine);
-    if (focusInvoice != null && mine.length) setIndex(0);
-    const open = mine.reduce((s, i) => s + Math.max(0, i.balance), 0);
+
+    // Fetch receipts to populate latest receipt date and ref for each invoice
+    const receipts = await api.listCashReceipts({
+      companyNo: company.companyNo,
+      limit: 10000,
+    });
+    
+    const withReceipts: InvoiceWithLatestReceipt[] = mine.map((inv) => {
+      const invReceipts = receipts
+        .filter((r) => r.invoice === inv.invoice && r.salesDate === inv.salesDate && !r.voided)
+        .sort((a, b) => b.payDate.localeCompare(a.payDate));
+      
+      const latest = invReceipts[0];
+      return {
+        ...inv,
+        latestReceiptDate: latest?.payDate,
+        latestReceiptRef: latest?.payRefNo,
+      };
+    });
+
+    setInvoices(withReceipts);
+    if (focusInvoice != null && withReceipts.length) setIndex(0);
+    const open = withReceipts.reduce((s, i) => s + Math.max(0, i.balance), 0);
     setMsg(
       `*****   Customer Ledger   *****  Open ${money(open)}  Ins=Pay  A=Auto  Esc=Back`
     );
@@ -269,39 +294,35 @@ Receipt Total.... ${money(receiptTotal)}
 Ending Balance... ${money(endingBalance)}`}
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {cols(
-                padL("Inv_#", 5),
-                padR("Inv_Date", 10),
-                padL("Inv_amount", 11),
-                padR("PayDate", 9),
-                padR("Check/Ref", 10),
-                padL("Payamount", 10),
-                padL("Balance", 10)
-              )}
-              {"   OK"}
+            <div className="cash-ledger-grid cash-ledger-header">
+              <div>Inv_#</div>
+              <div>Inv_Date</div>
+              <div>Inv_amount</div>
+              <div>PayDate</div>
+              <div>Check/Ref</div>
+              <div>Payamount</div>
+              <div>Balance</div>
+              <div>OK</div>
             </div>
             <div className="dos-browse-body">
               {invoices.map((inv, i) => (
                 <button
                   key={`${inv.invoice}-${inv.salesDate}`}
-                  className={`dos-row ${i === index ? "selected" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} cash-ledger-grid`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
                     startPayment(inv);
                   }}
                 >
-                  {cols(
-                    padL(inv.invoice, 5),
-                    padR(fmtDate(inv.salesDate), 10),
-                    padL(money(inv.salesTotal), 11),
-                    padR("", 9),
-                    padR("", 10),
-                    padL(money(inv.payTotal), 10),
-                    padL(money(inv.balance), 10)
-                  )}
-                  {inv.balance <= 0 ? " *" : "  "}
+                  <div className="num">{inv.invoice}</div>
+                  <div>{fmtDate(inv.salesDate)}</div>
+                  <div className="num">{money(inv.salesTotal)}</div>
+                  <div>{inv.latestReceiptDate ? fmtDate(inv.latestReceiptDate) : ""}</div>
+                  <div>{inv.latestReceiptRef || ""}</div>
+                  <div className="num">{money(inv.payTotal)}</div>
+                  <div className="num">{money(inv.balance)}</div>
+                  <div className="center">{inv.balance <= 0 ? "*" : ""}</div>
                 </button>
               ))}
               {invoices.length === 0 && (

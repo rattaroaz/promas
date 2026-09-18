@@ -12,6 +12,7 @@ vi.mock("../../api", async () => {
     api: {
       ...actual.api,
       listInvoices: vi.fn(),
+      listCashReceipts: vi.fn(),
       saveCashReceipt: vi.fn(),
     },
   };
@@ -39,6 +40,7 @@ describe("CashProcess", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.listInvoices).mockResolvedValue([openInv]);
+    vi.mocked(api.listCashReceipts).mockResolvedValue([]);
     vi.mocked(api.saveCashReceipt).mockResolvedValue(undefined);
   });
 
@@ -229,19 +231,69 @@ describe("CashProcess", () => {
     ).toBeInTheDocument();
   });
 
-  it("aligns money columns under their headers", async () => {
+  it("aligns money columns under their headers using grid tracks", async () => {
     renderApp(
       <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
-    const header = document.querySelector(".dos-browse-header");
-    const firstRow = document.querySelector(".dos-browse-body .dos-row");
+    const header = document.querySelector(".cash-ledger-header");
+    const firstRow = document.querySelector(".dos-browse-body .cash-ledger-grid");
+    
+    expect(header).toHaveClass("cash-ledger-grid");
+    expect(firstRow).toHaveClass("cash-ledger-grid");
+    
+    // Both should use the same grid layout
+    const headerStyle = window.getComputedStyle(header!);
+    const rowStyle = window.getComputedStyle(firstRow!);
+    expect(headerStyle.gridTemplateColumns).toBe(rowStyle.gridTemplateColumns);
+    
+    // Check header contains expected column labels
+    expect(header?.textContent).toContain("Inv_#");
     expect(header?.textContent).toContain("Payamount");
     expect(header?.textContent).toContain("Balance");
-    expect(firstRow?.textContent).toBeTruthy();
-    // Verify header uses cols() by checking it has at least 6 triple-space separators
-    const headerText = header?.textContent || "";
-    const headerSeparators = (headerText.match(/   /g) || []).length;
-    expect(headerSeparators).toBeGreaterThanOrEqual(6);
+    expect(header?.textContent).toContain("OK");
+    
+    // Check row contains data
+    expect(firstRow?.textContent).toContain("250.00");
+  });
+
+  it("shows PayDate and Check/Ref from latest receipt when available", async () => {
+    const receiptInv = {
+      ...openInv,
+      invoice: 2,
+      payTotal: 100,
+      balance: 150,
+    };
+    const receipt = {
+      id: 1,
+      companyNo: "1000",
+      salesDate: "2026-01-15",
+      invoice: 2,
+      payment: 100,
+      payRefNo: "CHK-123",
+      payDate: "2026-01-20",
+      voided: false,
+    };
+    
+    vi.mocked(api.listInvoices).mockResolvedValue([openInv, receiptInv]);
+    vi.mocked(api.listCashReceipts).mockResolvedValue([receipt]);
+    
+    renderApp(
+      <CashProcess company={company} onBack={vi.fn()} />
+    );
+    await screen.findByText(/Customer Ledger/i);
+    
+    const rows = document.querySelectorAll(".dos-browse-body .cash-ledger-grid");
+    expect(rows).toHaveLength(2);
+    
+    // First row (invoice 1) has no receipts, so PayDate and Check/Ref are empty
+    const row1Cells = rows[0].querySelectorAll("div");
+    expect(row1Cells[3].textContent).toBe(""); // PayDate
+    expect(row1Cells[4].textContent).toBe(""); // Check/Ref
+    
+    // Second row (invoice 2) has a receipt
+    const row2Cells = rows[1].querySelectorAll("div");
+    expect(row2Cells[3].textContent).toContain("01/20/2026"); // PayDate
+    expect(row2Cells[4].textContent).toBe("CHK-123"); // Check/Ref
   });
 });

@@ -354,6 +354,96 @@ textarea {
   overflow: hidden;
 }
 
+/* Cash Receipts ledger grid */
+.cash-ledger-grid {
+  display: grid;
+  grid-template-columns: 5ch 10ch 11ch 10ch 10ch 10ch 10ch 3ch;
+  column-gap: 3ch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  min-height: 44px;
+}
+
+.cash-ledger-header {
+  color: var(--dos-yellow);
+  font-weight: bold;
+  border-bottom: 1px solid var(--dos-cyan);
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.cash-ledger-grid > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cash-ledger-grid .num {
+  text-align: right;
+}
+
+.cash-ledger-grid .center {
+  text-align: center;
+}
+
+/* Invoice Process ledger grid */
+.invoice-ledger-grid {
+  display: grid;
+  grid-template-columns: 10ch 5ch 12ch 8ch 8ch 10ch 9ch 10ch 2ch;
+  column-gap: 3ch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  min-height: 44px;
+}
+
+.invoice-ledger-header {
+  color: var(--dos-yellow);
+  font-weight: bold;
+  border-bottom: 1px solid var(--dos-cyan);
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.invoice-ledger-grid > div,
+.invoice-ledger-grid > button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.invoice-ledger-grid .num {
+  text-align: right;
+}
+
+.invoice-ledger-grid .unit-sort-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+  display: inline;
+  vertical-align: baseline;
+  line-height: inherit;
+  min-height: 44px;
+  width: 100%;
+}
+
+.invoice-ledger-grid .unit-sort-btn:hover,
+.invoice-ledger-grid .unit-sort-btn:focus {
+  color: var(--dos-cyan-bright);
+  outline: none;
+}
+
 .dos-browse-body {
   flex: 1;
   overflow-y: auto;
