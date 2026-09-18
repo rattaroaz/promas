@@ -219,7 +219,8 @@ describe("ReportsScreen aging", () => {
         name: /Company 1000 outstanding invoices/i,
       })
     );
-    await user.click(await screen.findByRole("button", { name: /Invoice 1/i }));
+    const invoiceRow = await screen.findByRole("button", { name: /01\/15\/2026/ });
+    await user.click(invoiceRow);
 
     await waitFor(() => {
       expect(api.getInvoice).toHaveBeenCalledWith(
@@ -734,9 +735,7 @@ describe("ReportsScreen payroll", () => {
     expect(screen.getByText(/Mat_Cost/)).toBeInTheDocument();
     expect(screen.getByText(/Inv_Total/)).toBeInTheDocument();
     expect(document.querySelector(".payroll-landscape")).toBeInTheDocument();
-    expect(document.querySelector(".payroll-grid")).toBeInTheDocument();
-    expect(screen.getByLabelText("Blank column 1")).toBeInTheDocument();
-    expect(screen.getByLabelText("Blank column 2")).toBeInTheDocument();
+    expect(document.querySelector(".browse-grid-8")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Invoice 12/i }));
     await waitFor(() => {
@@ -760,7 +759,7 @@ describe("ReportsScreen payroll", () => {
     expect(screen.getAllByText("250.00").length).toBeGreaterThan(0);
     expect(screen.getAllByText("40.00").length).toBeGreaterThan(0);
     expect(screen.getByText("A1")).toBeInTheDocument();
-    const header = screen.getByText("Address").closest("tr");
+    const header = document.querySelector(".browse-grid-header");
     const headerText = header?.textContent ?? "";
     expect(headerText.indexOf("Address")).toBeLessThan(
       headerText.indexOf("Inv_Total")
