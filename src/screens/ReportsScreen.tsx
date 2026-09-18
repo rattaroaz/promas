@@ -837,7 +837,7 @@ function AgingReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "auto 1fr auto auto auto auto auto auto auto auto" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
         <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
         <div>{money(tc)}</div>
         <div>{money(t30)}</div>
@@ -1095,7 +1095,7 @@ function PayrollReport({
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "auto auto auto 30ch auto auto auto auto" }}>
+        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
           <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
           <div>{money(tot)}</div>
           <div>{money(mat)}</div>
