@@ -407,12 +407,20 @@ textarea {
 }
 
 /* Specific column counts for different grids */
-.browse-grid-8 {
-  grid-template-columns: repeat(8, 1fr);
+.browse-grid-11 {
+  grid-template-columns: repeat(11, 1fr);
+}
+
+.browse-grid-10 {
+  grid-template-columns: repeat(10, 1fr);
 }
 
 .browse-grid-9 {
   grid-template-columns: repeat(9, 1fr);
+}
+
+.browse-grid-8 {
+  grid-template-columns: repeat(8, 1fr);
 }
 
 .browse-grid-7 {

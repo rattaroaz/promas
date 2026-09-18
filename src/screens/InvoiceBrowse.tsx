@@ -288,8 +288,18 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Inv_Date   Inv#   PO           Co#   Pro   Unit     Size     Inv_Amount   PayTotal    Balance"}
+            <div className="browse-grid browse-grid-11 browse-grid-header">
+              <div>Inv_Date</div>
+              <div>Inv#</div>
+              <div>PO</div>
+              <div>Co#</div>
+              <div>Pro</div>
+              <div>Unit</div>
+              <div>Size</div>
+              <div>Inv_Amount</div>
+              <div>PayTotal</div>
+              <div>Balance</div>
+              <div>St</div>
             </div>
             <div className="dos-browse-body">
               {rows.map((inv, i) => (
@@ -299,26 +309,24 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     !inv.voided && inv.balance > 0.005
                       ? "invoice-open"
                       : "invoice-paid"
-                  }`}
+                  } browse-grid browse-grid-11`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
                     openEdit(inv);
                   }}
                 >
-                  {cols(
-                    padR(fmtDate(inv.salesDate), 10),
-                    padL(inv.invoice, 5),
-                    padR(inv.custPoNo ?? "", 12),
-                    padR(inv.companyNo, 4),
-                    padR(inv.proNo, 3),
-                    padR(inv.salesUnit, 8),
-                    padR(inv.salesSize, 8),
-                    padL(money(inv.salesTotal), 11),
-                    padL(money(inv.payTotal), 10),
-                    padL(money(inv.balance), 10) +
-                      (inv.voided ? " V" : inv.balance <= 0 ? " *" : "  ")
-                  )}
+                  <div>{fmtDate(inv.salesDate)}</div>
+                  <div>{inv.invoice}</div>
+                  <div>{inv.custPoNo ?? ""}</div>
+                  <div>{inv.companyNo}</div>
+                  <div>{inv.proNo}</div>
+                  <div>{inv.salesUnit}</div>
+                  <div>{inv.salesSize}</div>
+                  <div>{money(inv.salesTotal)}</div>
+                  <div>{money(inv.payTotal)}</div>
+                  <div>{money(inv.balance)}</div>
+                  <div>{inv.voided ? "V" : inv.balance <= 0 ? "*" : ""}</div>
                 </button>
               ))}
             </div>
@@ -552,28 +560,18 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
               </DotField>
             </div>
 
-            <div
-              style={{
-                color: "var(--dos-yellow)",
-                margin: "0.5em 0 0.2em",
-                whiteSpace: "pre",
-              }}
-            >
-              {"Code# Description                                        WorkDate     Price "}
+            <div className="browse-grid browse-grid-6 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+              <div>Code#</div>
+              <div>Description</div>
+              <div>WorkDate</div>
+              <div>Employee</div>
+              <div>Price</div>
+              <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  gap: "0.5ch",
-                  marginBottom: "0.15em",
-                  alignItems: "center",
-                }}
-              >
+              <div key={idx} className="browse-grid browse-grid-6" style={{ marginBottom: "0.15em" }}>
                 <select
                   className="dos-select"
-                  style={{ width: "7ch" }}
                   value={line.codeNo}
                   onChange={(e) => {
                     const code = e.target.value;
@@ -598,7 +596,6 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 </select>
                 <input
                   className="dos-input"
-                  style={{ flex: 1 }}
                   value={line.description}
                   onChange={(e) => {
                     const lines = [...editing.lines];
@@ -616,7 +613,6 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 />
                 <select
                   className="dos-select"
-                  style={{ width: "6ch" }}
                   value={line.empNo}
                   onChange={(e) => {
                     const lines = [...editing.lines];
@@ -632,7 +628,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   ))}
                 </select>
                 <input
-                  className="dos-input w10 num"
+                  className="dos-input"
                   type="number"
                   step="0.01"
                   value={line.price}

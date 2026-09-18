@@ -187,26 +187,30 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Inv#   Inv_Date   Com#   Company                       PayDate   PayRefno      Payment"}
+            <div className="browse-grid browse-grid-7 browse-grid-header">
+              <div>Inv#</div>
+              <div>Inv_Date</div>
+              <div>Com#</div>
+              <div>Company</div>
+              <div>PayDate</div>
+              <div>PayRefno</div>
+              <div>Payment</div>
             </div>
             <div className="dos-browse-body">
               {rows.map((r, i) => (
                 <button
                   key={r.id}
-                  className={`dos-row ${i === index ? "selected" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} browse-grid browse-grid-7`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => setIndex(i)}
                 >
-                  {cols(
-                    padL(r.invoice, 5),
-                    padR(fmtDate(r.salesDate), 10),
-                    padR(r.companyNo, 4),
-                    padR(r.companyName || "", 28),
-                    padR(fmtDate(r.payDate), 8),
-                    padR(r.payRefNo, 10),
-                    padL(money(r.payment), 10)
-                  )}
+                  <div>{r.invoice}</div>
+                  <div>{fmtDate(r.salesDate)}</div>
+                  <div>{r.companyNo}</div>
+                  <div>{r.companyName || ""}</div>
+                  <div>{fmtDate(r.payDate)}</div>
+                  <div>{r.payRefNo}</div>
+                  <div>{money(r.payment)}</div>
                 </button>
               ))}
             </div>
