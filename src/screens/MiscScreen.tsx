@@ -458,7 +458,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
       >
         {!editForm ? (
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-2 browse-grid-header">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr" }}>
               <div>Form #</div>
               <div>Content preview</div>
             </div>
@@ -466,7 +466,8 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
               {forms.map((f) => (
                 <button
                   key={f.formNo}
-                  className="dos-row browse-grid browse-grid-2"
+                  className="dos-row browse-grid"
+                  style={{ gridTemplateColumns: "auto 1fr" }}
                   onClick={() => setEditForm({ ...f })}
                 >
                   <div>{f.formNo}</div>

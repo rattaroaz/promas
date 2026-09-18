@@ -128,7 +128,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-4 browse-grid-header">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 30ch auto auto" }}>
               <div>Code NO</div>
               <div>Description</div>
               <div>W/T</div>
@@ -138,7 +138,8 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
               {rows.map((w, i) => (
                 <button
                   key={w.codeNo}
-                  className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid browse-grid-4`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
+                  style={{ gridTemplateColumns: "auto 30ch auto auto" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIsNew(false);
@@ -146,7 +147,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
                   }}
                 >
                   <div>{w.codeNo}</div>
-                  <div>{w.description}</div>
+                  <div className="desc-truncate">{w.description}</div>
                   <div>{w.workType}</div>
                   <div>{money(w.price)}</div>
                 </button>

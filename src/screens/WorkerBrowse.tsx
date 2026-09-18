@@ -126,7 +126,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-4 browse-grid-header">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr auto auto" }}>
               <div>Worker No</div>
               <div>Worker Name</div>
               <div>Phone</div>
@@ -136,7 +136,8 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
               {rows.map((e, i) => (
                 <button
                   key={e.empNo}
-                  className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid browse-grid-4`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid`}
+                  style={{ gridTemplateColumns: "auto 1fr auto auto" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIsNew(false);

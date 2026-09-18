@@ -173,7 +173,7 @@ export function EstimateProcess({
             {company.companyNo} {company.name} — {property.proNo}{" "}
             {property.name}
           </div>
-          <div className="browse-grid browse-grid-4 browse-grid-header">
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto" }}>
             <div>Proposal #</div>
             <div>Proposal Date</div>
             <div>Form #</div>
@@ -183,7 +183,8 @@ export function EstimateProcess({
             {rows.map((e, i) => (
               <button
                 key={e.id ?? `${e.estNo}-${e.estDate}`}
-                className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid browse-grid-4`}
+                className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid`}
+                style={{ gridTemplateColumns: "auto auto auto auto" }}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIsNew(false);
