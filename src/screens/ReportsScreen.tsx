@@ -102,7 +102,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [salesRows, setSalesRows] = useState<SalesAnalysisRow[] | null>(null);
   const [payrollRows, setPayrollRows] = useState<PayrollRow[] | null>(null);
   const [paintRows, setPaintRows] = useState<PaintUsageRow[] | null>(null);
-  const [cashRows, setCashRows] = useState<CashReceiptRow[] | null>(null);
+  const [cashRows, setCashRows] = useState<CashReceipt[] | null>(null);
   const [missingRows, setMissingRows] = useState<MissingInvoiceRow[] | null>(null);
   const [customerData, setCustomerData] = useState<{ cos: Company[]; props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[] } | null>(null);
   const [salesSort, setSalesSort] = useState<{
@@ -769,8 +769,6 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-const AGING_SEP =
-  "====================================================================================================================================\n";
 
 function AgingReport({
   rows,
@@ -1135,7 +1133,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
   );
 }
 
-function CashReceiptsReport({ rows }: { rows: CashReceiptRow[] }) {
+function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
   const total = rows.reduce((sum, r) => sum + r.payment, 0);
   return (
     <div className="dos-browse">
@@ -1239,8 +1237,6 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
               <div>{c.state}</div>
               <div>Zip:</div>
               <div>{c.zip}</div>
-              <div>Credit:</div>
-              <div>{c.credit.toFixed(2)}</div>
             </div>
             {mine.length > 0 && (
               <>
@@ -1298,51 +1294,6 @@ export function formatPaintUsage(rows: PaintUsageRow[]): string {
   return t;
 }
 
-function formatCustomerFile(
-  cos: Company[],
-  props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[],
-): string {
-  let t = `*****  Customer Report  *****\nDATE : ${fmtDate(new Date().toISOString().slice(0, 10))}\n\n`;
-  for (const c of cos) {
-    t += `---Company Information------------------------------------------------------------------------------------------------------------------\n`;
-    t += `${c.companyNo}  ${c.name}  ${c.phone}  ${c.contact}\n`;
-    t += `  ${c.street}  ${c.city}, ${c.state} ${c.zip}\n`;
-    const mine = props.filter((p) => p.companyNo === c.companyNo);
-    t +=
-      "ProNo  Property Name                     ProPhone-1       Key         Time           Unit  Contact            Page Map\n";
-    for (const p of mine) {
-      t += `${padR(p.proNo, 5)}  ${padR(p.name, 32)} ${padR(p.phone, 16)} ${padR(p.keyInfo, 11)} ${padR(p.paintTime, 14)} ${padL(p.noOfUnit, 4)}  ${padR(p.manager, 18)} ${p.pageMap}\n`;
-    }
-    t += ` --> Property Total : ${mine.length}\n\n`;
-  }
-  t += `Company  Grand Total : ${cos.length}\n`;
-  t += `Property Grand Total : ${props.length}\n`;
-  return t;
-}
-
-function formatMissing(rows: MissingInvoiceRow[]): string {
-  let t = `*****   Check Missing Invoice   *****\n\n`;
-  t +=
-    "Ord#  OrdDate  Comp Pro Order By        Inv_# Inv_Date    Balance   Status / Address\n";
-  t +=
-    "----------------------------------------------------------------------------------------\n";
-  let built = 0,
-    voidOrd = 0,
-    missing = 0;
-  for (const r of rows) {
-    if (r.status.includes("Void Work")) voidOrd++;
-    else if (r.status.includes("Not Build")) missing++;
-    else built++;
-    t += `${padL(r.orderNo, 5)} ${padR(fmtDate(r.orderDate), 10)} ${padR(r.companyNo, 4)} ${padR(r.proNo, 3)} ${padR(r.orderBy, 14)} ${r.invoice ? padL(r.invoice, 5) : "    -"} ${padR(fmtDate(r.invDate), 10)} ${padL(money(r.balance), 9)}  ${r.status} ${r.propertyAddress} ${r.unitSize}\n`;
-  }
-  t +=
-    "================================================================================\n";
-  t += `Total Built Order Count : ${built + missing + voidOrd}\n`;
-  t += `       Void Order Count : ${voidOrd}\n`;
-  t += `       Missing Invoice  : ${missing}\n`;
-  t += `    Built Invoice Count : ${built}\n`;
-  return t;
-}
 
 function formatLabelsCompany(cos: Company[]): string {
   let t = ` TEST MAILING LABELS \n\n`;

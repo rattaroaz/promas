@@ -22,7 +22,7 @@ import {
   FORM_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, padL, money, fmtDate, today } from "../../dos/utils";
+import { money, fmtDate, today } from "../../dos/utils";
 
 export function WorkOrderProcess({
   company,

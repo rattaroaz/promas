@@ -10,7 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { cols, padR, padL, money } from "../dos/utils";
+import { money } from "../dos/utils";
 
 export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<WorkType[]>([]);

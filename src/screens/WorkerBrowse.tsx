@@ -11,7 +11,6 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { cols, padR, padL } from "../dos/utils";
 
 export function WorkerBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<Employee[]>([]);

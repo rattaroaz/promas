@@ -18,7 +18,7 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
+import { money, fmtDate, today } from "../dos/utils";
 
 export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<WorkOrder[]>([]);

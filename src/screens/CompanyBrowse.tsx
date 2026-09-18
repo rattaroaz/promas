@@ -9,7 +9,7 @@ import {
 import { useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, BROWSE_KEYS, Dialog, FORM_KEYS, Prompt, HelpOverlay } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { cols, padR, fmtDate, today } from "../dos/utils";
+import { fmtDate, today } from "../dos/utils";
 
 type Mode = "list" | "edit" | "detail" | "props" | "propedit";
 

@@ -23,7 +23,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, padL, fmtDate, today } from "../../dos/utils";
+import { fmtDate, today } from "../../dos/utils";
 
 export type ProcessKind =
   | "invoice"

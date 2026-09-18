@@ -12,7 +12,6 @@ import { useDosKeys } from "../dos/hooks";
 import { Screen, FORM_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { SubMenu, MenuItem } from "./SubMenu";
-import { cols, padR } from "../dos/utils";
 import { log } from "../lib/observability";
 
 const MISC_ITEMS: MenuItem[] = [

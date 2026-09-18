@@ -6,7 +6,7 @@ import { useState } from "react";
 import { api, WorkerWageRow } from "../api";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
-import { padR, padL, money, fmtDate } from "../dos/utils";
+import { money, fmtDate } from "../dos/utils";
 
 export function WagesReport({ onBack }: { onBack: () => void }) {
   const [fromDate, setFromDate] = useState("");
