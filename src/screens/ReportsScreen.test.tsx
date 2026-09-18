@@ -737,7 +737,7 @@ describe("ReportsScreen payroll", () => {
     expect(screen.getByText(/Mat_Cost/)).toBeInTheDocument();
     expect(screen.getByText(/Inv_Total/)).toBeInTheDocument();
     expect(document.querySelector(".payroll-landscape")).toBeInTheDocument();
-    expect(document.querySelector(".browse-grid-8")).toBeInTheDocument();
+    expect(document.querySelector(".browse-grid")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Invoice 12/i }));
     await waitFor(() => {
