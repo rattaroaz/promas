@@ -575,7 +575,7 @@ export function InvoiceProcess({
           </div>
           <div className="invoice-ledger-grid invoice-ledger-header">
             <div>Inv_Date</div>
-            <div>Inv#</div>
+            <div className="num">Inv#</div>
             <div>PO</div>
             <button
               type="button"
@@ -586,9 +586,9 @@ export function InvoiceProcess({
               Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
             </button>
             <div>Size</div>
-            <div>Total</div>
-            <div>Paid</div>
-            <div>Balance</div>
+            <div className="num">Total</div>
+            <div className="num">Paid</div>
+            <div className="num">Balance</div>
             <div>St</div>
           </div>
           <div className="dos-browse-body">

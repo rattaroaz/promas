@@ -295,14 +295,14 @@ Ending Balance... ${money(endingBalance)}`}
           </div>
           <div className="dos-browse">
             <div className="cash-ledger-grid cash-ledger-header">
-              <div>Inv_#</div>
+              <div className="num">Inv_#</div>
               <div>Inv_Date</div>
-              <div>Inv_amount</div>
+              <div className="num">Inv_amount</div>
               <div>PayDate</div>
               <div>Check/Ref</div>
-              <div>Payamount</div>
-              <div>Balance</div>
-              <div>OK</div>
+              <div className="num">Payamount</div>
+              <div className="num">Balance</div>
+              <div className="center">OK</div>
             </div>
             <div className="dos-browse-body">
               {invoices.map((inv, i) => (
