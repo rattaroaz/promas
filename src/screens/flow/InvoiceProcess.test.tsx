@@ -111,9 +111,9 @@ describe("InvoiceProcess", () => {
     expect(screen.getByRole("button", { name: /Unit/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     
-    // Verify equal-width grid classes
+    // Verify content-sized grid
     expect(header).toHaveClass("browse-grid");
-    expect(header).toHaveClass("browse-grid-9");
+    expect(header.style.gridTemplateColumns).toBeTruthy();
     
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -623,32 +623,29 @@ describe("InvoiceProcess", () => {
     const firstRow = document.querySelector(".dos-browse-body .browse-grid");
     
     expect(header).toHaveClass("browse-grid");
-    expect(header).toHaveClass("browse-grid-9");
     expect(firstRow).toHaveClass("browse-grid");
-    expect(firstRow).toHaveClass("browse-grid-9");
     
-    // Both should use the same equal-width grid classes
-    expect(header).toHaveClass("browse-grid");
-    expect(header).toHaveClass("browse-grid-9");
-    expect(firstRow).toHaveClass("browse-grid");
-    expect(firstRow).toHaveClass("browse-grid-9");
+    // Both should use content-sized columns
+    expect(header.style.gridTemplateColumns).toBeTruthy();
+    expect(firstRow.style.gridTemplateColumns).toBeTruthy();
+    expect(header.style.gridTemplateColumns).toBe(firstRow.style.gridTemplateColumns);
     
     const unitHeader = screen.getByRole("button", { name: /Unit/i });
     
-    // Click to sort ascending - classes should remain
+    // Click to sort ascending - grid should remain
     await user.click(unitHeader);
-    expect(header).toHaveClass("browse-grid-9");
-    expect(firstRow).toHaveClass("browse-grid-9");
+    expect(header).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid");
     
-    // Click to sort descending - classes should remain
+    // Click to sort descending - grid should remain
     await user.click(unitHeader);
-    expect(header).toHaveClass("browse-grid-9");
-    expect(firstRow).toHaveClass("browse-grid-9");
+    expect(header).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid");
     
-    // Click to restore original order - classes should remain
+    // Click to restore original order - grid should remain
     await user.click(unitHeader);
-    expect(header).toHaveClass("browse-grid-9");
-    expect(firstRow).toHaveClass("browse-grid-9");
+    expect(header).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid");
   });
 
   it("activates new-invoice status hints when they are clicked", async () => {

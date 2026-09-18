@@ -240,15 +240,12 @@ describe("CashProcess", () => {
     const firstRow = document.querySelector(".dos-browse-body .browse-grid");
     
     expect(header).toHaveClass("browse-grid");
-    expect(header).toHaveClass("browse-grid-8");
     expect(firstRow).toHaveClass("browse-grid");
-    expect(firstRow).toHaveClass("browse-grid-8");
     
-    // Both should use the same equal-width grid classes
-    expect(header).toHaveClass("browse-grid");
-    expect(header).toHaveClass("browse-grid-8");
-    expect(firstRow).toHaveClass("browse-grid");
-    expect(firstRow).toHaveClass("browse-grid-8");
+    // Both should use content-sized columns
+    expect(header.style.gridTemplateColumns).toBeTruthy();
+    expect(firstRow.style.gridTemplateColumns).toBeTruthy();
+    expect(header.style.gridTemplateColumns).toBe(firstRow.style.gridTemplateColumns);
     
     // Check header contains expected column labels
     expect(header?.textContent).toContain("Inv_#");
