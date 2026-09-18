@@ -288,7 +288,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-11 browse-grid-header">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto auto auto auto" }}>
               <div>Inv_Date</div>
               <div>Inv#</div>
               <div>PO</div>
@@ -309,7 +309,8 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     !inv.voided && inv.balance > 0.005
                       ? "invoice-open"
                       : "invoice-paid"
-                  } browse-grid browse-grid-11`}
+                  } browse-grid`}
+                  style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto auto auto auto" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
@@ -560,7 +561,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-6 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "auto 30ch auto auto auto auto" }}>
               <div>Code#</div>
               <div>Description</div>
               <div>WorkDate</div>
@@ -569,7 +570,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid browse-grid-6" style={{ marginBottom: "0.15em" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.15em", gridTemplateColumns: "auto 30ch auto auto auto auto" }}>
                 <div style={{ minWidth: 0 }}>
                   <select
                     className="dos-select"
@@ -674,7 +675,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             ))}
-            <div className="browse-grid browse-grid-6" style={{ marginTop: "0.4em" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "auto 30ch auto auto auto auto" }}>
               <div style={{ gridColumn: "1 / 5" }}>
                 <button
                   className="dos-btn"
