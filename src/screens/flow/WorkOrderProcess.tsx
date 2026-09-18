@@ -281,7 +281,7 @@ export function WorkOrderProcess({
           >
             {company.name} — {property.name} {property.street}
           </div>
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content" }}>
             <div>Ord#</div>
             <div>OrdDate</div>
             <div>Unit/Size</div>
@@ -293,7 +293,7 @@ export function WorkOrderProcess({
               <button
                 key={`${w.orderNo}-${w.orderDate}`}
                 className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "auto auto auto auto auto" }}
+                style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content" }}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => openEdit(w)}
               >
