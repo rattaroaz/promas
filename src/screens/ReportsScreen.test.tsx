@@ -137,7 +137,8 @@ describe("ReportsScreen aging", () => {
       expect(api.reportAging).toHaveBeenCalledWith(undefined, "ELAINE");
     });
     expect(await screen.findByText(/Contact/)).toBeInTheDocument();
-    expect(screen.getByText(/ACME Prop\s+ELAINE/)).toBeInTheDocument();
+    expect(screen.getByText("ACME Prop")).toBeInTheDocument();
+    expect(screen.getByText("ELAINE")).toBeInTheDocument();
   });
 
   it("searches aging by property address", async () => {
@@ -478,19 +479,20 @@ describe("ReportsScreen sales analysis", () => {
     const companyBtn = screen.getByRole("button", {
       name: /Sort by company number/i,
     });
-    const rows = () =>
-      screen.getAllByText(/01\/15\/2026|02\/01\/2026/).map((el) => el.textContent);
+    
+    const getFirstRow = () => document.querySelector(".dos-browse-body .dos-row");
 
-    expect(rows()[0]).toMatch(/02\/01\/2026/);
-    expect(rows()[0]).toMatch(/1000/);
+    await screen.findByText(/02\/01\/2026/);
+    expect(getFirstRow()?.textContent).toContain("02/01/2026");
+    expect(getFirstRow()?.textContent).toContain("1000");
 
     await user.click(companyBtn);
-    expect(rows()[0]).toMatch(/1000/);
-    expect(rows()[0]).toMatch(/02\/01\/2026/);
+    expect(getFirstRow()?.textContent).toContain("1000");
+    expect(getFirstRow()?.textContent).toContain("02/01/2026");
 
     await user.click(dateBtn);
-    expect(rows()[0]).toMatch(/01\/15\/2026/);
-    expect(rows()[0]).toMatch(/2000/);
+    expect(getFirstRow()?.textContent).toContain("01/15/2026");
+    expect(getFirstRow()?.textContent).toContain("2000");
   });
 
   it("opens the invoice form when an invoice is clicked", async () => {
