@@ -257,14 +257,15 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-5 browse-grid-header">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr auto auto auto" }}>
               {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
               {rows.map((c, i) => (
                 <button
                   key={c.companyNo}
-                  className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""} browse-grid browse-grid-5`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""} browse-grid`}
+                  style={{ gridTemplateColumns: "auto 1fr auto auto auto" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
@@ -311,7 +312,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-4 browse-grid-header">
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}>
             <div>Pro#</div>
             <div>Name</div>
             <div>Street</div>
@@ -321,7 +322,8 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             {visibleProps.map((p, i) => (
               <button
                 key={p.proNo}
-                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid browse-grid-4`}
+                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid`}
+                style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
