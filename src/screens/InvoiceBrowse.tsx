@@ -21,7 +21,7 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
+import { money, fmtDate, today } from "../dos/utils";
 
 export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<Invoice[]>([]);
@@ -288,8 +288,18 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Inv_Date   Inv#   PO           Co#   Pro   Unit     Size     Inv_Amount   PayTotal    Balance"}
+            <div className="browse-grid browse-grid-11 browse-grid-header">
+              <div>Inv_Date</div>
+              <div>Inv#</div>
+              <div>PO</div>
+              <div>Co#</div>
+              <div>Pro</div>
+              <div>Unit</div>
+              <div>Size</div>
+              <div>Inv_Amount</div>
+              <div>PayTotal</div>
+              <div>Balance</div>
+              <div>St</div>
             </div>
             <div className="dos-browse-body">
               {rows.map((inv, i) => (
@@ -299,26 +309,24 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     !inv.voided && inv.balance > 0.005
                       ? "invoice-open"
                       : "invoice-paid"
-                  }`}
+                  } browse-grid browse-grid-11`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
                     openEdit(inv);
                   }}
                 >
-                  {cols(
-                    padR(fmtDate(inv.salesDate), 10),
-                    padL(inv.invoice, 5),
-                    padR(inv.custPoNo ?? "", 12),
-                    padR(inv.companyNo, 4),
-                    padR(inv.proNo, 3),
-                    padR(inv.salesUnit, 8),
-                    padR(inv.salesSize, 8),
-                    padL(money(inv.salesTotal), 11),
-                    padL(money(inv.payTotal), 10),
-                    padL(money(inv.balance), 10) +
-                      (inv.voided ? " V" : inv.balance <= 0 ? " *" : "  ")
-                  )}
+                  <div>{fmtDate(inv.salesDate)}</div>
+                  <div>{inv.invoice}</div>
+                  <div>{inv.custPoNo ?? ""}</div>
+                  <div>{inv.companyNo}</div>
+                  <div>{inv.proNo}</div>
+                  <div>{inv.salesUnit}</div>
+                  <div>{inv.salesSize}</div>
+                  <div>{money(inv.salesTotal)}</div>
+                  <div>{money(inv.payTotal)}</div>
+                  <div>{money(inv.balance)}</div>
+                  <div>{inv.voided ? "V" : inv.balance <= 0 ? "*" : ""}</div>
                 </button>
               ))}
             </div>
@@ -552,141 +560,144 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
               </DotField>
             </div>
 
-            <div
-              style={{
-                color: "var(--dos-yellow)",
-                margin: "0.5em 0 0.2em",
-                whiteSpace: "pre",
-              }}
-            >
-              {"Code# Description                                        WorkDate     Price "}
+            <div className="browse-grid browse-grid-6 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+              <div>Code#</div>
+              <div>Description</div>
+              <div>WorkDate</div>
+              <div>Employee</div>
+              <div>Price</div>
+              <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  gap: "0.5ch",
-                  marginBottom: "0.15em",
-                  alignItems: "center",
-                }}
-              >
-                <select
-                  className="dos-select"
-                  style={{ width: "7ch" }}
-                  value={line.codeNo}
-                  onChange={(e) => {
-                    const code = e.target.value;
-                    const wt = workTypes.find((w) => w.codeNo === code);
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      codeNo: code,
-                      description: wt?.description || line.description,
-                      workType: wt?.workType || line.workType,
-                      price: line.price || wt?.price || 0,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value="*">*</option>
-                  {workTypes.map((w) => (
-                    <option key={w.codeNo} value={w.codeNo}>
-                      {w.codeNo}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="dos-input"
-                  style={{ flex: 1 }}
-                  value={line.description}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, description: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <DateInput
-                  value={line.workDate || today()}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, workDate: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <select
-                  className="dos-select"
-                  style={{ width: "6ch" }}
-                  value={line.empNo}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, empNo: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value="">---</option>
-                  {employees.map((e) => (
-                    <option key={e.empNo} value={e.empNo}>
-                      {e.empNo}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="dos-input w10 num"
-                  type="number"
-                  step="0.01"
-                  value={line.price}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    const price = parseFloat(e.target.value) || 0;
-                    lines[idx] = {
-                      ...line,
-                      price,
-                      empPrice: (price * line.commission) / 100,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
+              <div key={idx} className="browse-grid browse-grid-6" style={{ marginBottom: "0.15em" }}>
+                <div style={{ minWidth: 0 }}>
+                  <select
+                    className="dos-select"
+                    style={{ width: "100%" }}
+                    value={line.codeNo}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const wt = workTypes.find((w) => w.codeNo === code);
+                      const lines = [...editing.lines];
+                      lines[idx] = {
+                        ...line,
+                        codeNo: code,
+                        description: wt?.description || line.description,
+                        workType: wt?.workType || line.workType,
+                        price: line.price || wt?.price || 0,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value="*">*</option>
+                    {workTypes.map((w) => (
+                      <option key={w.codeNo} value={w.codeNo}>
+                        {w.codeNo}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    value={line.description}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, description: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <DateInput
+                    value={line.workDate || today()}
+                    style={{ width: "100%" }}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, workDate: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <select
+                    className="dos-select"
+                    style={{ width: "100%" }}
+                    value={line.empNo}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, empNo: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value="">---</option>
+                    {employees.map((e) => (
+                      <option key={e.empNo} value={e.empNo}>
+                        {e.empNo}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    type="number"
+                    step="0.01"
+                    value={line.price}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      const price = parseFloat(e.target.value) || 0;
+                      lines[idx] = {
+                        ...line,
+                        price,
+                        empPrice: (price * line.commission) / 100,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                  <button
+                    className="dos-btn danger"
+                    style={{ width: "100%", minHeight: "44px" }}
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        lines: editing.lines.filter((_, i) => i !== idx),
+                      })
+                    }
+                  >
+                    Del
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="browse-grid browse-grid-6" style={{ marginTop: "0.4em" }}>
+              <div style={{ gridColumn: "1 / 5" }}>
                 <button
-                  className="dos-btn danger"
+                  className="dos-btn"
                   onClick={() =>
                     setEditing({
                       ...editing,
-                      lines: editing.lines.filter((_, i) => i !== idx),
+                      lines: [
+                        ...editing.lines,
+                        emptyInvoiceLine(
+                          editing.invoice,
+                          editing.lines.length + 1
+                        ),
+                      ],
                     })
                   }
                 >
-                  Del
+                  + Line (Ins)
                 </button>
               </div>
-            ))}
-            <div style={{ marginTop: "0.4em" }}>
-              <button
-                className="dos-btn"
-                onClick={() =>
-                  setEditing({
-                    ...editing,
-                    lines: [
-                      ...editing.lines,
-                      emptyInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      ),
-                    ],
-                  })
-                }
-              >
-                + Line (Ins)
-              </button>
-              <span
-                style={{
-                  float: "right",
-                  color: "var(--dos-yellow)",
-                  fontWeight: "bold",
-                }}
-              >
+              <div style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
                 Invoice Total : {money(lineTotal)}
-              </span>
+              </div>
+              <div></div>
             </div>
           </div>
         </Dialog>

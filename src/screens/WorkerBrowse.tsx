@@ -11,7 +11,6 @@ import {
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { DateInput } from "../dos/DateInput";
-import { cols, padR, padL } from "../dos/utils";
 
 export function WorkerBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<Employee[]>([]);
@@ -127,26 +126,27 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-            {"Worker No....   Worker Name........................   Phone........"}
+            <div className="browse-grid browse-grid-4 browse-grid-header">
+              <div>Worker No</div>
+              <div>Worker Name</div>
+              <div>Phone</div>
+              <div>Commission</div>
             </div>
             <div className="dos-browse-body">
               {rows.map((e, i) => (
                 <button
                   key={e.empNo}
-                  className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid browse-grid-4`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIsNew(false);
                     setEditing({ ...e });
                   }}
                 >
-                  {cols(
-                    padR(e.empNo, 12),
-                    padR(e.name, 32),
-                    padR(e.phone, 13),
-                    padL(e.commission.toFixed(2), 6)
-                  )}
+                  <div>{e.empNo}</div>
+                  <div>{e.name}</div>
+                  <div>{e.phone}</div>
+                  <div>{e.commission.toFixed(2)}</div>
                 </button>
               ))}
             </div>

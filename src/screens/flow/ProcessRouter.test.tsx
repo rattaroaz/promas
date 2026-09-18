@@ -13,6 +13,7 @@ vi.mock("../../api", async () => {
       listCompanies: vi.fn(),
       listProperties: vi.fn(),
       listInvoices: vi.fn(),
+      listCashReceipts: vi.fn(),
       listWorkOrders: vi.fn(),
       listEstimates: vi.fn(),
       getCompany: vi.fn(),
@@ -163,6 +164,7 @@ describe("ProcessRouter observability", () => {
       { ...emptyCompany(), companyNo: "1000", name: "ACME" },
     ]);
     vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.listCashReceipts).mockResolvedValue([]);
     vi.mocked(api.getCompany).mockResolvedValue({
       ...emptyCompany(),
       companyNo: "1000",
@@ -271,6 +273,7 @@ describe("ProcessRouter observability", () => {
       }
       return [];
     });
+    vi.mocked(api.listCashReceipts).mockResolvedValue([]);
 
     const user = userEvent.setup();
     renderApp(<ProcessRouter process="cash" onBack={vi.fn()} />);

@@ -9,7 +9,7 @@ import {
 import { useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, BROWSE_KEYS, Dialog, FORM_KEYS, Prompt, HelpOverlay } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { cols, padR, fmtDate, today } from "../dos/utils";
+import { fmtDate, today } from "../dos/utils";
 
 type Mode = "list" | "edit" | "detail" | "props" | "propedit";
 
@@ -212,8 +212,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
     setMsg(`Company ${current.companyNo} voided.`);
   }
 
-  const header =
-    "Co#   Company Name                   City             Phone          Contact";
+  const headerCells = ["Co#", "Company Name", "City", "Phone", "Contact"];
 
   const visibleProps = props.filter((p) => {
     const q = propSearch.trim().toUpperCase();
@@ -258,12 +257,14 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">{header}</div>
+            <div className="browse-grid browse-grid-5 browse-grid-header">
+              {headerCells.map((h, i) => <div key={i}>{h}</div>)}
+            </div>
             <div className="dos-browse-body">
               {rows.map((c, i) => (
                 <button
                   key={c.companyNo}
-                  className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""} browse-grid browse-grid-5`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
@@ -277,13 +278,11 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                     setMode("edit");
                   }}
                 >
-                  {cols(
-                    padR(c.companyNo, 5),
-                    padR(c.name, 30),
-                    padR(c.city, 15),
-                    padR(c.phone, 13),
-                    padR(c.contact, 20)
-                  )}
+                  <div>{c.companyNo}</div>
+                  <div>{c.name}</div>
+                  <div>{c.city}</div>
+                  <div>{c.phone}</div>
+                  <div>{c.contact}</div>
                 </button>
               ))}
               {rows.length === 0 && (
@@ -312,25 +311,26 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
         <div className="dos-browse">
-          <div className="dos-browse-header">
-            {"Pro#   Name                           Street               Phone"}
+          <div className="browse-grid browse-grid-4 browse-grid-header">
+            <div>Pro#</div>
+            <div>Name</div>
+            <div>Street</div>
+            <div>Phone</div>
           </div>
           <div className="dos-browse-body">
             {visibleProps.map((p, i) => (
               <button
                 key={p.proNo}
-                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""}`}
+                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid browse-grid-4`}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
                 }}
               >
-                {cols(
-                  padR(p.proNo, 4),
-                  padR(p.name, 28),
-                  padR(p.street, 20),
-                  padR(p.phone, 13)
-                )}
+                <div>{p.proNo}</div>
+                <div>{p.name}</div>
+                <div>{p.street}</div>
+                <div>{p.phone}</div>
               </button>
             ))}
             {visibleProps.length === 0 && props.length > 0 && (

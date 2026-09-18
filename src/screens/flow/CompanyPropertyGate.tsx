@@ -23,7 +23,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, padL, fmtDate, today } from "../../dos/utils";
+import { cols, padR, fmtDate, today } from "../../dos/utils";
 
 export type ProcessKind =
   | "invoice"
@@ -1080,24 +1080,25 @@ export function CompanyPropertyGate({
       {/* ── Company browse ─────────────────────────────── */}
       {phase === "co-browse" && (
         <div className="dos-browse">
-          <div className="dos-browse-header">
-            {"Company NO...   Company Name.......................   Phone........   Contact"}
+          <div className="browse-grid browse-grid-4 browse-grid-header">
+            <div>Company NO</div>
+            <div>Company Name</div>
+            <div>Phone</div>
+            <div>Contact</div>
           </div>
           <div className="dos-browse-body">
             {companies.map((c, i) => (
               <button
                 key={c.companyNo}
-                className={`dos-row ${i === coBrowse.index ? "selected" : ""}`}
+                className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid browse-grid-4`}
                 onMouseEnter={() => coBrowse.setIndex(i)}
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
               >
-                {cols(
-                  padR(c.companyNo, 12),
-                  padR(c.name, 35),
-                  padR(c.phone, 13),
-                  padR(c.contact, 18)
-                )}
+                <div>{c.companyNo}</div>
+                <div>{c.name}</div>
+                <div>{c.phone}</div>
+                <div>{c.contact}</div>
               </button>
             ))}
           </div>
@@ -1107,24 +1108,26 @@ export function CompanyPropertyGate({
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
         <div className="dos-browse">
-          <div className="dos-browse-header">
-            {"Inv#    Inv_Date    Co#    Pro   Address"}
+          <div className="browse-grid browse-grid-5 browse-grid-header">
+            <div>Inv#</div>
+            <div>Inv_Date</div>
+            <div>Co#</div>
+            <div>Pro</div>
+            <div>Address</div>
           </div>
           <div className="dos-browse-body">
             {invoiceHits.map((inv, i) => (
               <button
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
-                className={`dos-row ${i === invBrowse.index ? "selected" : ""}`}
+                className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid browse-grid-5`}
                 onMouseEnter={() => invBrowse.setIndex(i)}
                 onClick={() => void pickInvoiceSite(inv)}
               >
-                {cols(
-                  padL(inv.invoice, 5),
-                  padR(fmtDate(inv.salesDate), 10),
-                  padR(inv.companyNo, 6),
-                  padR(inv.proNo, 5),
-                  padR(inv.propertyStreet || inv.propertyName || "", 40)
-                )}
+                <div>{inv.invoice}</div>
+                <div>{fmtDate(inv.salesDate)}</div>
+                <div>{inv.companyNo}</div>
+                <div>{inv.proNo}</div>
+                <div>{inv.propertyStreet || inv.propertyName || ""}</div>
               </button>
             ))}
           </div>
@@ -1231,38 +1234,55 @@ export function CompanyPropertyGate({
       )}
       {phase === "pr-browse" && (
         <div className="dos-browse">
-          <div className="dos-browse-header">
-            {company
-              ? cols(
-                  padR("ProNO", 6),
-                  padR("Name", 16),
-                  padR("Address", 40),
-                  padR("Co.Contact", 14)
-                )
-              : cols(
-                  padR("CoNO", 6),
-                  padR("ProNO", 6),
-                  padR("Address", 40),
-                  padR("Co.Contact", 14)
-                )}
-          </div>
-          <div className="dos-browse-body">
-            {properties.map((p, i) => (
-              <button
-                key={`${p.companyNo}-${p.proNo}`}
-                className={`dos-row ${i === prBrowse.index ? "selected" : ""}`}
-                onMouseEnter={() => prBrowse.setIndex(i)}
-                onClick={() => selectProperty(p)}
-              >
-                {formatPropertySearchRow(
-                  p,
-                  companyContacts[p.companyNo] ??
-                    (company?.companyNo === p.companyNo ? company.contact : ""),
-                  !company
-                )}
-              </button>
-            ))}
-          </div>
+          {company ? (
+            <>
+              <div className="browse-grid browse-grid-4 browse-grid-header">
+                <div>ProNO</div>
+                <div>Name</div>
+                <div>Address</div>
+                <div>Co.Contact</div>
+              </div>
+              <div className="dos-browse-body">
+                {properties.map((p, i) => (
+                  <button
+                    key={`${p.companyNo}-${p.proNo}`}
+                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid browse-grid-4`}
+                    onMouseEnter={() => prBrowse.setIndex(i)}
+                    onClick={() => selectProperty(p)}
+                  >
+                    <div>{p.proNo}</div>
+                    <div>{p.name}</div>
+                    <div>{formatPropertyAddress(p) || p.name}</div>
+                    <div>{company.contact}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="browse-grid browse-grid-4 browse-grid-header">
+                <div>CoNO</div>
+                <div>ProNO</div>
+                <div>Address</div>
+                <div>Co.Contact</div>
+              </div>
+              <div className="dos-browse-body">
+                {properties.map((p, i) => (
+                  <button
+                    key={`${p.companyNo}-${p.proNo}`}
+                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid browse-grid-4`}
+                    onMouseEnter={() => prBrowse.setIndex(i)}
+                    onClick={() => selectProperty(p)}
+                  >
+                    <div>{p.companyNo}</div>
+                    <div>{p.proNo}</div>
+                    <div>{formatPropertyAddress(p) || p.name}</div>
+                    <div>{companyContacts[p.companyNo] ?? ""}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 

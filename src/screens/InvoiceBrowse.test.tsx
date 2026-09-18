@@ -70,7 +70,9 @@ describe("InvoiceBrowse", () => {
     const user = userEvent.setup();
     renderApp(<InvoiceBrowse onBack={vi.fn()} />);
     expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
-    expect(screen.getByText(/Inv#\s+PO/i)).toBeInTheDocument();
+    const header = document.querySelector(".browse-grid-header");
+    expect(header?.textContent).toContain("Inv#");
+    expect(header?.textContent).toContain("PO");
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /1000/ }));
     expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 1\s+PO-441/i)).toBeInTheDocument();

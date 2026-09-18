@@ -16,7 +16,7 @@ async function openCashLedger(page: Page) {
 test.describe("cash receipts process", () => {
   test("opens ledger after company gate", async ({ page }) => {
     await openCashLedger(page);
-    await expect(page.getByText(/Open 250\.00/i)).toBeVisible();
+    await expect(page.getByText(/Open.*250\.00/i)).toBeVisible();
   });
 
   test("opens ledger by invoice number", async ({ page }) => {
@@ -30,7 +30,9 @@ test.describe("cash receipts process", () => {
     await invoiceNo.press("Enter");
 
     await expect(page.getByText(/Ending Balance/i)).toBeVisible();
-    await expect(page.locator(".dos-row.selected")).toContainText("1");
+    const selectedRow = page.locator(".dos-row.selected");
+    await expect(selectedRow).toBeVisible();
+    await expect(selectedRow).toContainText("1");
   });
 
   test("posts a receipt for the open invoice", async ({ page }) => {
