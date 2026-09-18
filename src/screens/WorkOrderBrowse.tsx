@@ -411,7 +411,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 12ch 12ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 8ch 12ch" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"

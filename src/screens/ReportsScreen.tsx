@@ -1173,7 +1173,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
           </div>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 8ch 12ch 12ch 12ch" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
         <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
         <div>{money(total)}</div>
       </div>

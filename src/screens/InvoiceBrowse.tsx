@@ -675,7 +675,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 12ch 12ch 12ch 4ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 12ch 18ch 12ch 4ch" }}>
               <div style={{ gridColumn: "1 / 5" }}>
                 <button
                   className="dos-btn"
