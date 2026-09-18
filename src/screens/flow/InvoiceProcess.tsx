@@ -973,10 +973,11 @@ export function InvoiceProcess({
             </div>
             {editing.lines.map((line, idx) => (
               <div key={idx} className="browse-grid browse-grid-4" style={{ marginBottom: "0.12em" }}>
-                <div className="dos-choice-pair">
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.2em" }}>
                   <select
-                    className="dos-select dos-choice"
+                    className="dos-select"
                     aria-label={`Line ${idx + 1} description`}
+                    style={{ width: "100%" }}
                     value={
                       isPresetDescription(line.description)
                         ? line.description
@@ -1004,6 +1005,7 @@ export function InvoiceProcess({
                     aria-label={`Line ${idx + 1} custom text`}
                     readOnly={isPresetDescription(line.description)}
                     value={line.description}
+                    style={{ width: "100%" }}
                     onChange={(e) => {
                       if (isPresetDescription(line.description)) return;
                       const lines = [...editing.lines];
