@@ -354,7 +354,7 @@ textarea {
   overflow: hidden;
 }
 
-/* Generic browse grid - equal columns, 8px gap, left-aligned, baseline */
+/* Generic browse grid - content-sized columns, 8px gap, left-aligned, baseline */
 .browse-grid {
   display: grid;
   column-gap: 8px;
@@ -421,45 +421,12 @@ textarea {
   outline: none;
 }
 
-/* Specific column counts for different grids */
-.browse-grid-11 {
-  grid-template-columns: repeat(11, 1fr);
-}
-
-.browse-grid-10 {
-  grid-template-columns: repeat(10, 1fr);
-}
-
-.browse-grid-9 {
-  grid-template-columns: repeat(9, 1fr);
-}
-
-.browse-grid-8 {
-  grid-template-columns: repeat(8, 1fr);
-}
-
-.browse-grid-7 {
-  grid-template-columns: repeat(7, 1fr);
-}
-
-.browse-grid-6 {
-  grid-template-columns: repeat(6, 1fr);
-}
-
-.browse-grid-5 {
-  grid-template-columns: repeat(5, 1fr);
-}
-
-.browse-grid-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.browse-grid-2 {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.browse-grid-3 {
-  grid-template-columns: repeat(3, 1fr);
+/* Description truncation - show 30 chars max with ellipsis */
+.desc-truncate {
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dos-browse-body {
