@@ -881,39 +881,29 @@ Open Balance.... ${money(company.openBal)}`}
         </div>
       </div>
       <div className="dos-browse">
-        <div className="dos-browse-header">
-          {cols(
-            padR("Inv_#", 5),
-            padR("Inv_Date", 10),
-            padR("Inv_amount", 11),
-            padR("Address", 40),
-            padR("Unit", 8),
-            padR("PO_No", 12)
-          )}
+        <div className="browse-grid browse-grid-6 browse-grid-header">
+          <div>Inv_#</div>
+          <div>Inv_Date</div>
+          <div>Inv_amount</div>
+          <div>Address</div>
+          <div>Unit</div>
+          <div>PO_No</div>
         </div>
         <div className="dos-browse-body">
           {invoices.map((inv, i) => (
-            <div
+            <button
               key={`${inv.invoice}-${inv.salesDate}-${inv.proNo}`}
-              className={`dos-row ${i === index ? "selected" : ""}`}
+              className={`dos-row ${i === index ? "selected" : ""} browse-grid browse-grid-6`}
               onMouseEnter={() => setIndex(i)}
+              onClick={() => onInvoice(inv)}
             >
-              <button
-                type="button"
-                className="aging-invno"
-                aria-label={`Invoice ${inv.invoice}`}
-                onClick={() => onInvoice(inv)}
-              >
-                {padL(inv.invoice, 5)}
-              </button>
-              {`   ${cols(
-                padR(fmtDate(inv.salesDate), 10),
-                padL(money(inv.salesTotal), 11),
-                padR((inv.propertyStreet || inv.propertyName || "").trim(), 40),
-                padR(inv.salesUnit, 8),
-                padR(inv.custPoNo, 12)
-              )}`}
-            </div>
+              <div>{inv.invoice}</div>
+              <div>{fmtDate(inv.salesDate)}</div>
+              <div>{money(inv.salesTotal)}</div>
+              <div>{(inv.propertyStreet || inv.propertyName || "").trim()}</div>
+              <div>{inv.salesUnit}</div>
+              <div>{inv.custPoNo}</div>
+            </button>
           ))}
           {invoices.length === 0 && (
             <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
@@ -1013,37 +1003,25 @@ function PayrollReport({
   return (
     <div className="payroll-wrap">
       <div className="hdr">*****   Payroll Report   *****</div>
-      <table className="payroll-grid">
-        <colgroup>
-          <col className="payroll-col-date" />
-          <col className="payroll-col-inv" />
-          <col className="payroll-col-addr" />
-          <col className="payroll-col-unit" />
-          <col className="payroll-col-amt" />
-          <col className="payroll-col-amt" />
-          <col className="payroll-col-blank" />
-          <col className="payroll-col-blank" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Inv_Date</th>
-            <th>Inv#</th>
-            <th>Address</th>
-            <th>Unit</th>
-            <th className="num">Inv_Total</th>
-            <th className="num">Mat_Cost</th>
-            <th className="blank" aria-label="Blank column 1" />
-            <th className="blank" aria-label="Blank column 2" />
-          </tr>
-        </thead>
-        <tbody>
+      <div className="dos-browse">
+        <div className="browse-grid browse-grid-8 browse-grid-header">
+          <div>Inv_Date</div>
+          <div>Inv#</div>
+          <div>Address</div>
+          <div>Unit</div>
+          <div>Inv_Total</div>
+          <div>Mat_Cost</div>
+          <div></div>
+          <div></div>
+        </div>
+        <div className="dos-browse-body">
           {rows.map((r) => (
-            <tr
+            <div
               key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
-              className="payroll-row"
+              className="dos-row browse-grid browse-grid-8"
             >
-              <td>{fmtDate(r.salesDate)}</td>
-              <td>
+              <div>{fmtDate(r.salesDate)}</div>
+              <div>
                 <button
                   type="button"
                   className="sales-invno"
@@ -1052,31 +1030,29 @@ function PayrollReport({
                 >
                   {r.invoice}
                 </button>
-              </td>
-              <td className="addr">
+              </div>
+              <div>
                 <div>{r.propertyAddress}</div>
                 {r.jobDescription ? (
                   <div className="payroll-job">{r.jobDescription}</div>
                 ) : null}
-              </td>
-              <td>{r.salesUnit}</td>
-              <td className="num">{money(r.invoiceTotal)}</td>
-              <td className="num">{money(r.materialCost)}</td>
-              <td className="blank" />
-              <td className="blank" />
-            </tr>
+              </div>
+              <div>{r.salesUnit}</div>
+              <div>{money(r.invoiceTotal)}</div>
+              <div>{money(r.materialCost)}</div>
+              <div></div>
+              <div></div>
+            </div>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="total">
-            <td colSpan={4}>{`Total Counts: ${rows.length}`}</td>
-            <td className="num">{money(tot)}</td>
-            <td className="num">{money(mat)}</td>
-            <td className="blank" />
-            <td className="blank" />
-          </tr>
-        </tfoot>
-      </table>
+        </div>
+        <div className="browse-grid browse-grid-8" style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+          <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
+          <div>{money(tot)}</div>
+          <div>{money(mat)}</div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1085,46 +1061,34 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
   return (
     <div className="payroll-wrap">
       <div className="hdr">*****   Paint Usage Report   *****</div>
-      <table className="payroll-grid paint-usage-grid">
-        <colgroup>
-          <col className="paint-col-person" />
-          <col className="paint-col-amt" />
-          <col className="paint-col-inv" />
-          <col className="paint-col-amt" />
-          <col className="paint-col-supply" />
-          <col className="paint-col-date" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Work Person</th>
-            <th className="num">Mat_Cost</th>
-            <th>Inv#</th>
-            <th className="num">Inv_Total</th>
-            <th>Paint Supply Co.</th>
-            <th>Work Date</th>
-          </tr>
-        </thead>
-        <tbody>
+      <div className="dos-browse">
+        <div className="browse-grid browse-grid-6 browse-grid-header">
+          <div>Work Person</div>
+          <div>Mat_Cost</div>
+          <div>Inv#</div>
+          <div>Inv_Total</div>
+          <div>Paint Supply Co.</div>
+          <div>Work Date</div>
+        </div>
+        <div className="dos-browse-body">
           {rows.map((r, i) => (
-            <tr
+            <div
               key={`${r.invoice}-${r.workDate}-${r.workPerson}-${i}`}
-              className="payroll-row"
+              className="dos-row browse-grid browse-grid-6"
             >
-              <td>{r.workPerson}</td>
-              <td className="num">{money(r.materialCost)}</td>
-              <td>{r.invoice}</td>
-              <td className="num">{money(r.invoiceTotal)}</td>
-              <td className="paint-co">{r.paintSupplyCo}</td>
-              <td>{fmtDate(r.workDate)}</td>
-            </tr>
+              <div>{r.workPerson}</div>
+              <div>{money(r.materialCost)}</div>
+              <div>{r.invoice}</div>
+              <div>{money(r.invoiceTotal)}</div>
+              <div>{r.paintSupplyCo}</div>
+              <div>{fmtDate(r.workDate)}</div>
+            </div>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="total">
-            <td colSpan={6}>{`Total Counts: ${rows.length}`}</td>
-          </tr>
-        </tfoot>
-      </table>
+        </div>
+        <div className="browse-grid browse-grid-6" style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+          <div style={{ gridColumn: "1 / 7" }}>{`Total Counts: ${rows.length}`}</div>
+        </div>
+      </div>
     </div>
   );
 }

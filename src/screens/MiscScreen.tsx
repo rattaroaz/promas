@@ -459,17 +459,19 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
       >
         {!editForm ? (
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Form #............   Content preview"}
+            <div className="browse-grid browse-grid-2 browse-grid-header">
+              <div>Form #</div>
+              <div>Content preview</div>
             </div>
             <div className="dos-browse-body">
               {forms.map((f) => (
                 <button
                   key={f.formNo}
-                  className="dos-row"
+                  className="dos-row browse-grid browse-grid-2"
                   onClick={() => setEditForm({ ...f })}
                 >
-                  {cols(padR(f.formNo, 16), padR(f.content, 40))}
+                  <div>{f.formNo}</div>
+                  <div>{f.content}</div>
                 </button>
               ))}
               {forms.length === 0 && (

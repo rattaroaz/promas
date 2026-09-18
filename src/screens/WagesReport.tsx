@@ -93,24 +93,38 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
             0 Enter Worker Wages (Esc=Cancel) ! — press Enter to calculate
           </span>
         ) : (
-          <>
-            <span className="hdr">
-              {
-                "Worker   WorkDate   Inv#  Co/Pro  Inv_Amnt  Rate%     Wages   Description"
-              }
-            </span>
-            {"\n"}
-            {"--------------------------------------------------------------------------------\n"}
-            {rows.map((r, i) => (
-              <span key={i}>
-                {`${padR(r.empNo, 6)} ${padR(fmtDate(r.workDate || r.invDate), 10)} ${padL(r.invoice, 5)} ${padR(r.companyNo + "/" + r.proNo, 7)} ${padL(money(r.invAmount), 9)} ${padL(r.rate.toFixed(1), 6)} ${padL(money(r.wages), 9)}  ${padR(r.description, 28)}\n`}
-              </span>
-            ))}
-            {"--------------------------------------------------------------------------------\n"}
-            <span className="total">
-              {`Grand Total  Invoice : ${money(totalInv)}\n               Wages : ${money(totalWages)}\n`}
-            </span>
-          </>
+          <div className="dos-browse">
+            <div className="browse-grid browse-grid-8 browse-grid-header">
+              <div>Worker</div>
+              <div>WorkDate</div>
+              <div>Inv#</div>
+              <div>Co/Pro</div>
+              <div>Inv_Amnt</div>
+              <div>Rate%</div>
+              <div>Wages</div>
+              <div>Description</div>
+            </div>
+            <div className="dos-browse-body">
+              {rows.map((r, i) => (
+                <div key={i} className="dos-row browse-grid browse-grid-8">
+                  <div>{r.empNo}</div>
+                  <div>{fmtDate(r.workDate || r.invDate)}</div>
+                  <div>{r.invoice}</div>
+                  <div>{r.companyNo}/{r.proNo}</div>
+                  <div>{money(r.invAmount)}</div>
+                  <div>{r.rate.toFixed(1)}</div>
+                  <div>{money(r.wages)}</div>
+                  <div>{r.description}</div>
+                </div>
+              ))}
+            </div>
+            <div className="browse-grid browse-grid-8" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+              <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
+              <div>Invoice: {money(totalInv)}</div>
+              <div style={{ gridColumn: "6 / 8" }}>Wages: {money(totalWages)}</div>
+              <div></div>
+            </div>
+          </div>
         )}
       </div>
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
