@@ -664,8 +664,9 @@ export function InvoiceProcess({
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
                 <input
-                  className="dos-input w15"
+                  className="dos-input"
                   type="date"
+                  style={{ width: "17ch" }}
                   value={editing.invoice.salesDate}
                   onChange={(e) =>
                     setEditing({
@@ -919,6 +920,8 @@ export function InvoiceProcess({
                   </button>
                 </div>
               </DotField>
+            </div>
+            <div className="dos-form-row">
               <DotField label="Work Person" width={14}>
                 <div className="invoice-work-person">
                   <select
