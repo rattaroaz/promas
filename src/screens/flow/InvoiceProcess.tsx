@@ -1065,53 +1065,44 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div style={{ marginTop: "0.4em" }}>
-              <button
-                className="dos-btn"
-                onClick={() => {
-                  const person = invoiceWorkPerson(editing.lines);
-                  const next = isNewInvoice
-                    ? blankNewInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      )
-                    : emptyInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      );
-                  next.empNo = person;
-                  setEditing({
-                    ...editing,
-                    lines: [...editing.lines, next],
-                  });
-                }}
-              >
-                + Line
-              </button>
-              <span
-                style={{
-                  float: "right",
-                  color: "var(--dos-yellow)",
-                  fontWeight: "bold",
-                }}
-              >
-                Invoice Total : {money(lineTotal)}
-                {"  "}Balance:{" "}
-                {money(
-                  lineTotal -
-                    editing.invoice.salesPay -
-                    editing.invoice.payTotal
-                )}
-                {"  "}
+            <div className="browse-grid browse-grid-4" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ gridColumn: "1 / 3" }}>
+                <button
+                  className="dos-btn"
+                  onClick={() => {
+                    const person = invoiceWorkPerson(editing.lines);
+                    const next = isNewInvoice
+                      ? blankNewInvoiceLine(
+                          editing.invoice,
+                          editing.lines.length + 1
+                        )
+                      : emptyInvoiceLine(
+                          editing.invoice,
+                          editing.lines.length + 1
+                        );
+                    next.empNo = person;
+                    setEditing({
+                      ...editing,
+                      lines: [...editing.lines, next],
+                    });
+                  }}
+                >
+                  + Line
+                </button>
+              </div>
+              <div>{money(lineTotal)}</div>
+              <div>
+                Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
+                {" "}
                 <button
                   type="button"
                   className="dos-btn"
                   onClick={() => printCurrent()}
                   title="Print on invoice_template.pdf (End)"
                 >
-                  Print Form (End)
+                  Print Form
                 </button>
-              </span>
+              </div>
             </div>
             <div
               style={{

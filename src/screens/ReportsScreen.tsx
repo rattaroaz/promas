@@ -1018,11 +1018,11 @@ function SalesReport({
       </div>
       <div className="browse-grid browse-grid-9" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
         <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
-        <div>Amounts: {money(sa)}</div>
+        <div>{money(sa)}</div>
         <div>{money(dep)}</div>
         <div></div>
         <div>{money(pay)}</div>
-        <div>Balance: {money(bal)}</div>
+        <div>{money(bal)}</div>
       </div>
     </div>
   );
@@ -1166,7 +1166,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceiptRow[] }) {
       </div>
       <div className="browse-grid browse-grid-7" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
         <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
-        <div>Amounts: {money(total)}</div>
+        <div>{money(total)}</div>
       </div>
     </div>
   );
