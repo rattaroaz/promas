@@ -11,6 +11,7 @@ import {
   MissingInvoiceRow,
   Company,
   Invoice,
+  CashReceipt,
   emptyCompany,
   emptyProperty,
 } from "../api";

@@ -22,7 +22,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { money, fmtDate, today, naturalCompare } from "../../dos/utils";
+import { padR, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
