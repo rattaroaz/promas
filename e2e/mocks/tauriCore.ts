@@ -89,6 +89,15 @@ export async function invoke<T = unknown>(
       interestRate: 1.5,
     } as T;
   }
+  if (cmd === "save_sysdata") {
+    return undefined as T;
+  }
+  if (cmd === "list_forms") {
+    return [] as T;
+  }
+  if (cmd === "save_form") {
+    return undefined as T;
+  }
   if (cmd === "list_invoices") {
     return [fixtureInvoice] as T;
   }
@@ -100,6 +109,15 @@ export async function invoke<T = unknown>(
   }
   if (cmd === "next_company_no") {
     return "1001" as T;
+  }
+  if (cmd === "save_company") {
+    return undefined as T;
+  }
+  if (cmd === "save_property") {
+    return undefined as T;
+  }
+  if (cmd === "delete_company") {
+    return undefined as T;
   }
   if (cmd === "list_properties") {
     return [
@@ -129,6 +147,18 @@ export async function invoke<T = unknown>(
   }
   if (cmd === "list_employees" || cmd === "list_work_types") {
     return [] as T;
+  }
+  if (cmd === "save_employee") {
+    return undefined as T;
+  }
+  if (cmd === "delete_employee") {
+    return undefined as T;
+  }
+  if (cmd === "save_work_type") {
+    return undefined as T;
+  }
+  if (cmd === "delete_work_type") {
+    return undefined as T;
   }
   if (cmd === "list_work_persons") {
     return [] as T;
@@ -177,6 +207,12 @@ export async function invoke<T = unknown>(
         propertyName: "Bldg A",
       },
     ] as T;
+  }
+  if (cmd === "save_work_order") {
+    return 8 as T;
+  }
+  if (cmd === "void_work_order") {
+    return undefined as T;
   }
   if (cmd === "get_work_order") {
     return {
@@ -236,6 +272,33 @@ export async function invoke<T = unknown>(
   if (cmd === "save_cash_receipt") {
     return undefined as T;
   }
+  if (cmd === "delete_cash_receipt") {
+    return undefined as T;
+  }
+  if (cmd === "list_cash_receipts") {
+    return [] as T;
+  }
+  if (cmd === "list_materials") {
+    return [] as T;
+  }
+  if (cmd === "save_material") {
+    return undefined as T;
+  }
+  if (cmd === "delete_material") {
+    return undefined as T;
+  }
+  if (cmd === "report_aging") {
+    return [] as T;
+  }
+  if (cmd === "report_sales_analysis") {
+    return [] as T;
+  }
+  if (cmd === "report_missing_invoices") {
+    return [] as T;
+  }
+  if (cmd === "report_worker_wages") {
+    return [] as T;
+  }
   if (cmd === "get_invoice") {
     return {
       invoice: fixtureInvoice,
@@ -258,6 +321,12 @@ export async function invoke<T = unknown>(
         },
       ],
     } as T;
+  }
+  if (cmd === "save_invoice") {
+    return 2 as T;
+  }
+  if (cmd === "void_invoice") {
+    return undefined as T;
   }
   throw new Error(`E2E mock: unhandled invoke "${cmd}"`);
 }
