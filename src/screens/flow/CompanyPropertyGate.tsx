@@ -1080,7 +1080,7 @@ export function CompanyPropertyGate({
       {/* ── Company browse ─────────────────────────────── */}
       {phase === "co-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}>
             <div>Company NO</div>
             <div>Company Name</div>
             <div>Phone</div>
@@ -1091,7 +1091,7 @@ export function CompanyPropertyGate({
               <button
                 key={c.companyNo}
                 className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}
+                style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}
                 onMouseEnter={() => coBrowse.setIndex(i)}
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
@@ -1109,7 +1109,7 @@ export function CompanyPropertyGate({
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 30ch" }}>
             <div>Inv#</div>
             <div>Inv_Date</div>
             <div>Co#</div>
@@ -1121,7 +1121,7 @@ export function CompanyPropertyGate({
               <button
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
                 className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content" }}
+                style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 30ch" }}
                 onMouseEnter={() => invBrowse.setIndex(i)}
                 onClick={() => void pickInvoiceSite(inv)}
               >
@@ -1238,7 +1238,7 @@ export function CompanyPropertyGate({
         <div className="dos-browse">
           {company ? (
             <>
-              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}>
+              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 30ch 15ch" }}>
                 <div>ProNO</div>
                 <div>Name</div>
                 <div>Address</div>
@@ -1249,7 +1249,7 @@ export function CompanyPropertyGate({
                   <button
                     key={`${p.companyNo}-${p.proNo}`}
                     className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
-                    style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}
+                    style={{ gridTemplateColumns: "8ch 30ch 30ch 15ch" }}
                     onMouseEnter={() => prBrowse.setIndex(i)}
                     onClick={() => selectProperty(p)}
                   >
@@ -1263,7 +1263,7 @@ export function CompanyPropertyGate({
             </>
           ) : (
             <>
-              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}>
+              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 8ch 30ch 15ch" }}>
                 <div>CoNO</div>
                 <div>ProNO</div>
                 <div>Address</div>
@@ -1274,7 +1274,7 @@ export function CompanyPropertyGate({
                   <button
                     key={`${p.companyNo}-${p.proNo}`}
                     className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
-                    style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}
+                    style={{ gridTemplateColumns: "8ch 8ch 30ch 15ch" }}
                     onMouseEnter={() => prBrowse.setIndex(i)}
                     onClick={() => selectProperty(p)}
                   >

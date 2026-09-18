@@ -172,7 +172,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content 30ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 15ch 9ch 30ch" }}>
               <div>Ord#</div>
               <div>OrdDate</div>
               <div>Comp</div>
@@ -186,7 +186,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 <button
                   key={`${w.companyNo}-${w.orderNo}-${w.orderDate}`}
                   className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content 30ch" }}
+                  style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 15ch 9ch 30ch" }}
                   onMouseEnter={() => setIndex(i)}
                 >
                   <div>{w.orderNo}</div>
@@ -329,14 +329,14 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "max-content 30ch max-content max-content" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "8ch 30ch 8ch 12ch" }}>
               <div>Code#</div>
               <div>Description</div>
               <div>W/T</div>
               <div>Price</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.15em", gridTemplateColumns: "max-content 30ch max-content max-content" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.15em", gridTemplateColumns: "8ch 30ch 8ch 12ch" }}>
                 <div style={{ minWidth: 0 }}>
                   <select
                     className="dos-select"
@@ -411,7 +411,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "max-content 30ch max-content max-content" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 12ch 12ch" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"

@@ -802,7 +802,7 @@ function AgingReport({
       <div style={{ padding: "0.3em 0", whiteSpace: "pre" }}>
         {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
       </div>
-      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch" }}>
         <div>Company#</div>
         <div>Company Name</div>
         <div>Contact</div>
@@ -820,7 +820,7 @@ function AgingReport({
             key={r.companyNo}
             type="button"
             className="dos-row browse-grid"
-            style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}
+            style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch" }}
             aria-label={`Company ${r.companyNo} outstanding invoices`}
             onClick={() => onCompany(r)}
           >
@@ -837,7 +837,7 @@ function AgingReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 30ch 12ch 12ch 12ch 12ch 12ch 12ch 12ch 12ch" }}>
         <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
         <div>{money(tc)}</div>
         <div>{money(t30)}</div>
@@ -909,7 +909,7 @@ Open Balance.... ${money(company.openBal)}`}
         </div>
       </div>
       <div className="dos-browse">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}>
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 12ch 30ch 9ch 8ch" }}>
           <div>Inv_#</div>
           <div>Inv_Date</div>
           <div>Inv_amount</div>
@@ -922,7 +922,7 @@ Open Balance.... ${money(company.openBal)}`}
             <button
               key={`${inv.invoice}-${inv.salesDate}-${inv.proNo}`}
               className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-              style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}
+              style={{ gridTemplateColumns: "7ch 12ch 12ch 30ch 9ch 8ch" }}
               onMouseEnter={() => setIndex(i)}
               onClick={() => onInvoice(inv)}
             >
@@ -976,7 +976,7 @@ function SalesReport({
       <div style={{ padding: "0.3em 0", textAlign: "center" }}>
         {`*****   ${title}   *****`}
       </div>
-      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 8ch 12ch 12ch 12ch 12ch 12ch" }}>
         <button
           type="button"
           className="sort-btn"
@@ -1007,7 +1007,7 @@ function SalesReport({
             type="button"
             key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
             className="dos-row browse-grid"
-            style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}
+            style={{ gridTemplateColumns: "12ch 7ch 8ch 8ch 12ch 12ch 12ch 12ch 12ch" }}
             aria-label={`Invoice ${r.invoice}`}
             onClick={() => onInvoice(r)}
           >
@@ -1023,7 +1023,7 @@ function SalesReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 8ch 12ch 7ch 9ch 12ch 12ch 12ch 12ch" }}>
         <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
         <div>{money(sa)}</div>
         <div>{money(dep)}</div>
@@ -1052,7 +1052,7 @@ function PayrollReport({
     <div className="payroll-wrap">
       <div className="hdr">*****   Payroll Report   *****</div>
       <div className="dos-browse">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
           <div>Inv_Date</div>
           <div>Inv#</div>
           <div>Address</div>
@@ -1067,7 +1067,7 @@ function PayrollReport({
             <div
               key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
               className="dos-row browse-grid"
-              style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}
+              style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}
             >
               <div>{fmtDate(r.salesDate)}</div>
               <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
@@ -1095,7 +1095,7 @@ function PayrollReport({
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
           <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
           <div>{money(tot)}</div>
           <div>{money(mat)}</div>
@@ -1112,7 +1112,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
     <div className="payroll-wrap">
       <div className="hdr">*****   Paint Usage Report   *****</div>
       <div className="dos-browse">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}>
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}>
           <div>Work Person</div>
           <div>Mat_Cost</div>
           <div>Inv#</div>
@@ -1125,7 +1125,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
             <div
               key={`${r.invoice}-${r.workDate}-${r.workPerson}-${i}`}
               className="dos-row browse-grid"
-              style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}
+              style={{ gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}
             >
               <div>{r.workPerson}</div>
               <div>{money(r.materialCost)}</div>
@@ -1136,7 +1136,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}>
+        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}>
           <div style={{ gridColumn: "1 / 7" }}>{`Total Counts: ${rows.length}`}</div>
         </div>
       </div>
@@ -1151,7 +1151,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
       <div style={{ padding: "0.3em 0", textAlign: "center" }}>
         *****    Cash  Receipts   *****
       </div>
-      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
         <div>Inv#</div>
         <div>Inv_Date</div>
         <div>Com#</div>
@@ -1162,7 +1162,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
       </div>
       <div className="dos-browse-body">
         {rows.map((r, i) => (
-          <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content" }}>
+          <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
             <div>{r.invoice}</div>
             <div>{fmtDate(r.salesDate)}</div>
             <div>{r.companyNo}</div>
@@ -1173,7 +1173,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
           </div>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 8ch 12ch 12ch 12ch" }}>
         <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
         <div>{money(total)}</div>
       </div>
@@ -1187,7 +1187,7 @@ function MissingInvoicesReport({ rows }: { rows: MissingInvoiceRow[] }) {
       <div style={{ padding: "0.3em 0", textAlign: "center" }}>
         *****   Check Missing Invoice   *****
       </div>
-                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 15ch 7ch 12ch 12ch" }}>
         <div>Ord#</div>
         <div>OrdDate</div>
         <div>Com#</div>
@@ -1199,7 +1199,7 @@ function MissingInvoicesReport({ rows }: { rows: MissingInvoiceRow[] }) {
       </div>
       <div className="dos-browse-body">
         {rows.map((r, i) => (
-          <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+          <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 15ch 7ch 12ch 12ch" }}>
             <div>{r.orderNo}</div>
             <div>{fmtDate(r.orderDate)}</div>
             <div>{r.companyNo}</div>
@@ -1233,7 +1233,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
             <div style={{ fontWeight: "bold", marginBottom: "0.5em" }}>
               ---Company Information---
             </div>
-            <div className="browse-grid" style={{ marginBottom: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content" }}>
+            <div className="browse-grid" style={{ marginBottom: "0.5em", gridTemplateColumns: "12ch 8ch 8ch 8ch" }}>
               <div>Company#:</div>
               <div>{c.companyNo}</div>
               <div>Company Name:</div>
@@ -1254,7 +1254,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
                 <div style={{ fontWeight: "bold", marginTop: "1em", marginBottom: "0.5em" }}>
                   Property Information
                 </div>
-                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 14ch 12ch 10ch 9ch 15ch 10ch" }}>
                   <div>ProNo</div>
                   <div>Property Name</div>
                   <div>ProPhone-1</div>
@@ -1266,7 +1266,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
                 </div>
                 <div className="dos-browse-body">
                   {mine.map((p, i) => (
-                    <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+                    <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "8ch 30ch 14ch 12ch 10ch 9ch 15ch 10ch" }}>
                       <div>{p.proNo}</div>
                       <div>{p.name}</div>
                       <div>{p.phone}</div>

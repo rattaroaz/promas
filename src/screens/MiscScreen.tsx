@@ -458,7 +458,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
       >
         {!editForm ? (
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content 30ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch" }}>
               <div>Form #</div>
               <div>Content preview</div>
             </div>
@@ -467,7 +467,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                 <button
                   key={f.formNo}
                   className="dos-row browse-grid"
-                  style={{ gridTemplateColumns: "max-content 30ch" }}
+                  style={{ gridTemplateColumns: "8ch 30ch" }}
                   onClick={() => setEditForm({ ...f })}
                 >
                   <div>{f.formNo}</div>
