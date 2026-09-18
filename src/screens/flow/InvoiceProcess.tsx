@@ -666,7 +666,7 @@ export function InvoiceProcess({
                 <input
                   className="dos-input"
                   type="date"
-                  style={{ width: "17ch" }}
+                  style={{ width: "22ch" }}
                   value={editing.invoice.salesDate}
                   onChange={(e) =>
                     setEditing({

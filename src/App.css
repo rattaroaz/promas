@@ -371,22 +371,6 @@ textarea {
   border-bottom: 1px solid var(--dos-cyan);
   padding-bottom: 0;
   margin-bottom: 0;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--dos-cyan) var(--dos-blue);
-}
-
-.browse-grid-header::-webkit-scrollbar {
-  width: 1ch;
-}
-
-.browse-grid-header::-webkit-scrollbar-track {
-  background: var(--dos-blue);
-}
-
-.browse-grid-header::-webkit-scrollbar-thumb {
-  background: var(--dos-cyan);
 }
 
 .browse-grid > div,
