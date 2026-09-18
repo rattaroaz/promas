@@ -294,7 +294,7 @@ Receipt Total.... ${money(receiptTotal)}
 Ending Balance... ${money(endingBalance)}`}
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
               <div>Inv_#</div>
               <div>Inv_Date</div>
               <div>Inv_amount</div>
@@ -309,7 +309,7 @@ Ending Balance... ${money(endingBalance)}`}
                 <button
                   key={`${inv.invoice}-${inv.salesDate}`}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto" }}
+                  style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
