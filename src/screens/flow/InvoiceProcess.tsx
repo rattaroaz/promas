@@ -568,9 +568,9 @@ export function InvoiceProcess({
               whiteSpace: "pre",
             }}
           >
-            {padR(company.name, 24)} {padR(property.street, 16)}
+            {padR(company.name, 30)} {padR(property.street, 20)}
             {"\n"}
-            {padR(property.name, 24)} Unit keys: {property.keyInfo}{" "}
+            {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
           <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}>
