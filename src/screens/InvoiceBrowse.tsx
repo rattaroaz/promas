@@ -570,119 +570,134 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
             </div>
             {editing.lines.map((line, idx) => (
               <div key={idx} className="browse-grid browse-grid-6" style={{ marginBottom: "0.15em" }}>
-                <select
-                  className="dos-select"
-                  value={line.codeNo}
-                  onChange={(e) => {
-                    const code = e.target.value;
-                    const wt = workTypes.find((w) => w.codeNo === code);
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      codeNo: code,
-                      description: wt?.description || line.description,
-                      workType: wt?.workType || line.workType,
-                      price: line.price || wt?.price || 0,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value="*">*</option>
-                  {workTypes.map((w) => (
-                    <option key={w.codeNo} value={w.codeNo}>
-                      {w.codeNo}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="dos-input"
-                  value={line.description}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, description: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <DateInput
-                  value={line.workDate || today()}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, workDate: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <select
-                  className="dos-select"
-                  value={line.empNo}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, empNo: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value="">---</option>
-                  {employees.map((e) => (
-                    <option key={e.empNo} value={e.empNo}>
-                      {e.empNo}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="dos-input"
-                  type="number"
-                  step="0.01"
-                  value={line.price}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    const price = parseFloat(e.target.value) || 0;
-                    lines[idx] = {
-                      ...line,
-                      price,
-                      empPrice: (price * line.commission) / 100,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
+                <div style={{ minWidth: 0 }}>
+                  <select
+                    className="dos-select"
+                    style={{ width: "100%" }}
+                    value={line.codeNo}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const wt = workTypes.find((w) => w.codeNo === code);
+                      const lines = [...editing.lines];
+                      lines[idx] = {
+                        ...line,
+                        codeNo: code,
+                        description: wt?.description || line.description,
+                        workType: wt?.workType || line.workType,
+                        price: line.price || wt?.price || 0,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value="*">*</option>
+                    {workTypes.map((w) => (
+                      <option key={w.codeNo} value={w.codeNo}>
+                        {w.codeNo}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    value={line.description}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, description: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <DateInput
+                    value={line.workDate || today()}
+                    style={{ width: "100%" }}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, workDate: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <select
+                    className="dos-select"
+                    style={{ width: "100%" }}
+                    value={line.empNo}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, empNo: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value="">---</option>
+                    {employees.map((e) => (
+                      <option key={e.empNo} value={e.empNo}>
+                        {e.empNo}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    type="number"
+                    step="0.01"
+                    value={line.price}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      const price = parseFloat(e.target.value) || 0;
+                      lines[idx] = {
+                        ...line,
+                        price,
+                        empPrice: (price * line.commission) / 100,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                  <button
+                    className="dos-btn danger"
+                    style={{ width: "100%", minHeight: "44px" }}
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        lines: editing.lines.filter((_, i) => i !== idx),
+                      })
+                    }
+                  >
+                    Del
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="browse-grid browse-grid-6" style={{ marginTop: "0.4em" }}>
+              <div style={{ gridColumn: "1 / 5" }}>
                 <button
-                  className="dos-btn danger"
+                  className="dos-btn"
                   onClick={() =>
                     setEditing({
                       ...editing,
-                      lines: editing.lines.filter((_, i) => i !== idx),
+                      lines: [
+                        ...editing.lines,
+                        emptyInvoiceLine(
+                          editing.invoice,
+                          editing.lines.length + 1
+                        ),
+                      ],
                     })
                   }
                 >
-                  Del
+                  + Line (Ins)
                 </button>
               </div>
-            ))}
-            <div style={{ marginTop: "0.4em" }}>
-              <button
-                className="dos-btn"
-                onClick={() =>
-                  setEditing({
-                    ...editing,
-                    lines: [
-                      ...editing.lines,
-                      emptyInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      ),
-                    ],
-                  })
-                }
-              >
-                + Line (Ins)
-              </button>
-              <span
-                style={{
-                  float: "right",
-                  color: "var(--dos-yellow)",
-                  fontWeight: "bold",
-                }}
-              >
+              <div style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
                 Invoice Total : {money(lineTotal)}
-              </span>
+              </div>
+              <div></div>
             </div>
           </div>
         </Dialog>

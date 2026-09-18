@@ -1015,45 +1015,54 @@ export function InvoiceProcess({
                     placeholder="Type description"
                   />
                 </div>
-                <input
-                  className="dos-input"
-                  type="date"
-                  aria-label={`Line ${idx + 1} work date`}
-                  value={line.workDate || editing.invoice.salesDate}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, workDate: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <input
-                  className="dos-input"
-                  type="number"
-                  step="0.01"
-                  aria-label={`Price ${idx + 1}`}
-                  value={line.price || ""}
-                  onChange={(e) => {
-                    const price = parseFloat(e.target.value) || 0;
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      price,
-                      empPrice: (price * line.commission) / 100,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <button
-                  className="dos-btn danger"
-                  onClick={() =>
-                    setEditing({
-                      ...editing,
-                      lines: editing.lines.filter((_, i) => i !== idx),
-                    })
-                  }
-                >
-                  Del
-                </button>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    type="date"
+                    style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} work date`}
+                    value={line.workDate || editing.invoice.salesDate}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, workDate: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    type="number"
+                    step="0.01"
+                    style={{ width: "100%" }}
+                    aria-label={`Price ${idx + 1}`}
+                    value={line.price || ""}
+                    onChange={(e) => {
+                      const price = parseFloat(e.target.value) || 0;
+                      const lines = [...editing.lines];
+                      lines[idx] = {
+                        ...line,
+                        price,
+                        empPrice: (price * line.commission) / 100,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                  <button
+                    className="dos-btn danger"
+                    style={{ width: "100%", minHeight: "44px" }}
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        lines: editing.lines.filter((_, i) => i !== idx),
+                      })
+                    }
+                  >
+                    Del
+                  </button>
+                </div>
               </div>
             ))}
             <div style={{ marginTop: "0.4em" }}>

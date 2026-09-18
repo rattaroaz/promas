@@ -437,97 +437,114 @@ export function WorkOrderProcess({
             </div>
             {editing.lines.map((line, idx) => (
               <div key={idx} className="browse-grid browse-grid-5" style={{ marginBottom: "0.12em" }}>
-                <input
-                  className="dos-input"
-                  value={line.codeNo}
-                  title="Enter Job Code No (Esc=Exit, * = Command Input) !"
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, codeNo: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                  onBlur={(e) => applyCode(idx, e.target.value.trim())}
-                />
-                <input
-                  className="dos-input"
-                  value={line.description}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, description: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <select
-                  className="dos-select"
-                  value={line.workType}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, workType: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                >
-                  <option value="P">P</option>
-                  <option value="C">C</option>
-                  <option value="F">F</option>
-                  <option value="O">O</option>
-                  <option value="S">S</option>
-                </select>
-                <input
-                  className="dos-input"
-                  type="number"
-                  step="0.01"
-                  value={line.price}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      price: parseFloat(e.target.value) || 0,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    value={line.codeNo}
+                    title="Enter Job Code No (Esc=Exit, * = Command Input) !"
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, codeNo: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                    onBlur={(e) => applyCode(idx, e.target.value.trim())}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    value={line.description}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, description: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <select
+                    className="dos-select"
+                    style={{ width: "100%" }}
+                    value={line.workType}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, workType: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value="P">P</option>
+                    <option value="C">C</option>
+                    <option value="F">F</option>
+                    <option value="O">O</option>
+                    <option value="S">S</option>
+                  </select>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    style={{ width: "100%" }}
+                    type="number"
+                    step="0.01"
+                    value={line.price}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = {
+                        ...line,
+                        price: parseFloat(e.target.value) || 0,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                  <button
+                    className="dos-btn danger"
+                    style={{ width: "100%", minHeight: "44px" }}
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        lines: editing.lines.filter((_, i) => i !== idx),
+                      })
+                    }
+                  >
+                    Del
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="browse-grid browse-grid-5" style={{ marginTop: "0.4em" }}>
+              <div style={{ gridColumn: "1 / 4" }}>
                 <button
-                  className="dos-btn danger"
+                  className="dos-btn"
                   onClick={() =>
                     setEditing({
                       ...editing,
-                      lines: editing.lines.filter((_, i) => i !== idx),
+                      lines: [
+                        ...editing.lines,
+                        {
+                          companyNo: company.companyNo,
+                          proNo: property.proNo,
+                          orderDate: editing.order.orderDate,
+                          orderNo: editing.order.orderNo,
+                          lineNo: editing.lines.length + 1,
+                          codeNo: "*",
+                          description: "",
+                          workType: "P",
+                          price: 0,
+                        },
+                      ],
                     })
                   }
                 >
-                  Del
+                  + Line (* = free text)
                 </button>
               </div>
-            ))}
-            <div style={{ marginTop: "0.4em" }}>
-              <button
-                className="dos-btn"
-                onClick={() =>
-                  setEditing({
-                    ...editing,
-                    lines: [
-                      ...editing.lines,
-                      {
-                        companyNo: company.companyNo,
-                        proNo: property.proNo,
-                        orderDate: editing.order.orderDate,
-                        orderNo: editing.order.orderNo,
-                        lineNo: editing.lines.length + 1,
-                        codeNo: "*",
-                        description: "",
-                        workType: "P",
-                        price: 0,
-                      },
-                    ],
-                  })
-                }
-              >
-                + Line (* = free text)
-              </button>
-              <span style={{ float: "right", color: "var(--dos-yellow)" }}>
-                Total:{" "}
-                {money(editing.lines.reduce((s, l) => s + l.price, 0))}
-              </span>
+              <div style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+                Total: {money(editing.lines.reduce((s, l) => s + l.price, 0))}
+              </div>
+              <div></div>
             </div>
           </div>
         </Dialog>

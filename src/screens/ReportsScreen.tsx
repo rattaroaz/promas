@@ -1020,8 +1020,9 @@ function SalesReport({
         <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
         <div>Amounts: {money(sa)}</div>
         <div>{money(dep)}</div>
+        <div></div>
         <div>{money(pay)}</div>
-        <div style={{ gridColumn: "8 / 10" }}>Balance: {money(bal)}</div>
+        <div>Balance: {money(bal)}</div>
       </div>
     </div>
   );
@@ -1061,10 +1062,11 @@ function PayrollReport({
               className="dos-row browse-grid browse-grid-8"
             >
               <div>{fmtDate(r.salesDate)}</div>
-              <div>
+              <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
                 <button
                   type="button"
                   className="sales-invno"
+                  style={{ width: "100%", minHeight: "44px" }}
                   aria-label={`Invoice ${r.invoice}`}
                   onClick={() => onInvoice(r)}
                 >
@@ -1163,8 +1165,8 @@ function CashReceiptsReport({ rows }: { rows: CashReceiptRow[] }) {
         ))}
       </div>
       <div className="browse-grid browse-grid-7" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
-        <div style={{ gridColumn: "1 / 6" }}>Cash Receipts Total Counts: {rows.length}</div>
-        <div style={{ gridColumn: "6 / 8" }}>Amounts: {money(total)}</div>
+        <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
+        <div>Amounts: {money(total)}</div>
       </div>
     </div>
   );

@@ -121,7 +121,8 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
             <div className="browse-grid browse-grid-8" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
               <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
               <div>Invoice: {money(totalInv)}</div>
-              <div style={{ gridColumn: "6 / 8" }}>Wages: {money(totalWages)}</div>
+              <div></div>
+              <div>Wages: {money(totalWages)}</div>
               <div></div>
             </div>
           </div>

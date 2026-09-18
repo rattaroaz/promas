@@ -373,6 +373,20 @@ textarea {
   margin-bottom: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dos-cyan) var(--dos-blue);
+}
+
+.browse-grid-header::-webkit-scrollbar {
+  width: 1ch;
+}
+
+.browse-grid-header::-webkit-scrollbar-track {
+  background: var(--dos-blue);
+}
+
+.browse-grid-header::-webkit-scrollbar-thumb {
+  background: var(--dos-cyan);
 }
 
 .browse-grid > div,
@@ -438,6 +452,10 @@ textarea {
 
 .browse-grid-4 {
   grid-template-columns: repeat(4, 1fr);
+}
+
+.browse-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .browse-grid-3 {
