@@ -975,7 +975,7 @@ export function InvoiceProcess({
               <div key={idx} className="browse-grid browse-grid-4" style={{ marginBottom: "0.12em" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.2em" }}>
                   <select
-                    className="dos-select"
+                    className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
                     style={{ width: "100%" }}
                     value={
