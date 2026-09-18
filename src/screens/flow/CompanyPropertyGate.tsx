@@ -1080,7 +1080,7 @@ export function CompanyPropertyGate({
       {/* ── Company browse ─────────────────────────────── */}
       {phase === "co-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr auto auto" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}>
             <div>Company NO</div>
             <div>Company Name</div>
             <div>Phone</div>
@@ -1091,13 +1091,13 @@ export function CompanyPropertyGate({
               <button
                 key={c.companyNo}
                 className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "auto 1fr auto auto" }}
+                style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}
                 onMouseEnter={() => coBrowse.setIndex(i)}
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
               >
                 <div>{c.companyNo}</div>
-                <div>{c.name}</div>
+                <div className="desc-truncate">{c.name}</div>
                 <div>{c.phone}</div>
                 <div>{c.contact}</div>
               </button>
@@ -1109,7 +1109,7 @@ export function CompanyPropertyGate({
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto 1fr" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content" }}>
             <div>Inv#</div>
             <div>Inv_Date</div>
             <div>Co#</div>
@@ -1121,7 +1121,7 @@ export function CompanyPropertyGate({
               <button
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
                 className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "auto auto auto auto 1fr" }}
+                style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content" }}
                 onMouseEnter={() => invBrowse.setIndex(i)}
                 onClick={() => void pickInvoiceSite(inv)}
               >
@@ -1129,7 +1129,7 @@ export function CompanyPropertyGate({
                 <div>{fmtDate(inv.salesDate)}</div>
                 <div>{inv.companyNo}</div>
                 <div>{inv.proNo}</div>
-                <div>{inv.propertyStreet || inv.propertyName || ""}</div>
+                <div className="desc-truncate">{inv.propertyStreet || inv.propertyName || ""}</div>
               </button>
             ))}
           </div>
@@ -1238,7 +1238,7 @@ export function CompanyPropertyGate({
         <div className="dos-browse">
           {company ? (
             <>
-              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}>
+              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}>
                 <div>ProNO</div>
                 <div>Name</div>
                 <div>Address</div>
@@ -1249,13 +1249,13 @@ export function CompanyPropertyGate({
                   <button
                     key={`${p.companyNo}-${p.proNo}`}
                     className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
-                    style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}
+                    style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}
                     onMouseEnter={() => prBrowse.setIndex(i)}
                     onClick={() => selectProperty(p)}
                   >
                     <div>{p.proNo}</div>
-                    <div>{p.name}</div>
-                    <div>{formatPropertyAddress(p) || p.name}</div>
+                    <div className="desc-truncate">{p.name}</div>
+                    <div className="desc-truncate">{formatPropertyAddress(p) || p.name}</div>
                     <div>{company.contact}</div>
                   </button>
                 ))}
@@ -1263,7 +1263,7 @@ export function CompanyPropertyGate({
             </>
           ) : (
             <>
-              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto 1fr auto" }}>
+              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}>
                 <div>CoNO</div>
                 <div>ProNO</div>
                 <div>Address</div>
@@ -1274,13 +1274,13 @@ export function CompanyPropertyGate({
                   <button
                     key={`${p.companyNo}-${p.proNo}`}
                     className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
-                    style={{ gridTemplateColumns: "auto auto 1fr auto" }}
+                    style={{ gridTemplateColumns: "max-content max-content max-content max-content" }}
                     onMouseEnter={() => prBrowse.setIndex(i)}
                     onClick={() => selectProperty(p)}
                   >
                     <div>{p.companyNo}</div>
                     <div>{p.proNo}</div>
-                    <div>{formatPropertyAddress(p) || p.name}</div>
+                    <div className="desc-truncate">{formatPropertyAddress(p) || p.name}</div>
                     <div>{companyContacts[p.companyNo] ?? ""}</div>
                   </button>
                 ))}
