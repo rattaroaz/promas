@@ -543,6 +543,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                     className="dos-input"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
+                    style={{ width: "40ch" }}
                     value={editing.invoice.paintSupplyCo ?? ""}
                     onChange={(e) =>
                       setEditing({
