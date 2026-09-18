@@ -146,14 +146,14 @@ export function MaterialBrowse({
     await load();
   }
 
-  const header =
+  const headerCells =
     sort === "worker"
-      ? "TransDate   Material Description            Material Amount"
+      ? ["TransDate", "Material Description", "Material Amount"]
       : sort === "desc"
-        ? "Empno      Trans Date                         Material Amount"
+        ? ["Empno", "Trans Date", "Material Amount"]
         : sort === "date"
-          ? "Empno      Material Description            Material Amount"
-          : "Mat_Date.....   Material Description................   Mater.Amount";
+          ? ["Empno", "Material Description", "Material Amount"]
+          : ["Mat_Date", "Material Description", "Mater.Amount"];
 
   return (
     <Screen
@@ -182,41 +182,45 @@ export function MaterialBrowse({
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">{header}</div>
+            <div className="browse-grid browse-grid-3 browse-grid-header">
+              {headerCells.map((h, i) => <div key={i}>{h}</div>)}
+            </div>
             <div className="dos-browse-body">
               {rows.map((m, i) => (
                 <button
                   key={m.id}
-                  className={`dos-row ${i === index ? "selected" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} browse-grid browse-grid-3`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
                     setEditing({ ...m });
                   }}
                 >
-                  {sort === "worker"
-                    ? cols(
-                        padR(fmtDate(m.matDate), 10),
-                        padR(m.description, 36),
-                        padL(money(m.amount), 16)
-                      )
-                    : sort === "desc"
-                      ? cols(
-                          padR(m.empNo, 10),
-                          padR(fmtDate(m.matDate), 12),
-                          padL(money(m.amount), 16)
-                        )
-                      : sort === "date"
-                        ? cols(
-                            padR(m.empNo, 10),
-                            padR(m.description, 36),
-                            padL(money(m.amount), 16)
-                          )
-                        : cols(
-                            padR(fmtDate(m.matDate), 12),
-                            padR(m.description, 36),
-                            padL(money(m.amount), 12)
-                          )}
+                  {sort === "worker" ? (
+                    <>
+                      <div>{fmtDate(m.matDate)}</div>
+                      <div>{m.description}</div>
+                      <div>{money(m.amount)}</div>
+                    </>
+                  ) : sort === "desc" ? (
+                    <>
+                      <div>{m.empNo}</div>
+                      <div>{fmtDate(m.matDate)}</div>
+                      <div>{money(m.amount)}</div>
+                    </>
+                  ) : sort === "date" ? (
+                    <>
+                      <div>{m.empNo}</div>
+                      <div>{m.description}</div>
+                      <div>{money(m.amount)}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>{fmtDate(m.matDate)}</div>
+                      <div>{m.description}</div>
+                      <div>{money(m.amount)}</div>
+                    </>
+                  )}
                 </button>
               ))}
               {rows.length === 0 && (

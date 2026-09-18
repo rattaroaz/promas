@@ -172,28 +172,29 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Ord#   OrdDate    Comp   Pro   Order By        Unit/Size          Property"}
+            <div className="browse-grid browse-grid-7 browse-grid-header">
+              <div>Ord#</div>
+              <div>OrdDate</div>
+              <div>Comp</div>
+              <div>Pro</div>
+              <div>Order By</div>
+              <div>Unit/Size</div>
+              <div>Property</div>
             </div>
             <div className="dos-browse-body">
               {rows.map((w, i) => (
                 <button
                   key={`${w.companyNo}-${w.orderNo}-${w.orderDate}`}
-                  className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid browse-grid-7`}
                   onMouseEnter={() => setIndex(i)}
                 >
-                  {cols(
-                    padL(w.orderNo, 5),
-                    padR(fmtDate(w.orderDate), 10),
-                    padR(w.companyNo, 4),
-                    padR(w.proNo, 3),
-                    padR(w.orderBy || w.orderMan, 14),
-                    padR(
-                      `${w.orderUnit}${w.orderSize ? "/" + w.orderSize : ""}`,
-                      16
-                    ),
-                    padR(w.propertyName || "", 24)
-                  )}
+                  <div>{w.orderNo}</div>
+                  <div>{fmtDate(w.orderDate)}</div>
+                  <div>{w.companyNo}</div>
+                  <div>{w.proNo}</div>
+                  <div>{w.orderBy || w.orderMan}</div>
+                  <div>{w.orderUnit}{w.orderSize ? "/" + w.orderSize : ""}</div>
+                  <div>{w.propertyName || ""}</div>
                 </button>
               ))}
             </div>

@@ -281,27 +281,26 @@ export function WorkOrderProcess({
           >
             {company.name} — {property.name} {property.street}
           </div>
-          <div className="dos-browse-header">
-            {"Ord#   OrdDate    Unit/Size          Order By        Status"}
+          <div className="browse-grid browse-grid-5 browse-grid-header">
+            <div>Ord#</div>
+            <div>OrdDate</div>
+            <div>Unit/Size</div>
+            <div>Order By</div>
+            <div>Status</div>
           </div>
           <div className="dos-browse-body">
             {rows.map((w, i) => (
               <button
                 key={`${w.orderNo}-${w.orderDate}`}
-                className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""}`}
+                className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid browse-grid-5`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => openEdit(w)}
               >
-                {cols(
-                  padL(w.orderNo, 5),
-                  padR(fmtDate(w.orderDate), 10),
-                  padR(
-                    `${w.orderUnit}${w.orderSize ? "/" + w.orderSize : ""}`,
-                    16
-                  ),
-                  padR(w.orderBy || w.orderMan, 14),
-                  w.voided ? "VOID" : w.status || "OK"
-                )}
+                <div>{w.orderNo}</div>
+                <div>{fmtDate(w.orderDate)}</div>
+                <div>{w.orderUnit}{w.orderSize ? "/" + w.orderSize : ""}</div>
+                <div>{w.orderBy || w.orderMan}</div>
+                <div>{w.voided ? "VOID" : w.status || "OK"}</div>
               </button>
             ))}
             {rows.length === 0 && (
@@ -429,29 +428,17 @@ export function WorkOrderProcess({
               />
             </DotField>
 
-            <div
-              style={{
-                color: "var(--dos-yellow)",
-                margin: "0.5em 0 0.2em",
-                whiteSpace: "pre",
-              }}
-            >
-              {
-                "Code# Description                                          W/T        Price"
-              }
+            <div className="browse-grid browse-grid-5 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+              <div>Code#</div>
+              <div>Description</div>
+              <div>W/T</div>
+              <div>Price</div>
+              <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  gap: "0.4ch",
-                  marginBottom: "0.12em",
-                }}
-              >
+              <div key={idx} className="browse-grid browse-grid-5" style={{ marginBottom: "0.12em" }}>
                 <input
                   className="dos-input"
-                  style={{ width: "7ch" }}
                   value={line.codeNo}
                   title="Enter Job Code No (Esc=Exit, * = Command Input) !"
                   onChange={(e) => {
@@ -463,7 +450,6 @@ export function WorkOrderProcess({
                 />
                 <input
                   className="dos-input"
-                  style={{ flex: 1 }}
                   value={line.description}
                   onChange={(e) => {
                     const lines = [...editing.lines];
@@ -473,7 +459,6 @@ export function WorkOrderProcess({
                 />
                 <select
                   className="dos-select"
-                  style={{ width: "5ch" }}
                   value={line.workType}
                   onChange={(e) => {
                     const lines = [...editing.lines];
@@ -488,7 +473,7 @@ export function WorkOrderProcess({
                   <option value="S">S</option>
                 </select>
                 <input
-                  className="dos-input w10 num"
+                  className="dos-input"
                   type="number"
                   step="0.01"
                   value={line.price}
