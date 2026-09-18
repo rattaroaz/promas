@@ -281,7 +281,7 @@ export function WorkOrderProcess({
           >
             {company.name} — {property.name} {property.street}
           </div>
-          <div className="browse-grid browse-grid-5 browse-grid-header">
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto" }}>
             <div>Ord#</div>
             <div>OrdDate</div>
             <div>Unit/Size</div>
@@ -292,7 +292,8 @@ export function WorkOrderProcess({
             {rows.map((w, i) => (
               <button
                 key={`${w.orderNo}-${w.orderDate}`}
-                className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid browse-grid-5`}
+                className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
+                style={{ gridTemplateColumns: "auto auto auto auto auto" }}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => openEdit(w)}
               >
@@ -428,7 +429,7 @@ export function WorkOrderProcess({
               />
             </DotField>
 
-            <div className="browse-grid browse-grid-5 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "auto 30ch auto auto auto" }}>
               <div>Code#</div>
               <div>Description</div>
               <div>W/T</div>
@@ -436,7 +437,7 @@ export function WorkOrderProcess({
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid browse-grid-5" style={{ marginBottom: "0.12em" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "auto 30ch auto auto auto" }}>
                 <div style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
@@ -514,7 +515,7 @@ export function WorkOrderProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid browse-grid-5" style={{ marginTop: "0.4em" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "auto 30ch auto auto auto" }}>
               <div style={{ gridColumn: "1 / 4" }}>
                 <button
                   className="dos-btn"
