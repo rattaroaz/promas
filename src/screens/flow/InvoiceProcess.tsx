@@ -22,7 +22,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, padL, money, fmtDate, today, naturalCompare } from "../../dos/utils";
+import { padR, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
@@ -52,6 +52,7 @@ export function InvoiceProcess({
   focusInvoice?: number;
 }) {
   const [rows, setRows] = useState<Invoice[]>([]);
+  const [originalRows, setOriginalRows] = useState<Invoice[]>([]);
   const [mode, setMode] = useState<Mode>("browse");
   const [editing, setEditing] = useState<InvoiceWithLines | null>(null);
   const [isNewInvoice, setIsNewInvoice] = useState(false);
@@ -85,6 +86,8 @@ export function InvoiceProcess({
         (focusInvoice == null || i.invoice === focusInvoice)
     );
     setRows(mine);
+    setOriginalRows(mine);
+    setUnitSortDirection(null);
     if (focusInvoice != null && mine.length) setIndex(0);
     setMsg(
       mine.length
@@ -95,22 +98,41 @@ export function InvoiceProcess({
 
   const toggleUnitSort = useCallback(() => {
     setUnitSortDirection((prev) => {
-      if (prev === null || prev === "desc") return "asc";
-      return "desc";
+      if (prev === null) return "asc";
+      if (prev === "asc") return "desc";
+      return null;
     });
     setIndex(0);
   }, [setIndex]);
 
   const sortedRows = useMemo(() => {
-    if (unitSortDirection === null) return rows;
+    if (unitSortDirection === null) return originalRows;
     
-    const sorted = [...rows].sort((a, b) => {
+    const sorted = [...originalRows].sort((a, b) => {
       const cmp = naturalCompare(a.salesUnit, b.salesUnit);
       return unitSortDirection === "asc" ? cmp : -cmp;
     });
     
     return sorted;
-  }, [rows, unitSortDirection]);
+  }, [originalRows, unitSortDirection]);
+
+  useEffect(() => {
+    if (mode !== "browse") return;
+    const count = originalRows.length;
+    if (count === 0) {
+      setMsg("No invoices for this property. Press Ins or click New Invoice.");
+      return;
+    }
+    
+    let sortMsg = "";
+    if (unitSortDirection === "asc") {
+      sortMsg = "Sorted by unit, ascending  ";
+    } else if (unitSortDirection === "desc") {
+      sortMsg = "Sorted by unit, descending  ";
+    }
+    
+    setMsg(`${sortMsg}${count} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`);
+  }, [mode, originalRows.length, unitSortDirection]);
 
   useEffect(() => {
     load();
@@ -551,30 +573,23 @@ export function InvoiceProcess({
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
-          <div className="dos-browse-header">
-            <span style={{ whiteSpace: "pre" }}>
-              {"Inv_Date   Inv#   PO           "}
-              <button
-                type="button"
-                className="dos-header-btn"
-                onClick={toggleUnitSort}
-                title="Click to sort by unit number"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "inherit",
-                  font: "inherit",
-                  cursor: "pointer",
-                  padding: 0,
-                  textDecoration: unitSortDirection ? "underline" : "none",
-                }}
-              >
-                {"Unit"}
-                {unitSortDirection === "asc" && " ↑"}
-                {unitSortDirection === "desc" && " ↓"}
-              </button>
-              {"     Size     Total      Paid     Balance   St"}
-            </span>
+          <div className="browse-grid browse-grid-9 browse-grid-header">
+            <div>Inv_Date</div>
+            <div>Inv#</div>
+            <div>PO</div>
+            <button
+              type="button"
+              className="sort-btn"
+              onClick={toggleUnitSort}
+              title="Click to sort by unit number"
+            >
+              Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
+            </button>
+            <div>Size</div>
+            <div>Total</div>
+            <div>Paid</div>
+            <div>Balance</div>
+            <div>St</div>
           </div>
           <div className="dos-browse-body">
             {sortedRows.map((inv, i) => (
@@ -584,27 +599,25 @@ export function InvoiceProcess({
                   !inv.voided && inv.balance > 0.005
                     ? "invoice-open"
                     : "invoice-paid"
-                }`}
+                } browse-grid browse-grid-9`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
                   openEdit(inv);
                 }}
               >
-                {cols(
-                  padR(fmtDate(inv.salesDate), 10),
-                  padL(inv.invoice, 5),
-                  padR(inv.custPoNo ?? "", 12),
-                  padR(inv.salesUnit, 8),
-                  padR(inv.salesSize, 8),
-                  padL(money(inv.salesTotal), 10),
-                  padL(money(inv.payTotal), 9),
-                  padL(money(inv.balance), 10),
-                  inv.voided ? "V" : inv.balance <= 0 ? "*" : " "
-                )}
+                <div>{fmtDate(inv.salesDate)}</div>
+                <div>{inv.invoice}</div>
+                <div>{inv.custPoNo ?? ""}</div>
+                <div>{inv.salesUnit}</div>
+                <div>{inv.salesSize}</div>
+                <div>{money(inv.salesTotal)}</div>
+                <div>{money(inv.payTotal)}</div>
+                <div>{money(inv.balance)}</div>
+                <div>{inv.voided ? "V" : inv.balance <= 0 ? "*" : " "}</div>
               </button>
             ))}
-            {rows.length === 0 && (
+            {originalRows.length === 0 && (
               <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
                 {"  (no invoices — press Ins or click New Invoice)"}
               </div>
@@ -952,21 +965,19 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="invoice-line-grid invoice-line-head">
-              <span>Description</span>
-              <span className="invoice-col-center">WorkDate</span>
-              <span className="invoice-col-center">Price</span>
+            <div className="browse-grid browse-grid-4 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+              <div>Description</div>
+              <div>WorkDate</div>
+              <div>Price</div>
+              <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div
-                key={idx}
-                className="invoice-line-grid"
-                style={{ marginBottom: "0.12em" }}
-              >
-                <div className="dos-choice-pair">
+              <div key={idx} className="browse-grid browse-grid-4" style={{ marginBottom: "0.12em" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.2em" }}>
                   <select
                     className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
+                    style={{ width: "100%" }}
                     value={
                       isPresetDescription(line.description)
                         ? line.description
@@ -994,6 +1005,7 @@ export function InvoiceProcess({
                     aria-label={`Line ${idx + 1} custom text`}
                     readOnly={isPresetDescription(line.description)}
                     value={line.description}
+                    style={{ width: "100%" }}
                     onChange={(e) => {
                       if (isPresetDescription(line.description)) return;
                       const lines = [...editing.lines];
@@ -1003,94 +1015,95 @@ export function InvoiceProcess({
                     placeholder="Type description"
                   />
                 </div>
-                <input
-                  className="dos-input w12"
-                  type="date"
-                  aria-label={`Line ${idx + 1} work date`}
-                  value={line.workDate || editing.invoice.salesDate}
-                  onChange={(e) => {
-                    const lines = [...editing.lines];
-                    lines[idx] = { ...line, workDate: e.target.value };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <input
-                  className="dos-input w10 num"
-                  type="number"
-                  step="0.01"
-                  aria-label={`Price ${idx + 1}`}
-                  value={line.price || ""}
-                  onChange={(e) => {
-                    const price = parseFloat(e.target.value) || 0;
-                    const lines = [...editing.lines];
-                    lines[idx] = {
-                      ...line,
-                      price,
-                      empPrice: (price * line.commission) / 100,
-                    };
-                    setEditing({ ...editing, lines });
-                  }}
-                />
-                <button
-                  className="dos-btn danger"
-                  onClick={() =>
-                    setEditing({
-                      ...editing,
-                      lines: editing.lines.filter((_, i) => i !== idx),
-                    })
-                  }
-                >
-                  Del
-                </button>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    type="date"
+                    style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} work date`}
+                    value={line.workDate || editing.invoice.salesDate}
+                    onChange={(e) => {
+                      const lines = [...editing.lines];
+                      lines[idx] = { ...line, workDate: e.target.value };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <input
+                    className="dos-input"
+                    type="number"
+                    step="0.01"
+                    style={{ width: "100%" }}
+                    aria-label={`Price ${idx + 1}`}
+                    value={line.price || ""}
+                    onChange={(e) => {
+                      const price = parseFloat(e.target.value) || 0;
+                      const lines = [...editing.lines];
+                      lines[idx] = {
+                        ...line,
+                        price,
+                        empPrice: (price * line.commission) / 100,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  />
+                </div>
+                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                  <button
+                    className="dos-btn danger"
+                    style={{ width: "100%", minHeight: "44px" }}
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        lines: editing.lines.filter((_, i) => i !== idx),
+                      })
+                    }
+                  >
+                    Del
+                  </button>
+                </div>
               </div>
             ))}
-            <div style={{ marginTop: "0.4em" }}>
-              <button
-                className="dos-btn"
-                onClick={() => {
-                  const person = invoiceWorkPerson(editing.lines);
-                  const next = isNewInvoice
-                    ? blankNewInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      )
-                    : emptyInvoiceLine(
-                        editing.invoice,
-                        editing.lines.length + 1
-                      );
-                  next.empNo = person;
-                  setEditing({
-                    ...editing,
-                    lines: [...editing.lines, next],
-                  });
-                }}
-              >
-                + Line
-              </button>
-              <span
-                style={{
-                  float: "right",
-                  color: "var(--dos-yellow)",
-                  fontWeight: "bold",
-                }}
-              >
-                Invoice Total : {money(lineTotal)}
-                {"  "}Balance:{" "}
-                {money(
-                  lineTotal -
-                    editing.invoice.salesPay -
-                    editing.invoice.payTotal
-                )}
-                {"  "}
+            <div className="browse-grid browse-grid-4" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ gridColumn: "1 / 3" }}>
                 <button
-                  type="button"
                   className="dos-btn"
-                  onClick={() => printCurrent()}
-                  title="Print on invoice_template.pdf (End)"
+                  onClick={() => {
+                    const person = invoiceWorkPerson(editing.lines);
+                    const next = isNewInvoice
+                      ? blankNewInvoiceLine(
+                          editing.invoice,
+                          editing.lines.length + 1
+                        )
+                      : emptyInvoiceLine(
+                          editing.invoice,
+                          editing.lines.length + 1
+                        );
+                    next.empNo = person;
+                    setEditing({
+                      ...editing,
+                      lines: [...editing.lines, next],
+                    });
+                  }}
                 >
-                  Print Form (End)
+                  + Line
                 </button>
-              </span>
+              </div>
+              <div>{money(lineTotal)}</div>
+              <div></div>
+            </div>
+            <div style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
+              {"  "}
+              <button
+                type="button"
+                className="dos-btn"
+                onClick={() => printCurrent()}
+                title="Print on invoice_template.pdf (End)"
+              >
+                Print Form (End)
+              </button>
             </div>
             <div
               style={{

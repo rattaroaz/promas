@@ -341,7 +341,9 @@ describe("CompanyPropertyGate", () => {
     expect(
       screen.getByRole("button", { name: /2000\s+BETA.*\(555\)555-1212\s+ELAINE/i })
     ).toBeInTheDocument();
-    expect(screen.getByText(/Phone\.+\s+Contact/)).toBeInTheDocument();
+    const header = document.querySelector(".browse-grid-header");
+    expect(header?.textContent).toContain("Phone");
+    expect(header?.textContent).toContain("Contact");
   });
 
   it("selects company from the first screen by contact", async () => {

@@ -10,7 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
-import { cols, padR, padL, money } from "../dos/utils";
+import { money } from "../dos/utils";
 
 export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<WorkType[]>([]);
@@ -128,26 +128,27 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="dos-browse-header">
-              {"Code NO......   Description.......................   W/T......   Price"}
+            <div className="browse-grid browse-grid-4 browse-grid-header">
+              <div>Code NO</div>
+              <div>Description</div>
+              <div>W/T</div>
+              <div>Price</div>
             </div>
             <div className="dos-browse-body">
               {rows.map((w, i) => (
                 <button
                   key={w.codeNo}
-                  className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""}`}
+                  className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid browse-grid-4`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIsNew(false);
                     setEditing({ ...w });
                   }}
                 >
-                  {cols(
-                    padR(w.codeNo, 12),
-                    padR(w.description, 32),
-                    padR(w.workType, 8),
-                    padL(money(w.price), 10)
-                  )}
+                  <div>{w.codeNo}</div>
+                  <div>{w.description}</div>
+                  <div>{w.workType}</div>
+                  <div>{money(w.price)}</div>
                 </button>
               ))}
             </div>

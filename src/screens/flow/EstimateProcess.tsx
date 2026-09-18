@@ -20,7 +20,7 @@ import {
   FORM_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { cols, padR, padL, fmtDate, today } from "../../dos/utils";
+import { fmtDate, today } from "../../dos/utils";
 
 export function EstimateProcess({
   company,
@@ -173,26 +173,27 @@ export function EstimateProcess({
             {company.companyNo} {company.name} — {property.proNo}{" "}
             {property.name}
           </div>
-          <div className="dos-browse-header">
-            {"Proposal #........   Proposal Date.....   Form #............"}
+          <div className="browse-grid browse-grid-4 browse-grid-header">
+            <div>Proposal #</div>
+            <div>Proposal Date</div>
+            <div>Form #</div>
+            <div>Status</div>
           </div>
           <div className="dos-browse-body">
             {rows.map((e, i) => (
               <button
                 key={e.id ?? `${e.estNo}-${e.estDate}`}
-                className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""}`}
+                className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid browse-grid-4`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIsNew(false);
                   setEditing({ ...e });
                 }}
               >
-                {cols(
-                  padL(e.estNo, 16),
-                  padR(fmtDate(e.estDate), 18),
-                  padR(e.formNo, 18),
-                  e.voided ? "VOID" : e.status || ""
-                )}
+                <div>{e.estNo}</div>
+                <div>{fmtDate(e.estDate)}</div>
+                <div>{e.formNo}</div>
+                <div>{e.voided ? "VOID" : e.status || ""}</div>
               </button>
             ))}
             {rows.length === 0 && (

@@ -103,11 +103,18 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
     expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
-    expect(screen.getByText(/Inv#\s+PO/i)).toBeInTheDocument();
+    const header = document.querySelector(".browse-grid-header");
+    expect(header?.textContent).toContain("Inv#");
+    expect(header?.textContent).toContain("PO");
+    expect(header?.textContent).toContain("Size");
+    expect(header?.textContent).toContain("Total");
     expect(screen.getByRole("button", { name: /Unit/i })).toBeInTheDocument();
-    expect(screen.getByText(/Size\s+Total/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /A1\s+1\+1/i })).toBeInTheDocument();
+    
+    // Verify equal-width grid classes
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-9");
+    
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({
         companyNo: "1000",
@@ -535,7 +542,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByRole("button", { name: /^New Invoice$/i })).toBeInTheDocument();
   });
 
-  it("sorts invoices by unit number when Unit header is clicked", async () => {
+  it("cycles unit sort through null → asc → desc → null", async () => {
     const inv2 = { ...fixture, invoice: 2, salesUnit: "10", custPoNo: "PO-2" };
     const inv3 = { ...fixture, invoice: 3, salesUnit: "2", custPoNo: "PO-3" };
     const inv4 = { ...fixture, invoice: 4, salesUnit: "1A", custPoNo: "PO-4" };
@@ -548,6 +555,7 @@ describe("InvoiceProcess", () => {
     
     await screen.findByText(/4 invoices/i);
     
+    // Original loaded order (null)
     const rows = screen.getAllByRole("button").filter(btn => 
       btn.textContent?.includes("PO-")
     );
@@ -557,6 +565,10 @@ describe("InvoiceProcess", () => {
     expect(rows[3].textContent).toContain("1A");
     
     const unitHeader = screen.getByRole("button", { name: /Unit/i });
+    expect(unitHeader.textContent).toBe("Unit");
+    expect(screen.getByText(/4 invoices.*Ins=Add/i)).toBeInTheDocument();
+    
+    // First click: ascending
     await user.click(unitHeader);
     
     const sortedRowsAsc = screen.getAllByRole("button").filter(btn => 
@@ -566,8 +578,10 @@ describe("InvoiceProcess", () => {
     expect(sortedRowsAsc[1].textContent).toContain("2");
     expect(sortedRowsAsc[2].textContent).toContain("10");
     expect(sortedRowsAsc[3].textContent).toContain("A1");
-    expect(unitHeader.textContent).toContain("↑");
+    expect(unitHeader.textContent).toContain("^");
+    expect(screen.getByText(/Sorted by unit, ascending/i)).toBeInTheDocument();
     
+    // Second click: descending
     await user.click(unitHeader);
     
     const sortedRowsDesc = screen.getAllByRole("button").filter(btn => 
@@ -577,7 +591,64 @@ describe("InvoiceProcess", () => {
     expect(sortedRowsDesc[1].textContent).toContain("10");
     expect(sortedRowsDesc[2].textContent).toContain("2");
     expect(sortedRowsDesc[3].textContent).toContain("1A");
-    expect(unitHeader.textContent).toContain("↓");
+    expect(unitHeader.textContent).toContain("v");
+    expect(screen.getByText(/Sorted by unit, descending/i)).toBeInTheDocument();
+    
+    // Third click: back to original order (null)
+    await user.click(unitHeader);
+    
+    const restoredRows = screen.getAllByRole("button").filter(btn => 
+      btn.textContent?.includes("PO-")
+    );
+    expect(restoredRows[0].textContent).toContain("A1");
+    expect(restoredRows[1].textContent).toContain("10");
+    expect(restoredRows[2].textContent).toContain("2");
+    expect(restoredRows[3].textContent).toContain("1A");
+    expect(unitHeader.textContent).toBe("Unit");
+    expect(screen.getByText(/4 invoices.*Ins=Add/i)).toBeInTheDocument();
+  });
+
+  it("uses equal column tracks and keeps alignment across Unit sort states", async () => {
+    const inv2 = { ...fixture, invoice: 2, salesUnit: "10", custPoNo: "PO-2" };
+    vi.mocked(api.listInvoices).mockResolvedValue([fixture, inv2]);
+    
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    
+    await screen.findByText(/2 invoices/i);
+    
+    const header = document.querySelector(".browse-grid-header");
+    const firstRow = document.querySelector(".dos-browse-body .browse-grid");
+    
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid-9");
+    
+    // Both should use the same equal-width grid classes
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid-9");
+    
+    const unitHeader = screen.getByRole("button", { name: /Unit/i });
+    
+    // Click to sort ascending - classes should remain
+    await user.click(unitHeader);
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid-9");
+    
+    // Click to sort descending - classes should remain
+    await user.click(unitHeader);
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid-9");
+    
+    // Click to restore original order - classes should remain
+    await user.click(unitHeader);
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid-9");
   });
 
   it("activates new-invoice status hints when they are clicked", async () => {

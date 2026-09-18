@@ -137,7 +137,8 @@ describe("ReportsScreen aging", () => {
       expect(api.reportAging).toHaveBeenCalledWith(undefined, "ELAINE");
     });
     expect(await screen.findByText(/Contact/)).toBeInTheDocument();
-    expect(screen.getByText(/ACME Prop\s+ELAINE/)).toBeInTheDocument();
+    expect(screen.getByText("ACME Prop")).toBeInTheDocument();
+    expect(screen.getByText("ELAINE")).toBeInTheDocument();
   });
 
   it("searches aging by property address", async () => {
@@ -219,7 +220,8 @@ describe("ReportsScreen aging", () => {
         name: /Company 1000 outstanding invoices/i,
       })
     );
-    await user.click(await screen.findByRole("button", { name: /Invoice 1/i }));
+    const invoiceRow = await screen.findByRole("button", { name: /01\/15\/2026/ });
+    await user.click(invoiceRow);
 
     await waitFor(() => {
       expect(api.getInvoice).toHaveBeenCalledWith(
@@ -477,19 +479,20 @@ describe("ReportsScreen sales analysis", () => {
     const companyBtn = screen.getByRole("button", {
       name: /Sort by company number/i,
     });
-    const rows = () =>
-      screen.getAllByText(/01\/15\/2026|02\/01\/2026/).map((el) => el.textContent);
+    
+    const getFirstRow = () => document.querySelector(".dos-browse-body .dos-row");
 
-    expect(rows()[0]).toMatch(/02\/01\/2026/);
-    expect(rows()[0]).toMatch(/1000/);
+    await screen.findByText(/02\/01\/2026/);
+    expect(getFirstRow()?.textContent).toContain("02/01/2026");
+    expect(getFirstRow()?.textContent).toContain("1000");
 
     await user.click(companyBtn);
-    expect(rows()[0]).toMatch(/1000/);
-    expect(rows()[0]).toMatch(/02\/01\/2026/);
+    expect(getFirstRow()?.textContent).toContain("1000");
+    expect(getFirstRow()?.textContent).toContain("02/01/2026");
 
     await user.click(dateBtn);
-    expect(rows()[0]).toMatch(/01\/15\/2026/);
-    expect(rows()[0]).toMatch(/2000/);
+    expect(getFirstRow()?.textContent).toContain("01/15/2026");
+    expect(getFirstRow()?.textContent).toContain("2000");
   });
 
   it("opens the invoice form when an invoice is clicked", async () => {
@@ -734,9 +737,7 @@ describe("ReportsScreen payroll", () => {
     expect(screen.getByText(/Mat_Cost/)).toBeInTheDocument();
     expect(screen.getByText(/Inv_Total/)).toBeInTheDocument();
     expect(document.querySelector(".payroll-landscape")).toBeInTheDocument();
-    expect(document.querySelector(".payroll-grid")).toBeInTheDocument();
-    expect(screen.getByLabelText("Blank column 1")).toBeInTheDocument();
-    expect(screen.getByLabelText("Blank column 2")).toBeInTheDocument();
+    expect(document.querySelector(".browse-grid-8")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Invoice 12/i }));
     await waitFor(() => {
@@ -760,7 +761,7 @@ describe("ReportsScreen payroll", () => {
     expect(screen.getAllByText("250.00").length).toBeGreaterThan(0);
     expect(screen.getAllByText("40.00").length).toBeGreaterThan(0);
     expect(screen.getByText("A1")).toBeInTheDocument();
-    const header = screen.getByText("Address").closest("tr");
+    const header = document.querySelector(".browse-grid-header");
     const headerText = header?.textContent ?? "";
     expect(headerText.indexOf("Address")).toBeLessThan(
       headerText.indexOf("Inv_Total")

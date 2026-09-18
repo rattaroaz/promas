@@ -11,6 +11,7 @@ import {
   MissingInvoiceRow,
   Company,
   Invoice,
+  CashReceipt,
   emptyCompany,
   emptyProperty,
 } from "../api";
@@ -102,6 +103,9 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [salesRows, setSalesRows] = useState<SalesAnalysisRow[] | null>(null);
   const [payrollRows, setPayrollRows] = useState<PayrollRow[] | null>(null);
   const [paintRows, setPaintRows] = useState<PaintUsageRow[] | null>(null);
+  const [cashRows, setCashRows] = useState<CashReceipt[] | null>(null);
+  const [missingRows, setMissingRows] = useState<MissingInvoiceRow[] | null>(null);
+  const [customerData, setCustomerData] = useState<{ cos: Company[]; props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[] } | null>(null);
   const [salesSort, setSalesSort] = useState<{
     key: SalesSortKey;
     dir: SalesSortDir;
@@ -221,6 +225,9 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     setSalesRows(null);
     setPayrollRows(null);
     setPaintRows(null);
+    setCashRows(null);
+    setMissingRows(null);
+    setCustomerData(null);
     setText("");
   }
 
@@ -239,27 +246,15 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         });
         setSalesRows(rows);
       } else if (id === "cash") {
-        const rows = await api.listCashReceipts({
-          fromDate: fromDate || undefined,
-          toDate: toDate || undefined,
-          companyNo: companyNo || undefined,
-          search: search.trim() || undefined,
-          limit: 2000,
-        });
-        let t = `        *****    Cash  Receipts   *****\n\n`;
-        t +=
-          "Inv#  Inv_Date  Com# Company                       PayDate  PayRefno      Payment\n";
-        t +=
-          "--------------------------------------------------------------------------------\n";
-        let tot = 0;
-        for (const r of rows) {
-          t += `${padL(r.invoice, 5)} ${padR(fmtDate(r.salesDate), 10)} ${padR(r.companyNo, 4)} ${padR(r.companyName || "", 28)} ${padR(fmtDate(r.payDate), 8)} ${padR(r.payRefNo, 10)} ${padL(money(r.payment), 10)}\n`;
-          tot += r.payment;
-        }
-        t +=
-          "--------------------------------------------------------------------------------\n";
-        t += `Cash Receipts Total Counts  : ${rows.length}\n                    Amounts : ${money(tot)}\n`;
-        setText(t);
+        setCashRows(
+          await api.listCashReceipts({
+            fromDate: fromDate || undefined,
+            toDate: toDate || undefined,
+            companyNo: companyNo || undefined,
+            search: search.trim() || undefined,
+            limit: 2000,
+          })
+        );
       } else if (id === "payroll") {
         setPayrollRows(
           await api.reportPayroll({
@@ -271,13 +266,14 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       } else if (id === "customer") {
         const cos = await api.listCompanies({ limit: 5000 });
         const props = await api.listProperties({ limit: 10000 });
-        setText(formatCustomerFile(cos, props));
+        setCustomerData({ cos, props });
       } else if (id === "missing") {
-        const rows = await api.reportMissingInvoices({
-          fromDate: fromDate || undefined,
-          toDate: toDate || undefined,
-        });
-        setText(formatMissing(rows));
+        setMissingRows(
+          await api.reportMissingInvoices({
+            fromDate: fromDate || undefined,
+            toDate: toDate || undefined,
+          })
+        );
       } else if (id === "paint") {
         setPaintRows(
           await api.reportPaintUsage({
@@ -751,6 +747,12 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           />
         ) : report === "paint" && paintRows ? (
           <PaintUsageReport rows={paintRows} />
+        ) : report === "cash" && cashRows ? (
+          <CashReceiptsReport rows={cashRows} />
+        ) : report === "missing" && missingRows ? (
+          <MissingInvoicesReport rows={missingRows} />
+        ) : report === "customer" && customerData ? (
+          <CustomerFileReport cos={customerData.cos} props={customerData.props} />
         ) : text ? (
           text
         ) : (
@@ -768,8 +770,6 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-const AGING_SEP =
-  "====================================================================================================================================\n";
 
 function AgingReport({
   rows,
@@ -793,32 +793,54 @@ function AgingReport({
     to += r.openBal;
   }
   return (
-    <>
-      {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n\n`}
-      <span className="hdr">
-        {
-          "Company#  Company Name                     Contact            Phone         Current     >30      >60      >90     >120   Open Bal\n"
-        }
-      </span>
-      {AGING_SEP}
-      {rows.map((r) => (
-        <div key={r.companyNo} className="aging-row">
+    <div className="dos-browse">
+      <div style={{ padding: "0.3em 0", whiteSpace: "pre" }}>
+        {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
+      </div>
+      <div className="browse-grid browse-grid-10 browse-grid-header">
+        <div>Company#</div>
+        <div>Company Name</div>
+        <div>Contact</div>
+        <div>Phone</div>
+        <div>Current</div>
+        <div>&gt;30</div>
+        <div>&gt;60</div>
+        <div>&gt;90</div>
+        <div>&gt;120</div>
+        <div>Open Bal</div>
+      </div>
+      <div className="dos-browse-body">
+        {rows.map((r) => (
           <button
+            key={r.companyNo}
             type="button"
-            className="aging-cono"
+            className="dos-row browse-grid browse-grid-10"
             aria-label={`Company ${r.companyNo} outstanding invoices`}
             onClick={() => onCompany(r)}
           >
-            {padR(r.companyNo, 8)}
+            <div>{r.companyNo}</div>
+            <div>{r.companyName}</div>
+            <div>{r.contact ?? ""}</div>
+            <div>{r.phone}</div>
+            <div>{money(r.current)}</div>
+            <div>{money(r.days30)}</div>
+            <div>{money(r.days60)}</div>
+            <div>{money(r.days90)}</div>
+            <div>{money(r.days120)}</div>
+            <div>{money(r.openBal)}</div>
           </button>
-          {`  ${padR(r.companyName, 32)} ${padR(r.contact ?? "", 18)} ${padR(r.phone, 13)} ${padL(money(r.current), 9)} ${padL(money(r.days30), 8)} ${padL(money(r.days60), 8)} ${padL(money(r.days90), 8)} ${padL(money(r.days120), 8)} ${padL(money(r.openBal), 10)}\n`}
-        </div>
-      ))}
-      {AGING_SEP}
-      <span className="total">
-        {`              Grand Total: ${padL(money(tc), 9)} ${padL(money(t30), 8)} ${padL(money(t60), 8)} ${padL(money(t90), 8)} ${padL(money(t120), 8)} ${padL(money(to), 10)}\n`}
-      </span>
-    </>
+        ))}
+      </div>
+      <div className="browse-grid browse-grid-10" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+        <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
+        <div>{money(tc)}</div>
+        <div>{money(t30)}</div>
+        <div>{money(t60)}</div>
+        <div>{money(t90)}</div>
+        <div>{money(t120)}</div>
+        <div>{money(to)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -881,39 +903,29 @@ Open Balance.... ${money(company.openBal)}`}
         </div>
       </div>
       <div className="dos-browse">
-        <div className="dos-browse-header">
-          {cols(
-            padR("Inv_#", 5),
-            padR("Inv_Date", 10),
-            padR("Inv_amount", 11),
-            padR("Address", 40),
-            padR("Unit", 8),
-            padR("PO_No", 12)
-          )}
+        <div className="browse-grid browse-grid-6 browse-grid-header">
+          <div>Inv_#</div>
+          <div>Inv_Date</div>
+          <div>Inv_amount</div>
+          <div>Address</div>
+          <div>Unit</div>
+          <div>PO_No</div>
         </div>
         <div className="dos-browse-body">
           {invoices.map((inv, i) => (
-            <div
+            <button
               key={`${inv.invoice}-${inv.salesDate}-${inv.proNo}`}
-              className={`dos-row ${i === index ? "selected" : ""}`}
+              className={`dos-row ${i === index ? "selected" : ""} browse-grid browse-grid-6`}
               onMouseEnter={() => setIndex(i)}
+              onClick={() => onInvoice(inv)}
             >
-              <button
-                type="button"
-                className="aging-invno"
-                aria-label={`Invoice ${inv.invoice}`}
-                onClick={() => onInvoice(inv)}
-              >
-                {padL(inv.invoice, 5)}
-              </button>
-              {`   ${cols(
-                padR(fmtDate(inv.salesDate), 10),
-                padL(money(inv.salesTotal), 11),
-                padR((inv.propertyStreet || inv.propertyName || "").trim(), 40),
-                padR(inv.salesUnit, 8),
-                padR(inv.custPoNo, 12)
-              )}`}
-            </div>
+              <div>{inv.invoice}</div>
+              <div>{fmtDate(inv.salesDate)}</div>
+              <div>{money(inv.salesTotal)}</div>
+              <div>{(inv.propertyStreet || inv.propertyName || "").trim()}</div>
+              <div>{inv.salesUnit}</div>
+              <div>{inv.custPoNo}</div>
+            </button>
           ))}
           {invoices.length === 0 && (
             <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
@@ -953,47 +965,65 @@ function SalesReport({
     bal += r.balance;
   }
   return (
-    <>
-      {`       *****   ${title}   *****\n\n`}
-      <span className="hdr">
+    <div className="dos-browse">
+      <div style={{ padding: "0.3em 0", textAlign: "center" }}>
+        {`*****   ${title}   *****`}
+      </div>
+      <div className="browse-grid browse-grid-9 browse-grid-header">
         <button
           type="button"
-          className="sales-sort"
+          className="sort-btn"
           aria-label="Sort by invoice date"
           onClick={() => onSort("date")}
         >
-          {`Inv_Date${mark("date")}`}
+          Inv_Date{mark("date")}
         </button>
-        {` InvNo `}
+        <div>InvNo</div>
         <button
           type="button"
-          className="sales-sort"
+          className="sort-btn"
           aria-label="Sort by company number"
           onClick={() => onSort("company")}
         >
-          {`Com${mark("company")}`}
+          Com{mark("company")}
         </button>
-        {`  Pro   Sales_Amt    Deposit  Sales_Bal   PayTotal    Balance\n`}
-      </span>
-      {"--------------------------------------------------------------------------------\n"}
-      {sorted.map((r) => (
-        <button
-          type="button"
-          key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
-          className="sales-inv"
-          aria-label={`Invoice ${r.invoice}`}
-          onClick={() => onInvoice(r)}
-        >
-          {padR(fmtDate(r.salesDate), 10)}{" "}
-          <span className="sales-invno">{padL(r.invoice, 5)}</span>
-          {` ${padR(r.companyNo, 4)} ${padR(r.proNo, 3)}  ${padL(money(r.salesAmount), 10)} ${padL(money(r.deposit), 9)} ${padL(money(r.salesBal), 10)} ${padL(money(r.payTotal), 10)} ${padL(money(r.balance), 10)}\n`}
-        </button>
-      ))}
-      {"--------------------------------------------------------------------------------\n"}
-      <span className="total">
-        {`Total Counts: ${rows.length}  Amounts: ${money(sa)}  Deposit: ${money(dep)}  Payment: ${money(pay)}  Balance: ${money(bal)}\n`}
-      </span>
-    </>
+        <div>Pro</div>
+        <div>Sales_Amt</div>
+        <div>Deposit</div>
+        <div>Sales_Bal</div>
+        <div>PayTotal</div>
+        <div>Balance</div>
+      </div>
+      <div className="dos-browse-body">
+        {sorted.map((r) => (
+          <button
+            type="button"
+            key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
+            className="dos-row browse-grid browse-grid-9"
+            aria-label={`Invoice ${r.invoice}`}
+            onClick={() => onInvoice(r)}
+          >
+            <div>{fmtDate(r.salesDate)}</div>
+            <div>{r.invoice}</div>
+            <div>{r.companyNo}</div>
+            <div>{r.proNo}</div>
+            <div>{money(r.salesAmount)}</div>
+            <div>{money(r.deposit)}</div>
+            <div>{money(r.salesBal)}</div>
+            <div>{money(r.payTotal)}</div>
+            <div>{money(r.balance)}</div>
+          </button>
+        ))}
+      </div>
+      <div className="browse-grid browse-grid-9" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+        <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
+        <div>{money(sa)}</div>
+        <div>{money(dep)}</div>
+        <div></div>
+        <div>{money(pay)}</div>
+        <div>{money(bal)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -1013,70 +1043,57 @@ function PayrollReport({
   return (
     <div className="payroll-wrap">
       <div className="hdr">*****   Payroll Report   *****</div>
-      <table className="payroll-grid">
-        <colgroup>
-          <col className="payroll-col-date" />
-          <col className="payroll-col-inv" />
-          <col className="payroll-col-addr" />
-          <col className="payroll-col-unit" />
-          <col className="payroll-col-amt" />
-          <col className="payroll-col-amt" />
-          <col className="payroll-col-blank" />
-          <col className="payroll-col-blank" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Inv_Date</th>
-            <th>Inv#</th>
-            <th>Address</th>
-            <th>Unit</th>
-            <th className="num">Inv_Total</th>
-            <th className="num">Mat_Cost</th>
-            <th className="blank" aria-label="Blank column 1" />
-            <th className="blank" aria-label="Blank column 2" />
-          </tr>
-        </thead>
-        <tbody>
+      <div className="dos-browse">
+        <div className="browse-grid browse-grid-8 browse-grid-header">
+          <div>Inv_Date</div>
+          <div>Inv#</div>
+          <div>Address</div>
+          <div>Unit</div>
+          <div>Inv_Total</div>
+          <div>Mat_Cost</div>
+          <div></div>
+          <div></div>
+        </div>
+        <div className="dos-browse-body">
           {rows.map((r) => (
-            <tr
+            <div
               key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
-              className="payroll-row"
+              className="dos-row browse-grid browse-grid-8"
             >
-              <td>{fmtDate(r.salesDate)}</td>
-              <td>
+              <div>{fmtDate(r.salesDate)}</div>
+              <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
                 <button
                   type="button"
                   className="sales-invno"
+                  style={{ width: "100%", minHeight: "44px" }}
                   aria-label={`Invoice ${r.invoice}`}
                   onClick={() => onInvoice(r)}
                 >
                   {r.invoice}
                 </button>
-              </td>
-              <td className="addr">
+              </div>
+              <div>
                 <div>{r.propertyAddress}</div>
                 {r.jobDescription ? (
                   <div className="payroll-job">{r.jobDescription}</div>
                 ) : null}
-              </td>
-              <td>{r.salesUnit}</td>
-              <td className="num">{money(r.invoiceTotal)}</td>
-              <td className="num">{money(r.materialCost)}</td>
-              <td className="blank" />
-              <td className="blank" />
-            </tr>
+              </div>
+              <div>{r.salesUnit}</div>
+              <div>{money(r.invoiceTotal)}</div>
+              <div>{money(r.materialCost)}</div>
+              <div></div>
+              <div></div>
+            </div>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="total">
-            <td colSpan={4}>{`Total Counts: ${rows.length}`}</td>
-            <td className="num">{money(tot)}</td>
-            <td className="num">{money(mat)}</td>
-            <td className="blank" />
-            <td className="blank" />
-          </tr>
-        </tfoot>
-      </table>
+        </div>
+        <div className="browse-grid browse-grid-8" style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+          <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
+          <div>{money(tot)}</div>
+          <div>{money(mat)}</div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1085,46 +1102,180 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
   return (
     <div className="payroll-wrap">
       <div className="hdr">*****   Paint Usage Report   *****</div>
-      <table className="payroll-grid paint-usage-grid">
-        <colgroup>
-          <col className="paint-col-person" />
-          <col className="paint-col-amt" />
-          <col className="paint-col-inv" />
-          <col className="paint-col-amt" />
-          <col className="paint-col-supply" />
-          <col className="paint-col-date" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Work Person</th>
-            <th className="num">Mat_Cost</th>
-            <th>Inv#</th>
-            <th className="num">Inv_Total</th>
-            <th>Paint Supply Co.</th>
-            <th>Work Date</th>
-          </tr>
-        </thead>
-        <tbody>
+      <div className="dos-browse">
+        <div className="browse-grid browse-grid-6 browse-grid-header">
+          <div>Work Person</div>
+          <div>Mat_Cost</div>
+          <div>Inv#</div>
+          <div>Inv_Total</div>
+          <div>Paint Supply Co.</div>
+          <div>Work Date</div>
+        </div>
+        <div className="dos-browse-body">
           {rows.map((r, i) => (
-            <tr
+            <div
               key={`${r.invoice}-${r.workDate}-${r.workPerson}-${i}`}
-              className="payroll-row"
+              className="dos-row browse-grid browse-grid-6"
             >
-              <td>{r.workPerson}</td>
-              <td className="num">{money(r.materialCost)}</td>
-              <td>{r.invoice}</td>
-              <td className="num">{money(r.invoiceTotal)}</td>
-              <td className="paint-co">{r.paintSupplyCo}</td>
-              <td>{fmtDate(r.workDate)}</td>
-            </tr>
+              <div>{r.workPerson}</div>
+              <div>{money(r.materialCost)}</div>
+              <div>{r.invoice}</div>
+              <div>{money(r.invoiceTotal)}</div>
+              <div>{r.paintSupplyCo}</div>
+              <div>{fmtDate(r.workDate)}</div>
+            </div>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="total">
-            <td colSpan={6}>{`Total Counts: ${rows.length}`}</td>
-          </tr>
-        </tfoot>
-      </table>
+        </div>
+        <div className="browse-grid browse-grid-6" style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+          <div style={{ gridColumn: "1 / 7" }}>{`Total Counts: ${rows.length}`}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
+  const total = rows.reduce((sum, r) => sum + r.payment, 0);
+  return (
+    <div className="dos-browse">
+      <div style={{ padding: "0.3em 0", textAlign: "center" }}>
+        *****    Cash  Receipts   *****
+      </div>
+      <div className="browse-grid browse-grid-7 browse-grid-header">
+        <div>Inv#</div>
+        <div>Inv_Date</div>
+        <div>Com#</div>
+        <div>Company</div>
+        <div>PayDate</div>
+        <div>PayRefno</div>
+        <div>Payment</div>
+      </div>
+      <div className="dos-browse-body">
+        {rows.map((r, i) => (
+          <div key={i} className="dos-row browse-grid browse-grid-7">
+            <div>{r.invoice}</div>
+            <div>{fmtDate(r.salesDate)}</div>
+            <div>{r.companyNo}</div>
+            <div>{r.companyName || ""}</div>
+            <div>{fmtDate(r.payDate)}</div>
+            <div>{r.payRefNo}</div>
+            <div>{money(r.payment)}</div>
+          </div>
+        ))}
+      </div>
+      <div className="browse-grid browse-grid-7" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+        <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
+        <div>{money(total)}</div>
+      </div>
+    </div>
+  );
+}
+
+function MissingInvoicesReport({ rows }: { rows: MissingInvoiceRow[] }) {
+  return (
+    <div className="dos-browse">
+      <div style={{ padding: "0.3em 0", textAlign: "center" }}>
+        *****   Check Missing Invoice   *****
+      </div>
+      <div className="browse-grid browse-grid-8 browse-grid-header">
+        <div>Ord#</div>
+        <div>OrdDate</div>
+        <div>Com#</div>
+        <div>Pro</div>
+        <div>Order By</div>
+        <div>Inv#</div>
+        <div>Inv_Date</div>
+        <div>Balance</div>
+      </div>
+      <div className="dos-browse-body">
+        {rows.map((r, i) => (
+          <div key={i} className="dos-row browse-grid browse-grid-8">
+            <div>{r.orderNo}</div>
+            <div>{fmtDate(r.orderDate)}</div>
+            <div>{r.companyNo}</div>
+            <div>{r.proNo}</div>
+            <div>{r.orderBy}</div>
+            <div>{r.invoice || "-"}</div>
+            <div>{fmtDate(r.invDate)}</div>
+            <div>{money(r.balance)}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ color: "var(--dos-yellow)", marginTop: "0.5em" }}>
+        {rows.filter(r => r.status.includes("Void Work")).length} Void Work Orders, {rows.filter(r => r.status.includes("Not Build")).length} Not Built, {rows.filter(r => !r.status.includes("Void") && !r.status.includes("Not Build")).length} Built
+      </div>
+    </div>
+  );
+}
+
+function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[] }) {
+  return (
+    <div style={{ padding: "1em" }}>
+      <div style={{ textAlign: "center", marginBottom: "1em" }}>
+        *****  Customer Report  *****
+        <br />
+        DATE : {fmtDate(new Date().toISOString().slice(0, 10))}
+      </div>
+      {cos.map((c) => {
+        const mine = props.filter((p) => p.companyNo === c.companyNo);
+        return (
+          <div key={c.companyNo} style={{ marginBottom: "2em" }}>
+            <div style={{ fontWeight: "bold", marginBottom: "0.5em" }}>
+              ---Company Information---
+            </div>
+            <div className="browse-grid browse-grid-4" style={{ marginBottom: "0.5em" }}>
+              <div>Company#:</div>
+              <div>{c.companyNo}</div>
+              <div>Company Name:</div>
+              <div>{c.name}</div>
+              <div>Contact:</div>
+              <div>{c.contact}</div>
+              <div>Phone:</div>
+              <div>{c.phone}</div>
+              <div>City:</div>
+              <div>{c.city}</div>
+              <div>State:</div>
+              <div>{c.state}</div>
+              <div>Zip:</div>
+              <div>{c.zip}</div>
+            </div>
+            {mine.length > 0 && (
+              <>
+                <div style={{ fontWeight: "bold", marginTop: "1em", marginBottom: "0.5em" }}>
+                  Property Information
+                </div>
+                <div className="browse-grid browse-grid-8 browse-grid-header">
+                  <div>ProNo</div>
+                  <div>Property Name</div>
+                  <div>ProPhone-1</div>
+                  <div>Key</div>
+                  <div>Time</div>
+                  <div>Unit</div>
+                  <div>Contact</div>
+                  <div>Page Map</div>
+                </div>
+                <div className="dos-browse-body">
+                  {mine.map((p, i) => (
+                    <div key={i} className="dos-row browse-grid browse-grid-8">
+                      <div>{p.proNo}</div>
+                      <div>{p.name}</div>
+                      <div>{p.phone}</div>
+                      <div>{p.keyInfo}</div>
+                      <div>{p.paintTime}</div>
+                      <div>{p.noOfUnit}</div>
+                      <div>{p.manager}</div>
+                      <div>{p.pageMap}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ color: "var(--dos-yellow)", marginTop: "0.5em" }}>
+                  Property Total: {mine.length}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1144,51 +1295,6 @@ export function formatPaintUsage(rows: PaintUsageRow[]): string {
   return t;
 }
 
-function formatCustomerFile(
-  cos: Company[],
-  props: { companyNo: string; proNo: string; name: string; phone: string; street: string; manager: string; pageMap: string; keyInfo: string; paintTime: string; noOfUnit: number }[],
-): string {
-  let t = `*****  Customer Report  *****\nDATE : ${fmtDate(new Date().toISOString().slice(0, 10))}\n\n`;
-  for (const c of cos) {
-    t += `---Company Information------------------------------------------------------------------------------------------------------------------\n`;
-    t += `${c.companyNo}  ${c.name}  ${c.phone}  ${c.contact}\n`;
-    t += `  ${c.street}  ${c.city}, ${c.state} ${c.zip}\n`;
-    const mine = props.filter((p) => p.companyNo === c.companyNo);
-    t +=
-      "ProNo  Property Name                     ProPhone-1       Key         Time           Unit  Contact            Page Map\n";
-    for (const p of mine) {
-      t += `${padR(p.proNo, 5)}  ${padR(p.name, 32)} ${padR(p.phone, 16)} ${padR(p.keyInfo, 11)} ${padR(p.paintTime, 14)} ${padL(p.noOfUnit, 4)}  ${padR(p.manager, 18)} ${p.pageMap}\n`;
-    }
-    t += ` --> Property Total : ${mine.length}\n\n`;
-  }
-  t += `Company  Grand Total : ${cos.length}\n`;
-  t += `Property Grand Total : ${props.length}\n`;
-  return t;
-}
-
-function formatMissing(rows: MissingInvoiceRow[]): string {
-  let t = `*****   Check Missing Invoice   *****\n\n`;
-  t +=
-    "Ord#  OrdDate  Comp Pro Order By        Inv_# Inv_Date    Balance   Status / Address\n";
-  t +=
-    "----------------------------------------------------------------------------------------\n";
-  let built = 0,
-    voidOrd = 0,
-    missing = 0;
-  for (const r of rows) {
-    if (r.status.includes("Void Work")) voidOrd++;
-    else if (r.status.includes("Not Build")) missing++;
-    else built++;
-    t += `${padL(r.orderNo, 5)} ${padR(fmtDate(r.orderDate), 10)} ${padR(r.companyNo, 4)} ${padR(r.proNo, 3)} ${padR(r.orderBy, 14)} ${r.invoice ? padL(r.invoice, 5) : "    -"} ${padR(fmtDate(r.invDate), 10)} ${padL(money(r.balance), 9)}  ${r.status} ${r.propertyAddress} ${r.unitSize}\n`;
-  }
-  t +=
-    "================================================================================\n";
-  t += `Total Built Order Count : ${built + missing + voidOrd}\n`;
-  t += `       Void Order Count : ${voidOrd}\n`;
-  t += `       Missing Invoice  : ${missing}\n`;
-  t += `    Built Invoice Count : ${built}\n`;
-  return t;
-}
 
 function formatLabelsCompany(cos: Company[]): string {
   let t = ` TEST MAILING LABELS \n\n`;

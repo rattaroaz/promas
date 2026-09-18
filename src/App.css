@@ -354,10 +354,119 @@ textarea {
   overflow: hidden;
 }
 
+/* Generic browse grid - equal columns, 8px gap, left-aligned, baseline */
+.browse-grid {
+  display: grid;
+  column-gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: baseline;
+  min-height: 44px;
+}
+
+.browse-grid-header {
+  color: var(--dos-yellow);
+  font-weight: bold;
+  border-bottom: 1px solid var(--dos-cyan);
+  padding-bottom: 0;
+  margin-bottom: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dos-cyan) var(--dos-blue);
+}
+
+.browse-grid-header::-webkit-scrollbar {
+  width: 1ch;
+}
+
+.browse-grid-header::-webkit-scrollbar-track {
+  background: var(--dos-blue);
+}
+
+.browse-grid-header::-webkit-scrollbar-thumb {
+  background: var(--dos-cyan);
+}
+
+.browse-grid > div,
+.browse-grid > button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  text-align: left;
+}
+
+/* Sort button in grid cell */
+.browse-grid .sort-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+}
+
+.browse-grid .sort-btn:hover,
+.browse-grid .sort-btn:focus {
+  color: var(--dos-cyan-bright);
+  outline: none;
+}
+
+/* Specific column counts for different grids */
+.browse-grid-11 {
+  grid-template-columns: repeat(11, 1fr);
+}
+
+.browse-grid-10 {
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.browse-grid-9 {
+  grid-template-columns: repeat(9, 1fr);
+}
+
+.browse-grid-8 {
+  grid-template-columns: repeat(8, 1fr);
+}
+
+.browse-grid-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.browse-grid-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.browse-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.browse-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.browse-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.browse-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .dos-browse-body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   min-height: 0;
   min-width: 0;
   width: 100%;
@@ -396,6 +505,12 @@ textarea {
   font-family: var(--font-dos);
   font-size: inherit;
   line-height: 1.2;
+}
+
+/* Grid rows must stay as grids - this comes AFTER .dos-row to override */
+.dos-row.browse-grid {
+  display: grid;
+  white-space: normal;
 }
 
 .dos-row:hover {
