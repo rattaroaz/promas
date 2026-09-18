@@ -182,14 +182,15 @@ export function MaterialBrowse({
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-3 browse-grid-header">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "auto 30ch auto" : "auto auto auto" }}>
               {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
               {rows.map((m, i) => (
                 <button
                   key={m.id}
-                  className={`dos-row ${i === index ? "selected" : ""} browse-grid browse-grid-3`}
+                  className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
+                  style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "auto 30ch auto" : "auto auto auto" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
@@ -199,7 +200,7 @@ export function MaterialBrowse({
                   {sort === "worker" ? (
                     <>
                       <div>{fmtDate(m.matDate)}</div>
-                      <div>{m.description}</div>
+                      <div className="desc-truncate">{m.description}</div>
                       <div>{money(m.amount)}</div>
                     </>
                   ) : sort === "desc" ? (
@@ -211,13 +212,13 @@ export function MaterialBrowse({
                   ) : sort === "date" ? (
                     <>
                       <div>{m.empNo}</div>
-                      <div>{m.description}</div>
+                      <div className="desc-truncate">{m.description}</div>
                       <div>{money(m.amount)}</div>
                     </>
                   ) : (
                     <>
                       <div>{fmtDate(m.matDate)}</div>
-                      <div>{m.description}</div>
+                      <div className="desc-truncate">{m.description}</div>
                       <div>{money(m.amount)}</div>
                     </>
                   )}
