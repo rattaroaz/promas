@@ -231,21 +231,24 @@ describe("CashProcess", () => {
     ).toBeInTheDocument();
   });
 
-  it("aligns money columns under their headers using grid tracks", async () => {
+  it("uses equal column tracks with left-aligned values", async () => {
     renderApp(
       <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
-    const header = document.querySelector(".cash-ledger-header");
-    const firstRow = document.querySelector(".dos-browse-body .cash-ledger-grid");
+    const header = document.querySelector(".browse-grid-header");
+    const firstRow = document.querySelector(".dos-browse-body .browse-grid");
     
-    expect(header).toHaveClass("cash-ledger-grid");
-    expect(firstRow).toHaveClass("cash-ledger-grid");
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-8");
+    expect(firstRow).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid-8");
     
-    // Both should use the same grid layout
-    const headerStyle = window.getComputedStyle(header!);
-    const rowStyle = window.getComputedStyle(firstRow!);
-    expect(headerStyle.gridTemplateColumns).toBe(rowStyle.gridTemplateColumns);
+    // Both should use the same equal-width grid classes
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-8");
+    expect(firstRow).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid-8");
     
     // Check header contains expected column labels
     expect(header?.textContent).toContain("Inv_#");
@@ -283,7 +286,7 @@ describe("CashProcess", () => {
     );
     await screen.findByText(/Customer Ledger/i);
     
-    const rows = document.querySelectorAll(".dos-browse-body .cash-ledger-grid");
+    const rows = document.querySelectorAll(".dos-browse-body .browse-grid");
     expect(rows).toHaveLength(2);
     
     // First row (invoice 1) has no receipts, so PayDate and Check/Ref are empty

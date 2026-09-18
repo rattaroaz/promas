@@ -103,13 +103,18 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
     expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
-    const header = document.querySelector(".invoice-ledger-header");
+    const header = document.querySelector(".browse-grid-header");
     expect(header?.textContent).toContain("Inv#");
     expect(header?.textContent).toContain("PO");
     expect(header?.textContent).toContain("Size");
     expect(header?.textContent).toContain("Total");
     expect(screen.getByRole("button", { name: /Unit/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
+    
+    // Verify equal-width grid classes
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-9");
+    
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({
         companyNo: "1000",
@@ -603,7 +608,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByText(/4 invoices.*Ins=Add/i)).toBeInTheDocument();
   });
 
-  it("keeps Size and later columns aligned across Unit sort states", async () => {
+  it("uses equal column tracks and keeps alignment across Unit sort states", async () => {
     const inv2 = { ...fixture, invoice: 2, salesUnit: "10", custPoNo: "PO-2" };
     vi.mocked(api.listInvoices).mockResolvedValue([fixture, inv2]);
     
@@ -614,42 +619,36 @@ describe("InvoiceProcess", () => {
     
     await screen.findByText(/2 invoices/i);
     
-    const header = document.querySelector(".invoice-ledger-header");
-    const firstRow = document.querySelector(".dos-browse-body .invoice-ledger-grid");
+    const header = document.querySelector(".browse-grid-header");
+    const firstRow = document.querySelector(".dos-browse-body .browse-grid");
     
-    expect(header).toHaveClass("invoice-ledger-grid");
-    expect(firstRow).toHaveClass("invoice-ledger-grid");
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid-9");
     
-    // Both should use the same grid layout
-    const headerStyleBefore = window.getComputedStyle(header!);
-    const rowStyleBefore = window.getComputedStyle(firstRow!);
-    expect(headerStyleBefore.gridTemplateColumns).toBe(rowStyleBefore.gridTemplateColumns);
+    // Both should use the same equal-width grid classes
+    expect(header).toHaveClass("browse-grid");
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid");
+    expect(firstRow).toHaveClass("browse-grid-9");
     
     const unitHeader = screen.getByRole("button", { name: /Unit/i });
     
-    // Click to sort ascending
+    // Click to sort ascending - classes should remain
     await user.click(unitHeader);
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid-9");
     
-    const headerStyleAsc = window.getComputedStyle(header!);
-    const rowStyleAsc = window.getComputedStyle(firstRow!);
-    expect(headerStyleAsc.gridTemplateColumns).toBe(rowStyleAsc.gridTemplateColumns);
-    expect(headerStyleAsc.gridTemplateColumns).toBe(headerStyleBefore.gridTemplateColumns);
-    
-    // Click to sort descending
+    // Click to sort descending - classes should remain
     await user.click(unitHeader);
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid-9");
     
-    const headerStyleDesc = window.getComputedStyle(header!);
-    const rowStyleDesc = window.getComputedStyle(firstRow!);
-    expect(headerStyleDesc.gridTemplateColumns).toBe(rowStyleDesc.gridTemplateColumns);
-    expect(headerStyleDesc.gridTemplateColumns).toBe(headerStyleBefore.gridTemplateColumns);
-    
-    // Click to restore original order
+    // Click to restore original order - classes should remain
     await user.click(unitHeader);
-    
-    const headerStyleNull = window.getComputedStyle(header!);
-    const rowStyleNull = window.getComputedStyle(firstRow!);
-    expect(headerStyleNull.gridTemplateColumns).toBe(rowStyleNull.gridTemplateColumns);
-    expect(headerStyleNull.gridTemplateColumns).toBe(headerStyleBefore.gridTemplateColumns);
+    expect(header).toHaveClass("browse-grid-9");
+    expect(firstRow).toHaveClass("browse-grid-9");
   });
 
   it("activates new-invoice status hints when they are clicked", async () => {

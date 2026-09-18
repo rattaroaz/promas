@@ -294,35 +294,35 @@ Receipt Total.... ${money(receiptTotal)}
 Ending Balance... ${money(endingBalance)}`}
           </div>
           <div className="dos-browse">
-            <div className="cash-ledger-grid cash-ledger-header">
-              <div className="num">Inv_#</div>
+            <div className="browse-grid browse-grid-8 browse-grid-header">
+              <div>Inv_#</div>
               <div>Inv_Date</div>
-              <div className="num">Inv_amount</div>
+              <div>Inv_amount</div>
               <div>PayDate</div>
               <div>Check/Ref</div>
-              <div className="num">Payamount</div>
-              <div className="num">Balance</div>
-              <div className="center">OK</div>
+              <div>Payamount</div>
+              <div>Balance</div>
+              <div>OK</div>
             </div>
             <div className="dos-browse-body">
               {invoices.map((inv, i) => (
                 <button
                   key={`${inv.invoice}-${inv.salesDate}`}
-                  className={`dos-row ${i === index ? "selected" : ""} cash-ledger-grid`}
+                  className={`dos-row ${i === index ? "selected" : ""} browse-grid browse-grid-8`}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
                     startPayment(inv);
                   }}
                 >
-                  <div className="num">{inv.invoice}</div>
+                  <div>{inv.invoice}</div>
                   <div>{fmtDate(inv.salesDate)}</div>
-                  <div className="num">{money(inv.salesTotal)}</div>
+                  <div>{money(inv.salesTotal)}</div>
                   <div>{inv.latestReceiptDate ? fmtDate(inv.latestReceiptDate) : ""}</div>
                   <div>{inv.latestReceiptRef || ""}</div>
-                  <div className="num">{money(inv.payTotal)}</div>
-                  <div className="num">{money(inv.balance)}</div>
-                  <div className="center">{inv.balance <= 0 ? "*" : ""}</div>
+                  <div>{money(inv.payTotal)}</div>
+                  <div>{money(inv.balance)}</div>
+                  <div>{inv.balance <= 0 ? "*" : ""}</div>
                 </button>
               ))}
               {invoices.length === 0 && (

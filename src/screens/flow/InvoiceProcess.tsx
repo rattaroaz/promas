@@ -573,22 +573,22 @@ export function InvoiceProcess({
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
-          <div className="invoice-ledger-grid invoice-ledger-header">
+          <div className="browse-grid browse-grid-9 browse-grid-header">
             <div>Inv_Date</div>
-            <div className="num">Inv#</div>
+            <div>Inv#</div>
             <div>PO</div>
             <button
               type="button"
-              className="unit-sort-btn"
+              className="sort-btn"
               onClick={toggleUnitSort}
               title="Click to sort by unit number"
             >
               Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
             </button>
             <div>Size</div>
-            <div className="num">Total</div>
-            <div className="num">Paid</div>
-            <div className="num">Balance</div>
+            <div>Total</div>
+            <div>Paid</div>
+            <div>Balance</div>
             <div>St</div>
           </div>
           <div className="dos-browse-body">
@@ -599,7 +599,7 @@ export function InvoiceProcess({
                   !inv.voided && inv.balance > 0.005
                     ? "invoice-open"
                     : "invoice-paid"
-                } invoice-ledger-grid`}
+                } browse-grid browse-grid-9`}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
@@ -607,13 +607,13 @@ export function InvoiceProcess({
                 }}
               >
                 <div>{fmtDate(inv.salesDate)}</div>
-                <div className="num">{inv.invoice}</div>
+                <div>{inv.invoice}</div>
                 <div>{inv.custPoNo ?? ""}</div>
                 <div>{inv.salesUnit}</div>
                 <div>{inv.salesSize}</div>
-                <div className="num">{money(inv.salesTotal)}</div>
-                <div className="num">{money(inv.payTotal)}</div>
-                <div className="num">{money(inv.balance)}</div>
+                <div>{money(inv.salesTotal)}</div>
+                <div>{money(inv.payTotal)}</div>
+                <div>{money(inv.balance)}</div>
                 <div>{inv.voided ? "V" : inv.balance <= 0 ? "*" : " "}</div>
               </button>
             ))}
