@@ -568,9 +568,9 @@ export function InvoiceProcess({
               whiteSpace: "pre",
             }}
           >
-            {padR(company.name, 30)} {padR(property.street, 20)}
+            {padR(company.name, 24)} {padR(property.street, 16)}
             {"\n"}
-            {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
+            {padR(property.name, 24)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
           <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}>
@@ -968,14 +968,14 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "30ch 14ch 12ch 4ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "30ch 14ch 12ch 4ch" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
                 <div style={{ display: "flex", gap: "4px", minWidth: 0 }}>
                   <select
                     className="dos-select dos-choice"
@@ -1068,7 +1068,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "30ch 14ch 12ch 4ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
