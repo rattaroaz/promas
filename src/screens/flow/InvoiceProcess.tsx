@@ -573,7 +573,7 @@ export function InvoiceProcess({
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
-          <div className="browse-grid browse-grid-9 browse-grid-header">
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto auto" }}>
             <div>Inv_Date</div>
             <div>Inv#</div>
             <div>PO</div>
@@ -599,7 +599,8 @@ export function InvoiceProcess({
                   !inv.voided && inv.balance > 0.005
                     ? "invoice-open"
                     : "invoice-paid"
-                } browse-grid browse-grid-9`}
+                } browse-grid`}
+                style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto auto" }}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
@@ -965,19 +966,19 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-4 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "30ch auto auto auto" }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid browse-grid-4" style={{ marginBottom: "0.12em" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.2em" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "30ch auto auto auto" }}>
+                <div style={{ display: "flex", gap: "4px", minWidth: 0 }}>
                   <select
                     className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
-                    style={{ width: "100%" }}
+                    style={{ flex: "0 0 3ch" }}
                     value={
                       isPresetDescription(line.description)
                         ? line.description
@@ -1005,7 +1006,7 @@ export function InvoiceProcess({
                     aria-label={`Line ${idx + 1} custom text`}
                     readOnly={isPresetDescription(line.description)}
                     value={line.description}
-                    style={{ width: "100%" }}
+                    style={{ flex: "1", minWidth: 0 }}
                     onChange={(e) => {
                       if (isPresetDescription(line.description)) return;
                       const lines = [...editing.lines];
@@ -1065,7 +1066,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid browse-grid-4" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "30ch auto auto auto" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"

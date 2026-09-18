@@ -583,43 +583,50 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         {report === "paint" && (
           <>
             <label>Paint Supply Co. :</label>
-            <select
-              className="dos-select"
-              aria-label="Paint supply search"
-              value={paintSupply}
-              onChange={(e) => setPaintSupply(e.target.value)}
-            >
-              <option value="">All</option>
-              {paintSupplyOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+              <select
+                className="dos-select"
+                aria-label="Paint supply search"
+                value={paintSupply}
+                onChange={(e) => setPaintSupply(e.target.value)}
+                style={{ flex: "0 0 4ch" }}
+              >
+                <option value="">All</option>
+                {paintSupplyOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <span style={{ flex: "1", minWidth: "20ch" }}>{paintSupply || "All"}</span>
+            </div>
           </>
         )}
         {(report === "paint" || report === "payroll") && (
           <>
             <label>Work Person :</label>
-            <input
-              className="dos-input w20"
-              list="report-work-person-list"
-              value={workPerson}
-              onChange={(e) => setWorkPerson(e.target.value)}
-              placeholder="Work person"
-              aria-label="Work person search"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runReport(report);
-                }
-              }}
-            />
-            <datalist id="report-work-person-list">
-              {workPersonOptions.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+              <input
+                className="dos-input"
+                list="report-work-person-list"
+                value={workPerson}
+                onChange={(e) => setWorkPerson(e.target.value)}
+                placeholder="Work person"
+                aria-label="Work person search"
+                style={{ flex: "1", minWidth: "20ch" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runReport(report);
+                  }
+                }}
+              />
+              <datalist id="report-work-person-list">
+                {workPersonOptions.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </div>
           </>
         )}
         {report !== "aging" &&
