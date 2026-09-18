@@ -94,7 +94,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
           </span>
         ) : (
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content 30ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 12ch 7ch 10ch 12ch 8ch 12ch 30ch" }}>
               <div>Worker</div>
               <div>WorkDate</div>
               <div>Inv#</div>
@@ -106,7 +106,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
             </div>
             <div className="dos-browse-body">
               {rows.map((r, i) => (
-                <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content 30ch" }}>
+                <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "8ch 12ch 7ch 10ch 12ch 8ch 12ch 30ch" }}>
                   <div>{r.empNo}</div>
                   <div>{fmtDate(r.workDate || r.invDate)}</div>
                   <div>{r.invoice}</div>
@@ -118,7 +118,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
                 </div>
               ))}
             </div>
-            <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content 30ch" }}>
+            <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 12ch 7ch 12ch 12ch 7ch 7ch 30ch" }}>
               <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
               <div>{money(totalInv)}</div>
               <div></div>

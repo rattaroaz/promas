@@ -182,7 +182,7 @@ export function MaterialBrowse({
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "max-content 30ch max-content" : "max-content max-content max-content" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}>
               {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
@@ -190,7 +190,7 @@ export function MaterialBrowse({
                 <button
                   key={m.id}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "max-content 30ch max-content" : "max-content max-content max-content" }}
+                  style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIndex(i);
