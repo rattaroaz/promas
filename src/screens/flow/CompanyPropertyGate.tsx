@@ -1080,7 +1080,7 @@ export function CompanyPropertyGate({
       {/* ── Company browse ─────────────────────────────── */}
       {phase === "co-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-4 browse-grid-header">
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr auto auto" }}>
             <div>Company NO</div>
             <div>Company Name</div>
             <div>Phone</div>
@@ -1090,7 +1090,8 @@ export function CompanyPropertyGate({
             {companies.map((c, i) => (
               <button
                 key={c.companyNo}
-                className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid browse-grid-4`}
+                className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid`}
+                style={{ gridTemplateColumns: "auto 1fr auto auto" }}
                 onMouseEnter={() => coBrowse.setIndex(i)}
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
@@ -1108,7 +1109,7 @@ export function CompanyPropertyGate({
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-5 browse-grid-header">
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto 1fr" }}>
             <div>Inv#</div>
             <div>Inv_Date</div>
             <div>Co#</div>
@@ -1119,7 +1120,8 @@ export function CompanyPropertyGate({
             {invoiceHits.map((inv, i) => (
               <button
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
-                className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid browse-grid-5`}
+                className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid`}
+                style={{ gridTemplateColumns: "auto auto auto auto 1fr" }}
                 onMouseEnter={() => invBrowse.setIndex(i)}
                 onClick={() => void pickInvoiceSite(inv)}
               >
@@ -1236,7 +1238,7 @@ export function CompanyPropertyGate({
         <div className="dos-browse">
           {company ? (
             <>
-              <div className="browse-grid browse-grid-4 browse-grid-header">
+              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}>
                 <div>ProNO</div>
                 <div>Name</div>
                 <div>Address</div>
@@ -1246,7 +1248,8 @@ export function CompanyPropertyGate({
                 {properties.map((p, i) => (
                   <button
                     key={`${p.companyNo}-${p.proNo}`}
-                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid browse-grid-4`}
+                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
+                    style={{ gridTemplateColumns: "auto 1fr 1fr auto" }}
                     onMouseEnter={() => prBrowse.setIndex(i)}
                     onClick={() => selectProperty(p)}
                   >
@@ -1260,7 +1263,7 @@ export function CompanyPropertyGate({
             </>
           ) : (
             <>
-              <div className="browse-grid browse-grid-4 browse-grid-header">
+              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto 1fr auto" }}>
                 <div>CoNO</div>
                 <div>ProNO</div>
                 <div>Address</div>
@@ -1270,7 +1273,8 @@ export function CompanyPropertyGate({
                 {properties.map((p, i) => (
                   <button
                     key={`${p.companyNo}-${p.proNo}`}
-                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid browse-grid-4`}
+                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
+                    style={{ gridTemplateColumns: "auto auto 1fr auto" }}
                     onMouseEnter={() => prBrowse.setIndex(i)}
                     onClick={() => selectProperty(p)}
                   >
