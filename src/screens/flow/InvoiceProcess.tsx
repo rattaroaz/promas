@@ -965,17 +965,14 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="invoice-line-grid invoice-line-head">
-              <span>Description</span>
-              <span className="invoice-col-center">WorkDate</span>
-              <span className="invoice-col-center">Price</span>
+            <div className="browse-grid browse-grid-4 browse-grid-header" style={{ margin: "0.5em 0 0.2em" }}>
+              <div>Description</div>
+              <div>WorkDate</div>
+              <div>Price</div>
+              <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div
-                key={idx}
-                className="invoice-line-grid"
-                style={{ marginBottom: "0.12em" }}
-              >
+              <div key={idx} className="browse-grid browse-grid-4" style={{ marginBottom: "0.12em" }}>
                 <div className="dos-choice-pair">
                   <select
                     className="dos-select dos-choice"
@@ -1017,7 +1014,7 @@ export function InvoiceProcess({
                   />
                 </div>
                 <input
-                  className="dos-input w12"
+                  className="dos-input"
                   type="date"
                   aria-label={`Line ${idx + 1} work date`}
                   value={line.workDate || editing.invoice.salesDate}
@@ -1028,7 +1025,7 @@ export function InvoiceProcess({
                   }}
                 />
                 <input
-                  className="dos-input w10 num"
+                  className="dos-input"
                   type="number"
                   step="0.01"
                   aria-label={`Price ${idx + 1}`}

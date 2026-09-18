@@ -371,6 +371,7 @@ textarea {
   border-bottom: 1px solid var(--dos-cyan);
   padding-bottom: 0;
   margin-bottom: 0;
+  overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
@@ -447,6 +448,7 @@ textarea {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   min-height: 0;
   min-width: 0;
   width: 100%;
