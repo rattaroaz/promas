@@ -354,14 +354,14 @@ textarea {
   overflow: hidden;
 }
 
-/* Generic browse grid - equal columns, 8px gap, left-aligned */
+/* Generic browse grid - equal columns, 8px gap, left-aligned, baseline */
 .browse-grid {
   display: grid;
   column-gap: 8px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  align-items: center;
+  align-items: baseline;
   min-height: 44px;
 }
 
@@ -477,6 +477,12 @@ textarea {
   font-family: var(--font-dos);
   font-size: inherit;
   line-height: 1.2;
+}
+
+/* Grid rows must stay as grids - this comes AFTER .dos-row to override */
+.dos-row.browse-grid {
+  display: grid;
+  white-space: normal;
 }
 
 .dos-row:hover {
