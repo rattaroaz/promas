@@ -666,7 +666,7 @@ export function InvoiceProcess({
                 <input
                   className="dos-input"
                   type="date"
-                  style={{ width: "22ch" }}
+                  style={{ width: "22ch", minWidth: "22ch" }}
                   value={editing.invoice.salesDate}
                   onChange={(e) =>
                     setEditing({
@@ -681,8 +681,9 @@ export function InvoiceProcess({
               </DotField>
               <DotField label="Due Date" width={12}>
                 <input
-                  className="dos-input w15"
+                  className="dos-input"
                   type="date"
+                  style={{ width: "22ch", minWidth: "22ch" }}
                   value={editing.invoice.salesDue || ""}
                   onChange={(e) =>
                     setEditing({
