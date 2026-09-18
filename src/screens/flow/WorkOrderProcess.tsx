@@ -429,7 +429,7 @@ export function WorkOrderProcess({
               />
             </DotField>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "auto 30ch auto auto auto" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "max-content 30ch max-content max-content max-content" }}>
               <div>Code#</div>
               <div>Description</div>
               <div>W/T</div>
@@ -437,7 +437,7 @@ export function WorkOrderProcess({
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "auto 30ch auto auto auto" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "max-content 30ch max-content max-content max-content" }}>
                 <div style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
@@ -485,7 +485,6 @@ export function WorkOrderProcess({
                 <div style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
-                    style={{ width: "100%" }}
                     type="number"
                     step="0.01"
                     value={line.price}
@@ -515,7 +514,7 @@ export function WorkOrderProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "auto 30ch auto auto auto" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "max-content 30ch max-content max-content max-content" }}>
               <div style={{ gridColumn: "1 / 4" }}>
                 <button
                   className="dos-btn"

@@ -976,7 +976,7 @@ function SalesReport({
       <div style={{ padding: "0.3em 0", textAlign: "center" }}>
         {`*****   ${title}   *****`}
       </div>
-      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto auto" }}>
+      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
         <button
           type="button"
           className="sort-btn"
@@ -1007,7 +1007,7 @@ function SalesReport({
             type="button"
             key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
             className="dos-row browse-grid"
-            style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto auto" }}
+            style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}
             aria-label={`Invoice ${r.invoice}`}
             onClick={() => onInvoice(r)}
           >
@@ -1023,7 +1023,7 @@ function SalesReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "auto auto auto auto auto auto auto auto auto" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
         <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
         <div>{money(sa)}</div>
         <div>{money(dep)}</div>
@@ -1112,7 +1112,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
     <div className="payroll-wrap">
       <div className="hdr">*****   Paint Usage Report   *****</div>
       <div className="dos-browse">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto" }}>
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}>
           <div>Work Person</div>
           <div>Mat_Cost</div>
           <div>Inv#</div>
@@ -1125,7 +1125,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
             <div
               key={`${r.invoice}-${r.workDate}-${r.workPerson}-${i}`}
               className="dos-row browse-grid"
-              style={{ gridTemplateColumns: "auto auto auto auto auto auto" }}
+              style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}
             >
               <div>{r.workPerson}</div>
               <div>{money(r.materialCost)}</div>
@@ -1136,7 +1136,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "auto auto auto auto auto auto" }}>
+        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content" }}>
           <div style={{ gridColumn: "1 / 7" }}>{`Total Counts: ${rows.length}`}</div>
         </div>
       </div>
@@ -1187,7 +1187,7 @@ function MissingInvoicesReport({ rows }: { rows: MissingInvoiceRow[] }) {
       <div style={{ padding: "0.3em 0", textAlign: "center" }}>
         *****   Check Missing Invoice   *****
       </div>
-                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto" }}>
+                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
         <div>Ord#</div>
         <div>OrdDate</div>
         <div>Com#</div>
@@ -1199,7 +1199,7 @@ function MissingInvoicesReport({ rows }: { rows: MissingInvoiceRow[] }) {
       </div>
       <div className="dos-browse-body">
         {rows.map((r, i) => (
-          <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto" }}>
+          <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
             <div>{r.orderNo}</div>
             <div>{fmtDate(r.orderDate)}</div>
             <div>{r.companyNo}</div>
