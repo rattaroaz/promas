@@ -290,23 +290,6 @@ export function CashProcess({
             {`*****   Customer Ledger   *****
 Company NO : ${company.companyNo}  ${company.name}`}
           </div>
-          <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold", padding: "0 0.5ch", marginBottom: "0.5em" }}>
-            <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Balance Total</div>
-            <div>{money(balanceTotal)}</div>
-            <div></div>
-            <div></div>
-          </div>
-          <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold", padding: "0 0.5ch", marginBottom: "0.5em" }}>
-            <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Receipt Total</div>
-            <div>{money(receiptTotal)}</div>
-            <div></div>
-            <div></div>
-          </div>
-          <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold", padding: "0 0.5ch", marginBottom: "0.5em" }}>
-            <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Ending Balance</div>
-            <div>{money(endingBalance)}</div>
-            <div></div>
-          </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch" }}>
               <div>Inv_#</div>
@@ -350,6 +333,23 @@ Company NO : ${company.companyNo}  ${company.name}`}
                   }
                 </div>
               )}
+            </div>
+            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+              <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Balance Total</div>
+              <div>{money(balanceTotal)}</div>
+              <div></div>
+              <div></div>
+            </div>
+            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Receipt Total</div>
+              <div>{money(receiptTotal)}</div>
+              <div></div>
+              <div></div>
+            </div>
+            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Ending Balance</div>
+              <div>{money(endingBalance)}</div>
+              <div></div>
             </div>
           </div>
         </>

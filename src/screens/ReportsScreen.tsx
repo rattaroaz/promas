@@ -802,19 +802,19 @@ function AgingReport({
       <div style={{ padding: "0.3em 0", whiteSpace: "pre" }}>
         {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
       </div>
-      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch" }}>
-        <div>Company#</div>
-        <div>Company Name</div>
-        <div>Contact</div>
-        <div>Phone</div>
-        <div>Current</div>
-        <div>&gt;30</div>
-        <div>&gt;60</div>
-        <div>&gt;90</div>
-        <div>&gt;120</div>
-        <div>Open Bal</div>
-      </div>
       <div className="dos-browse-body">
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch" }}>
+          <div>Company#</div>
+          <div>Company Name</div>
+          <div>Contact</div>
+          <div>Phone</div>
+          <div>Current</div>
+          <div>&gt;30</div>
+          <div>&gt;60</div>
+          <div>&gt;90</div>
+          <div>&gt;120</div>
+          <div>Open Bal</div>
+        </div>
         {rows.map((r) => (
           <button
             key={r.companyNo}
@@ -836,15 +836,15 @@ function AgingReport({
             <div>{money(r.openBal)}</div>
           </button>
         ))}
-      </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch" }}>
-        <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
-        <div>{money(tc)}</div>
-        <div>{money(t30)}</div>
-        <div>{money(t60)}</div>
-        <div>{money(t90)}</div>
-        <div>{money(t120)}</div>
-        <div>{money(to)}</div>
+        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch" }}>
+          <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
+          <div>{money(tc)}</div>
+          <div>{money(t30)}</div>
+          <div>{money(t60)}</div>
+          <div>{money(t90)}</div>
+          <div>{money(t120)}</div>
+          <div>{money(to)}</div>
+        </div>
       </div>
     </div>
   );
