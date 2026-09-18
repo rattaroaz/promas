@@ -118,7 +118,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
                 </div>
               ))}
             </div>
-            <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 12ch 7ch 12ch 12ch 7ch 7ch 30ch" }}>
+            <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 12ch 7ch 10ch 12ch 8ch 12ch 30ch" }}>
               <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
               <div>{money(totalInv)}</div>
               <div></div>
