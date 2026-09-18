@@ -1091,18 +1091,19 @@ export function InvoiceProcess({
                 </button>
               </div>
               <div>{money(lineTotal)}</div>
-              <div>
-                Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
-                {" "}
-                <button
-                  type="button"
-                  className="dos-btn"
-                  onClick={() => printCurrent()}
-                  title="Print on invoice_template.pdf (End)"
-                >
-                  Print Form
-                </button>
-              </div>
+              <div></div>
+            </div>
+            <div style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
+              {"  "}
+              <button
+                type="button"
+                className="dos-btn"
+                onClick={() => printCurrent()}
+                title="Print on invoice_template.pdf (End)"
+              >
+                Print Form (End)
+              </button>
             </div>
             <div
               style={{
