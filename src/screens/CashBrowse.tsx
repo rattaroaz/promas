@@ -187,7 +187,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto 1fr auto auto auto" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content 30ch max-content max-content max-content" }}>
               <div>Inv#</div>
               <div>Inv_Date</div>
               <div>Com#</div>
@@ -201,7 +201,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
                 <button
                   key={r.id}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "auto auto auto 1fr auto auto auto" }}
+                  style={{ gridTemplateColumns: "max-content max-content max-content 30ch max-content max-content max-content" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => setIndex(i)}
                 >

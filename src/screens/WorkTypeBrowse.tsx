@@ -128,7 +128,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto 30ch auto auto" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content 30ch max-content max-content" }}>
               <div>Code NO</div>
               <div>Description</div>
               <div>W/T</div>
@@ -139,7 +139,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
                 <button
                   key={w.codeNo}
                   className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "auto 30ch auto auto" }}
+                  style={{ gridTemplateColumns: "max-content 30ch max-content max-content" }}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => {
                     setIsNew(false);

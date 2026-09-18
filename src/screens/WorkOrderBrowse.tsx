@@ -172,7 +172,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto auto auto auto 1fr" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content 30ch" }}>
               <div>Ord#</div>
               <div>OrdDate</div>
               <div>Comp</div>
@@ -186,7 +186,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 <button
                   key={`${w.companyNo}-${w.orderNo}-${w.orderDate}`}
                   className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "auto auto auto auto auto auto 1fr" }}
+                  style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content 30ch" }}
                   onMouseEnter={() => setIndex(i)}
                 >
                   <div>{w.orderNo}</div>
