@@ -589,7 +589,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                 aria-label="Paint supply search"
                 value={paintSupply}
                 onChange={(e) => setPaintSupply(e.target.value)}
-                style={{ flex: "0 0 4ch" }}
+                style={{ width: "4ch" }}
               >
                 <option value="">All</option>
                 {paintSupplyOptions.map((name) => (
@@ -598,35 +598,33 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                   </option>
                 ))}
               </select>
-              <span style={{ flex: "1", minWidth: "20ch" }}>{paintSupply || "All"}</span>
+              <span style={{ minWidth: "40ch", maxWidth: "60ch" }}>{paintSupply || "All"}</span>
             </div>
           </>
         )}
         {(report === "paint" || report === "payroll") && (
           <>
             <label>Work Person :</label>
-            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-              <input
-                className="dos-input"
-                list="report-work-person-list"
-                value={workPerson}
-                onChange={(e) => setWorkPerson(e.target.value)}
-                placeholder="Work person"
-                aria-label="Work person search"
-                style={{ flex: "1", minWidth: "20ch" }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    runReport(report);
-                  }
-                }}
-              />
-              <datalist id="report-work-person-list">
-                {workPersonOptions.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-            </div>
+            <input
+              className="dos-input"
+              list="report-work-person-list"
+              value={workPerson}
+              onChange={(e) => setWorkPerson(e.target.value)}
+              placeholder="Work person"
+              aria-label="Work person search"
+              style={{ width: "40ch" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            />
+            <datalist id="report-work-person-list">
+              {workPersonOptions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </>
         )}
         {report !== "aging" &&
@@ -1256,7 +1254,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
                 <div style={{ fontWeight: "bold", marginTop: "1em", marginBottom: "0.5em" }}>
                   Property Information
                 </div>
-                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "auto auto auto 30ch auto auto auto auto" }}>
+                <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
                   <div>ProNo</div>
                   <div>Property Name</div>
                   <div>ProPhone-1</div>
@@ -1268,7 +1266,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
                 </div>
                 <div className="dos-browse-body">
                   {mine.map((p, i) => (
-                    <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "auto auto auto auto auto auto auto auto" }}>
+                    <div key={i} className="dos-row browse-grid" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content" }}>
                       <div>{p.proNo}</div>
                       <div>{p.name}</div>
                       <div>{p.phone}</div>
