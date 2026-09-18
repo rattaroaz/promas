@@ -802,7 +802,7 @@ function AgingReport({
       <div style={{ padding: "0.3em 0", whiteSpace: "pre" }}>
         {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
       </div>
-      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "10ch 30ch 18ch 15ch 13ch 13ch 13ch 13ch 13ch 13ch" }}>
         <div>Company#</div>
         <div>Company Name</div>
         <div>Contact</div>
@@ -820,7 +820,7 @@ function AgingReport({
             key={r.companyNo}
             type="button"
             className="dos-row browse-grid"
-            style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}
+            style={{ gridTemplateColumns: "10ch 30ch 18ch 15ch 13ch 13ch 13ch 13ch 13ch 13ch" }}
             aria-label={`Company ${r.companyNo} outstanding invoices`}
             onClick={() => onCompany(r)}
           >
@@ -837,7 +837,7 @@ function AgingReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "10ch 30ch 18ch 15ch 13ch 13ch 13ch 13ch 13ch 13ch" }}>
         <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
         <div>{money(tc)}</div>
         <div>{money(t30)}</div>

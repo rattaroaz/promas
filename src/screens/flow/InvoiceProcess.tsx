@@ -573,7 +573,7 @@ export function InvoiceProcess({
             {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
             {property.paintTime}
           </div>
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 8ch 10ch 12ch 10ch 13ch 13ch 13ch 6ch" }}>
             <div>Inv_Date</div>
             <div>Inv#</div>
             <div>PO</div>
@@ -600,7 +600,7 @@ export function InvoiceProcess({
                     ? "invoice-open"
                     : "invoice-paid"
                 } browse-grid`}
-                style={{ gridTemplateColumns: "max-content max-content max-content max-content max-content max-content max-content max-content max-content" }}
+                style={{ gridTemplateColumns: "12ch 8ch 10ch 12ch 10ch 13ch 13ch 13ch 6ch" }}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {
                   setIndex(i);
@@ -713,7 +713,7 @@ export function InvoiceProcess({
             <div className="dos-form-row">
               <DotField label="Invoice Number" width={16}>
                 <input
-                  className="dos-input w8"
+                  className="dos-input w12"
                   type="number"
                   aria-label="Invoice Number"
                   value={editing.invoice.invoice || ""}
@@ -887,7 +887,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
-                    style={{ width: "40ch" }}
+                    style={{ width: "100%", minWidth: "30ch" }}
                     value={editing.invoice.paintSupplyCo ?? ""}
                     onChange={(e) =>
                       setEditing({
@@ -939,7 +939,7 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Work Person"
                     placeholder="Type name"
-                    style={{ width: "40ch" }}
+                    style={{ width: "100%", minWidth: "30ch" }}
                     value={invoiceWorkPerson(editing.lines)}
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                     onBlur={() => {
@@ -968,14 +968,14 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "30ch max-content max-content max-content" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "30ch 14ch 13ch 4ch" }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "30ch max-content max-content max-content" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "30ch 14ch 13ch 4ch" }}>
                 <div style={{ display: "flex", gap: "4px", minWidth: 0 }}>
                   <select
                     className="dos-select dos-choice"
@@ -1068,7 +1068,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "30ch max-content max-content max-content" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "30ch 14ch 13ch 4ch" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
