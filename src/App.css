@@ -432,6 +432,7 @@ textarea {
 
 .dos-browse-body::-webkit-scrollbar {
   width: 1ch;
+  height: 1ch;
 }
 
 .dos-browse-body::-webkit-scrollbar-track {
