@@ -415,21 +415,9 @@ textarea {
 .dos-browse-body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: scroll;
   scrollbar-gutter: stable;
   min-height: 0;
-  position: relative;
-}
-
-.dos-browse-body::after {
-  content: '';
-  display: block;
-  height: 1px;
-  width: 100%;
-  position: sticky;
-  bottom: 0;
-  left: 0;
-}
   min-width: 0;
   width: 100%;
   scrollbar-width: thin;

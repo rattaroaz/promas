@@ -803,7 +803,7 @@ function AgingReport({
         {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
       </div>
       <div className="dos-browse-body">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch", columnGap: "2ch" }}>
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 11ch 11ch 11ch 11ch 11ch 11ch", columnGap: "2ch" }}>
           <div>Company#</div>
           <div>Company Name</div>
           <div>Contact</div>
@@ -820,7 +820,7 @@ function AgingReport({
             key={r.companyNo}
             type="button"
             className="dos-row browse-grid"
-            style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch", columnGap: "2ch" }}
+            style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 11ch 11ch 11ch 11ch 11ch 11ch", columnGap: "2ch" }}
             aria-label={`Company ${r.companyNo} outstanding invoices`}
             onClick={() => onCompany(r)}
           >
@@ -836,7 +836,7 @@ function AgingReport({
             <div>{money(r.openBal)}</div>
           </button>
         ))}
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 30ch 15ch 14ch 12ch 12ch 12ch 12ch 12ch 12ch", columnGap: "2ch" }}>
+        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 30ch 15ch 14ch 11ch 11ch 11ch 11ch 11ch 11ch", columnGap: "2ch" }}>
           <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
           <div>{money(tc)}</div>
           <div>{money(t30)}</div>
