@@ -803,47 +803,49 @@ function AgingReport({
         {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
       </div>
       <div className="dos-browse-body">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 11ch 11ch 11ch 11ch 11ch 11ch", columnGap: "2ch" }}>
-          <div>Company#</div>
-          <div>Company Name</div>
-          <div>Contact</div>
-          <div>Phone</div>
-          <div>Current</div>
-          <div>&gt;30</div>
-          <div>&gt;60</div>
-          <div>&gt;90</div>
-          <div>&gt;120</div>
-          <div>Open Bal</div>
-        </div>
-        {rows.map((r) => (
-          <button
-            key={r.companyNo}
-            type="button"
-            className="dos-row browse-grid"
-            style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 11ch 11ch 11ch 11ch 11ch 11ch", columnGap: "2ch" }}
-            aria-label={`Company ${r.companyNo} outstanding invoices`}
-            onClick={() => onCompany(r)}
-          >
-            <div>{r.companyNo}</div>
-            <div className="desc-truncate">{r.companyName}</div>
-            <div>{r.contact ?? ""}</div>
-            <div>{r.phone}</div>
-            <div>{money(r.current)}</div>
-            <div>{money(r.days30)}</div>
-            <div>{money(r.days60)}</div>
-            <div>{money(r.days90)}</div>
-            <div>{money(r.days120)}</div>
-            <div>{money(r.openBal)}</div>
-          </button>
-        ))}
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 30ch 15ch 14ch 11ch 11ch 11ch 11ch 11ch 11ch", columnGap: "2ch" }}>
-          <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
-          <div>{money(tc)}</div>
-          <div>{money(t30)}</div>
-          <div>{money(t60)}</div>
-          <div>{money(t90)}</div>
-          <div>{money(t120)}</div>
-          <div>{money(to)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "8ch 30ch 15ch 14ch max-content max-content max-content max-content max-content max-content", columnGap: "2ch" }}>
+          <div className="browse-grid-header" style={{ gridColumn: "1 / -1", display: "contents" }}>
+            <div>Company#</div>
+            <div>Company Name</div>
+            <div>Contact</div>
+            <div>Phone</div>
+            <div>Current</div>
+            <div>&gt;30</div>
+            <div>&gt;60</div>
+            <div>&gt;90</div>
+            <div>&gt;120</div>
+            <div>Open Bal</div>
+          </div>
+          {rows.map((r) => (
+            <button
+              key={r.companyNo}
+              type="button"
+              className="dos-row"
+              style={{ gridColumn: "1 / -1", display: "contents" }}
+              aria-label={`Company ${r.companyNo} outstanding invoices`}
+              onClick={() => onCompany(r)}
+            >
+              <div>{r.companyNo}</div>
+              <div className="desc-truncate">{r.companyName}</div>
+              <div>{r.contact ?? ""}</div>
+              <div>{r.phone}</div>
+              <div>{money(r.current)}</div>
+              <div>{money(r.days30)}</div>
+              <div>{money(r.days60)}</div>
+              <div>{money(r.days90)}</div>
+              <div>{money(r.days120)}</div>
+              <div>{money(r.openBal)}</div>
+            </button>
+          ))}
+          <div style={{ gridColumn: "1 / -1", display: "contents", color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+            <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
+            <div>{money(tc)}</div>
+            <div>{money(t30)}</div>
+            <div>{money(t60)}</div>
+            <div>{money(t90)}</div>
+            <div>{money(t120)}</div>
+            <div>{money(to)}</div>
+          </div>
         </div>
       </div>
     </div>
