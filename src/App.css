@@ -874,7 +874,7 @@ textarea {
 
 .dos-report {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   background: var(--dos-blue);
   color: var(--dos-white-bright);
   padding: 0.5em 1ch;
