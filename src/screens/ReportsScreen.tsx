@@ -15,7 +15,7 @@ import {
   emptyCompany,
   emptyProperty,
 } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
 import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 import { SubMenu, MenuItem } from "./SubMenu";
@@ -925,7 +925,10 @@ Open Balance.... ${money(company.openBal)}`}
               key={`${inv.invoice}-${inv.salesDate}-${inv.proNo}`}
               className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
               style={{ gridTemplateColumns: "7ch 12ch 12ch 30ch 9ch 8ch" }}
-              onMouseEnter={() => setIndex(i)}
+              onMouseEnter={() => {
+                if (pointerHoverMuted()) return;
+                setIndex(i);
+              }}
               onClick={() => onInvoice(inv)}
             >
               <div>{inv.invoice}</div>

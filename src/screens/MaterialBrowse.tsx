@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { api, Material, Employee, emptyMaterial } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import {
   Screen,
   BROWSE_KEYS,
@@ -191,7 +191,10 @@ export function MaterialBrowse({
                   key={m.id}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
                   style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                   onClick={() => {
                     setIndex(i);
                     setEditing({ ...m });

@@ -4,7 +4,7 @@
  *   then Property NO / Name / Phone / Contact → select or add
  * Cash skips property and hands off the company only.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   api,
   Company,
@@ -13,7 +13,7 @@ import {
   emptyCompany,
   emptyProperty,
 } from "../../api";
-import { useBrowseIndex, useDosKeys } from "../../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
   Screen,
   Dialog,
@@ -203,7 +203,8 @@ export function CompanyPropertyGate({
     setPhase(prev);
   }
 
-  useEffect(() => {
+  // Before paint, so the status line matches the field the arrow just focused.
+  useLayoutEffect(() => {
     if (phase === "co-search") {
       if (firstKind === "property") {
         setMsg(
@@ -1092,7 +1093,10 @@ export function CompanyPropertyGate({
                 key={c.companyNo}
                 className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid`}
                 style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}
-                onMouseEnter={() => coBrowse.setIndex(i)}
+                onMouseEnter={() => {
+                  if (pointerHoverMuted()) return;
+                  coBrowse.setIndex(i);
+                }}
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
               >
@@ -1122,7 +1126,10 @@ export function CompanyPropertyGate({
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
                 className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid`}
                 style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 30ch" }}
-                onMouseEnter={() => invBrowse.setIndex(i)}
+                onMouseEnter={() => {
+                  if (pointerHoverMuted()) return;
+                  invBrowse.setIndex(i);
+                }}
                 onClick={() => void pickInvoiceSite(inv)}
               >
                 <div>{inv.invoice}</div>
@@ -1250,7 +1257,10 @@ export function CompanyPropertyGate({
                     key={`${p.companyNo}-${p.proNo}`}
                     className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
                     style={{ gridTemplateColumns: "8ch 30ch 30ch 15ch" }}
-                    onMouseEnter={() => prBrowse.setIndex(i)}
+                    onMouseEnter={() => {
+                      if (pointerHoverMuted()) return;
+                      prBrowse.setIndex(i);
+                    }}
                     onClick={() => selectProperty(p)}
                   >
                     <div>{p.proNo}</div>
@@ -1275,7 +1285,10 @@ export function CompanyPropertyGate({
                     key={`${p.companyNo}-${p.proNo}`}
                     className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
                     style={{ gridTemplateColumns: "8ch 8ch 30ch 15ch" }}
-                    onMouseEnter={() => prBrowse.setIndex(i)}
+                    onMouseEnter={() => {
+                      if (pointerHoverMuted()) return;
+                      prBrowse.setIndex(i);
+                    }}
                     onClick={() => selectProperty(p)}
                   >
                     <div>{p.companyNo}</div>

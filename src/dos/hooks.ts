@@ -178,6 +178,28 @@ export function focusFieldEdge(root: ParentNode, dir: 1 | -1): boolean {
   return true;
 }
 
+/**
+ * Arrow navigation and row hover share one highlight. A pointer resting on
+ * the first row would otherwise snap the highlight back on the next
+ * mouseenter, so arrows look like they never leave that row.
+ */
+let pointerHoverMutedUntil = 0;
+
+export function mutePointerHover(ms = 800) {
+  pointerHoverMutedUntil = Math.max(
+    pointerHoverMutedUntil,
+    performance.now() + ms
+  );
+}
+
+export function pointerHoverMuted(): boolean {
+  return performance.now() < pointerHoverMutedUntil;
+}
+
+export function resetPointerHoverMute() {
+  pointerHoverMutedUntil = 0;
+}
+
 function keepsHorizontalCaret(el: HTMLElement): boolean {
   if (el instanceof HTMLTextAreaElement) return true;
   if (!(el instanceof HTMLInputElement)) return false;
@@ -262,6 +284,7 @@ export function useDosKeys(
       ) {
         if (!h.forceNav) {
           if (tryMoveFieldFocus(e.target, e.key)) {
+            mutePointerHover();
             e.preventDefault();
             e.stopPropagation();
           }
@@ -329,10 +352,12 @@ export function useDosKeys(
           if (!handler) {
             const root = activeFieldRoot();
             if (root && focusFieldEdge(root, forward ? 1 : -1)) {
+              mutePointerHover();
               e.preventDefault();
               break;
             }
           }
+          if (handler) mutePointerHover();
           e.preventDefault();
           handler?.();
           break;

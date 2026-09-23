@@ -8,7 +8,7 @@ import {
   WorkType,
   emptyWorkOrder,
 } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import {
   Screen,
   BROWSE_KEYS,
@@ -187,7 +187,10 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                   key={`${w.companyNo}-${w.orderNo}-${w.orderDate}`}
                   className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
                   style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 15ch 9ch 30ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                 >
                   <div>{w.orderNo}</div>
                   <div>{fmtDate(w.orderDate)}</div>

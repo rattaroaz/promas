@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, WorkType, emptyWorkType } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import {
   Screen,
   BROWSE_KEYS,
@@ -140,7 +140,10 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
                   key={w.codeNo}
                   className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
                   style={{ gridTemplateColumns: "8ch 30ch 8ch 12ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                   onClick={() => {
                     setIsNew(false);
                     setEditing({ ...w });
