@@ -4,6 +4,187 @@ import { STATUS_KEY_CLICK } from "./Shell";
 
 export type KeyHandler = (e: KeyboardEvent) => boolean | void;
 
+export type ArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
+
+/** Form, filter bar, prompt, and help — the surfaces arrows walk like Tab. */
+const FIELD_SCOPE = ".dos-form, .dos-searchline, .dos-prompt, .dos-help";
+
+const FOCUSABLE = [
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "button:not([disabled])",
+].join(", ");
+
+const TEXT_TYPES = new Set([
+  "text",
+  "search",
+  "tel",
+  "url",
+  "email",
+  "password",
+  "",
+]);
+
+const DATE_TYPES = new Set([
+  "date",
+  "time",
+  "datetime-local",
+  "month",
+  "week",
+]);
+
+function isArrowKey(key: string): key is ArrowKey {
+  return (
+    key === "ArrowUp" ||
+    key === "ArrowDown" ||
+    key === "ArrowLeft" ||
+    key === "ArrowRight"
+  );
+}
+
+function inputType(el: HTMLElement): string {
+  if (el instanceof HTMLInputElement) return (el.type || "text").toLowerCase();
+  return "";
+}
+
+/** Inputs/selects, plus buttons that live in a form, filter bar, or dialog. */
+export function isArrowField(el: EventTarget | null): el is HTMLElement {
+  if (!(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  if (tag === "INPUT") {
+    return inputType(el) !== "hidden";
+  }
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (tag === "BUTTON") {
+    return el.closest(`${FIELD_SCOPE}, .dos-dialog`) != null;
+  }
+  return false;
+}
+
+export function tabStopsIn(root: ParentNode): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => {
+      if (el.tabIndex < 0) return false;
+      if (el.closest(".dos-statusbar")) return false;
+      if (el.closest(".dos-browse") && !el.closest(".dos-form")) return false;
+      return true;
+    }
+  );
+}
+
+function fieldScope(el: HTMLElement): ParentNode {
+  return (
+    el.closest(FIELD_SCOPE) ??
+    el.closest(".dos-dialog") ??
+    el.closest(".dos-screen") ??
+    document.body
+  );
+}
+
+/** Topmost form/filter/prompt, so arrows don't jump into a screen behind a dialog. */
+export function activeFieldRoot(): Element | null {
+  const overlays = document.querySelectorAll(".dos-overlay");
+  for (let i = overlays.length - 1; i >= 0; i--) {
+    const inner = overlays[i].querySelector(FIELD_SCOPE);
+    if (inner) return inner;
+  }
+  return document.querySelector(FIELD_SCOPE);
+}
+
+function caretAt(el: HTMLInputElement | HTMLTextAreaElement, edge: "start" | "end"): boolean {
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  if (start == null || end == null) return true;
+  if (edge === "start") return start === 0 && end === 0;
+  const len = el.value.length;
+  return start === len && end === len;
+}
+
+function placeCaret(el: HTMLElement, edge: "start" | "end") {
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+  const type = el instanceof HTMLInputElement ? inputType(el) : "text";
+  if (!TEXT_TYPES.has(type) && type !== "number" && !(el instanceof HTMLTextAreaElement)) {
+    return;
+  }
+  try {
+    const len = el.value.length;
+    const pos = edge === "start" ? 0 : len;
+    el.setSelectionRange(pos, pos);
+  } catch {
+    /* number/date inputs reject selection ranges */
+  }
+}
+
+/**
+ * Up/Down walk fields in tab order. Left/Right do too, except where the
+ * control itself uses that arrow (caret, date segment, select option, number).
+ * Returns true when focus moved.
+ */
+export function tryMoveFieldFocus(el: HTMLElement, key: ArrowKey): boolean {
+  const forward = key === "ArrowDown" || key === "ArrowRight";
+  const vertical = key === "ArrowUp" || key === "ArrowDown";
+
+  if (el instanceof HTMLTextAreaElement) {
+    const pos = el.selectionStart ?? 0;
+    const value = el.value;
+    const onFirst = !value.slice(0, pos).includes("\n");
+    const onLast = !value.slice(pos).includes("\n");
+    if (vertical) {
+      if (key === "ArrowUp" && !onFirst) return false;
+      if (key === "ArrowDown" && !onLast) return false;
+    } else if (key === "ArrowLeft" && !caretAt(el, "start")) {
+      return false;
+    } else if (key === "ArrowRight" && !caretAt(el, "end")) {
+      return false;
+    }
+  } else if (el instanceof HTMLSelectElement) {
+    // Up/Down change the option. Left/Right move to the neighbor field.
+    if (vertical) return false;
+  } else if (el instanceof HTMLInputElement) {
+    const type = inputType(el);
+    if (DATE_TYPES.has(type) || type === "range") {
+      // Left/Right edit the segment or slider. Up/Down leave the field.
+      if (!vertical) return false;
+    } else if (type === "number") {
+      // Up/Down spin the value. Left/Right move the caret, then the field.
+      if (vertical) return false;
+      if (key === "ArrowLeft" && !caretAt(el, "start")) return false;
+      if (key === "ArrowRight" && !caretAt(el, "end")) return false;
+    } else if (TEXT_TYPES.has(type)) {
+      if (!vertical) {
+        if (key === "ArrowLeft" && !caretAt(el, "start")) return false;
+        if (key === "ArrowRight" && !caretAt(el, "end")) return false;
+      }
+    }
+  }
+
+  const stops = tabStopsIn(fieldScope(el));
+  const idx = stops.indexOf(el);
+  if (idx < 0) return false;
+  const next = stops[idx + (forward ? 1 : -1)];
+  if (!next) return false;
+  next.focus();
+  placeCaret(next, forward ? "start" : "end");
+  return true;
+}
+
+export function focusFieldEdge(root: ParentNode, dir: 1 | -1): boolean {
+  const stops = tabStopsIn(root);
+  const target = dir > 0 ? stops[0] : stops[stops.length - 1];
+  if (!target) return false;
+  target.focus();
+  placeCaret(target, dir > 0 ? "start" : "end");
+  return true;
+}
+
+function keepsHorizontalCaret(el: HTMLElement): boolean {
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (!(el instanceof HTMLInputElement)) return false;
+  const type = inputType(el);
+  return TEXT_TYPES.has(type) || type === "number";
+}
+
 /**
  * Global keyboard handler for a DOS screen.
  * Handlers run only when active is true.
@@ -71,6 +252,33 @@ export function useDosKeys(
         return;
       }
 
+      if (
+        isArrowKey(e.key) &&
+        !e.altKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.shiftKey &&
+        isArrowField(e.target)
+      ) {
+        if (!h.forceNav) {
+          if (tryMoveFieldFocus(e.target, e.key)) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          // Leave the key to the control (caret, select option, date segment)
+          // when focus did not move. Don't also run list/menu handlers.
+          return;
+        }
+        // Browse lists keep Up/Down while a search box is focused.
+        // Left/Right stay with the caret so the search text is editable.
+        if (
+          (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+          keepsHorizontalCaret(e.target)
+        ) {
+          return;
+        }
+      }
+
       if (inField && !h.forceNav && !e.ctrlKey) {
         return;
       }
@@ -105,25 +313,30 @@ export function useDosKeys(
           h.onPageDown?.();
           break;
         case "ArrowUp":
-          if (inField && !h.forceNav) return;
-          e.preventDefault();
-          h.onArrowUp?.();
-          break;
         case "ArrowDown":
-          if (inField && !h.forceNav) return;
-          e.preventDefault();
-          h.onArrowDown?.();
-          break;
         case "ArrowLeft":
-          if (inField && !h.forceNav) return;
+        case "ArrowRight": {
+          if (inField && e.ctrlKey) return;
+          const forward = e.key === "ArrowDown" || e.key === "ArrowRight";
+          const handler =
+            e.key === "ArrowUp"
+              ? h.onArrowUp
+              : e.key === "ArrowDown"
+                ? h.onArrowDown
+                : e.key === "ArrowLeft"
+                  ? (h.onArrowLeft ?? h.onArrowUp)
+                  : (h.onArrowRight ?? h.onArrowDown);
+          if (!handler) {
+            const root = activeFieldRoot();
+            if (root && focusFieldEdge(root, forward ? 1 : -1)) {
+              e.preventDefault();
+              break;
+            }
+          }
           e.preventDefault();
-          h.onArrowLeft?.();
+          handler?.();
           break;
-        case "ArrowRight":
-          if (inField && !h.forceNav) return;
-          e.preventDefault();
-          h.onArrowRight?.();
-          break;
+        }
         default:
           if (!e.ctrlKey && !e.altKey && e.key.length === 1 && !inField) {
             const handled = h.onChar?.(e.key, e);

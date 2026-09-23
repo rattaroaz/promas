@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { render, renderHook, act } from "@testing-library/react";
 import { computeFitScale, useBrowseIndex, useDosKeys } from "./hooks";
 import { STATUS_KEY_CLICK } from "./Shell";
 
@@ -205,5 +205,182 @@ describe("useDosKeys", () => {
     renderHook(() => useDosKeys({ onChar }));
     fire("3");
     expect(onChar).toHaveBeenCalledWith("3", expect.any(KeyboardEvent));
+  });
+
+  it("Left/Right fall back to Up/Down when a screen does not define them", () => {
+    const onArrowUp = vi.fn();
+    const onArrowDown = vi.fn();
+    renderHook(() => useDosKeys({ onArrowUp, onArrowDown }));
+    fire("ArrowLeft");
+    fire("ArrowRight");
+    expect(onArrowUp).toHaveBeenCalledOnce();
+    expect(onArrowDown).toHaveBeenCalledOnce();
+  });
+
+  it("prefers an explicit Left/Right handler over the Up/Down fallback", () => {
+    const onArrowUp = vi.fn();
+    const onArrowLeft = vi.fn();
+    renderHook(() => useDosKeys({ onArrowUp, onArrowLeft }));
+    fire("ArrowLeft");
+    expect(onArrowLeft).toHaveBeenCalledOnce();
+    expect(onArrowUp).not.toHaveBeenCalled();
+  });
+
+  it("does not steal Left/Right from a search box while forceNav moves the list", () => {
+    const onArrowUp = vi.fn();
+    const onArrowDown = vi.fn();
+    renderHook(() => useDosKeys({ onArrowUp, onArrowDown, forceNav: true }));
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    input.value = "acme";
+    input.setSelectionRange(2, 2);
+    const left = new KeyboardEvent("keydown", {
+      key: "ArrowLeft",
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(left);
+    expect(left.defaultPrevented).toBe(false);
+    expect(onArrowUp).not.toHaveBeenCalled();
+    const down = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(down);
+    expect(onArrowDown).toHaveBeenCalledOnce();
+    document.body.removeChild(input);
+  });
+});
+
+describe("form field arrows", () => {
+  function press(el: HTMLElement, key: string) {
+    const ev = new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      cancelable: true,
+    });
+    el.dispatchEvent(ev);
+    return ev;
+  }
+
+  function form() {
+    renderHook(() => useDosKeys({}));
+    render(
+      <div className="dos-screen">
+        <div className="dos-form">
+          <input aria-label="name" defaultValue="ACME" />
+          <input aria-label="city" defaultValue="Yuma" />
+          <select aria-label="size">
+            <option value="a">A</option>
+            <option value="b">B</option>
+          </select>
+          <input aria-label="when" type="date" defaultValue="2026-01-15" />
+          <input aria-label="price" type="number" defaultValue="12" />
+          <textarea aria-label="note" defaultValue={"one\ntwo"} />
+        </div>
+      </div>
+    );
+    return {
+      name: document.querySelector<HTMLInputElement>("[aria-label='name']")!,
+      city: document.querySelector<HTMLInputElement>("[aria-label='city']")!,
+      size: document.querySelector<HTMLSelectElement>("[aria-label='size']")!,
+      when: document.querySelector<HTMLInputElement>("[aria-label='when']")!,
+      price: document.querySelector<HTMLInputElement>("[aria-label='price']")!,
+      note: document.querySelector<HTMLTextAreaElement>("[aria-label='note']")!,
+    };
+  }
+
+  it("moves through fields with Up/Down and with Left/Right at the caret edge", () => {
+    const { name, city, size } = form();
+    name.focus();
+    name.setSelectionRange(4, 4);
+    press(name, "ArrowRight");
+    expect(city).toHaveFocus();
+    expect(city.selectionStart).toBe(0);
+
+    city.setSelectionRange(2, 2);
+    const mid = press(city, "ArrowLeft");
+    expect(mid.defaultPrevented).toBe(false);
+    expect(city).toHaveFocus();
+
+    city.setSelectionRange(0, 0);
+    press(city, "ArrowLeft");
+    expect(name).toHaveFocus();
+
+    name.focus();
+    press(name, "ArrowDown");
+    expect(city).toHaveFocus();
+    press(city, "ArrowDown");
+    expect(size).toHaveFocus();
+  });
+
+  it("leaves select options and date segments to the control", () => {
+    const { size, when, price } = form();
+    size.focus();
+    const down = press(size, "ArrowDown");
+    expect(down.defaultPrevented).toBe(false);
+    expect(size).toHaveFocus();
+    press(size, "ArrowRight");
+    expect(when).toHaveFocus();
+
+    const segment = press(when, "ArrowRight");
+    expect(segment.defaultPrevented).toBe(false);
+    expect(when).toHaveFocus();
+    press(when, "ArrowDown");
+    expect(price).toHaveFocus();
+
+    const spin = press(price, "ArrowUp");
+    expect(spin.defaultPrevented).toBe(false);
+    expect(price).toHaveFocus();
+  });
+
+  it("keeps the caret inside a textarea until the first or last line", () => {
+    const { note, price } = form();
+    note.focus();
+    note.setSelectionRange(0, 0);
+    press(note, "ArrowUp");
+    expect(price).toHaveFocus();
+
+    note.focus();
+    note.setSelectionRange(2, 2);
+    const down = press(note, "ArrowDown");
+    expect(down.defaultPrevented).toBe(false);
+    expect(note).toHaveFocus();
+  });
+
+  it("does not block typing or Tab inside a field", () => {
+    const { name } = form();
+    const onChar = vi.fn();
+    renderHook(() => useDosKeys({ onChar }));
+    name.focus();
+    const typed = press(name, "a");
+    const tab = press(name, "Tab");
+    expect(typed.defaultPrevented).toBe(false);
+    expect(tab.defaultPrevented).toBe(false);
+    expect(onChar).not.toHaveBeenCalled();
+    expect(name).toHaveFocus();
+  });
+
+  it("focuses the first field when nothing is focused and the screen has no list handler", () => {
+    render(
+      <div className="dos-screen">
+        <div className="dos-searchline">
+          <input aria-label="from" />
+          <input aria-label="to" type="date" />
+        </div>
+      </div>
+    );
+    renderHook(() => useDosKeys({ onEnter: vi.fn() }));
+    const from = document.querySelector<HTMLInputElement>("[aria-label='from']")!;
+    const to = document.querySelector<HTMLInputElement>("[aria-label='to']")!;
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })
+    );
+    expect(from).toHaveFocus();
+    press(from, "ArrowDown");
+    expect(to).toHaveFocus();
   });
 });
