@@ -4,7 +4,7 @@
  *   then Property NO / Name / Phone / Contact → select or add
  * Cash skips property and hands off the company only.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   api,
   Company,
