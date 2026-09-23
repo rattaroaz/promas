@@ -10,7 +10,7 @@ import {
   emptyInvoice,
   emptyInvoiceLine,
 } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import {
   Screen,
   BROWSE_KEYS,
@@ -311,7 +311,10 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                       : "invoice-paid"
                   } browse-grid`}
                   style={{ gridTemplateColumns: "12ch 7ch 8ch 8ch 8ch 9ch 6ch 12ch 12ch 12ch 4ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                   onClick={() => {
                     setIndex(i);
                     openEdit(inv);

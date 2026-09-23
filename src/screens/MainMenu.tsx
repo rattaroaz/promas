@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useDosKeys } from "../dos/hooks";
 import { Screen, MENU_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
 import { APP_VERSION } from "../lib/constants";
 
@@ -117,7 +117,10 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
               <button
                 key={item.id}
                 className={`dos-menu-item ${i === hot ? "hot" : ""}`}
-                onMouseEnter={() => setHot(i)}
+                onMouseEnter={() => {
+                  if (pointerHoverMuted()) return;
+                  setHot(i);
+                }}
                 onClick={() => onSelect(item.id)}
               >
                 <span className="num">{item.num}.</span>

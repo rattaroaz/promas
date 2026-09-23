@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, renderHook, act } from "@testing-library/react";
-import { computeFitScale, useBrowseIndex, useDosKeys } from "./hooks";
+import {
+  computeFitScale,
+  pointerHoverMuted,
+  useBrowseIndex,
+  useDosKeys,
+} from "./hooks";
 import { STATUS_KEY_CLICK } from "./Shell";
 
 describe("computeFitScale", () => {
@@ -207,6 +212,13 @@ describe("useDosKeys", () => {
     expect(onChar).toHaveBeenCalledWith("3", expect.any(KeyboardEvent));
   });
 
+  it("mutes row hover after an arrow so the pointer cannot snap the highlight back", () => {
+    expect(pointerHoverMuted()).toBe(false);
+    renderHook(() => useDosKeys({ onArrowDown: vi.fn() }));
+    fire("ArrowDown");
+    expect(pointerHoverMuted()).toBe(true);
+  });
+
   it("Left/Right fall back to Up/Down when a screen does not define them", () => {
     const onArrowUp = vi.fn();
     const onArrowDown = vi.fn();
@@ -348,6 +360,19 @@ describe("form field arrows", () => {
     const down = press(note, "ArrowDown");
     expect(down.defaultPrevented).toBe(false);
     expect(note).toHaveFocus();
+  });
+
+  it("ArrowLeft inside typed text stays in the field until the caret is at the start", () => {
+    const { name, city } = form();
+    city.focus();
+    city.value = "AC";
+    city.setSelectionRange(2, 2);
+    const left = press(city, "ArrowLeft");
+    expect(left.defaultPrevented).toBe(false);
+    expect(city).toHaveFocus();
+    city.setSelectionRange(0, 0);
+    press(city, "ArrowLeft");
+    expect(name).toHaveFocus();
   });
 
   it("does not block typing or Tab inside a field", () => {

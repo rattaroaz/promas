@@ -12,7 +12,7 @@ import {
   emptyWorkOrder,
   emptyWorkType,
 } from "../../api";
-import { useBrowseIndex, useDosKeys } from "../../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
   Screen,
   Dialog,
@@ -294,7 +294,10 @@ export function WorkOrderProcess({
                 key={`${w.orderNo}-${w.orderDate}`}
                 className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
                 style={{ gridTemplateColumns: "7ch 12ch 9ch 15ch 10ch" }}
-                onMouseEnter={() => setIndex(i)}
+                onMouseEnter={() => {
+                  if (pointerHoverMuted()) return;
+                  setIndex(i);
+                }}
                 onClick={() => openEdit(w)}
               >
                 <div>{w.orderNo}</div>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, CashReceipt, emptyCashReceipt, Invoice } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import {
   Screen,
   BROWSE_KEYS,
@@ -202,7 +202,10 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
                   key={r.id}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
                   style={{ gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                   onClick={() => setIndex(i)}
                 >
                   <div>{r.invoice}</div>
