@@ -10,7 +10,7 @@ import {
   Estimate,
   emptyEstimate,
 } from "../../api";
-import { useBrowseIndex, useDosKeys } from "../../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
   Screen,
   Dialog,
@@ -185,7 +185,10 @@ export function EstimateProcess({
                 key={e.id ?? `${e.estNo}-${e.estDate}`}
                 className={`dos-row ${i === index ? "selected" : ""} ${e.voided ? "voided" : ""} browse-grid`}
                 style={{ gridTemplateColumns: "10ch 14ch 8ch 10ch" }}
-                onMouseEnter={() => setIndex(i)}
+                onMouseEnter={() => {
+                  if (pointerHoverMuted()) return;
+                  setIndex(i);
+                }}
                 onClick={() => {
                   setIsNew(false);
                   setEditing({ ...e });

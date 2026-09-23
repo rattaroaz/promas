@@ -10,7 +10,7 @@ import {
   CashReceipt,
   emptyCashReceipt,
 } from "../../api";
-import { useBrowseIndex, useDosKeys } from "../../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
   Screen,
   Dialog,
@@ -307,7 +307,10 @@ Company NO : ${company.companyNo}  ${company.name}`}
                   key={`${inv.invoice}-${inv.salesDate}`}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
                   style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                   onClick={() => {
                     setIndex(i);
                     startPayment(inv);
