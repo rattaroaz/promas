@@ -6,7 +6,7 @@ import {
   emptyCompany,
   emptyProperty,
 } from "../api";
-import { useBrowseIndex, useDosKeys } from "../dos/hooks";
+import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, BROWSE_KEYS, Dialog, FORM_KEYS, Prompt, HelpOverlay } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { fmtDate, today } from "../dos/utils";
@@ -266,7 +266,10 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                   key={c.companyNo}
                   className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""} browse-grid`}
                   style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 15ch" }}
-                  onMouseEnter={() => setIndex(i)}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    setIndex(i);
+                  }}
                   onClick={() => {
                     setIndex(i);
                     setIsNew(false);

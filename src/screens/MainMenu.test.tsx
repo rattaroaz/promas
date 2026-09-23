@@ -131,5 +131,30 @@ describe("MainMenu", () => {
     key("Enter");
     expect(onSelect).toHaveBeenCalledWith("settings");
   });
+
+  it("a pointer resting on a row does not undo an arrow move", async () => {
+    const user = userEvent.setup();
+    renderApp(<MainMenu onSelect={vi.fn()} />);
+    const estimate = screen.getByRole("button", { name: /1\.\s*Estimate Process/i });
+    const work = screen.getByRole("button", { name: /2\.\s*Work Order Process/i });
+    key("ArrowDown");
+    expect(work).toHaveClass(/hot/);
+    await user.hover(estimate);
+    expect(work).toHaveClass(/hot/);
+    expect(estimate).not.toHaveClass(/hot/);
+  });
+
+  it("ArrowLeft and ArrowRight move the highlight", () => {
+    const onSelect = vi.fn();
+    renderApp(<MainMenu onSelect={onSelect} />);
+    key("ArrowRight");
+    key("Enter");
+    expect(onSelect).toHaveBeenCalledWith("workorder");
+    onSelect.mockClear();
+    key("ArrowLeft");
+    key("ArrowLeft");
+    key("Enter");
+    expect(onSelect).toHaveBeenCalledWith("settings");
+  });
 });
 

@@ -17,6 +17,13 @@ const fixtureCompany = {
   voided: false,
 };
 
+const fixtureCompany2 = {
+  ...fixtureCompany,
+  companyNo: "2000",
+  name: "BAYSIDE",
+  class: "B",
+};
+
 const fixtureInvoice = {
   companyNo: "1000",
   proNo: "01",
@@ -102,7 +109,7 @@ export async function invoke<T = unknown>(
     return [fixtureInvoice] as T;
   }
   if (cmd === "list_companies") {
-    return [fixtureCompany] as T;
+    return [fixtureCompany, fixtureCompany2] as T;
   }
   if (cmd === "get_company") {
     return fixtureCompany as T;
