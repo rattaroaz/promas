@@ -77,4 +77,18 @@ describe("SubMenu", () => {
     // hot starts 0, ArrowDown -> 1 (Second Item)
     expect(onSelect).toHaveBeenCalledWith("b");
   });
+
+  it("ArrowLeft and ArrowRight move the highlight", () => {
+    const onSelect = vi.fn();
+    renderApp(
+      <SubMenu title=" Test " items={items} onSelect={onSelect} onBack={vi.fn()} />
+    );
+    key("ArrowRight");
+    key("Enter");
+    expect(onSelect).toHaveBeenCalledWith("b");
+    onSelect.mockClear();
+    key("ArrowLeft");
+    key("Enter");
+    expect(onSelect).toHaveBeenCalledWith("a");
+  });
 });

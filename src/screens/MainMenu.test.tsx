@@ -131,5 +131,18 @@ describe("MainMenu", () => {
     key("Enter");
     expect(onSelect).toHaveBeenCalledWith("settings");
   });
+
+  it("ArrowLeft and ArrowRight move the highlight", () => {
+    const onSelect = vi.fn();
+    renderApp(<MainMenu onSelect={onSelect} />);
+    key("ArrowRight");
+    key("Enter");
+    expect(onSelect).toHaveBeenCalledWith("workorder");
+    onSelect.mockClear();
+    key("ArrowLeft");
+    key("ArrowLeft");
+    key("Enter");
+    expect(onSelect).toHaveBeenCalledWith("settings");
+  });
 });
 
