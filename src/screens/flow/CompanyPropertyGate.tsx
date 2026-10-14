@@ -888,7 +888,10 @@ export function CompanyPropertyGate({
       {/* ── Company search ─────────────────────────────── */}
       {phase === "co-search" && (
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "min(72ch, 100%)" }}>
+          <div
+            className="dos-menu-frame"
+            style={{ width: "max-content", maxWidth: "none", minWidth: "min(72ch, 100%)" }}
+          >
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
                 {(process === "cash" || process === "invoice") &&
@@ -897,7 +900,7 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w15"
                     aria-label="Company NO"
-                    value={coField === "no" ? query : ""}
+                    value={firstKind === "company" && coField === "no" ? query : ""}
                     onFocus={() => {
                       setFirstKind("company");
                       setCoField("no");
@@ -929,7 +932,7 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w30"
                     aria-label="Company Name"
-                    value={coField === "name" ? query : ""}
+                    value={firstKind === "company" && coField === "name" ? query : ""}
                     onFocus={() => {
                       setFirstKind("company");
                       setCoField("name");
@@ -952,7 +955,7 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w15"
                     aria-label="Company Phone"
-                    value={coField === "phone" ? query : ""}
+                    value={firstKind === "company" && coField === "phone" ? query : ""}
                     onFocus={() => {
                       setFirstKind("company");
                       setCoField("phone");

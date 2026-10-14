@@ -651,7 +651,12 @@ textarea {
 .dos-input.w20 { max-width: min(22ch, 100%); flex: 1 1 22ch; }
 .dos-input.w30 { max-width: min(32ch, 100%); flex: 1 1 32ch; }
 .dos-input.w40 { max-width: min(42ch, 100%); flex: 1 1 42ch; }
-.dos-input.w45 { max-width: min(47ch, 100%); flex: 1 1 47ch; }
+.dos-input.w45 {
+  width: 47ch;
+  min-width: 47ch;
+  max-width: 47ch;
+  flex: 0 0 47ch;
+}
 .dos-input.w50 { max-width: min(52ch, 100%); flex: 1 1 52ch; }
 
 /* Select + typed value: picker is a small box, value uses the rest */
