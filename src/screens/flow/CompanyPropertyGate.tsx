@@ -23,6 +23,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
+import { ContentGrid } from "../../dos/contentGrid";
 import { cols, padR, fmtDate, today } from "../../dos/utils";
 
 export type ProcessKind =
@@ -94,15 +95,12 @@ function padMin(s: string, n: number): string {
   return s.length >= n ? s : s + " ".repeat(n - s.length);
 }
 
-/** Company property browse: ProNO, Name, Street (45+), City, State, Zip, Contact. */
-export const PROPERTY_BROWSE_WITH_NAME =
-  "8ch 30ch minmax(45ch, max-content) 14ch 4ch 8ch 16ch";
-/** Global property lookup: CoNO, ProNO, Street (45+), City, State, Zip, Contact. */
-export const PROPERTY_BROWSE_GLOBAL =
-  "8ch 8ch minmax(45ch, max-content) 14ch 4ch 8ch 16ch";
-/** Invoice-number hits: the address column is the property street. */
-export const INVOICE_SITE_BROWSE =
-  "7ch 12ch 8ch 8ch minmax(45ch, max-content)";
+/** Company property browse: ProNO, Name, Street, City, St, Zip, Contact. */
+export const PROPERTY_BROWSE_WITH_NAME = "repeat(7, max-content)";
+/** Global property lookup: CoNO, ProNO, Street, City, St, Zip, Contact. */
+export const PROPERTY_BROWSE_GLOBAL = "repeat(7, max-content)";
+/** Invoice-number hits: Inv#, date, company, property, street. */
+export const INVOICE_SITE_BROWSE = "repeat(5, max-content)";
 
 /** Property contact. Legacy PROCONTACT is manager; the property form writes both. */
 export function propertyContactName(p: Property): string {
@@ -116,7 +114,7 @@ export function formatPropertySearchRow(
   const contact = propertyContactName(p);
   const place = [
     padMin(propertyStreetText(p), 45),
-    padR((p.city ?? "").trim(), 14),
+    padMin((p.city ?? "").trim(), 14),
     padR((p.state ?? "").trim(), 2),
     padR((p.zip ?? "").trim(), 10),
   ];
@@ -1108,18 +1106,17 @@ export function CompanyPropertyGate({
       {/* ── Company browse ─────────────────────────────── */}
       {phase === "co-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}>
-            <div>Company NO</div>
-            <div>Company Name</div>
-            <div>Phone</div>
-            <div>Contact</div>
-          </div>
-          <div className="dos-browse-body">
+          <ContentGrid columns={4}>
+            <div className="browse-grid browse-grid-header">
+              <div>Company NO</div>
+              <div>Company Name</div>
+              <div>Phone</div>
+              <div>Contact</div>
+            </div>
             {companies.map((c, i) => (
               <button
                 key={c.companyNo}
                 className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   coBrowse.setIndex(i);
@@ -1128,31 +1125,30 @@ export function CompanyPropertyGate({
                 onDoubleClick={() => selectCompany(c)}
               >
                 <div>{c.companyNo}</div>
-                <div className="desc-truncate">{c.name}</div>
+                <div>{c.name}</div>
                 <div>{c.phone}</div>
                 <div>{c.contact}</div>
               </button>
             ))}
-          </div>
+          </ContentGrid>
         </div>
       )}
 
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
-        <div className="dos-browse property-browse-wrap">
-          <div className="browse-grid browse-grid-header property-browse" style={{ gridTemplateColumns: INVOICE_SITE_BROWSE }}>
-            <div>Inv#</div>
-            <div>Inv_Date</div>
-            <div>Co#</div>
-            <div>Pro</div>
-            <div>Street</div>
-          </div>
-          <div className="dos-browse-body">
+        <div className="dos-browse">
+          <ContentGrid columns={5}>
+            <div className="browse-grid browse-grid-header">
+              <div>Inv#</div>
+              <div>Inv_Date</div>
+              <div>Co#</div>
+              <div>Pro</div>
+              <div>Street</div>
+            </div>
             {invoiceHits.map((inv, i) => (
               <button
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
-                className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid property-browse`}
-                style={{ gridTemplateColumns: INVOICE_SITE_BROWSE }}
+                className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid`}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   invBrowse.setIndex(i);
@@ -1166,7 +1162,7 @@ export function CompanyPropertyGate({
                 <div className="property-street">{(inv.propertyStreet || inv.propertyName || "").trim()}</div>
               </button>
             ))}
-          </div>
+          </ContentGrid>
         </div>
       )}
 
@@ -1269,10 +1265,10 @@ export function CompanyPropertyGate({
         </div>
       )}
       {phase === "pr-browse" && (
-        <div className="dos-browse property-browse-wrap">
+        <div className="dos-browse">
           {company ? (
-            <>
-              <div className="browse-grid browse-grid-header property-browse" style={{ gridTemplateColumns: PROPERTY_BROWSE_WITH_NAME }}>
+            <ContentGrid columns={7}>
+              <div className="browse-grid browse-grid-header">
                 <div>ProNO</div>
                 <div>Name</div>
                 <div>Street</div>
@@ -1281,29 +1277,26 @@ export function CompanyPropertyGate({
                 <div>Zip</div>
                 <div>Contact</div>
               </div>
-              <div className="dos-browse-body">
-                {properties.map((p, i) => (
-                  <button
-                    key={`${p.companyNo}-${p.proNo}`}
-                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid property-browse`}
-                    style={{ gridTemplateColumns: PROPERTY_BROWSE_WITH_NAME }}
-                    onMouseEnter={() => {
-                      if (pointerHoverMuted()) return;
-                      prBrowse.setIndex(i);
-                    }}
-                    onClick={() => selectProperty(p)}
-                  >
-                    <div>{p.proNo}</div>
-                    <div className="desc-truncate">{p.name}</div>
-                    <PropertyPlaceCells p={p} />
-                    <div>{propertyContactName(p)}</div>
-                  </button>
-                ))}
-              </div>
-            </>
+              {properties.map((p, i) => (
+                <button
+                  key={`${p.companyNo}-${p.proNo}`}
+                  className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    prBrowse.setIndex(i);
+                  }}
+                  onClick={() => selectProperty(p)}
+                >
+                  <div>{p.proNo}</div>
+                  <div>{p.name}</div>
+                  <PropertyPlaceCells p={p} />
+                  <div>{propertyContactName(p)}</div>
+                </button>
+              ))}
+            </ContentGrid>
           ) : (
-            <>
-              <div className="browse-grid browse-grid-header property-browse" style={{ gridTemplateColumns: PROPERTY_BROWSE_GLOBAL }}>
+            <ContentGrid columns={7}>
+              <div className="browse-grid browse-grid-header">
                 <div>CoNO</div>
                 <div>ProNO</div>
                 <div>Street</div>
@@ -1312,26 +1305,23 @@ export function CompanyPropertyGate({
                 <div>Zip</div>
                 <div>Contact</div>
               </div>
-              <div className="dos-browse-body">
-                {properties.map((p, i) => (
-                  <button
-                    key={`${p.companyNo}-${p.proNo}`}
-                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid property-browse`}
-                    style={{ gridTemplateColumns: PROPERTY_BROWSE_GLOBAL }}
-                    onMouseEnter={() => {
-                      if (pointerHoverMuted()) return;
-                      prBrowse.setIndex(i);
-                    }}
-                    onClick={() => selectProperty(p)}
-                  >
-                    <div>{p.companyNo}</div>
-                    <div>{p.proNo}</div>
-                    <PropertyPlaceCells p={p} />
-                    <div>{propertyContactName(p)}</div>
-                  </button>
-                ))}
-              </div>
-            </>
+              {properties.map((p, i) => (
+                <button
+                  key={`${p.companyNo}-${p.proNo}`}
+                  className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    prBrowse.setIndex(i);
+                  }}
+                  onClick={() => selectProperty(p)}
+                >
+                  <div>{p.companyNo}</div>
+                  <div>{p.proNo}</div>
+                  <PropertyPlaceCells p={p} />
+                  <div>{propertyContactName(p)}</div>
+                </button>
+              ))}
+            </ContentGrid>
           )}
         </div>
       )}

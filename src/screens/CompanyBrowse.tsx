@@ -9,6 +9,7 @@ import {
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, BROWSE_KEYS, Dialog, FORM_KEYS, Prompt, HelpOverlay } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { ContentGrid } from "../dos/contentGrid";
 import { fmtDate, today } from "../dos/utils";
 
 type Mode = "list" | "edit" | "detail" | "props" | "propedit";
@@ -257,15 +258,14 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 15ch" }}>
-              {headerCells.map((h, i) => <div key={i}>{h}</div>)}
-            </div>
-            <div className="dos-browse-body">
+            <ContentGrid columns={headerCells.length}>
+              <div className="browse-grid browse-grid-header">
+                {headerCells.map((h, i) => <div key={i}>{h}</div>)}
+              </div>
               {rows.map((c, i) => (
                 <button
                   key={c.companyNo}
                   className={`dos-row ${i === index ? "selected" : ""} ${c.voided ? "voided" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "8ch 30ch 15ch 14ch 15ch" }}
                   onMouseEnter={() => {
                     if (pointerHoverMuted()) return;
                     setIndex(i);
@@ -290,11 +290,11 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 </button>
               ))}
               {rows.length === 0 && (
-                <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+                <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
                   {"  ( no records )"}
                 </div>
               )}
-            </div>
+            </ContentGrid>
           </div>
         </>
       )}
@@ -314,29 +314,28 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               autoFocus
             />
           </div>
-        <div className="dos-browse property-browse-wrap">
-          <div className="browse-grid browse-grid-header property-browse" style={{ gridTemplateColumns: "8ch 30ch minmax(45ch, max-content) 14ch 4ch 8ch 14ch" }}>
-            <div>Pro#</div>
-            <div>Name</div>
-            <div>Street</div>
-            <div>City</div>
-            <div>St</div>
-            <div>Zip</div>
-            <div>Phone</div>
-          </div>
-          <div className="dos-browse-body">
+        <div className="dos-browse">
+          <ContentGrid columns={7}>
+            <div className="browse-grid browse-grid-header">
+              <div>Pro#</div>
+              <div>Name</div>
+              <div>Street</div>
+              <div>City</div>
+              <div>St</div>
+              <div>Zip</div>
+              <div>Phone</div>
+            </div>
             {visibleProps.map((p, i) => (
               <button
                 key={p.proNo}
-                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid property-browse`}
-                style={{ gridTemplateColumns: "8ch 30ch minmax(45ch, max-content) 14ch 4ch 8ch 14ch" }}
+                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid`}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
                 }}
               >
                 <div>{p.proNo}</div>
-                <div className="desc-truncate">{p.name}</div>
+                <div>{p.name}</div>
                 <div className="property-street">{p.street}</div>
                 <div>{p.city}</div>
                 <div>{p.state}</div>
@@ -345,16 +344,16 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               </button>
             ))}
             {visibleProps.length === 0 && props.length > 0 && (
-              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
                 {"  ( no properties match that address )"}
               </div>
             )}
             {props.length === 0 && (
-              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
                 {"  Property Empty !! Press Ins to Add Property"}
               </div>
             )}
-          </div>
+          </ContentGrid>
         </div>
         </>
       )}

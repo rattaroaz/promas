@@ -111,9 +111,11 @@ describe("InvoiceProcess", () => {
     expect(screen.getByRole("button", { name: /Unit/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     
-    // Verify content-sized grid
+    // Header and rows share one content-sized grid.
     expect(header).toHaveClass("browse-grid");
-    expect(header.style.gridTemplateColumns).toBeTruthy();
+    expect(header?.closest(".content-grid")).toHaveStyle({
+      gridTemplateColumns: "repeat(9, max-content)",
+    });
     
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -619,16 +621,17 @@ describe("InvoiceProcess", () => {
     
     await screen.findByText(/2 invoices/i);
     
-    const header = document.querySelector(".browse-grid-header");
-    const firstRow = document.querySelector(".dos-browse-body .browse-grid");
+    const grid = document.querySelector(".content-grid");
+    const header = grid?.querySelector(".browse-grid-header");
+    const firstRow = grid?.querySelector(".dos-row.browse-grid");
     
     expect(header).toHaveClass("browse-grid");
     expect(firstRow).toHaveClass("browse-grid");
-    
-    // Both should use content-sized columns
-    expect(header.style.gridTemplateColumns).toBeTruthy();
-    expect(firstRow.style.gridTemplateColumns).toBeTruthy();
-    expect(header.style.gridTemplateColumns).toBe(firstRow.style.gridTemplateColumns);
+    expect(grid).toHaveStyle({
+      gridTemplateColumns: "repeat(9, max-content)",
+    });
+    expect(header?.closest(".content-grid")).toBe(grid);
+    expect(firstRow?.closest(".content-grid")).toBe(grid);
     
     const unitHeader = screen.getByRole("button", { name: /Unit/i });
     
@@ -751,6 +754,11 @@ describe("InvoiceProcess", () => {
     expect(text).toContain("Lock Box Code: LB 1984");
     expect(text).not.toContain("Lock Box Code: 9999");
     expect(text).not.toContain("Building entry");
+    const facts = [...document.querySelectorAll(".invoice-fact")].map(
+      (el) => el.textContent
+    );
+    expect(facts).toContain("Entry Code: *2424");
+    expect(facts).toContain("Lock Box Code: LB 1984");
   });
 
   it("shows a 40-character description and wraps longer text onto two lines", async () => {

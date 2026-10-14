@@ -412,27 +412,49 @@ textarea {
   white-space: nowrap;
 }
 
-/* Property lists keep Name (30) and Contact (16) and a 45-character street.
-   The list type is slightly smaller than the screen title so City/State/Zip
-   fit on the same row instead of pushing Contact off the window. */
-.property-browse-wrap {
-  font-size: 0.82em;
+/* Content-sized lists: each column is the widest value or header, one gap. */
+.content-grid.dos-browse-body {
+  display: grid;
+  column-gap: 2ch;
+  row-gap: 0;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  align-content: start;
+  align-items: baseline;
+  overflow: auto;
+  scrollbar-gutter: auto;
 }
 
-.browse-grid.property-browse {
-  width: max-content;
+.content-grid > .browse-grid {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  width: auto;
   max-width: none;
   min-width: 0;
-  column-gap: 1ch;
+  column-gap: 2ch;
 }
 
-/* Property street in browse grids: at least 45 characters, never an ellipsis. */
-.browse-grid > .property-street {
-  min-width: 45ch;
-  max-width: none;
+.content-grid > .browse-grid > *,
+.content-grid .desc-truncate,
+.content-grid .property-street {
   overflow: visible;
   text-overflow: clip;
+  max-width: none;
+  min-width: 0;
   white-space: nowrap;
+}
+
+.content-grid > .browse-grid-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--dos-blue);
+}
+
+.content-grid > .content-grid-span {
+  grid-column: 1 / -1;
 }
 
 .dos-browse-body {
@@ -556,7 +578,13 @@ textarea {
 }
 
 .dos-dialog.wide {
-  width: min(90%, 100%);
+  width: min(90%, calc(100% - 3ch));
+  margin-inline: 1.5ch;
+}
+
+.dos-dialog.wide .dlg-body {
+  padding-right: 2ch;
+  padding-left: 2ch;
 }
 
 .dos-dialog.red {
@@ -758,14 +786,35 @@ textarea {
   flex: 0 0 1.45em;
 }
 
-/* Invoice site header wraps the full address and contact facts. */
+/* Invoice site header: each fact is one label:value that does not split. */
 .invoice-site-header {
   color: var(--dos-cyan-bright);
   padding: 0.2em 0.5ch 0.35em;
   margin-bottom: 0.35em;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
   line-height: 1.25;
+}
+
+.invoice-fact {
+  white-space: nowrap;
+}
+
+.invoice-fact-line {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 2ch;
+  row-gap: 0.1em;
+}
+
+.invoice-comments {
+  max-width: 100%;
+}
+
+.invoice-comments .invoice-comment-text {
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .browse-grid > .invoice-line-type {
@@ -799,6 +848,8 @@ textarea {
   display: flex;
   gap: 0.3ch;
   min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
   align-items: center;
 }
 
@@ -809,7 +860,9 @@ textarea {
 
 .invoice-work-person .dos-input {
   flex: 1 1 auto;
-  min-width: 30ch;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
 }
 
 .invoice-work-person .dos-btn {

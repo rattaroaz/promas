@@ -72,6 +72,12 @@ describe("formatPropertySearchRow", () => {
     );
     expect(row).toContain(street);
     expect(row.indexOf(street)).toBeLessThan(row.indexOf("SHERMAN OAKS"));
+    const longCity = "RANCHO SANTA MARGARITA";
+    const wide = formatPropertySearchRow(
+      { ...property, city: longCity },
+      false
+    );
+    expect(wide).toContain(longCity);
     expect(row.endsWith("MARIA") || row.includes("MARIA")).toBe(true);
   });
 });
@@ -178,7 +184,9 @@ describe("CompanyPropertyGate", () => {
     expect(row).toHaveTextContent("SHERMAN OAKS");
     expect(row).toHaveTextContent("91403");
     expect(row).toHaveTextContent("MARIA GONZALEZ");
-    expect(row).toHaveStyle({ gridTemplateColumns: PROPERTY_BROWSE_WITH_NAME });
+    expect(row.closest(".content-grid")).toHaveStyle({
+      gridTemplateColumns: PROPERTY_BROWSE_WITH_NAME,
+    });
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
   });
@@ -475,7 +483,7 @@ describe("CompanyPropertyGate", () => {
     expect(screen.getByText("Zip")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
-    expect(maria).toHaveStyle({
+    expect(maria.closest(".content-grid")).toHaveStyle({
       gridTemplateColumns: PROPERTY_BROWSE_GLOBAL,
     });
   });
@@ -779,7 +787,9 @@ describe("CompanyPropertyGate", () => {
     await user.type(screen.getByRole("textbox", { name: "Invoice Number" }), "7{Enter}");
     const quail = await screen.findByRole("button", { name: /1105 QUAIL ST/i });
     expect(quail.querySelector(".property-street")).toHaveTextContent("1105 QUAIL ST.");
-    expect(quail).toHaveStyle({ gridTemplateColumns: INVOICE_SITE_BROWSE });
+    expect(quail.closest(".content-grid")).toHaveStyle({
+      gridTemplateColumns: INVOICE_SITE_BROWSE,
+    });
     expect(screen.getByRole("button", { name: /88 MAIN ST/i })).toBeInTheDocument();
     expect(onReady).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /88 MAIN ST/i }));

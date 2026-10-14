@@ -22,6 +22,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
+import { ContentGrid } from "../../dos/contentGrid";
 import { money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
@@ -69,23 +70,11 @@ function lockBoxCode(property: Property): string {
   return match?.[1] ?? "";
 }
 
-function propertyFacts(property: Property): string {
-  const contact = (property.manager || property.contact).trim();
-  const comments = [property.comment1, property.comment2]
+function propertyComments(property: Property): string {
+  return [property.comment1, property.comment2]
     .map((part) => part.trim())
     .filter(Boolean)
     .join(" ");
-  const lockBox = lockBoxCode(property);
-  return [
-    contact && `Contact: ${contact}`,
-    property.phone.trim() && `Phone: ${property.phone.trim()}`,
-    property.phone2.trim() && `Cell: ${property.phone2.trim()}`,
-    property.keyInfo.trim() && `Entry Code: ${property.keyInfo.trim()}`,
-    lockBox && `Lock Box Code: ${lockBox}`,
-    comments && `Comments: ${comments}`,
-  ]
-    .filter(Boolean)
-    .join("   ");
 }
 
 function InvoiceLineDescription({
@@ -134,7 +123,12 @@ function InvoiceSiteHeader({
   property: Property;
 }) {
   const address = formatPropertyAddress(property);
-  const facts = propertyFacts(property);
+  const contact = (property.manager || property.contact).trim();
+  const phone = property.phone.trim();
+  const cell = property.phone2.trim();
+  const entry = property.keyInfo.trim();
+  const lockBox = lockBoxCode(property);
+  const comments = propertyComments(property);
   return (
     <div className="invoice-site-header">
       <div>
@@ -144,7 +138,27 @@ function InvoiceSiteHeader({
         {property.proNo} {property.name}
         {address ? ` — ${address}` : ""}
       </div>
-      {facts ? <div>{facts}</div> : null}
+      {contact ? <div className="invoice-fact">Contact: {contact}</div> : null}
+      {phone || cell ? (
+        <div className="invoice-fact-line">
+          {phone ? <span className="invoice-fact">Phone: {phone}</span> : null}
+          {cell ? <span className="invoice-fact">Cell: {cell}</span> : null}
+        </div>
+      ) : null}
+      {entry || lockBox ? (
+        <div className="invoice-fact-line">
+          {entry ? <span className="invoice-fact">Entry Code: {entry}</span> : null}
+          {lockBox ? (
+            <span className="invoice-fact">Lock Box Code: {lockBox}</span>
+          ) : null}
+        </div>
+      ) : null}
+      {comments ? (
+        <div className="invoice-comments">
+          <span className="invoice-fact">Comments: </span>
+          <span className="invoice-comment-text">{comments}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -671,25 +685,25 @@ export function InvoiceProcess({
       {mode === "browse" && (
         <div className="dos-browse">
           <InvoiceSiteHeader company={company} property={property} />
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}>
-            <div>Inv_Date</div>
-            <div>Inv#</div>
-            <div>PO</div>
-            <button
-              type="button"
-              className="sort-btn"
-              onClick={toggleUnitSort}
-              title="Click to sort by unit number"
-            >
-              Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
-            </button>
-            <div>Size</div>
-            <div>Total</div>
-            <div>Paid</div>
-            <div>Balance</div>
-            <div>St</div>
-          </div>
-          <div className="dos-browse-body">
+          <ContentGrid columns={9}>
+            <div className="browse-grid browse-grid-header">
+              <div>Inv_Date</div>
+              <div>Inv#</div>
+              <div>PO</div>
+              <button
+                type="button"
+                className="sort-btn"
+                onClick={toggleUnitSort}
+                title="Click to sort by unit number"
+              >
+                Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
+              </button>
+              <div>Size</div>
+              <div>Total</div>
+              <div>Paid</div>
+              <div>Balance</div>
+              <div>St</div>
+            </div>
             {sortedRows.map((inv, i) => (
               <button
                 key={`${inv.invoice}-${inv.salesDate}`}
@@ -698,7 +712,6 @@ export function InvoiceProcess({
                     ? "invoice-open"
                     : "invoice-paid"
                 } browse-grid`}
-                style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   setIndex(i);
@@ -720,11 +733,11 @@ export function InvoiceProcess({
               </button>
             ))}
             {originalRows.length === 0 && (
-              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
                 {"  (no invoices — press Ins or click New Invoice)"}
               </div>
             )}
-          </div>
+          </ContentGrid>
           <div className="dos-browse-footer">
             <button
               type="button"
@@ -967,7 +980,6 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
-                    style={{ width: "100%", minWidth: "30ch" }}
                     value={editing.invoice.paintSupplyCo ?? ""}
                     onChange={(e) =>
                       setEditing({
@@ -1021,7 +1033,6 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Work Person"
                     placeholder="Type name"
-                    style={{ width: "100%", minWidth: "30ch" }}
                     value={invoiceWorkPerson(editing.lines)}
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                     onBlur={() => {
