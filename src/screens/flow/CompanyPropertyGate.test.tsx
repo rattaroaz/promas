@@ -4,6 +4,9 @@ import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import {
   CompanyPropertyGate,
   formatPropertySearchRow,
+  INVOICE_SITE_BROWSE,
+  PROPERTY_BROWSE_GLOBAL,
+  PROPERTY_BROWSE_WITH_NAME,
 } from "./CompanyPropertyGate";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 
@@ -44,13 +47,38 @@ const property = {
 };
 
 describe("formatPropertySearchRow", () => {
-  it("keeps three spaces between every column", () => {
-    const row = formatPropertySearchRow(property, "ELAINE", false);
+  it("keeps three spaces between every column and does not clip the street", () => {
+    const row = formatPropertySearchRow(property, false);
     expect(row).toMatch(/^01 {3,}/);
     expect(row).toContain("   Bldg A");
-    expect(row).toContain("1105 MAPLE ST., NEWPORT BEACH, CA, 92660");
-    expect(row).toMatch(/92660 {3}ELAINE/);
+    expect(row).toContain("1105 MAPLE ST.");
+    expect(row).toContain("NEWPORT BEACH");
+    expect(row).toMatch(/92660 {8}MARIA/);
+    expect(row.includes("ELAINE")).toBe(false);
     expect(row.includes("01Bldg")).toBe(false);
+  });
+
+  it("keeps all 45 characters of the street ahead of city", () => {
+    const street = "14755 NORTH VENTURA CANYON AVENUE BUILDING A1";
+    expect(street).toHaveLength(45);
+    const row = formatPropertySearchRow(
+      {
+        ...property,
+        street,
+        city: "SHERMAN OAKS",
+        zip: "91403",
+      },
+      false
+    );
+    expect(row).toContain(street);
+    expect(row.indexOf(street)).toBeLessThan(row.indexOf("SHERMAN OAKS"));
+    const longCity = "RANCHO SANTA MARGARITA";
+    const wide = formatPropertySearchRow(
+      { ...property, city: longCity },
+      false
+    );
+    expect(wide).toContain(longCity);
+    expect(row.endsWith("MARIA") || row.includes("MARIA")).toBe(true);
   });
 });
 
@@ -86,7 +114,9 @@ describe("CompanyPropertyGate", () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(invoiceNo).toHaveFocus();
-    expect(screen.getByRole("textbox", { name: "Property Street" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Property Street" })).toHaveClass(
+      "w45"
+    );
     expect(screen.getByRole("textbox", { name: "Property Contact" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("? = first")).toBeInTheDocument();
     expect(screen.getAllByText(/Invoice Process/i).length).toBeGreaterThan(0);
@@ -113,10 +143,52 @@ describe("CompanyPropertyGate", () => {
     await user.click(screen.getByRole("button", { name: /1000\s+ACME/i }));
 
     expect(await screen.findByRole("button", { name: /01\s+Bldg A/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /MARIA/i })).toBeInTheDocument();
+    expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
     expect(api.listCompanies).toHaveBeenCalled();
     expect(api.listProperties).toHaveBeenCalledWith(
       expect.objectContaining({ companyNo: "1000" })
     );
+  });
+
+  it("shows the full 45-character street in its own column on the company property list", async () => {
+    const street = "14755 NORTH VENTURA CANYON AVENUE BUILDING A1";
+    vi.mocked(api.listProperties).mockResolvedValue([
+      {
+        ...property,
+        street,
+        city: "SHERMAN OAKS",
+        zip: "91403",
+        contact: "MARIA GONZALEZ",
+        manager: "MARIA GONZALEZ",
+      },
+    ]);
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+    const companyNo = screen.getByPlaceholderText("? = first");
+    await user.clear(companyNo);
+    await user.type(companyNo, "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+
+    const row = await screen.findByRole("button", { name: /01\s+Bldg A/i });
+    const streetCell = row.querySelector(".property-street");
+    expect(streetCell).toHaveTextContent(street);
+    expect(streetCell?.textContent).toBe(street);
+    expect(streetCell?.textContent).not.toContain("SHERMAN");
+    expect(row).toHaveTextContent("SHERMAN OAKS");
+    expect(row).toHaveTextContent("91403");
+    expect(row).toHaveTextContent("MARIA GONZALEZ");
+    expect(row.closest(".content-grid")).toHaveStyle({
+      gridTemplateColumns: PROPERTY_BROWSE_WITH_NAME,
+    });
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByText("Contact")).toBeInTheDocument();
   });
 
   it("skips property selection for cash receipts and calls onReady", async () => {
@@ -366,7 +438,7 @@ describe("CompanyPropertyGate", () => {
     );
   });
 
-  it("lists property address and company contact when several properties match", async () => {
+  it("lists property address and property contact when several properties match", async () => {
     const other = {
       ...emptyProperty("2000"),
       proNo: "02",
@@ -374,6 +446,8 @@ describe("CompanyPropertyGate", () => {
       street: "1105 MAPLE ST.",
       city: "IRVINE",
       zip: "92618",
+      contact: "ROSA",
+      manager: "ROSA",
     };
     vi.mocked(api.listProperties).mockResolvedValue([property, other]);
     vi.mocked(api.listCompanies).mockResolvedValue([
@@ -394,16 +468,24 @@ describe("CompanyPropertyGate", () => {
     await user.click(street);
     await user.type(street, "MAPLE{Enter}");
 
+    const maria = await screen.findByRole("button", { name: /1105 MAPLE ST\.\s+NEWPORT/i });
+    expect(maria).toBeInTheDocument();
+    expect(maria.querySelector(".property-street")).toHaveTextContent("1105 MAPLE ST.");
+    expect(maria.querySelector(".property-street")?.textContent).not.toContain("NEWPORT");
+    expect(screen.getByRole("button", { name: /ROSA/i })).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", { name: /1105 MAPLE ST\.\s*,\s*NEWPORT/i })
+      screen.getByRole("button", { name: /1105 MAPLE ST\.\s+IRVINE/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /ELAINE/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /1105 MAPLE ST\.\s*,\s*IRVINE/i })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /JANE/i })).toBeInTheDocument();
-    expect(screen.getByText(/Address/i)).toBeInTheDocument();
-    expect(screen.getByText(/Co\.Contact/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /ELAINE/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /JANE/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Street")).toBeInTheDocument();
+    expect(screen.getByText("City")).toBeInTheDocument();
+    expect(screen.getByText("Zip")).toBeInTheDocument();
+    expect(screen.getByText("Contact")).toBeInTheDocument();
+    expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
+    expect(maria.closest(".content-grid")).toHaveStyle({
+      gridTemplateColumns: PROPERTY_BROWSE_GLOBAL,
+    });
   });
 
   it("selects property from the first screen by contact", async () => {
@@ -703,7 +785,11 @@ describe("CompanyPropertyGate", () => {
       />
     );
     await user.type(screen.getByRole("textbox", { name: "Invoice Number" }), "7{Enter}");
-    expect(await screen.findByRole("button", { name: /1105 MAPLE ST/i })).toBeInTheDocument();
+    const quail = await screen.findByRole("button", { name: /1105 MAPLE ST/i });
+    expect(quail.querySelector(".property-street")).toHaveTextContent("1105 MAPLE ST.");
+    expect(quail.closest(".content-grid")).toHaveStyle({
+      gridTemplateColumns: INVOICE_SITE_BROWSE,
+    });
     expect(screen.getByRole("button", { name: /88 MAIN ST/i })).toBeInTheDocument();
     expect(onReady).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /88 MAIN ST/i }));

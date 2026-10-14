@@ -23,6 +23,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
+import { ContentGrid } from "../../dos/contentGrid";
 import { cols, padR, fmtDate, today } from "../../dos/utils";
 
 export type ProcessKind =
@@ -82,25 +83,65 @@ export function formatPropertyAddress(p: Property): string {
     .join(", ");
 }
 
+/** Street shown in property lists. Falls back to the name only when no address parts exist. */
+export function propertyStreetText(p: Property): string {
+  const street = (p.street ?? "").trim();
+  if (street) return street;
+  const hasRest = [p.city, p.state, p.zip].some((s) => (s ?? "").trim());
+  return hasRest ? "" : (p.name ?? "").trim();
+}
+
+function padMin(s: string, n: number): string {
+  return s.length >= n ? s : s + " ".repeat(n - s.length);
+}
+
+/** Company property browse: ProNO, Name, Street, City, St, Zip, Contact. */
+export const PROPERTY_BROWSE_WITH_NAME = "repeat(7, max-content)";
+/** Global property lookup: CoNO, ProNO, Street, City, St, Zip, Contact. */
+export const PROPERTY_BROWSE_GLOBAL = "repeat(7, max-content)";
+/** Invoice-number hits: Inv#, date, company, property, street. */
+export const INVOICE_SITE_BROWSE = "repeat(5, max-content)";
+
+/** Property contact. Legacy PROCONTACT is manager; the property form writes both. */
+export function propertyContactName(p: Property): string {
+  return (p.manager || p.contact || "").trim();
+}
+
 export function formatPropertySearchRow(
   p: Property,
-  companyContact: string,
   includeCompanyNo: boolean
 ): string {
-  const addr = formatPropertyAddress(p) || p.name;
+  const contact = propertyContactName(p);
+  const place = [
+    padMin(propertyStreetText(p), 45),
+    padMin((p.city ?? "").trim(), 14),
+    padR((p.state ?? "").trim(), 2),
+    padR((p.zip ?? "").trim(), 10),
+  ];
   if (includeCompanyNo) {
     return cols(
       padR(p.companyNo, 6),
       padR(p.proNo, 6),
-      padR(addr, 40),
-      padR(companyContact, 14)
+      ...place,
+      padR(contact, 14)
     );
   }
   return cols(
     padR(p.proNo, 6),
     padR(p.name, 16),
-    padR(addr, 40),
-    padR(companyContact, 14)
+    ...place,
+    padR(contact, 14)
+  );
+}
+
+function PropertyPlaceCells({ p }: { p: Property }) {
+  return (
+    <>
+      <div className="property-street">{propertyStreetText(p)}</div>
+      <div>{(p.city ?? "").trim()}</div>
+      <div>{(p.state ?? "").trim()}</div>
+      <div>{(p.zip ?? "").trim()}</div>
+    </>
   );
 }
 
@@ -150,9 +191,6 @@ export function CompanyPropertyGate({
   const [askAdd, setAskAdd] = useState(false);
   const [askDeleteCompany, setAskDeleteCompany] = useState(false);
   const [help, setHelp] = useState(false);
-  const [companyContacts, setCompanyContacts] = useState<Record<string, string>>(
-    {}
-  );
   const [invoiceHits, setInvoiceHits] = useState<Invoice[]>([]);
 
   const coBrowse = useBrowseIndex(companies.length);
@@ -558,25 +596,9 @@ export function CompanyPropertyGate({
     await showPropertyBrowse(list, "Enter=Select  Esc=Back  (matched properties)");
   }
 
-  async function loadCompanyContacts(list: Property[]) {
-    const needed = new Set(list.map((p) => p.companyNo));
-    if (company && needed.size <= 1) {
-      setCompanyContacts({ [company.companyNo]: company.contact });
-      return;
-    }
-    const all = await api.listCompanies({ limit: 2000 });
-    const map: Record<string, string> = {};
-    for (const c of all) {
-      if (needed.has(c.companyNo)) map[c.companyNo] = c.contact;
-    }
-    if (company) map[company.companyNo] = company.contact;
-    setCompanyContacts(map);
-  }
-
-  async function showPropertyBrowse(list: Property[], browseMsg: string) {
+  function showPropertyBrowse(list: Property[], browseMsg: string) {
     setProperties(list);
     prBrowse.setIndex(0);
-    await loadCompanyContacts(list);
     pushPhase("pr-browse");
     setMsg(browseMsg);
     setMsgKind("default");
@@ -902,7 +924,10 @@ export function CompanyPropertyGate({
       {/* ── Company search ─────────────────────────────── */}
       {phase === "co-search" && (
         <div className="dos-main-wrap">
-          <div className="dos-menu-frame" style={{ minWidth: "min(48ch, 100%)" }}>
+          <div
+            className="dos-menu-frame"
+            style={{ width: "max-content", maxWidth: "none", minWidth: "min(72ch, 100%)" }}
+          >
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
                 {(process === "cash" || process === "invoice") &&
@@ -911,7 +936,7 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w15"
                     aria-label="Company NO"
-                    value={coField === "no" ? query : ""}
+                    value={firstKind === "company" && coField === "no" ? query : ""}
                     onFocus={() => {
                       setFirstKind("company");
                       setCoField("no");
@@ -943,7 +968,7 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w30"
                     aria-label="Company Name"
-                    value={coField === "name" ? query : ""}
+                    value={firstKind === "company" && coField === "name" ? query : ""}
                     onFocus={() => {
                       setFirstKind("company");
                       setCoField("name");
@@ -966,7 +991,7 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w15"
                     aria-label="Company Phone"
-                    value={coField === "phone" ? query : ""}
+                    value={firstKind === "company" && coField === "phone" ? query : ""}
                     onFocus={() => {
                       setFirstKind("company");
                       setCoField("phone");
@@ -1016,7 +1041,7 @@ export function CompanyPropertyGate({
                 </DotField>
                 <DotField label="Property Street" width={16}>
                   <input
-                    className="dos-input w30"
+                    className="dos-input w45"
                     aria-label="Property Street"
                     value={
                       firstKind === "property" && prField === "street"
@@ -1081,18 +1106,17 @@ export function CompanyPropertyGate({
       {/* ── Company browse ─────────────────────────────── */}
       {phase === "co-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}>
-            <div>Company NO</div>
-            <div>Company Name</div>
-            <div>Phone</div>
-            <div>Contact</div>
-          </div>
-          <div className="dos-browse-body">
+          <ContentGrid columns={4}>
+            <div className="browse-grid browse-grid-header">
+              <div>Company NO</div>
+              <div>Company Name</div>
+              <div>Phone</div>
+              <div>Contact</div>
+            </div>
             {companies.map((c, i) => (
               <button
                 key={c.companyNo}
                 className={`dos-row ${i === coBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "10ch 30ch 14ch 15ch" }}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   coBrowse.setIndex(i);
@@ -1101,31 +1125,30 @@ export function CompanyPropertyGate({
                 onDoubleClick={() => selectCompany(c)}
               >
                 <div>{c.companyNo}</div>
-                <div className="desc-truncate">{c.name}</div>
+                <div>{c.name}</div>
                 <div>{c.phone}</div>
                 <div>{c.contact}</div>
               </button>
             ))}
-          </div>
+          </ContentGrid>
         </div>
       )}
 
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 30ch" }}>
-            <div>Inv#</div>
-            <div>Inv_Date</div>
-            <div>Co#</div>
-            <div>Pro</div>
-            <div>Address</div>
-          </div>
-          <div className="dos-browse-body">
+          <ContentGrid columns={5}>
+            <div className="browse-grid browse-grid-header">
+              <div>Inv#</div>
+              <div>Inv_Date</div>
+              <div>Co#</div>
+              <div>Pro</div>
+              <div>Street</div>
+            </div>
             {invoiceHits.map((inv, i) => (
               <button
                 key={`${inv.companyNo}-${inv.proNo}-${inv.salesDate}-${inv.invoice}`}
                 className={`dos-row ${i === invBrowse.index ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 30ch" }}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   invBrowse.setIndex(i);
@@ -1136,10 +1159,10 @@ export function CompanyPropertyGate({
                 <div>{fmtDate(inv.salesDate)}</div>
                 <div>{inv.companyNo}</div>
                 <div>{inv.proNo}</div>
-                <div className="desc-truncate">{inv.propertyStreet || inv.propertyName || ""}</div>
+                <div className="property-street">{(inv.propertyStreet || inv.propertyName || "").trim()}</div>
               </button>
             ))}
-          </div>
+          </ContentGrid>
         </div>
       )}
 
@@ -1244,61 +1267,61 @@ export function CompanyPropertyGate({
       {phase === "pr-browse" && (
         <div className="dos-browse">
           {company ? (
-            <>
-              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 30ch 15ch" }}>
+            <ContentGrid columns={7}>
+              <div className="browse-grid browse-grid-header">
                 <div>ProNO</div>
                 <div>Name</div>
-                <div>Address</div>
-                <div>Co.Contact</div>
+                <div>Street</div>
+                <div>City</div>
+                <div>St</div>
+                <div>Zip</div>
+                <div>Contact</div>
               </div>
-              <div className="dos-browse-body">
-                {properties.map((p, i) => (
-                  <button
-                    key={`${p.companyNo}-${p.proNo}`}
-                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
-                    style={{ gridTemplateColumns: "8ch 30ch 30ch 15ch" }}
-                    onMouseEnter={() => {
-                      if (pointerHoverMuted()) return;
-                      prBrowse.setIndex(i);
-                    }}
-                    onClick={() => selectProperty(p)}
-                  >
-                    <div>{p.proNo}</div>
-                    <div className="desc-truncate">{p.name}</div>
-                    <div className="desc-truncate">{formatPropertyAddress(p) || p.name}</div>
-                    <div>{company.contact}</div>
-                  </button>
-                ))}
-              </div>
-            </>
+              {properties.map((p, i) => (
+                <button
+                  key={`${p.companyNo}-${p.proNo}`}
+                  className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    prBrowse.setIndex(i);
+                  }}
+                  onClick={() => selectProperty(p)}
+                >
+                  <div>{p.proNo}</div>
+                  <div>{p.name}</div>
+                  <PropertyPlaceCells p={p} />
+                  <div>{propertyContactName(p)}</div>
+                </button>
+              ))}
+            </ContentGrid>
           ) : (
-            <>
-              <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 8ch 30ch 15ch" }}>
+            <ContentGrid columns={7}>
+              <div className="browse-grid browse-grid-header">
                 <div>CoNO</div>
                 <div>ProNO</div>
-                <div>Address</div>
-                <div>Co.Contact</div>
+                <div>Street</div>
+                <div>City</div>
+                <div>St</div>
+                <div>Zip</div>
+                <div>Contact</div>
               </div>
-              <div className="dos-browse-body">
-                {properties.map((p, i) => (
-                  <button
-                    key={`${p.companyNo}-${p.proNo}`}
-                    className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
-                    style={{ gridTemplateColumns: "8ch 8ch 30ch 15ch" }}
-                    onMouseEnter={() => {
-                      if (pointerHoverMuted()) return;
-                      prBrowse.setIndex(i);
-                    }}
-                    onClick={() => selectProperty(p)}
-                  >
-                    <div>{p.companyNo}</div>
-                    <div>{p.proNo}</div>
-                    <div className="desc-truncate">{formatPropertyAddress(p) || p.name}</div>
-                    <div>{companyContacts[p.companyNo] ?? ""}</div>
-                  </button>
-                ))}
-              </div>
-            </>
+              {properties.map((p, i) => (
+                <button
+                  key={`${p.companyNo}-${p.proNo}`}
+                  className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
+                  onMouseEnter={() => {
+                    if (pointerHoverMuted()) return;
+                    prBrowse.setIndex(i);
+                  }}
+                  onClick={() => selectProperty(p)}
+                >
+                  <div>{p.companyNo}</div>
+                  <div>{p.proNo}</div>
+                  <PropertyPlaceCells p={p} />
+                  <div>{propertyContactName(p)}</div>
+                </button>
+              ))}
+            </ContentGrid>
           )}
         </div>
       )}
@@ -1461,7 +1484,7 @@ export function CompanyPropertyGate({
             </DotField>
             <DotField label="Street" width={14}>
               <input
-                className="dos-input w30"
+                className="dos-input w45"
                 value={editPr.street}
                 onChange={(e) =>
                   setEditPr({ ...editPr, street: e.target.value })

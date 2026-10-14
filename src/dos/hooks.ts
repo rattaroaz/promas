@@ -464,6 +464,8 @@ export function useBrowseIndex(count: number) {
 }
 
 const FIT_MIN = 0.45;
+/** Room for the vertical scrollbar and subpixel rounding, so a fitted row does not gain a horizontal scrollbar. */
+const FIT_SLACK_PX = 28;
 
 /** Scale so `needed` content width fits inside `avail` window width. */
 export function computeFitScale(
@@ -510,7 +512,7 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
       const current =
         parseFloat(doc.style.getPropertyValue("--fit-scale")) || 1;
       const next = computeFitScale(
-        root.clientWidth,
+        Math.max(0, root.clientWidth - FIT_SLACK_PX),
         maxScrollWidth(root),
         current
       );
