@@ -412,11 +412,26 @@ textarea {
   white-space: nowrap;
 }
 
-/* Property address column: 45 characters */
-.property-address {
-  max-width: 45ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Property lists keep Name (30) and Contact (16) and a 45-character street.
+   The list type is slightly smaller than the screen title so City/State/Zip
+   fit on the same row instead of pushing Contact off the window. */
+.property-browse-wrap {
+  font-size: 0.82em;
+}
+
+.browse-grid.property-browse {
+  width: max-content;
+  max-width: none;
+  min-width: 0;
+  column-gap: 1ch;
+}
+
+/* Property street in browse grids: at least 45 characters, never an ellipsis. */
+.browse-grid > .property-street {
+  min-width: 45ch;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 

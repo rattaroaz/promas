@@ -314,27 +314,33 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               autoFocus
             />
           </div>
-        <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 45ch 14ch" }}>
+        <div className="dos-browse property-browse-wrap">
+          <div className="browse-grid browse-grid-header property-browse" style={{ gridTemplateColumns: "8ch 30ch minmax(45ch, max-content) 14ch 4ch 8ch 14ch" }}>
             <div>Pro#</div>
             <div>Name</div>
             <div>Street</div>
+            <div>City</div>
+            <div>St</div>
+            <div>Zip</div>
             <div>Phone</div>
           </div>
           <div className="dos-browse-body">
             {visibleProps.map((p, i) => (
               <button
                 key={p.proNo}
-                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "8ch 30ch 45ch 14ch" }}
+                className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid property-browse`}
+                style={{ gridTemplateColumns: "8ch 30ch minmax(45ch, max-content) 14ch 4ch 8ch 14ch" }}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
                 }}
               >
                 <div>{p.proNo}</div>
-                <div>{p.name}</div>
-                <div className="property-address">{p.street}</div>
+                <div className="desc-truncate">{p.name}</div>
+                <div className="property-street">{p.street}</div>
+                <div>{p.city}</div>
+                <div>{p.state}</div>
+                <div>{p.zip}</div>
                 <div>{p.phone}</div>
               </button>
             ))}
