@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderApp, screen, userEvent } from "../test/render";
 import { UpdateDialog } from "./UpdateDialog";
 import {
@@ -43,6 +43,61 @@ describe("UpdateDialog", () => {
     act(() => {
       closeUpdateDialog();
     });
+  });
+
+  it("Enter closes with focus on Close and with focus elsewhere", async () => {
+    const user = userEvent.setup();
+    act(() => {
+      setUpdateDialog({
+        phase: "up_to_date",
+        message: "PROMAS 2.9.1 is up to date.",
+      });
+    });
+    renderApp(<UpdateDialog />);
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close).toHaveAttribute("type", "button");
+    close.focus();
+    expect(document.activeElement).toBe(close);
+    const click = vi.fn();
+    close.addEventListener("click", click);
+    const enterOnClose = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      close.dispatchEvent(enterOnClose);
+    });
+    expect(enterOnClose.defaultPrevented).toBe(true);
+    expect(click).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+
+    act(() => {
+      setUpdateDialog({
+        phase: "up_to_date",
+        message: "PROMAS 2.9.1 is up to date.",
+      });
+    });
+    const elsewhere = document.createElement("button");
+    elsewhere.type = "button";
+    elsewhere.textContent = "Elsewhere";
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    expect(document.activeElement).toBe(elsewhere);
+    await user.keyboard("{Enter}");
+    expect(screen.queryByText("Up to Date")).toBeNull();
+    elsewhere.remove();
+
+    act(() => {
+      setUpdateDialog({
+        phase: "up_to_date",
+        message: "PROMAS 2.9.1 is up to date.",
+      });
+    });
+    (document.activeElement as HTMLElement | null)?.blur();
+    document.body.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.queryByText("Up to Date")).toBeNull();
   });
 
   it("closes on Enter and Esc the same way Close does", async () => {

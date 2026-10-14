@@ -132,7 +132,7 @@ describe("InvoiceProcess", () => {
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /A1/i }));
     expect(await screen.findByText(/Invoice Number 1\s+PO-441/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Invoice Number")).toHaveValue(1);
+    expect(screen.getByLabelText("Invoice Number")).toHaveValue("1");
     await waitFor(() => {
       expect(api.getInvoice).toHaveBeenCalled();
     });
@@ -148,7 +148,7 @@ describe("InvoiceProcess", () => {
         new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
       );
     });
-    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
     expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
     const dateInput = document.querySelector(
       'input[type="date"]'
@@ -225,7 +225,7 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
     expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
     expect(api.getSysdata).toHaveBeenCalled();
   });
@@ -237,7 +237,7 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^Ins Add$/i }));
-    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
   });
 
   it("goes back when the Esc status hint is clicked", async () => {
@@ -655,7 +655,7 @@ describe("InvoiceProcess", () => {
     );
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
-    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
 
     await user.click(screen.getByRole("button", { name: /^F1 Help$/i }));
     expect(screen.getByText(/\*\*\* Function Key Description \*\*\*/i)).toBeInTheDocument();
@@ -681,9 +681,10 @@ describe("InvoiceProcess", () => {
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const number = await screen.findByLabelText("Invoice Number");
+    expect(number).toHaveAttribute("type", "text");
     expect(number).toHaveAttribute("readonly");
     await user.type(number, "99");
-    expect(number).toHaveValue(2);
+    expect(number).toHaveValue("2");
     expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
     expect(screen.queryByText(/Invoice Number 99/i)).not.toBeInTheDocument();
   });
@@ -725,12 +726,31 @@ describe("InvoiceProcess", () => {
     expect(text).toContain("Contact: MARIA GONZALEZ");
     expect(text).toContain("Phone: (818) 349-8191");
     expect(text).toContain("Cell: (818) 445-5443");
-    expect(text).toContain("Building entry: *2424");
-    expect(text).toContain("Lock box: 1984");
+    expect(text).toContain("Entry Code: *2424");
+    expect(text).toContain("Lock Box Code: 1984");
+    expect(text).not.toContain("Building entry");
     expect(text).toContain(
       "Comments: Pick up key from the rental office. Lock box 1984 on the front gate."
     );
     expect(text).not.toContain("Unit keys:");
+  });
+
+  it("shows page map as the lock box code when it is filled", async () => {
+    const site = {
+      ...property,
+      keyInfo: "*2424",
+      pageMap: "LB 1984",
+      comment2: "Lock box 9999 on the front gate.",
+    };
+    renderApp(
+      <InvoiceProcess company={company} property={site} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    const text = document.querySelector(".invoice-site-header")?.textContent ?? "";
+    expect(text).toContain("Entry Code: *2424");
+    expect(text).toContain("Lock Box Code: LB 1984");
+    expect(text).not.toContain("Lock Box Code: 9999");
+    expect(text).not.toContain("Building entry");
   });
 
   it("shows a 40-character description and wraps longer text onto two lines", async () => {
@@ -753,5 +773,14 @@ describe("InvoiceProcess", () => {
     expect(PAINT_ALL_ENAMEL_SURFACES.length).toBeGreaterThan(40);
     expect(filled).toHaveValue(PAINT_ALL_ENAMEL_SURFACES);
     expect(filled).toHaveAttribute("rows", "2");
+
+    const long =
+      "Paint all enamel surfaces with hybrid based paint plus the baseboards and the door casings in the unit today.";
+    expect(long.length).toBeGreaterThan(80);
+    await user.click(screen.getByRole("button", { name: /^\+ Line$/i }));
+    const grown = await screen.findByLabelText("Line 2 custom text");
+    await user.type(grown, long);
+    expect(grown).toHaveValue(long);
+    expect(Number(grown.getAttribute("rows"))).toBeGreaterThan(2);
   });
 });

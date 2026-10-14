@@ -763,7 +763,7 @@ textarea {
   min-width: 0;
 }
 
-/* 40 characters on the first line; longer descriptions wrap to a second line. */
+/* 40 characters per line. Height is set from scrollHeight so the whole description shows. */
 .invoice-line-desc {
   width: 40ch;
   min-width: 40ch;

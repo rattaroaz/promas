@@ -3,7 +3,7 @@
  * Browse invoices for the site; Ins or New Invoice opens the entry form
  * with date and next invoice number already filled.
  */
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import {
   api,
   Company,
@@ -44,13 +44,21 @@ type Mode = "browse" | "edit";
 /** Description column is wide enough for the type picker plus 40 characters. */
 const INVOICE_LINE_COLUMNS = "46ch 14ch 12ch 4ch";
 
-/** One line holds 40 characters; longer text wraps onto a second line. */
+/** One line holds 40 characters. The field grows so the whole description stays visible. */
 function descriptionRows(text: string): number {
-  return text.length > 40 ? 2 : 1;
+  if (!text) return 1;
+  return text.split("\n").reduce((rows, line) => {
+    return rows + Math.max(1, Math.ceil(line.length / 40));
+  }, 0);
 }
 
-/** Lock-box codes are stored in Key or the comment lines, not their own column. */
+/**
+ * PageMap is the lock box code. Key and the comment lines are only a
+ * fallback when PageMap is empty.
+ */
 function lockBoxCode(property: Property): string {
+  const fromPage = property.pageMap.trim();
+  if (fromPage) return fromPage;
   const blob = [property.keyInfo, property.comment1, property.comment2]
     .map((part) => part.trim())
     .filter(Boolean)
@@ -72,12 +80,50 @@ function propertyFacts(property: Property): string {
     contact && `Contact: ${contact}`,
     property.phone.trim() && `Phone: ${property.phone.trim()}`,
     property.phone2.trim() && `Cell: ${property.phone2.trim()}`,
-    property.keyInfo.trim() && `Building entry: ${property.keyInfo.trim()}`,
-    lockBox && `Lock box: ${lockBox}`,
+    property.keyInfo.trim() && `Entry Code: ${property.keyInfo.trim()}`,
+    lockBox && `Lock Box Code: ${lockBox}`,
     comments && `Comments: ${comments}`,
   ]
     .filter(Boolean)
     .join("   ");
+}
+
+function InvoiceLineDescription({
+  idx,
+  description,
+  readOnly,
+  onChange,
+}: {
+  idx: number;
+  description: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [description]);
+  return (
+    <textarea
+      ref={ref}
+      className="dos-input invoice-line-desc"
+      aria-label={`Line ${idx + 1} custom text`}
+      readOnly={readOnly}
+      rows={descriptionRows(description)}
+      value={description}
+      onChange={(e) => {
+        if (readOnly) return;
+        onChange(e.target.value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.preventDefault();
+      }}
+      placeholder="Type description"
+    />
+  );
 }
 
 function InvoiceSiteHeader({
@@ -769,7 +815,7 @@ export function InvoiceProcess({
               <DotField label="Invoice Number" width={16}>
                 <input
                   className="dos-input w12"
-                  type="number"
+                  type="text"
                   readOnly
                   aria-label="Invoice Number"
                   aria-readonly="true"
@@ -1039,22 +1085,15 @@ export function InvoiceProcess({
                       </option>
                     ))}
                   </select>
-                  <textarea
-                    className="dos-input invoice-line-desc"
-                    aria-label={`Line ${idx + 1} custom text`}
+                  <InvoiceLineDescription
+                    idx={idx}
+                    description={line.description}
                     readOnly={isPresetDescription(line.description)}
-                    rows={descriptionRows(line.description)}
-                    value={line.description}
-                    onChange={(e) => {
-                      if (isPresetDescription(line.description)) return;
+                    onChange={(description) => {
                       const lines = [...editing.lines];
-                      lines[idx] = { ...line, description: e.target.value };
+                      lines[idx] = { ...line, description };
                       setEditing({ ...editing, lines });
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") e.preventDefault();
-                    }}
-                    placeholder="Type description"
                   />
                 </div>
                 <div style={{ minWidth: 0 }}>

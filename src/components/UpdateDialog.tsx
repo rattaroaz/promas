@@ -30,6 +30,23 @@ function updateDialogBusy(phase: UpdateDialogPhase): boolean {
   );
 }
 
+/** WebView2 still clicks a focused button after Enter. Swallow that click so it cannot land on the menu underneath and reopen the popup. */
+function swallowButtonActivation() {
+  const swallow = (ev: Event) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+  };
+  window.addEventListener("click", swallow, true);
+  window.addEventListener("keypress", swallow, true);
+  window.addEventListener("keyup", swallow, true);
+  window.setTimeout(() => {
+    window.removeEventListener("click", swallow, true);
+    window.removeEventListener("keypress", swallow, true);
+    window.removeEventListener("keyup", swallow, true);
+  }, 0);
+}
+
 export function UpdateDialog() {
   const [state, setState] = useState(getUpdateUiState);
 
@@ -46,7 +63,9 @@ export function UpdateDialog() {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      if (!updateDialogBusy(ui.updatePhase)) closeUpdateDialog();
+      if (updateDialogBusy(ui.updatePhase)) return;
+      if (e.key === "Enter") swallowButtonActivation();
+      closeUpdateDialog();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -68,7 +87,23 @@ export function UpdateDialog() {
       </div>
       {!busy && (
         <div style={{ textAlign: "center" }}>
-          <button className="dos-btn" onClick={closeUpdateDialog} autoFocus>
+          <button
+            type="button"
+            className="dos-btn"
+            autoFocus
+            onClick={closeUpdateDialog}
+            onKeyDown={(e) => {
+              // Backup if Enter is delivered only to the focused button.
+              // preventDefault stops WebView2 from also synthesizing a click.
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              e.stopPropagation();
+              const ui = getUpdateUiState();
+              if (!ui.showUpdateDialog || updateDialogBusy(ui.updatePhase)) return;
+              swallowButtonActivation();
+              closeUpdateDialog();
+            }}
+          >
             Close
           </button>
         </div>
