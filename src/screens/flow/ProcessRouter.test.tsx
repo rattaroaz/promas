@@ -123,7 +123,7 @@ describe("ProcessRouter observability", () => {
     expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^Ins Add$/i }));
-    expect(await screen.findByLabelText("Invoice Number")).toHaveValue(2);
+    expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
   });
 
   it.each([

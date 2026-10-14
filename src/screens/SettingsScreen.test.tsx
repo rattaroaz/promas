@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderApp, screen, userEvent, waitFor } from "../test/render";
+import { act, renderApp, screen, userEvent, waitFor } from "../test/render";
 import { SettingsScreen } from "./SettingsScreen";
+import { UpdateDialog } from "../components/UpdateDialog";
 import { api } from "../api";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import {
+  closeUpdateDialog,
+  openUpdateDialog,
+  setUpdateDialog,
+} from "../stores/uiStore";
 
 vi.mock("../services/updateService", () => ({
   checkForUpdatesAndApply: vi.fn(),
@@ -66,6 +72,50 @@ describe("SettingsScreen", () => {
     renderApp(<SettingsScreen onBack={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /Update Application/i }));
     expect(checkForUpdatesAndApply).toHaveBeenCalled();
+  });
+
+  it("closes the update popup on Enter and Esc without leaving Settings", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const { checkForUpdatesAndApply } = await import("../services/updateService");
+    renderApp(
+      <>
+        <UpdateDialog />
+        <SettingsScreen onBack={onBack} />
+      </>
+    );
+
+    act(() => {
+      setUpdateDialog({ phase: "up_to_date", message: "PROMAS is up to date." });
+    });
+    expect(await screen.findByRole("button", { name: "Close" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Update Application/i)).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(checkForUpdatesAndApply).not.toHaveBeenCalled();
+
+    act(() => {
+      setUpdateDialog({ phase: "up_to_date", message: "PROMAS is up to date." });
+    });
+    expect(await screen.findByRole("button", { name: "Close" })).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(checkForUpdatesAndApply).not.toHaveBeenCalled();
+
+    act(() => {
+      openUpdateDialog();
+    });
+    expect(screen.getByText("Checking for Updates")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Enter}");
+    expect(screen.getByText("Checking for Updates")).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(checkForUpdatesAndApply).not.toHaveBeenCalled();
+    act(() => {
+      closeUpdateDialog();
+    });
   });
 
   it("opens backup panel from the settings menu", async () => {

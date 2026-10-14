@@ -3,7 +3,7 @@
  * Browse invoices for the site; Ins or New Invoice opens the entry form
  * with date and next invoice number already filled.
  */
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import {
   api,
   Company,
@@ -22,7 +22,8 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, money, fmtDate, today, naturalCompare } from "../../dos/utils";
+import { ContentGrid } from "../../dos/contentGrid";
+import { money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
@@ -37,8 +38,130 @@ import {
   isPresetDescription,
   normalizeUnitSize,
 } from "../../lib/invoiceLinePresets";
+import { formatPropertyAddress } from "./CompanyPropertyGate";
 
 type Mode = "browse" | "edit";
+
+/** Description column is wide enough for the type picker plus 40 characters. */
+const INVOICE_LINE_COLUMNS = "46ch 14ch 12ch 4ch";
+
+/** One line holds 40 characters. The field grows so the whole description stays visible. */
+function descriptionRows(text: string): number {
+  if (!text) return 1;
+  return text.split("\n").reduce((rows, line) => {
+    return rows + Math.max(1, Math.ceil(line.length / 40));
+  }, 0);
+}
+
+/**
+ * PageMap is the lock box code. Key and the comment lines are only a
+ * fallback when PageMap is empty.
+ */
+function lockBoxCode(property: Property): string {
+  const fromPage = property.pageMap.trim();
+  if (fromPage) return fromPage;
+  const blob = [property.keyInfo, property.comment1, property.comment2]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+  const match = blob.match(
+    /\b(?:lock\s*box|l\.?\s*box|lb)\s*#?\s*(#?\d[\d*#-]*)/i
+  );
+  return match?.[1] ?? "";
+}
+
+function propertyComments(property: Property): string {
+  return [property.comment1, property.comment2]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function InvoiceLineDescription({
+  idx,
+  description,
+  readOnly,
+  onChange,
+}: {
+  idx: number;
+  description: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [description]);
+  return (
+    <textarea
+      ref={ref}
+      className="dos-input invoice-line-desc"
+      aria-label={`Line ${idx + 1} custom text`}
+      readOnly={readOnly}
+      rows={descriptionRows(description)}
+      value={description}
+      onChange={(e) => {
+        if (readOnly) return;
+        onChange(e.target.value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.preventDefault();
+      }}
+      placeholder="Type description"
+    />
+  );
+}
+
+function InvoiceSiteHeader({
+  company,
+  property,
+}: {
+  company: Company;
+  property: Property;
+}) {
+  const address = formatPropertyAddress(property);
+  const contact = (property.manager || property.contact).trim();
+  const phone = property.phone.trim();
+  const cell = property.phone2.trim();
+  const entry = property.keyInfo.trim();
+  const lockBox = lockBoxCode(property);
+  const comments = propertyComments(property);
+  return (
+    <div className="invoice-site-header">
+      <div>
+        Company No.: {company.companyNo} {company.name}
+      </div>
+      <div>
+        {property.proNo} {property.name}
+        {address ? ` — ${address}` : ""}
+      </div>
+      {contact ? <div className="invoice-fact">Contact: {contact}</div> : null}
+      {phone || cell ? (
+        <div className="invoice-fact-line">
+          {phone ? <span className="invoice-fact">Phone: {phone}</span> : null}
+          {cell ? <span className="invoice-fact">Cell: {cell}</span> : null}
+        </div>
+      ) : null}
+      {entry || lockBox ? (
+        <div className="invoice-fact-line">
+          {entry ? <span className="invoice-fact">Entry Code: {entry}</span> : null}
+          {lockBox ? (
+            <span className="invoice-fact">Lock Box Code: {lockBox}</span>
+          ) : null}
+        </div>
+      ) : null}
+      {comments ? (
+        <div className="invoice-comments">
+          <span className="invoice-fact">Comments: </span>
+          <span className="invoice-comment-text">{comments}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function InvoiceProcess({
   company,
@@ -561,37 +684,26 @@ export function InvoiceProcess({
     >
       {mode === "browse" && (
         <div className="dos-browse">
-          <div
-            style={{
-              color: "var(--dos-cyan-bright)",
-              padding: "0.2em 0.5ch",
-              whiteSpace: "pre",
-            }}
-          >
-            {padR(company.name, 30)} {padR(property.street, 20)}
-            {"\n"}
-            {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
-            {property.paintTime}
-          </div>
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}>
-            <div>Inv_Date</div>
-            <div>Inv#</div>
-            <div>PO</div>
-            <button
-              type="button"
-              className="sort-btn"
-              onClick={toggleUnitSort}
-              title="Click to sort by unit number"
-            >
-              Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
-            </button>
-            <div>Size</div>
-            <div>Total</div>
-            <div>Paid</div>
-            <div>Balance</div>
-            <div>St</div>
-          </div>
-          <div className="dos-browse-body">
+          <InvoiceSiteHeader company={company} property={property} />
+          <ContentGrid columns={9}>
+            <div className="browse-grid browse-grid-header">
+              <div>Inv_Date</div>
+              <div>Inv#</div>
+              <div>PO</div>
+              <button
+                type="button"
+                className="sort-btn"
+                onClick={toggleUnitSort}
+                title="Click to sort by unit number"
+              >
+                Unit{unitSortDirection === "asc" ? " ^" : unitSortDirection === "desc" ? " v" : ""}
+              </button>
+              <div>Size</div>
+              <div>Total</div>
+              <div>Paid</div>
+              <div>Balance</div>
+              <div>St</div>
+            </div>
             {sortedRows.map((inv, i) => (
               <button
                 key={`${inv.invoice}-${inv.salesDate}`}
@@ -600,7 +712,6 @@ export function InvoiceProcess({
                     ? "invoice-open"
                     : "invoice-paid"
                 } browse-grid`}
-                style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   setIndex(i);
@@ -622,11 +733,11 @@ export function InvoiceProcess({
               </button>
             ))}
             {originalRows.length === 0 && (
-              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
                 {"  (no invoices — press Ins or click New Invoice)"}
               </div>
             )}
-          </div>
+          </ContentGrid>
           <div className="dos-browse-footer">
             <button
               type="button"
@@ -659,11 +770,7 @@ export function InvoiceProcess({
           foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
           <div className="dos-form">
-            <div style={{ color: "var(--dos-cyan-bright)", marginBottom: "0.4em" }}>
-              Company No.: {company.companyNo} {company.name}
-              <br />
-              {property.proNo} {property.name} — {property.street}
-            </div>
+            <InvoiceSiteHeader company={company} property={property} />
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
                 <input
@@ -721,18 +828,11 @@ export function InvoiceProcess({
               <DotField label="Invoice Number" width={16}>
                 <input
                   className="dos-input w12"
-                  type="number"
+                  type="text"
+                  readOnly
                   aria-label="Invoice Number"
+                  aria-readonly="true"
                   value={editing.invoice.invoice || ""}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      invoice: {
-                        ...editing.invoice,
-                        invoice: parseInt(e.target.value, 10) || 0,
-                      },
-                    })
-                  }
                 />
               </DotField>
               <DotField label="Order Date" width={12}>
@@ -747,21 +847,6 @@ export function InvoiceProcess({
                       invoice: {
                         ...editing.invoice,
                         orderDate: e.target.value || null,
-                      },
-                    })
-                  }
-                />
-              </DotField>
-              <DotField label="Order Person" width={14}>
-                <input
-                  className="dos-input w12"
-                  value={editing.invoice.orderMan}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      invoice: {
-                        ...editing.invoice,
-                        orderMan: e.target.value,
                       },
                     })
                   }
@@ -895,7 +980,6 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
-                    style={{ width: "100%", minWidth: "30ch" }}
                     value={editing.invoice.paintSupplyCo ?? ""}
                     onChange={(e) =>
                       setEditing({
@@ -949,7 +1033,6 @@ export function InvoiceProcess({
                     className="dos-input"
                     aria-label="Work Person"
                     placeholder="Type name"
-                    style={{ width: "100%", minWidth: "30ch" }}
                     value={invoiceWorkPerson(editing.lines)}
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                     onBlur={() => {
@@ -978,15 +1061,15 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
-                <div style={{ display: "flex", gap: "4px", minWidth: 0 }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+                <div className="invoice-line-type">
                   <select
                     className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
@@ -1013,19 +1096,15 @@ export function InvoiceProcess({
                       </option>
                     ))}
                   </select>
-                  <input
-                    className="dos-input"
-                    aria-label={`Line ${idx + 1} custom text`}
+                  <InvoiceLineDescription
+                    idx={idx}
+                    description={line.description}
                     readOnly={isPresetDescription(line.description)}
-                    value={line.description}
-                    style={{ flex: "1", minWidth: 0 }}
-                    onChange={(e) => {
-                      if (isPresetDescription(line.description)) return;
+                    onChange={(description) => {
                       const lines = [...editing.lines];
-                      lines[idx] = { ...line, description: e.target.value };
+                      lines[idx] = { ...line, description };
                       setEditing({ ...editing, lines });
                     }}
-                    placeholder="Type description"
                   />
                 </div>
                 <div style={{ minWidth: 0 }}>
@@ -1078,7 +1157,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
