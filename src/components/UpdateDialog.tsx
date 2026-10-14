@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   closeUpdateDialog,
   getUpdateUiState,
@@ -24,17 +24,37 @@ function titleForPhase(phase: UpdateDialogPhase): string {
   }
 }
 
+function updateDialogBusy(phase: UpdateDialogPhase): boolean {
+  return (
+    phase === "checking" || phase === "downloading" || phase === "installing"
+  );
+}
+
 export function UpdateDialog() {
   const [state, setState] = useState(getUpdateUiState);
 
   useEffect(() => subscribeUpdateUi(() => setState(getUpdateUiState())), []);
 
+  // Registered for the life of the app, ahead of each screen's key handler.
+  // Re-binding when the popup opens would run after those handlers, so Esc
+  // would leave Settings instead of closing this dialog.
+  useLayoutEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const ui = getUpdateUiState();
+      if (!ui.showUpdateDialog) return;
+      if (e.key !== "Enter" && e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (!updateDialogBusy(ui.updatePhase)) closeUpdateDialog();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
   if (!state.showUpdateDialog) return null;
 
-  const busy =
-    state.updatePhase === "checking" ||
-    state.updatePhase === "downloading" ||
-    state.updatePhase === "installing";
+  const busy = updateDialogBusy(state.updatePhase);
 
   return (
     <Dialog

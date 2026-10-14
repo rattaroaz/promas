@@ -45,11 +45,12 @@ const property = {
 
 describe("formatPropertySearchRow", () => {
   it("keeps three spaces between every column", () => {
-    const row = formatPropertySearchRow(property, "ELAINE", false);
+    const row = formatPropertySearchRow(property, false);
     expect(row).toMatch(/^01 {3,}/);
     expect(row).toContain("   Bldg A");
     expect(row).toContain("1105 QUAIL ST., NEWPORT BEACH, CA, 92660");
-    expect(row).toMatch(/92660 {3}ELAINE/);
+    expect(row).toMatch(/92660 {8}MARIA/);
+    expect(row.includes("ELAINE")).toBe(false);
     expect(row.includes("01Bldg")).toBe(false);
   });
 });
@@ -86,7 +87,9 @@ describe("CompanyPropertyGate", () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(invoiceNo).toHaveFocus();
-    expect(screen.getByRole("textbox", { name: "Property Street" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Property Street" })).toHaveClass(
+      "w45"
+    );
     expect(screen.getByRole("textbox", { name: "Property Contact" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("? = first")).toBeInTheDocument();
     expect(screen.getAllByText(/Invoice Process/i).length).toBeGreaterThan(0);
@@ -113,6 +116,8 @@ describe("CompanyPropertyGate", () => {
     await user.click(screen.getByRole("button", { name: /1000\s+ACME/i }));
 
     expect(await screen.findByRole("button", { name: /01\s+Bldg A/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /MARIA/i })).toBeInTheDocument();
+    expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
     expect(api.listCompanies).toHaveBeenCalled();
     expect(api.listProperties).toHaveBeenCalledWith(
       expect.objectContaining({ companyNo: "1000" })
@@ -366,7 +371,7 @@ describe("CompanyPropertyGate", () => {
     );
   });
 
-  it("lists property address and company contact when several properties match", async () => {
+  it("lists property address and property contact when several properties match", async () => {
     const other = {
       ...emptyProperty("2000"),
       proNo: "02",
@@ -374,6 +379,8 @@ describe("CompanyPropertyGate", () => {
       street: "1105 QUAIL ST.",
       city: "IRVINE",
       zip: "92618",
+      contact: "ROSA",
+      manager: "ROSA",
     };
     vi.mocked(api.listProperties).mockResolvedValue([property, other]);
     vi.mocked(api.listCompanies).mockResolvedValue([
@@ -397,13 +404,19 @@ describe("CompanyPropertyGate", () => {
     expect(
       await screen.findByRole("button", { name: /1105 QUAIL ST\.\s*,\s*NEWPORT/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /ELAINE/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /MARIA/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /1105 QUAIL ST\.\s*,\s*IRVINE/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /JANE/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ROSA/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /ELAINE/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /JANE/i })).not.toBeInTheDocument();
     expect(screen.getByText(/Address/i)).toBeInTheDocument();
-    expect(screen.getByText(/Co\.Contact/i)).toBeInTheDocument();
+    expect(screen.getByText("Contact")).toBeInTheDocument();
+    expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /MARIA/i })).toHaveStyle({
+      gridTemplateColumns: "8ch 8ch 45ch 15ch",
+    });
   });
 
   it("selects property from the first screen by contact", async () => {

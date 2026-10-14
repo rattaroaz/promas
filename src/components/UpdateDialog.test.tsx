@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderApp, screen, userEvent } from "../test/render";
+import { act, renderApp, screen, userEvent } from "../test/render";
 import { UpdateDialog } from "./UpdateDialog";
 import {
   closeUpdateDialog,
@@ -14,7 +14,9 @@ describe("UpdateDialog", () => {
   });
 
   it("shows checking title and hides Close while busy", () => {
-    openUpdateDialog();
+    act(() => {
+      openUpdateDialog();
+    });
     renderApp(<UpdateDialog />);
     expect(screen.getByText("Checking for Updates")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
@@ -22,7 +24,9 @@ describe("UpdateDialog", () => {
 
   it("shows Close for up_to_date and closes on click", async () => {
     const user = userEvent.setup();
-    setUpdateDialog({ phase: "up_to_date", message: "All good" });
+    act(() => {
+      setUpdateDialog({ phase: "up_to_date", message: "All good" });
+    });
     renderApp(<UpdateDialog />);
     expect(screen.getByText("Up to Date")).toBeInTheDocument();
     expect(screen.getByText("All good")).toBeInTheDocument();
@@ -31,9 +35,43 @@ describe("UpdateDialog", () => {
   });
 
   it("uses error styling title", () => {
-    setUpdateDialog({ phase: "error", message: "Nope" });
+    act(() => {
+      setUpdateDialog({ phase: "error", message: "Nope" });
+    });
     renderApp(<UpdateDialog />);
     expect(screen.getByText("Update Error")).toBeInTheDocument();
-    closeUpdateDialog();
+    act(() => {
+      closeUpdateDialog();
+    });
+  });
+
+  it("closes on Enter and Esc the same way Close does", async () => {
+    const user = userEvent.setup();
+    act(() => {
+      setUpdateDialog({ phase: "up_to_date", message: "All good" });
+    });
+    const { rerender } = renderApp(<UpdateDialog />);
+    await user.keyboard("{Enter}");
+    expect(screen.queryByText("Up to Date")).toBeNull();
+
+    act(() => {
+      setUpdateDialog({ phase: "error", message: "Nope" });
+    });
+    rerender(<UpdateDialog />);
+    expect(screen.getByText("Update Error")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByText("Update Error")).toBeNull();
+  });
+
+  it("does not close while an update is still running", async () => {
+    const user = userEvent.setup();
+    act(() => {
+      openUpdateDialog();
+    });
+    renderApp(<UpdateDialog />);
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Escape}");
+    expect(screen.getByText("Checking for Updates")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
   });
 });

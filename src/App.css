@@ -412,6 +412,14 @@ textarea {
   white-space: nowrap;
 }
 
+/* Property address column: 45 characters */
+.property-address {
+  max-width: 45ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dos-browse-body {
   flex: 1;
   overflow-y: auto;
@@ -643,6 +651,7 @@ textarea {
 .dos-input.w20 { max-width: min(22ch, 100%); flex: 1 1 22ch; }
 .dos-input.w30 { max-width: min(32ch, 100%); flex: 1 1 32ch; }
 .dos-input.w40 { max-width: min(42ch, 100%); flex: 1 1 42ch; }
+.dos-input.w45 { max-width: min(47ch, 100%); flex: 1 1 47ch; }
 .dos-input.w50 { max-width: min(52ch, 100%); flex: 1 1 52ch; }
 
 /* Select + typed value: picker is a small box, value uses the rest */
@@ -727,6 +736,43 @@ textarea {
   width: 1.45em;
   max-width: 1.45em;
   flex: 0 0 1.45em;
+}
+
+/* Invoice site header wraps the full address and contact facts. */
+.invoice-site-header {
+  color: var(--dos-cyan-bright);
+  padding: 0.2em 0.5ch 0.35em;
+  margin-bottom: 0.35em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.browse-grid > .invoice-line-type {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 40 characters on the first line; longer descriptions wrap to a second line. */
+.invoice-line-desc {
+  width: 40ch;
+  min-width: 40ch;
+  max-width: 40ch;
+  flex: 0 0 40ch;
+  padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.15em;
+  height: auto;
+  box-sizing: border-box;
 }
 
 .invoice-work-person {

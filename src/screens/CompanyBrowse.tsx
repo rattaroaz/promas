@@ -315,7 +315,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             />
           </div>
         <div className="dos-browse">
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 30ch 14ch" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 45ch 14ch" }}>
             <div>Pro#</div>
             <div>Name</div>
             <div>Street</div>
@@ -326,7 +326,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               <button
                 key={p.proNo}
                 className={`dos-row ${i === index % Math.max(visibleProps.length, 1) ? "selected" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "8ch 30ch 30ch 14ch" }}
+                style={{ gridTemplateColumns: "8ch 30ch 45ch 14ch" }}
                 onClick={() => {
                   setPropEdit({ ...p });
                   setMode("propedit");
@@ -334,7 +334,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               >
                 <div>{p.proNo}</div>
                 <div>{p.name}</div>
-                <div>{p.street}</div>
+                <div className="property-address">{p.street}</div>
                 <div>{p.phone}</div>
               </button>
             ))}
@@ -510,7 +510,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             </DotField>
             <DotField label="Street" width={14}>
               <input
-                className="dos-input w30"
+                className="dos-input w45"
                 value={propEdit.street}
                 onChange={(e) =>
                   setPropEdit({ ...propEdit, street: e.target.value })

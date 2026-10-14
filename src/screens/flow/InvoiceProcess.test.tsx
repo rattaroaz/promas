@@ -672,4 +672,86 @@ describe("InvoiceProcess", () => {
     expect(screen.getByRole("button", { name: /^New Invoice$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Esc Exit$/i })).toBeInTheDocument();
   });
+
+  it("keeps the invoice number read-only", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    const number = await screen.findByLabelText("Invoice Number");
+    expect(number).toHaveAttribute("readonly");
+    await user.type(number, "99");
+    expect(number).toHaveValue(2);
+    expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Invoice Number 99/i)).not.toBeInTheDocument();
+  });
+
+  it("does not show Order Person on the invoice", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    expect(await screen.findByLabelText("Invoice Number")).toBeInTheDocument();
+    expect(screen.queryByText(/Order Person/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the full property address and contact facts, wrapping in the header", async () => {
+    const site = {
+      ...property,
+      street: "19609 SHERMAN WAY SUITE 100",
+      city: "RESEDA",
+      state: "CA",
+      zip: "91335",
+      phone: "(818) 349-8191",
+      phone2: "(818) 445-5443",
+      manager: "MARIA GONZALEZ",
+      contact: "MARIA GONZALEZ",
+      keyInfo: "*2424",
+      comment1: "Pick up key from the rental office.",
+      comment2: "Lock box 1984 on the front gate.",
+    };
+    renderApp(
+      <InvoiceProcess company={company} property={site} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    const header = document.querySelector(".invoice-site-header");
+    expect(header).not.toBeNull();
+    const text = header?.textContent ?? "";
+    expect(text).toContain("19609 SHERMAN WAY SUITE 100, RESEDA, CA, 91335");
+    expect(text).toContain("Contact: MARIA GONZALEZ");
+    expect(text).toContain("Phone: (818) 349-8191");
+    expect(text).toContain("Cell: (818) 445-5443");
+    expect(text).toContain("Building entry: *2424");
+    expect(text).toContain("Lock box: 1984");
+    expect(text).toContain(
+      "Comments: Pick up key from the rental office. Lock box 1984 on the front gate."
+    );
+    expect(text).not.toContain("Unit keys:");
+  });
+
+  it("shows a 40-character description and wraps longer text onto two lines", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    const custom = await screen.findByLabelText("Line 1 custom text");
+    expect(custom.tagName).toBe("TEXTAREA");
+    expect(custom).toHaveClass("invoice-line-desc");
+    expect(custom).toHaveAttribute("rows", "1");
+
+    await user.selectOptions(
+      screen.getByLabelText("Line 1 description"),
+      PAINT_ALL_ENAMEL_SURFACES
+    );
+    const filled = screen.getByLabelText("Line 1 custom text");
+    expect(PAINT_ALL_ENAMEL_SURFACES.length).toBeGreaterThan(40);
+    expect(filled).toHaveValue(PAINT_ALL_ENAMEL_SURFACES);
+    expect(filled).toHaveAttribute("rows", "2");
+  });
 });

@@ -22,7 +22,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { padR, money, fmtDate, today, naturalCompare } from "../../dos/utils";
+import { money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
@@ -37,8 +37,71 @@ import {
   isPresetDescription,
   normalizeUnitSize,
 } from "../../lib/invoiceLinePresets";
+import { formatPropertyAddress } from "./CompanyPropertyGate";
 
 type Mode = "browse" | "edit";
+
+/** Description column is wide enough for the type picker plus 40 characters. */
+const INVOICE_LINE_COLUMNS = "46ch 14ch 12ch 4ch";
+
+/** One line holds 40 characters; longer text wraps onto a second line. */
+function descriptionRows(text: string): number {
+  return text.length > 40 ? 2 : 1;
+}
+
+/** Lock-box codes are stored in Key or the comment lines, not their own column. */
+function lockBoxCode(property: Property): string {
+  const blob = [property.keyInfo, property.comment1, property.comment2]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+  const match = blob.match(
+    /\b(?:lock\s*box|l\.?\s*box|lb)\s*#?\s*(#?\d[\d*#-]*)/i
+  );
+  return match?.[1] ?? "";
+}
+
+function propertyFacts(property: Property): string {
+  const contact = (property.manager || property.contact).trim();
+  const comments = [property.comment1, property.comment2]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+  const lockBox = lockBoxCode(property);
+  return [
+    contact && `Contact: ${contact}`,
+    property.phone.trim() && `Phone: ${property.phone.trim()}`,
+    property.phone2.trim() && `Cell: ${property.phone2.trim()}`,
+    property.keyInfo.trim() && `Building entry: ${property.keyInfo.trim()}`,
+    lockBox && `Lock box: ${lockBox}`,
+    comments && `Comments: ${comments}`,
+  ]
+    .filter(Boolean)
+    .join("   ");
+}
+
+function InvoiceSiteHeader({
+  company,
+  property,
+}: {
+  company: Company;
+  property: Property;
+}) {
+  const address = formatPropertyAddress(property);
+  const facts = propertyFacts(property);
+  return (
+    <div className="invoice-site-header">
+      <div>
+        Company No.: {company.companyNo} {company.name}
+      </div>
+      <div>
+        {property.proNo} {property.name}
+        {address ? ` — ${address}` : ""}
+      </div>
+      {facts ? <div>{facts}</div> : null}
+    </div>
+  );
+}
 
 export function InvoiceProcess({
   company,
@@ -561,18 +624,7 @@ export function InvoiceProcess({
     >
       {mode === "browse" && (
         <div className="dos-browse">
-          <div
-            style={{
-              color: "var(--dos-cyan-bright)",
-              padding: "0.2em 0.5ch",
-              whiteSpace: "pre",
-            }}
-          >
-            {padR(company.name, 30)} {padR(property.street, 20)}
-            {"\n"}
-            {padR(property.name, 30)} Unit keys: {property.keyInfo}{" "}
-            {property.paintTime}
-          </div>
+          <InvoiceSiteHeader company={company} property={property} />
           <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 9ch 10ch 12ch 12ch 12ch 6ch" }}>
             <div>Inv_Date</div>
             <div>Inv#</div>
@@ -659,11 +711,7 @@ export function InvoiceProcess({
           foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
           <div className="dos-form">
-            <div style={{ color: "var(--dos-cyan-bright)", marginBottom: "0.4em" }}>
-              Company No.: {company.companyNo} {company.name}
-              <br />
-              {property.proNo} {property.name} — {property.street}
-            </div>
+            <InvoiceSiteHeader company={company} property={property} />
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
                 <input
@@ -722,17 +770,10 @@ export function InvoiceProcess({
                 <input
                   className="dos-input w12"
                   type="number"
+                  readOnly
                   aria-label="Invoice Number"
+                  aria-readonly="true"
                   value={editing.invoice.invoice || ""}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      invoice: {
-                        ...editing.invoice,
-                        invoice: parseInt(e.target.value, 10) || 0,
-                      },
-                    })
-                  }
                 />
               </DotField>
               <DotField label="Order Date" width={12}>
@@ -747,21 +788,6 @@ export function InvoiceProcess({
                       invoice: {
                         ...editing.invoice,
                         orderDate: e.target.value || null,
-                      },
-                    })
-                  }
-                />
-              </DotField>
-              <DotField label="Order Person" width={14}>
-                <input
-                  className="dos-input w12"
-                  value={editing.invoice.orderMan}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      invoice: {
-                        ...editing.invoice,
-                        orderMan: e.target.value,
                       },
                     })
                   }
@@ -978,15 +1004,15 @@ export function InvoiceProcess({
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
-                <div style={{ display: "flex", gap: "4px", minWidth: 0 }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+                <div className="invoice-line-type">
                   <select
                     className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
@@ -1013,17 +1039,20 @@ export function InvoiceProcess({
                       </option>
                     ))}
                   </select>
-                  <input
-                    className="dos-input"
+                  <textarea
+                    className="dos-input invoice-line-desc"
                     aria-label={`Line ${idx + 1} custom text`}
                     readOnly={isPresetDescription(line.description)}
+                    rows={descriptionRows(line.description)}
                     value={line.description}
-                    style={{ flex: "1", minWidth: 0 }}
                     onChange={(e) => {
                       if (isPresetDescription(line.description)) return;
                       const lines = [...editing.lines];
                       lines[idx] = { ...line, description: e.target.value };
                       setEditing({ ...editing, lines });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.preventDefault();
                     }}
                     placeholder="Type description"
                   />
@@ -1078,7 +1107,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "20ch 14ch 12ch 4ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
