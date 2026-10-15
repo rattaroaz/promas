@@ -23,16 +23,16 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="dos-screen" style={{ padding: "2em", color: "#fff" }}>
+        <div className="dos-screen" style={{ padding: "2em", color: "var(--app-ink)" }}>
           <div className="dos-titlebar"> Unexpected Error </div>
-          <p style={{ color: "var(--dos-yellow)", marginTop: "1.5em" }}>
+          <p style={{ color: "var(--app-highlight)", marginTop: "1.5em" }}>
             Something went wrong while rendering the screen.
           </p>
           <pre
             style={{
               whiteSpace: "pre-wrap",
-              color: "var(--dos-white-bright)",
-              background: "rgba(0,0,0,0.3)",
+              color: "var(--app-ink)",
+              background: "#f4f4f4",
               padding: "1em",
               border: "1px solid var(--dos-cyan)",
               maxWidth: "70ch",

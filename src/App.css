@@ -5,7 +5,10 @@
 
 :root {
   --fit-scale: 1;
-  --dos-blue: #0000aa;
+  --dos-blue: #ffffff;
+  --app-ink: #161616;
+  --app-accent: #0b4f6c;
+  --app-highlight: #6a4500;
   --dos-blue-bright: #0000ff;
   --dos-cyan: #00aaaa;
   --dos-cyan-bright: #55ffff;
@@ -37,8 +40,8 @@ body,
 #root {
   height: 100%;
   overflow: hidden;
-  background: var(--dos-black);
-  color: var(--dos-white-bright);
+  background: #ffffff;
+  color: var(--app-ink);
   font-family: var(--font-dos);
   /* 2× at the default window; grows with the viewport; --fit-scale keeps screens on-width */
   font-size: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
@@ -69,7 +72,7 @@ textarea {
   width: 100%;
   max-width: 100%;
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -192,7 +195,7 @@ textarea {
   border: none;
   position: relative;
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -200,22 +203,22 @@ textarea {
 
 .dos-box.cyan-frame {
   box-shadow:
-    0 0 0 1px var(--dos-cyan-bright),
-    inset 0 0 0 1px var(--dos-cyan-bright);
+    0 0 0 1px var(--app-accent),
+    inset 0 0 0 1px var(--app-accent);
   margin: 1px;
 }
 
 .dos-box.white-frame {
   box-shadow:
-    0 0 0 1px var(--dos-white-bright),
-    inset 0 0 0 1px var(--dos-white-bright);
+    0 0 0 1px #222222,
+    inset 0 0 0 1px #222222;
   margin: 1px;
 }
 
 .dos-box.yellow-frame {
   box-shadow:
-    0 0 0 1px var(--dos-yellow),
-    inset 0 0 0 1px var(--dos-yellow);
+    0 0 0 1px var(--app-highlight),
+    inset 0 0 0 1px var(--app-highlight);
   margin: 1px;
 }
 
@@ -255,8 +258,8 @@ textarea {
 
 .dos-menu-frame {
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
-  border: 2px double var(--dos-cyan-bright);
+  color: var(--app-ink);
+  border: 2px double var(--app-accent);
   padding: 0;
   min-width: min(42ch, 100%);
   max-width: 100%;
@@ -270,7 +273,7 @@ textarea {
   text-align: center;
   font-weight: bold;
   padding: 0 1ch;
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  border-bottom: 1px solid var(--app-accent);
 }
 
 .dos-menu-frame .menu-body {
@@ -283,7 +286,7 @@ textarea {
   text-align: left;
   background: transparent;
   border: none;
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   padding: 0 2ch;
   cursor: pointer;
   white-space: pre;
@@ -299,7 +302,7 @@ textarea {
 }
 
 .dos-menu-item .num {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   margin-right: 1ch;
 }
 
@@ -311,7 +314,7 @@ textarea {
 
 .dos-menu-item .accel {
   text-decoration: underline;
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-menu-item.hot .accel,
@@ -321,7 +324,7 @@ textarea {
 
 .dos-copyright {
   margin-top: 1.5em;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   text-align: center;
   font-size: 0.9em;
   white-space: pre-wrap;
@@ -344,7 +347,7 @@ textarea {
 }
 
 .dos-browse-header {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   white-space: pre;
   font-weight: bold;
   border-bottom: 1px solid var(--dos-cyan);
@@ -366,7 +369,7 @@ textarea {
 }
 
 .browse-grid-header {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   font-weight: bold;
   border-bottom: 1px solid var(--dos-cyan);
   padding-bottom: 0;
@@ -400,7 +403,7 @@ textarea {
 
 .browse-grid .sort-btn:hover,
 .browse-grid .sort-btn:focus {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   outline: none;
 }
 
@@ -417,13 +420,14 @@ textarea {
   display: grid;
   column-gap: 2ch;
   row-gap: 0;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
   align-content: start;
   align-items: baseline;
-  overflow: auto;
-  scrollbar-gutter: auto;
+  overflow-x: scroll;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .content-grid > .browse-grid {
@@ -432,7 +436,7 @@ textarea {
   grid-column: 1 / -1;
   width: auto;
   max-width: none;
-  min-width: 0;
+  min-width: min-content;
   column-gap: 2ch;
 }
 
@@ -442,7 +446,7 @@ textarea {
   overflow: visible;
   text-overflow: clip;
   max-width: none;
-  min-width: 0;
+  min-width: min-content;
   white-space: nowrap;
 }
 
@@ -465,8 +469,51 @@ textarea {
   min-height: 0;
   min-width: 0;
   width: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: var(--dos-cyan) var(--dos-blue);
+  max-width: 100%;
+  scrollbar-width: auto;
+  scrollbar-color: #007070 var(--dos-blue);
+}
+
+.aging-scroll {
+  overflow-x: scroll;
+  overflow-y: auto;
+  max-width: 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.dos-report:has(.aging-scroll) {
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+  padding-left: 0.5ch;
+  padding-right: 0;
+}
+
+.dos-report:has(.aging-scroll) > .dos-browse {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.aging-grid {
+  width: max-content;
+  min-width: max-content;
+}
+
+.dos-browse-body::-webkit-scrollbar,
+.aging-scroll::-webkit-scrollbar,
+.content-grid::-webkit-scrollbar,
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+  background: #e6e6e6;
+}
+
+.dos-browse-body::-webkit-scrollbar-thumb,
+.aging-scroll::-webkit-scrollbar-thumb,
+.content-grid::-webkit-scrollbar-thumb,
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar-thumb {
+  background: #007070;
 }
 
 .dos-browse-footer {
@@ -494,7 +541,7 @@ textarea {
   text-align: left;
   background: transparent;
   border: none;
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   padding: 0 0;
   cursor: pointer;
   white-space: pre;
@@ -565,7 +612,7 @@ textarea {
 
 .dos-dialog {
   background: var(--dos-blue);
-  border: 2px double var(--dos-white-bright);
+  border: 2px double #222222;
   box-shadow: 3px 3px 0 #000044;
   min-width: 0;
   width: min(92ch, 100%);
@@ -573,7 +620,7 @@ textarea {
   max-height: 90%;
   display: flex;
   flex-direction: column;
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   box-sizing: border-box;
 }
 
@@ -590,11 +637,12 @@ textarea {
 .dos-dialog.red {
   border-color: var(--dos-red-bright);
   background: var(--dos-red);
+  color: var(--dos-white-bright);
 }
 
 .dos-dialog .dlg-title {
   background: var(--dos-white-bright);
-  color: var(--dos-blue);
+  color: #0000aa;
   text-align: center;
   font-weight: bold;
   padding: 0 1ch;
@@ -613,9 +661,9 @@ textarea {
 }
 
 .dos-dialog .dlg-foot {
-  border-top: 1px solid var(--dos-cyan);
+  border-top: 1px solid var(--app-accent);
   padding: 0.3em 1ch;
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   text-align: center;
   white-space: pre-wrap;
   font-size: 0.95em;
@@ -638,7 +686,7 @@ textarea {
 }
 
 .dos-field label {
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   white-space: pre;
   flex-shrink: 1;
   min-width: 0;
@@ -646,7 +694,8 @@ textarea {
 }
 
 .dos-field label .dots {
-  color: var(--dos-cyan);
+  /* #00aaaa on white is 2.86:1. #007070 is about 5.4:1. */
+  color: #007070;
 }
 
 .dos-input,
@@ -674,7 +723,7 @@ textarea {
 .dos-input:disabled,
 .dos-input:read-only,
 .dos-select:disabled {
-  color: var(--dos-white);
+  color: #333333;
   background: transparent;
   border-bottom-color: transparent;
 }
@@ -755,7 +804,7 @@ textarea {
 }
 
 .invoice-line-head {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   margin: 0.5em 0 0.15em;
   align-items: end;
 }
@@ -786,26 +835,36 @@ textarea {
   flex: 0 0 1.45em;
 }
 
-/* Invoice site header: each fact is one label:value that does not split. */
+/* Invoice site header: 1.5× type. Each value stays on one line; the row wraps between values. */
 .invoice-site-header {
-  color: var(--dos-cyan-bright);
-  padding: 0.2em 0.5ch 0.35em;
-  margin-bottom: 0.35em;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: normal;
-  line-height: 1.25;
-}
-
-.invoice-fact {
-  white-space: nowrap;
+  color: var(--app-accent);
+  font-size: 1.5em;
+  padding: 0.1em 0 0.15em;
+  margin-bottom: 0.15em;
+  line-height: 1.1;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 .invoice-fact-line {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 2ch;
-  row-gap: 0.1em;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.invoice-fact {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* A trailing space inside a flex item is dropped. The comma stays on the
+   value; this margin is the space, and the line still wraps between values. */
+.invoice-fact:not(:last-child) {
+  margin-right: 1ch;
 }
 
 .invoice-comments {
@@ -814,7 +873,57 @@ textarea {
 
 .invoice-comments .invoice-comment-text {
   white-space: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.dos-overlay:has(.invoice-edit) {
+  align-items: stretch;
+  padding: 0.4ch;
+}
+
+.dos-dialog:has(.invoice-edit) {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.dlg-body:has(.invoice-edit) {
+  overflow-x: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #007070 #e6e6e6;
+  min-height: 0;
+}
+
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+  background: #e6e6e6;
+}
+
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar-thumb {
+  background: #007070;
+}
+
+.invoice-edit {
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+
+/* The 1.5× block stays fully visible. The list below it scrolls. */
+.dos-browse > .invoice-site-header {
+  flex: 0 0 auto;
+  min-height: auto;
+  min-width: 0;
+  overflow: visible;
+}
+
+.dos-browse > .content-grid {
+  flex: 1 1 auto;
+  min-height: 4.5em;
 }
 
 .browse-grid > .invoice-line-type {
@@ -978,9 +1087,9 @@ textarea {
 }
 
 .dos-searchline .dos-input {
-  background: var(--dos-blue);
-  color: var(--dos-white-bright);
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  background: #ffffff;
+  color: var(--app-ink);
+  border-bottom: 1px solid var(--app-accent);
   flex: 1;
 }
 
@@ -995,7 +1104,7 @@ textarea {
   flex: 1;
   overflow: hidden;
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   padding: 0.5em 1ch;
   white-space: pre;
   font-family: var(--font-dos);
@@ -1009,12 +1118,12 @@ textarea {
 }
 
 .dos-report .hdr {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   font-weight: bold;
 }
 
 .dos-report .total {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font-weight: bold;
 }
 
@@ -1029,7 +1138,7 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -1037,7 +1146,7 @@ textarea {
 
 .dos-report .aging-cono:hover,
 .dos-report .aging-cono:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .aging-invno {
@@ -1046,7 +1155,7 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -1054,7 +1163,7 @@ textarea {
 
 .aging-invno:hover,
 .aging-invno:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report .sales-row {
@@ -1078,17 +1187,17 @@ textarea {
 
 .dos-report .sales-inv:hover,
 .dos-report .sales-inv:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report .sales-invno {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   text-decoration: underline;
 }
 
 .dos-report .sales-inv:hover .sales-invno,
 .dos-report .sales-inv:focus .sales-invno {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report .sales-sort {
@@ -1097,7 +1206,7 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -1105,7 +1214,7 @@ textarea {
 
 .dos-report .sales-sort:hover,
 .dos-report .sales-sort:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report.payroll-landscape {
@@ -1129,10 +1238,10 @@ textarea {
 
 .payroll-grid th,
 .payroll-grid td {
-  border-left: 1px solid var(--dos-cyan-bright);
-  border-right: 1px solid var(--dos-cyan-bright);
-  border-top: 1px solid var(--dos-cyan);
-  border-bottom: 1px solid var(--dos-cyan);
+  border-left: 1px solid var(--app-accent);
+  border-right: 1px solid var(--app-accent);
+  border-top: 1px solid var(--app-accent);
+  border-bottom: 1px solid var(--app-accent);
   padding: 0.12em 0.7ch;
   vertical-align: middle;
   overflow: hidden;
@@ -1141,17 +1250,17 @@ textarea {
 }
 
 .payroll-grid thead th {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   font-weight: bold;
-  border-top: 1px solid var(--dos-cyan-bright);
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  border-top: 1px solid var(--app-accent);
+  border-bottom: 1px solid var(--app-accent);
 }
 
 .payroll-grid tfoot td {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font-weight: bold;
-  border-top: 1px solid var(--dos-cyan-bright);
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  border-top: 1px solid var(--app-accent);
+  border-bottom: 1px solid var(--app-accent);
 }
 
 .payroll-grid .num {
@@ -1165,7 +1274,7 @@ textarea {
 }
 
 .payroll-grid .payroll-job {
-  color: var(--dos-white);
+  color: #333333;
   margin-top: 0.1em;
 }
 
@@ -1193,7 +1302,7 @@ textarea {
 }
 
 .payroll-grid tbody tr.payroll-row:hover td {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .payroll-grid .sales-invno {
@@ -1202,14 +1311,14 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
 }
 
 .payroll-grid tbody tr.payroll-row:hover .sales-invno {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 @media print {
@@ -1277,8 +1386,8 @@ textarea {
 
 .dos-help {
   background: var(--dos-blue);
-  border: 2px double var(--dos-yellow);
-  color: var(--dos-white-bright);
+  border: 2px double var(--app-accent);
+  color: var(--app-ink);
   padding: 0.5em 2ch 1em;
   min-width: 0;
   width: min(70ch, calc(100% - 2ch));
@@ -1287,14 +1396,14 @@ textarea {
 }
 
 .dos-help h3 {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   text-align: center;
   margin-bottom: 0.5em;
   font-size: 1em;
 }
 
 .dos-help pre {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   white-space: pre-wrap;
   font-family: var(--font-dos);
   line-height: 1.35;
