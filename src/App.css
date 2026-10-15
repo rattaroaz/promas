@@ -808,11 +808,58 @@ textarea {
   display: grid;
   /* Description takes the row. WorkDate, Price, and Del sit on the right edge. */
   grid-template-columns: minmax(0, 1fr) 14ch 12ch 4ch;
-  column-gap: 0.6ch;
+  /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
+  column-gap: 2ch;
   align-items: center;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+.invoice-line-grid > .invoice-line-end {
+  text-align: right;
+}
+
+.invoice-line-grid > .invoice-line-end .dos-input,
+.invoice-line-grid > .invoice-line-end .dos-btn {
+  text-align: right;
+  padding-right: 0;
+}
+
+/* Spinners sit in the padding box and pull the digits off the column edge. */
+.invoice-line-grid > .invoice-line-end input[type="number"]::-webkit-outer-spin-button,
+.invoice-line-grid > .invoice-line-end input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.invoice-line-grid > .invoice-line-end input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Keep the picker clickable, but don't reserve a gap before the date text. */
+.invoice-line-grid > .invoice-line-end input[type="date"] {
+  position: relative;
+}
+
+.invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
+  text-align: right;
+  padding: 0;
+  margin: 0;
 }
 
 .invoice-line-head {
@@ -942,7 +989,7 @@ textarea {
   min-width: 0;
 }
 
-/* Fills the description column beside the caret. Printed lines still clip at 58 characters. */
+/* Fills the description column beside the caret. Print wraps the same full text. */
 .invoice-line-grid .invoice-line-desc {
   width: auto;
   min-width: 0;

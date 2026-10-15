@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { inflateRawSync, inflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
-import { buildInvoicePdf, type InvoicePrintPayload } from "./invoicePrint";
+import { buildInvoicePdf, wrapToWidth, type InvoicePrintPayload } from "./invoicePrint";
 import type { Company, Property, Invoice, InvoiceLine } from "../api";
 
 const TEMPLATE = readFileSync(
@@ -249,6 +249,28 @@ describe("buildInvoicePdf", () => {
     );
     const asText = pdfReadableText(bytes);
     expect(asText).toMatch(/V\s*O\s*I\s*D|VOID/i);
+  });
+
+  it("wraps a long description in full instead of clipping it", async () => {
+    const description =
+      "Paint the hallway closet doors and baseboards in this occupied unit today before noon";
+    expect(description.length).toBeGreaterThan(62);
+    const bytes = await buildInvoicePdf(
+      payload({
+        lines: [{ ...payload().lines[0], description, price: 220 }],
+      })
+    );
+    const asText = pdfReadableText(bytes);
+    expect(asText).toContain("Paint the hallway closet doors");
+    expect(asText).toContain("before noon");
+    expect(asText).not.toContain("before noon…");
+    expect(asText).not.toContain(description.slice(0, 57) + "…");
+    const { StandardFonts, PDFDocument: Pdf } = await import("pdf-lib");
+    const doc = await Pdf.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const wrapped = wrapToWidth(font, description, 8, 278);
+    expect(wrapped.length).toBeGreaterThan(1);
+    expect(wrapped.join(" ")).toBe(description);
   });
 
   it("fills many description rows on letter height without shrinking page", async () => {

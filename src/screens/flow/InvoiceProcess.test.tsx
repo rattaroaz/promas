@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
-import { InvoiceProcess, siteHeaderLines } from "./InvoiceProcess";
+import { InvoiceProcess, descriptionRowCount, siteHeaderLines } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
@@ -802,7 +802,7 @@ describe("InvoiceProcess", () => {
     expect(lines.join(" ")).not.toContain("Building entry");
   });
 
-  it("keeps a printed line of description on one row and wraps past that", async () => {
+  it("keeps the full description and sizes rows from the on-screen width", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -812,25 +812,19 @@ describe("InvoiceProcess", () => {
     const custom = await screen.findByLabelText("Line 1 custom text");
     expect(custom.tagName).toBe("TEXTAREA");
     expect(custom).toHaveClass("invoice-line-desc");
-    expect(custom).toHaveAttribute("rows", "1");
+    expect(custom).not.toHaveAttribute("maxlength");
     expect(document.querySelector(".invoice-edit .invoice-site-header")).toBeNull();
 
-    await user.selectOptions(
-      screen.getByLabelText("Line 1 description"),
-      PAINT_ALL_ENAMEL_SURFACES
-    );
-    const filled = screen.getByLabelText("Line 1 custom text");
-    expect(PAINT_ALL_ENAMEL_SURFACES.length).toBeGreaterThan(40);
-    expect(PAINT_ALL_ENAMEL_SURFACES.length).toBeLessThanOrEqual(58);
-    expect(filled).toHaveValue(PAINT_ALL_ENAMEL_SURFACES);
-    expect(filled).toHaveAttribute("rows", "1");
+    const wide = "Paint the hallway closet doors and baseboards in this unit today.";
+    expect(wide.length).toBeGreaterThan(62);
+    expect(descriptionRowCount(wide, 62)).toBe(2);
+    expect(descriptionRowCount(wide, wide.length)).toBe(1);
+    expect(descriptionRowCount("x".repeat(63), 62)).toBe(2);
 
-    const long = `${"Paint the hallway and the closet doors today. ".repeat(3)}Extra.`;
-    expect(long.length).toBeGreaterThan(116);
-    await user.click(screen.getByRole("button", { name: /^\+ Line$/i }));
-    const grown = await screen.findByLabelText("Line 2 custom text");
-    await user.type(grown, long);
-    expect(grown).toHaveValue(long);
-    expect(Number(grown.getAttribute("rows"))).toBeGreaterThan(2);
+    await user.type(custom, wide);
+    expect(custom).toHaveValue(wide);
+    expect(
+      screen.queryByRole("button", { name: /Remove .* from list/i })
+    ).not.toBeInTheDocument();
   });
 });

@@ -40,19 +40,27 @@ import {
 } from "../../lib/invoiceLinePresets";
 type Mode = "browse" | "edit";
 
-/**
- * Printed descriptions are clipped to this many characters
- * (`clip(..., 58)` in invoicePrint). The on-screen field is wider
- * when the row has room; this count only grows the box for text
- * that will not fit on one printed line.
- */
-const INVOICE_PRINT_DESC_CHARS = 58;
-
-function descriptionRows(text: string): number {
+/** How many textarea rows `text` needs when one row holds `charsPerLine`. */
+export function descriptionRowCount(text: string, charsPerLine: number): number {
+  const width = Math.max(1, Math.floor(charsPerLine));
   if (!text) return 1;
   return text.split("\n").reduce((rows, line) => {
-    return rows + Math.max(1, Math.ceil(line.length / INVOICE_PRINT_DESC_CHARS));
+    return rows + Math.max(1, Math.ceil(line.length / width));
   }, 0);
+}
+
+function charsAcross(el: HTMLTextAreaElement): number {
+  const style = getComputedStyle(el);
+  const probe = document.createElement("span");
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:${style.font};`;
+  probe.textContent = "0000000000";
+  document.body.appendChild(probe);
+  const charW = probe.getBoundingClientRect().width / 10;
+  probe.remove();
+  if (!charW || !el.clientWidth) return 0;
+  const pad = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  return Math.max(1, Math.floor((el.clientWidth - pad) / charW));
 }
 
 /**
@@ -183,11 +191,31 @@ function InvoiceLineDescription({
   onChange: (value: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [rows, setRows] = useState(1);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const fit = () => {
+      const across = charsAcross(el);
+      const fromChars = across > 0 ? descriptionRowCount(description, across) : 1;
+      el.rows = 1;
+      el.style.height = "auto";
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+      const measured =
+        lineHeight > 0 ? Math.round(el.scrollHeight / lineHeight) : fromChars;
+      const next = Math.max(fromChars, measured || 1);
+      el.rows = next;
+      el.style.height = "auto";
+      const border = el.offsetHeight - el.clientHeight;
+      el.style.height = `${el.scrollHeight + border}px`;
+      setRows((prev) => (prev === next ? prev : next));
+    };
+    fit();
+    const parent = el.parentElement;
+    if (!parent || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(parent);
+    return () => observer.disconnect();
   }, [description]);
   return (
     <textarea
@@ -195,7 +223,7 @@ function InvoiceLineDescription({
       className="dos-input invoice-line-desc"
       aria-label={`Line ${idx + 1} custom text`}
       readOnly={readOnly}
-      rows={descriptionRows(description)}
+      rows={rows}
       value={description}
       onChange={(e) => {
         if (readOnly) return;
@@ -1042,9 +1070,9 @@ export function InvoiceProcess({
 
             <div className="browse-grid browse-grid-header invoice-line-grid" style={{ margin: "0.5em 0 0.2em" }}>
               <div>Description</div>
-              <div>WorkDate</div>
-              <div>Price</div>
-              <div>Del</div>
+              <div className="invoice-line-end">WorkDate</div>
+              <div className="invoice-line-end">Price</div>
+              <div className="invoice-line-end">Del</div>
             </div>
             {editing.lines.map((line, idx) => (
               <div key={idx} className="browse-grid invoice-line-grid" style={{ marginBottom: "0.12em" }}>
@@ -1085,7 +1113,7 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="invoice-line-end" style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
                     type="date"
@@ -1099,7 +1127,7 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="invoice-line-end" style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
                     type="number"
@@ -1119,7 +1147,7 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div className="invoice-line-end" style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
                     style={{ width: "100%", minHeight: "44px" }}
@@ -1160,8 +1188,8 @@ export function InvoiceProcess({
                   + Line
                 </button>
               </div>
-              <div>{money(lineTotal)}</div>
-              <div></div>
+              <div className="invoice-line-end">{money(lineTotal)}</div>
+              <div className="invoice-line-end"></div>
             </div>
             <div style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
               Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
