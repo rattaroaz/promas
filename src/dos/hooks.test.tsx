@@ -60,6 +60,23 @@ describe("resolveFitScale", () => {
     for (const scale of at640) expect(scale).toBeCloseTo(at640[0], 4);
   });
 
+  it("holds a wrapped measurement that lands a little under the slack", () => {
+    let scale = resolveFitScale(800, 875, 1);
+    expect(scale).toBeCloseTo(0.882, 2);
+    for (let i = 0; i < 8; i++) {
+      const next = resolveFitScale(800, 753, scale);
+      expect(next).toBeCloseTo(scale, 4);
+      scale = next;
+    }
+    scale = resolveFitScale(640, 875, 1);
+    expect(scale).toBeCloseTo(0.7, 2);
+    for (let i = 0; i < 8; i++) {
+      const next = resolveFitScale(640, 590, scale);
+      expect(next).toBeCloseTo(scale, 4);
+      scale = next;
+    }
+  });
+
   it("returns to 1 after a shrink-then-restore and does not drift", () => {
     const natural = 877;
     let scale = resolveFitScale(800, natural, 1);

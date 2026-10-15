@@ -503,9 +503,14 @@ export function resolveFitScale(
   if (!(clientWidth > 0)) return 1;
   const safe = current > 0 && current <= 1 ? current : 1;
   if (!(contentWidth > 0) || contentWidth <= clientWidth + 1) {
+    // A just-fitted row can wrap and come back ~6% under the window
+    // (875px at scale 1 measured 753px at 0.88). The 28px slack band
+    // misses that, the scale grows, the line unwraps, and the next tick
+    // shrinks again. Holding while content still fills 90% of the window
+    // stops that. A restored wider window falls below 90% and grows to 1.
     if (
       safe < 1 &&
-      contentWidth >= clientWidth - FIT_SLACK_PX - 1 &&
+      contentWidth >= clientWidth * 0.9 &&
       contentWidth < clientWidth - 1
     ) {
       return safe;
@@ -569,11 +574,8 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
       applying = true;
       const current =
         parseFloat(doc.style.getPropertyValue("--fit-scale")) || 1;
-      const next = resolveFitScale(
-        root.clientWidth,
-        contentWidthOf(root),
-        current
-      );
+      const content = contentWidthOf(root);
+      const next = resolveFitScale(root.clientWidth, content, current);
       if (Math.abs(next - current) > 0.004) {
         doc.style.setProperty("--fit-scale", next.toFixed(4));
       }

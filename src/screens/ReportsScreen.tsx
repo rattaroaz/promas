@@ -802,7 +802,7 @@ function AgingReport({
       <div style={{ padding: "0.3em 0", whiteSpace: "pre" }}>
         {`*****   Open Receivable Aging  *****\nDate : ${fmtDate(today())}\n`}
       </div>
-      <div className="dos-browse-body">
+      <div className="dos-browse-body aging-scroll">
         <div className="aging-grid" style={{ display: "grid", gridTemplateColumns: "8ch 30ch 15ch 14ch max-content max-content max-content max-content max-content max-content", columnGap: "2ch" }}>
           <div className="browse-grid-header" style={{ gridColumn: "1 / -1", display: "contents" }}>
             <div>Company#</div>

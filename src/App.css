@@ -474,9 +474,46 @@ textarea {
   scrollbar-color: #007070 var(--dos-blue);
 }
 
+.aging-scroll {
+  overflow-x: scroll;
+  overflow-y: auto;
+  max-width: 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.dos-report:has(.aging-scroll) {
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+  padding-left: 0.5ch;
+  padding-right: 0;
+}
+
+.dos-report:has(.aging-scroll) > .dos-browse {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .aging-grid {
   width: max-content;
-  min-width: 100%;
+  min-width: max-content;
+}
+
+.dos-browse-body::-webkit-scrollbar,
+.aging-scroll::-webkit-scrollbar,
+.content-grid::-webkit-scrollbar,
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+  background: #e6e6e6;
+}
+
+.dos-browse-body::-webkit-scrollbar-thumb,
+.aging-scroll::-webkit-scrollbar-thumb,
+.content-grid::-webkit-scrollbar-thumb,
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar-thumb {
+  background: #007070;
 }
 
 .dos-browse-footer {
