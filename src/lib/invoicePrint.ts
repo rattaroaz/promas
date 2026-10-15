@@ -36,6 +36,58 @@ function clip(s: string, max: number): string {
   return t.slice(0, Math.max(0, max - 1)) + "…";
 }
 
+/** Wrap the full string onto lines that fit `maxWidth`. Nothing is dropped. */
+export function wrapToWidth(
+  font: PDFFont,
+  text: string,
+  size: number,
+  maxWidth: number
+): string[] {
+  const source = (text ?? "").replace(/\r\n/g, "\n");
+  if (!source) return [""];
+  const lines: string[] = [];
+  const pushFitted = (token: string) => {
+    if (font.widthOfTextAtSize(token, size) <= maxWidth) {
+      lines.push(token);
+      return;
+    }
+    let chunk = "";
+    for (const ch of token) {
+      const trial = chunk + ch;
+      if (chunk && font.widthOfTextAtSize(trial, size) > maxWidth) {
+        lines.push(chunk);
+        chunk = ch;
+      } else {
+        chunk = trial;
+      }
+    }
+    if (chunk) lines.push(chunk);
+  };
+  for (const paragraph of source.split("\n")) {
+    if (!paragraph) {
+      lines.push("");
+      continue;
+    }
+    let current = "";
+    for (const word of paragraph.split(" ")) {
+      const next = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(next, size) <= maxWidth) {
+        current = next;
+        continue;
+      }
+      if (current) lines.push(current);
+      if (font.widthOfTextAtSize(word, size) <= maxWidth) {
+        current = word;
+      } else {
+        pushFitted(word);
+        current = "";
+      }
+    }
+    if (current) lines.push(current);
+  }
+  return lines.length ? lines : [""];
+}
+
 function moneyPlain(n: number): string {
   return money(n).replace("$", "");
 }
@@ -335,28 +387,31 @@ export async function buildInvoicePdf(
   const itemLines = lines.filter(
     (l) => (l.description || "").trim() || l.price
   );
+  const descWidth = colDesc.w - 12;
   let row = 1;
   for (const line of itemLines) {
     if (row >= maxRows) break;
-    const top = firstRowTop + row * rowH + 3;
-    draw(page, font, clip(line.description || "", 58), 24, top, 8, {
-      maxWidth: colDesc.w - 12,
+    const wrapped = wrapToWidth(font, line.description || "", 8, descWidth);
+    wrapped.forEach((part, i) => {
+      if (row >= maxRows) return;
+      const top = firstRowTop + row * rowH + 3;
+      draw(page, font, part, 24, top, 8);
+      if (i === 0 && line.price) {
+        draw(page, font, "1", colQty.x + 4, top, 8, {
+          maxWidth: colQty.w - 8,
+          align: "center",
+        });
+        draw(page, font, moneyPlain(line.price), colPrice.x + 4, top, 8, {
+          maxWidth: colPrice.w - 10,
+          align: "right",
+        });
+        draw(page, font, moneyPlain(line.price), colAmt.x + 4, top, 8, {
+          maxWidth: colAmt.w - 10,
+          align: "right",
+        });
+      }
+      row++;
     });
-    if (line.price) {
-      draw(page, font, "1", colQty.x + 4, top, 8, {
-        maxWidth: colQty.w - 8,
-        align: "center",
-      });
-      draw(page, font, moneyPlain(line.price), colPrice.x + 4, top, 8, {
-        maxWidth: colPrice.w - 10,
-        align: "right",
-      });
-      draw(page, font, moneyPlain(line.price), colAmt.x + 4, top, 8, {
-        maxWidth: colAmt.w - 10,
-        align: "right",
-      });
-    }
-    row++;
   }
   if (invoice.remark1 && row < maxRows) {
     draw(
