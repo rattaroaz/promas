@@ -839,7 +839,7 @@ textarea {
   appearance: textfield;
 }
 
-/* Keep the picker clickable, but don't reserve a gap before the date text. */
+/* The picker hit target is only the calendar icon, so the date text stays editable. */
 .invoice-line-grid > .invoice-line-end input[type="date"] {
   position: relative;
 }
@@ -848,7 +848,7 @@ textarea {
   position: absolute;
   top: 0;
   right: 0;
-  width: 100%;
+  width: 1.35em;
   height: 100%;
   margin: 0;
   padding: 0;
@@ -858,7 +858,7 @@ textarea {
 
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
   text-align: right;
-  padding: 0;
+  padding: 0 1.35em 0 0;
   margin: 0;
 }
 
