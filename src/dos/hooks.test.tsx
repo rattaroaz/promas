@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, renderHook, act } from "@testing-library/react";
 import {
   computeFitScale,
+  contentWidthOf,
   pointerHoverMuted,
   resolveFitScale,
   useBrowseIndex,
@@ -34,30 +35,89 @@ describe("resolveFitScale", () => {
     expect(scale).toBe(1);
   });
 
-  it("shrinks real overflow once and does not ratchet on later ticks", () => {
-    const first = resolveFitScale(1024, 1600, 1);
-    expect(first).toBeLessThan(0.7);
-    expect(first).toBeGreaterThan(0.5);
-    let scale = first;
-    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1600, scale);
-    expect(scale).toBeCloseTo(first, 5);
+  it("settles in one pass under repeated ticks at 800 and 640", () => {
+    // Natural width ~877px. Measured width tracks the scale, the way a clock
+    // tick remeasures already-scaled content.
+    const natural = 877;
+    const ticks = (client: number) => {
+      let scale = 1;
+      const seen: number[] = [];
+      for (let i = 0; i < 12; i++) {
+        scale = resolveFitScale(client, natural * scale, scale);
+        seen.push(scale);
+      }
+      return seen;
+    };
+
+    const at800 = ticks(800);
+    expect(at800[0]).toBeCloseTo(0.88, 2);
+    expect(at800[0]).toBeLessThan(1);
+    for (const scale of at800) expect(scale).toBeCloseTo(at800[0], 4);
+
+    const at640 = ticks(640);
+    expect(at640[0]).toBeCloseTo(0.7, 2);
+    expect(at640[0]).toBeLessThan(at800[0]);
+    for (const scale of at640) expect(scale).toBeCloseTo(at640[0], 4);
   });
 
   it("returns to 1 after a shrink-then-restore and does not drift", () => {
-    // Content about 875px wide: an 800px window lands near 0.88, 640 near 0.70.
-    const at800 = resolveFitScale(800, 875, 1);
-    expect(at800).toBeCloseTo(0.88, 2);
-    let scale = resolveFitScale(1024, 1024, at800);
+    const natural = 877;
+    let scale = resolveFitScale(800, natural, 1);
+    expect(scale).toBeCloseTo(0.88, 2);
+    scale = resolveFitScale(1024, natural * scale, scale);
     expect(scale).toBe(1);
-    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1024, scale);
-    expect(scale).toBe(1);
+    for (let i = 0; i < 30; i++) {
+      scale = resolveFitScale(1024, natural * scale, scale);
+      expect(scale).toBe(1);
+    }
 
-    const at640 = resolveFitScale(640, 875, 1);
-    expect(at640).toBeCloseTo(0.7, 2);
-    scale = resolveFitScale(1024, 1024, at640);
+    scale = resolveFitScale(640, natural, 1);
+    expect(scale).toBeCloseTo(0.7, 2);
+    scale = resolveFitScale(1024, natural * scale, scale);
     expect(scale).toBe(1);
-    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1024, scale);
-    expect(scale).toBe(1);
+    for (let i = 0; i < 30; i++) {
+      scale = resolveFitScale(1024, natural * scale, scale);
+      expect(scale).toBe(1);
+    }
+  });
+
+  it("measures overflow inside a clipped container and ignores a stretched shell", () => {
+    const shell = document.createElement("div");
+    const clip = document.createElement("div");
+    clip.style.overflowX = "hidden";
+    const wide = document.createElement("div");
+    shell.appendChild(clip);
+    clip.appendChild(wide);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    box(shell, 1024, 1024);
+    box(clip, 986, 986);
+    box(wide, 986, 1133);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1133);
+
+    const host = document.createElement("div");
+    const fitting = document.createElement("div");
+    const row = document.createElement("div");
+    host.appendChild(fitting);
+    fitting.appendChild(row);
+    document.body.appendChild(host);
+    box(host, 1024, 1024);
+    box(fitting, 1024, 1024);
+    box(row, 1024, 1024);
+    expect(contentWidthOf(fitting)).toBe(0);
+    document.body.removeChild(shell);
+    document.body.removeChild(host);
   });
 });
 

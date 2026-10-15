@@ -483,44 +483,72 @@ export function computeFitScale(
 }
 
 /**
- * Next root scale.
+ * Next root scale, computed from the scale the measurement was taken at.
  *
- * Slack is applied only when something is actually wider than the window.
- * A full-bleed shell reports a scroll width equal to the window; subtracting
- * slack from that made every measurement look ~28px too wide, and each title
- * clock tick multiplied the scale again until it hit the floor.
+ * A full-bleed shell is exactly as wide as the window. Subtracting slack from
+ * that width made every tick look ~28px too wide and multiplied the scale
+ * down to the floor. Slack applies only when content is actually wider.
  *
- * When the measured content fits, the scale is recomputed from 1 (and capped
- * at 1). A window that was narrowed and then restored therefore returns to 1
- * instead of keeping the shrunk scale. Overflow is also computed from 1, so
- * later ticks with the same widths do not drift.
+ * The measurement is the laid-out width at `current`. After one shrink, that
+ * width sits about one slack inside the window. Recomputing from 1 then
+ * returns 1, and the next tick shrinks again (1 → 0.88 → 1). Holding the
+ * current scale when the fit is snug settles on the first pass. A wider
+ * window, whose measurement is no longer snug, grows back toward 1.
  */
 export function resolveFitScale(
   clientWidth: number,
   contentWidth: number,
-  _current = 1
+  current = 1
 ): number {
   if (!(clientWidth > 0)) return 1;
-  if (contentWidth <= clientWidth + 1) return 1;
+  const safe = current > 0 && current <= 1 ? current : 1;
+  if (!(contentWidth > 0) || contentWidth <= clientWidth + 1) {
+    if (
+      safe < 1 &&
+      contentWidth >= clientWidth - FIT_SLACK_PX - 1 &&
+      contentWidth < clientWidth - 1
+    ) {
+      return safe;
+    }
+    if (!(contentWidth > 0) || safe >= 1) return 1;
+    return Math.min(1, computeFitScale(clientWidth, contentWidth, safe));
+  }
   return Math.min(
     1,
     computeFitScale(
       Math.max(0, clientWidth - FIT_SLACK_PX),
       contentWidth,
-      1
+      safe
     )
   );
 }
 
-function maxScrollWidth(root: HTMLElement): number {
+/**
+ * Widest laid-out content in the shell.
+ * A box that only stretches to its parent (scroll width equals its own width)
+ * is not content. Overflow inside a clipped or scrolling box still counts:
+ * those boxes often report a scroll width equal to the client width while a
+ * child paints past the edge.
+ */
+export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
-  const walk = (el: Element) => {
-    if (!(el instanceof HTMLElement)) return;
+  const visit = (el: HTMLElement) => {
     if (el.classList.contains("print-preview-overlay")) return;
-    max = Math.max(max, el.scrollWidth);
-    for (const child of el.children) walk(child);
+    const cw = el.clientWidth;
+    const sw = el.scrollWidth;
+    const ow = el.offsetWidth;
+    const parentCw = el.parentElement?.clientWidth ?? 0;
+    const stretched = parentCw > 0 && ow + 1 >= parentCw && sw <= ow + 1;
+    if (!stretched && sw > 0) max = Math.max(max, sw);
+    for (const node of el.children) {
+      if (!(node instanceof HTMLElement)) continue;
+      const right =
+        node.offsetLeft + Math.max(node.scrollWidth, node.offsetWidth);
+      if (right > cw + 1) max = Math.max(max, right);
+      visit(node);
+    }
   };
-  walk(root);
+  visit(root);
   return max;
 }
 
@@ -543,7 +571,7 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
         parseFloat(doc.style.getPropertyValue("--fit-scale")) || 1;
       const next = resolveFitScale(
         root.clientWidth,
-        maxScrollWidth(root),
+        contentWidthOf(root),
         current
       );
       if (Math.abs(next - current) > 0.004) {

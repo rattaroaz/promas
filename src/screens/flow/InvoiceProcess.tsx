@@ -842,7 +842,6 @@ export function InvoiceProcess({
           foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
           <div className="dos-form invoice-edit">
-            <div className="invoice-edit-scroll">
             <InvoiceSiteHeader company={company} property={property} />
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
@@ -1230,8 +1229,6 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            </div>
-            <div className="invoice-edit-actions">
             <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
@@ -1280,7 +1277,6 @@ export function InvoiceProcess({
               }}
             >
               1.5% interest charged on past due accounts over 30 days.
-            </div>
             </div>
           </div>
         </Dialog>

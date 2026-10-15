@@ -420,13 +420,14 @@ textarea {
   display: grid;
   column-gap: 2ch;
   row-gap: 0;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
   align-content: start;
   align-items: baseline;
-  overflow: auto;
-  scrollbar-gutter: auto;
+  overflow-x: scroll;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .content-grid > .browse-grid {
@@ -435,7 +436,7 @@ textarea {
   grid-column: 1 / -1;
   width: auto;
   max-width: none;
-  min-width: 0;
+  min-width: min-content;
   column-gap: 2ch;
 }
 
@@ -445,7 +446,7 @@ textarea {
   overflow: visible;
   text-overflow: clip;
   max-width: none;
-  min-width: 0;
+  min-width: min-content;
   white-space: nowrap;
 }
 
@@ -468,8 +469,14 @@ textarea {
   min-height: 0;
   min-width: 0;
   width: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: var(--dos-cyan) var(--dos-blue);
+  max-width: 100%;
+  scrollbar-width: auto;
+  scrollbar-color: #007070 var(--dos-blue);
+}
+
+.aging-grid {
+  width: max-content;
+  min-width: 100%;
 }
 
 .dos-browse-footer {
@@ -650,7 +657,8 @@ textarea {
 }
 
 .dos-field label .dots {
-  color: var(--dos-cyan);
+  /* #00aaaa on white is 2.86:1. #007070 is about 5.4:1. */
+  color: #007070;
 }
 
 .dos-input,
@@ -797,17 +805,23 @@ textarea {
   padding: 0.1em 0 0.15em;
   margin-bottom: 0.15em;
   line-height: 1.1;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 .invoice-fact-line {
   display: flex;
   flex-wrap: wrap;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
 }
 
 .invoice-fact {
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .invoice-comments {
@@ -828,37 +842,40 @@ textarea {
 .dos-dialog:has(.invoice-edit) {
   height: 100%;
   max-height: 100%;
+  min-height: 0;
 }
 
 .dlg-body:has(.invoice-edit) {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #007070 #e6e6e6;
+  min-height: 0;
+}
+
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+  background: #e6e6e6;
+}
+
+.dlg-body:has(.invoice-edit)::-webkit-scrollbar-thumb {
+  background: #007070;
 }
 
 .invoice-edit {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
 }
 
-.invoice-edit-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden auto;
-}
-
-.invoice-edit-actions {
-  flex: 0 0 auto;
-  background: var(--dos-blue);
-  padding-top: 0.15em;
-}
-
-/* The 1.5× block can be several rows. Keep one invoice row clear of the footer. */
+/* The 1.5× block stays fully visible. The list below it scrolls. */
 .dos-browse > .invoice-site-header {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow: auto;
+  flex: 0 0 auto;
+  min-height: auto;
+  min-width: 0;
+  overflow: visible;
 }
 
 .dos-browse > .content-grid {
