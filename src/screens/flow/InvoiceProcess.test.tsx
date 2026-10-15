@@ -198,7 +198,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Paint Supply Co.")).toHaveValue("Dunn-Edwards");
   });
 
-  it("removes a paint supply company from the list after confirm", async () => {
+  it("does not let invoice processing delete a paint supply company", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -209,15 +209,11 @@ describe("InvoiceProcess", () => {
       await screen.findByLabelText("Paint Supply Co. list"),
       "Dunn-Edwards"
     );
-    await user.click(
-      screen.getByRole("button", {
-        name: /Remove Dunn-Edwards from list/i,
-      })
-    );
-    await user.click(screen.getByRole("button", { name: /^Y$/i }));
-    await waitFor(() => {
-      expect(api.deletePaintSupplyCo).toHaveBeenCalledWith("Dunn-Edwards");
-    });
+    expect(
+      screen.queryByRole("button", { name: /Remove .* from list/i })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Remove "Dunn-Edwards"/i)).not.toBeInTheDocument();
+    expect(api.deletePaintSupplyCo).not.toHaveBeenCalled();
   });
 
   it("opens a new invoice form from the New Invoice button", async () => {
@@ -363,7 +359,7 @@ describe("InvoiceProcess", () => {
     expect(screen.queryByLabelText("Line 1 work person")).not.toBeInTheDocument();
   });
 
-  it("lets the user pick, type, save, and delete work person names", async () => {
+  it("lets the user pick, type, and save work person names", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -381,20 +377,10 @@ describe("InvoiceProcess", () => {
     await user.type(screen.getByLabelText("Work Person"), "Ana Cruz");
     await user.tab();
     expect(api.saveWorkPerson).toHaveBeenCalledWith("Ana Cruz");
-
-    await user.selectOptions(
-      screen.getByLabelText("Work Person list"),
-      "Jose Ramirez"
-    );
-    await user.click(
-      screen.getByRole("button", { name: /Remove Jose Ramirez from list/i })
-    );
     expect(
-      screen.getByText(/Remove "Jose Ramirez" from Work Person list/i)
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^Y$/i }));
-    expect(api.deleteWorkPerson).toHaveBeenCalledWith("Jose Ramirez");
-    expect(screen.getByLabelText("Work Person")).toHaveValue("");
+      screen.queryByRole("button", { name: /Remove .* from list/i })
+    ).not.toBeInTheDocument();
+    expect(api.deleteWorkPerson).not.toHaveBeenCalled();
   });
 
   it("fills kitchen cabinet and color-change prices from the description", async () => {
@@ -733,11 +719,11 @@ describe("InvoiceProcess", () => {
     expect(header).not.toBeNull();
     const lines = [...(header?.children ?? [])].map((el) => el.textContent);
     expect(lines).toEqual([
-      "MESA MANAGEMENT COMPANY,HEATHER APARTMENTS",
-      "19609 SHERMAN WAY SUITE 100,RESEDA,CA,91335",
-      "Entry code: *2424,Lock box code: 1984",
-      "Contact: MARIA GONZALEZ,Email: office@mesa.example",
-      "Cell phone: (818) 445-5443,Phone: (818) 349-8191,Fax: (714) 851-0999",
+      "MESA MANAGEMENT COMPANY, HEATHER APARTMENTS",
+      "19609 SHERMAN WAY SUITE 100, RESEDA, CA, 91335",
+      "Entry code: *2424, Lock box code: 1984",
+      "Contact: MARIA GONZALEZ, Email: office@mesa.example",
+      "Cell phone: (818) 445-5443, Phone: (818) 349-8191, Fax: (714) 851-0999",
       "Comments: Pick up key from the rental office. Lock box 1984 on the front gate.",
     ]);
     expect(lines.join("\n")).not.toMatch(/,\s*(,|$)/);
@@ -746,8 +732,8 @@ describe("InvoiceProcess", () => {
       (el) => el.textContent
     );
     expect(facts).toContain("Fax: (714) 851-0999");
-    expect(facts).toContain("RESEDA,");
-    expect(facts).toContain("CA,");
+    expect(facts).toContain("RESEDA, ");
+    expect(facts).toContain("CA, ");
     expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
   });
 
@@ -816,7 +802,7 @@ describe("InvoiceProcess", () => {
     expect(lines.join(" ")).not.toContain("Building entry");
   });
 
-  it("shows a 40-character description and wraps longer text onto two lines", async () => {
+  it("keeps a printed line of description on one row and wraps past that", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -827,6 +813,7 @@ describe("InvoiceProcess", () => {
     expect(custom.tagName).toBe("TEXTAREA");
     expect(custom).toHaveClass("invoice-line-desc");
     expect(custom).toHaveAttribute("rows", "1");
+    expect(document.querySelector(".invoice-edit .invoice-site-header")).toBeNull();
 
     await user.selectOptions(
       screen.getByLabelText("Line 1 description"),
@@ -834,12 +821,12 @@ describe("InvoiceProcess", () => {
     );
     const filled = screen.getByLabelText("Line 1 custom text");
     expect(PAINT_ALL_ENAMEL_SURFACES.length).toBeGreaterThan(40);
+    expect(PAINT_ALL_ENAMEL_SURFACES.length).toBeLessThanOrEqual(58);
     expect(filled).toHaveValue(PAINT_ALL_ENAMEL_SURFACES);
-    expect(filled).toHaveAttribute("rows", "2");
+    expect(filled).toHaveAttribute("rows", "1");
 
-    const long =
-      "Paint all enamel surfaces with hybrid based paint plus the baseboards and the door casings in the unit today.";
-    expect(long.length).toBeGreaterThan(80);
+    const long = `${"Paint the hallway and the closet doors today. ".repeat(3)}Extra.`;
+    expect(long.length).toBeGreaterThan(116);
     await user.click(screen.getByRole("button", { name: /^\+ Line$/i }));
     const grown = await screen.findByLabelText("Line 2 custom text");
     await user.type(grown, long);
