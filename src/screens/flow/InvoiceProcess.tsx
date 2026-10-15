@@ -38,8 +38,6 @@ import {
   isPresetDescription,
   normalizeUnitSize,
 } from "../../lib/invoiceLinePresets";
-import { formatPropertyAddress } from "./CompanyPropertyGate";
-
 type Mode = "browse" | "edit";
 
 /** Description column is wide enough for the type picker plus 40 characters. */
@@ -57,11 +55,15 @@ function descriptionRows(text: string): number {
  * PageMap is the lock box code. Key and the comment lines are only a
  * fallback when PageMap is empty.
  */
+function str(value: string | null | undefined): string {
+  return (value ?? "").trim();
+}
+
 function lockBoxCode(property: Property): string {
-  const fromPage = property.pageMap.trim();
+  const fromPage = str(property.pageMap);
   if (fromPage) return fromPage;
   const blob = [property.keyInfo, property.comment1, property.comment2]
-    .map((part) => part.trim())
+    .map((part) => str(part))
     .filter(Boolean)
     .join(" ");
   const match = blob.match(
@@ -72,16 +74,16 @@ function lockBoxCode(property: Property): string {
 
 function propertyComments(property: Property): string {
   return [property.comment1, property.comment2]
-    .map((part) => part.trim())
+    .map((part) => str(part))
     .filter(Boolean)
     .join(" ");
 }
 
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
-function firstEmail(...parts: string[]): string {
+function firstEmail(...parts: Array<string | null | undefined>): string {
   for (const part of parts) {
-    const match = part.match(EMAIL_RE);
+    const match = (part ?? "").match(EMAIL_RE);
     if (match) return match[0];
   }
   return "";
@@ -95,18 +97,26 @@ function joinFacts(parts: string[]): string {
 }
 
 function contactName(company: Company, property: Property): string {
-  const site = (property.manager || property.contact || "").trim();
+  const site = str(property.manager) || str(property.contact);
   if (site) return site;
-  const companyContact = company.contact.trim();
+  const companyContact = str(company.contact);
   if (companyContact && !EMAIL_RE.test(companyContact)) return companyContact;
   return "";
 }
 
-/** Company / property block. Empty fields are omitted, so lines never end with a comma or a blank. */
-export function siteHeaderLines(company: Company, property: Property): string[] {
-  const companyLabel = company.name.trim() || company.companyNo.trim();
-  const propertyName = property.name.trim();
-  const entry = property.keyInfo.trim();
+/** One header row. `words` wraps inside the value; `values` wraps only between values. */
+type HeaderRow = { parts: string[]; wrap: "values" | "words" };
+
+function addressParts(property: Property): string[] {
+  return [property.street, property.city, property.state, property.zip]
+    .map((part) => str(part))
+    .filter(Boolean);
+}
+
+function siteHeaderRows(company: Company, property: Property): HeaderRow[] {
+  const companyLabel = str(company.name) || str(company.companyNo);
+  const propertyName = str(property.name);
+  const entry = str(property.keyInfo);
   const lockBox = lockBoxCode(property);
   const contact = contactName(company, property);
   const email = firstEmail(
@@ -116,25 +126,45 @@ export function siteHeaderLines(company: Company, property: Property): string[] 
     property.comment1,
     property.comment2
   );
-  const lines = [
-    joinFacts([companyLabel, propertyName]),
-    formatPropertyAddress(property),
-    joinFacts([
-      entry ? `Entry code: ${entry}` : "",
-      lockBox ? `Lock box code: ${lockBox}` : "",
-    ]),
-    joinFacts([
-      contact ? `Contact: ${contact}` : "",
-      email ? `Email: ${email}` : "",
-    ]),
-    joinFacts([
-      property.phone2.trim() ? `Cell phone: ${property.phone2.trim()}` : "",
-      property.phone.trim() ? `Phone: ${property.phone.trim()}` : "",
-      company.phone4.trim() ? `Fax: ${company.phone4.trim()}` : "",
-    ]),
-    propertyComments(property) ? `Comments: ${propertyComments(property)}` : "",
+  const cell = str(property.phone2);
+  const phone = str(property.phone);
+  const fax = str(company.phone4);
+  const comments = propertyComments(property);
+  const rows: HeaderRow[] = [
+    { wrap: "values", parts: [companyLabel, propertyName].filter(Boolean) },
+    { wrap: "values", parts: addressParts(property) },
+    {
+      wrap: "values",
+      parts: [
+        entry ? `Entry code: ${entry}` : "",
+        lockBox ? `Lock box code: ${lockBox}` : "",
+      ].filter(Boolean),
+    },
+    {
+      wrap: "values",
+      parts: [
+        contact ? `Contact: ${contact}` : "",
+        email ? `Email: ${email}` : "",
+      ].filter(Boolean),
+    },
+    {
+      wrap: "values",
+      parts: [
+        cell ? `Cell phone: ${cell}` : "",
+        phone ? `Phone: ${phone}` : "",
+        fax ? `Fax: ${fax}` : "",
+      ].filter(Boolean),
+    },
+    { wrap: "words", parts: comments ? [`Comments: ${comments}`] : [] },
   ];
-  return lines.map((line) => line.trim()).filter(Boolean);
+  return rows.filter((row) => row.parts.length > 0);
+}
+
+/** Company / property block. Empty fields are omitted, so lines never end with a comma or a blank. */
+export function siteHeaderLines(company: Company, property: Property): string[] {
+  return siteHeaderRows(company, property).map((row) =>
+    row.wrap === "words" ? row.parts[0] : joinFacts(row.parts)
+  );
 }
 
 function InvoiceLineDescription({
@@ -182,12 +212,25 @@ function InvoiceSiteHeader({
   company: Company;
   property: Property;
 }) {
-  const lines = siteHeaderLines(company, property);
+  const rows = siteHeaderRows(company, property);
   return (
     <div className="invoice-site-header">
-      {lines.map((line, i) => (
-        <div key={i}>{line}</div>
-      ))}
+      {rows.map((row, i) =>
+        row.wrap === "words" ? (
+          <div key={i} className="invoice-comments">
+            <span className="invoice-comment-text">{row.parts[0]}</span>
+          </div>
+        ) : (
+          <div key={i} className="invoice-fact-line">
+            {row.parts.map((part, j) => (
+              <span key={j} className="invoice-fact">
+                {part}
+                {j < row.parts.length - 1 ? ", " : ""}
+              </span>
+            ))}
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -798,7 +841,8 @@ export function InvoiceProcess({
           red={editing.invoice.voided}
           foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
-          <div className="dos-form">
+          <div className="dos-form invoice-edit">
+            <div className="invoice-edit-scroll">
             <InvoiceSiteHeader company={company} property={property} />
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
@@ -1186,6 +1230,8 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
+            </div>
+            <div className="invoice-edit-actions">
             <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
@@ -1234,6 +1280,7 @@ export function InvoiceProcess({
               }}
             >
               1.5% interest charged on past due accounts over 30 days.
+            </div>
             </div>
           </div>
         </Dialog>

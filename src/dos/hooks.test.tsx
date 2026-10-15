@@ -39,8 +39,25 @@ describe("resolveFitScale", () => {
     expect(first).toBeLessThan(0.7);
     expect(first).toBeGreaterThan(0.5);
     let scale = first;
-    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1024, scale);
+    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1600, scale);
     expect(scale).toBeCloseTo(first, 5);
+  });
+
+  it("returns to 1 after a shrink-then-restore and does not drift", () => {
+    // Content about 875px wide: an 800px window lands near 0.88, 640 near 0.70.
+    const at800 = resolveFitScale(800, 875, 1);
+    expect(at800).toBeCloseTo(0.88, 2);
+    let scale = resolveFitScale(1024, 1024, at800);
+    expect(scale).toBe(1);
+    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1024, scale);
+    expect(scale).toBe(1);
+
+    const at640 = resolveFitScale(640, 875, 1);
+    expect(at640).toBeCloseTo(0.7, 2);
+    scale = resolveFitScale(1024, 1024, at640);
+    expect(scale).toBe(1);
+    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1024, scale);
+    expect(scale).toBe(1);
   });
 });
 

@@ -489,21 +489,26 @@ export function computeFitScale(
  * A full-bleed shell reports a scroll width equal to the window; subtracting
  * slack from that made every measurement look ~28px too wide, and each title
  * clock tick multiplied the scale again until it hit the floor.
+ *
+ * When the measured content fits, the scale is recomputed from 1 (and capped
+ * at 1). A window that was narrowed and then restored therefore returns to 1
+ * instead of keeping the shrunk scale. Overflow is also computed from 1, so
+ * later ticks with the same widths do not drift.
  */
 export function resolveFitScale(
   clientWidth: number,
   contentWidth: number,
-  current = 1
+  _current = 1
 ): number {
-  if (!(clientWidth > 0)) return current > 0 && current < 1 ? current : 1;
-  if (contentWidth <= clientWidth + 1) {
-    if (current >= 1) return 1;
-    return computeFitScale(clientWidth, Math.max(contentWidth, 1), current);
-  }
-  return computeFitScale(
-    Math.max(0, clientWidth - FIT_SLACK_PX),
-    contentWidth,
-    current
+  if (!(clientWidth > 0)) return 1;
+  if (contentWidth <= clientWidth + 1) return 1;
+  return Math.min(
+    1,
+    computeFitScale(
+      Math.max(0, clientWidth - FIT_SLACK_PX),
+      contentWidth,
+      1
+    )
   );
 }
 

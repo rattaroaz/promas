@@ -742,6 +742,27 @@ describe("InvoiceProcess", () => {
     ]);
     expect(lines.join("\n")).not.toMatch(/,\s*(,|$)/);
     expect(lines.some((line) => line === "")).toBe(false);
+    const facts = [...(header?.querySelectorAll(".invoice-fact") ?? [])].map(
+      (el) => el.textContent
+    );
+    expect(facts).toContain("Fax: (714) 851-0999");
+    expect(facts).toContain("RESEDA, ");
+    expect(facts).toContain("CA, ");
+    expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
+  });
+
+  it("does not throw when company memo and fax are missing", () => {
+    const partial = { ...company } as Partial<typeof company>;
+    delete partial.memo;
+    delete partial.phone4;
+    delete partial.phone3;
+    expect(
+      siteHeaderLines(partial as typeof company, {
+        ...property,
+        state: "",
+        phone: "(818) 555-0100",
+      })
+    ).toEqual(["ACME, Bldg A", "Phone: (818) 555-0100"]);
   });
 
   it("omits blank site-header lines when only some fields are filled", () => {
