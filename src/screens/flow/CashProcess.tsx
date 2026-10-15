@@ -282,7 +282,7 @@ export function CashProcess({
         <>
           <div
             style={{
-              color: "var(--dos-yellow)",
+              color: "var(--app-highlight)",
               padding: "0.3em 0.5ch",
               whiteSpace: "pre",
             }}
@@ -329,7 +329,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
               {invoices.length === 0 && (
                 <div
                   className="dos-row"
-                  style={{ color: "var(--dos-yellow)" }}
+                  style={{ color: "var(--app-highlight)" }}
                 >
                   {
                     "  --> does not exsit in Receivable File !! Press Enter to Exit ..."
@@ -337,19 +337,19 @@ Company NO : ${company.companyNo}  ${company.name}`}
                 </div>
               )}
             </div>
-            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em" }}>
               <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Balance Total</div>
               <div>{money(balanceTotal)}</div>
               <div></div>
               <div></div>
             </div>
-            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold" }}>
               <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Receipt Total</div>
               <div>{money(receiptTotal)}</div>
               <div></div>
               <div></div>
             </div>
-            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold" }}>
               <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Ending Balance</div>
               <div>{money(endingBalance)}</div>
               <div></div>
@@ -450,7 +450,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
           foot="Esc=Cancel  Enter=Apply to open invoices (oldest first)"
         >
           <div className="dos-form">
-            <div style={{ color: "var(--dos-cyan-bright)", marginBottom: "0.5em" }}>
+            <div style={{ color: "var(--app-accent)", marginBottom: "0.5em" }}>
               Ending Balance Due: {money(endingBalance)}
             </div>
             <DotField label="Pay Date" width={16}>
@@ -479,7 +479,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
                 }
               />
             </DotField>
-            <div style={{ color: "var(--dos-yellow)", marginTop: "0.5em" }}>
+            <div style={{ color: "var(--app-highlight)", marginTop: "0.5em" }}>
               Payment Remaining to Apply --&gt; will distribute oldest open
               invoices first.
             </div>

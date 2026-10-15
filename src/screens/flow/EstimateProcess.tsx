@@ -166,7 +166,7 @@ export function EstimateProcess({
         <div className="dos-browse">
           <div
             style={{
-              color: "var(--dos-cyan-bright)",
+              color: "var(--app-accent)",
               padding: "0.2em 0.5ch",
             }}
           >
@@ -201,7 +201,7 @@ export function EstimateProcess({
               </button>
             ))}
             {rows.length === 0 && (
-              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row" style={{ color: "var(--app-highlight)" }}>
                 {"  (no proposals — press Ins)"}
               </div>
             )}
@@ -224,7 +224,7 @@ export function EstimateProcess({
           <div className="dos-form">
             <div
               style={{
-                color: "var(--dos-cyan-bright)",
+                color: "var(--app-accent)",
                 marginBottom: "0.5em",
               }}
             >

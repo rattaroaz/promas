@@ -155,9 +155,9 @@ export function TitleBar({
 }) {
   return (
     <div className="dos-titlebar">
-      {left && <span className="left">{left}</span>}
-      {right && <span className="right">{right}</span>}
-      {title}
+      <span className="left">{left ?? ""}</span>
+      <span className="title">{title}</span>
+      <span className="right">{right ?? ""}</span>
     </div>
   );
 }

@@ -249,12 +249,12 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <div className="dos-menu-frame" style={{ minWidth: "min(56ch, 100%)" }}>
           <div className="menu-header">{titles[screen]}</div>
           <div className="menu-body" style={{ padding: "1em 2ch" }}>
-            <div style={{ color: "var(--dos-yellow)", marginBottom: "1em" }}>
+            <div style={{ color: "var(--app-highlight)", marginBottom: "1em" }}>
               {blurbs[screen]}
             </div>
             <div
               style={{
-                color: "var(--dos-cyan-bright)",
+                color: "var(--app-accent)",
                 marginBottom: "1em",
                 fontSize: "0.9em",
                 wordBreak: "break-all",

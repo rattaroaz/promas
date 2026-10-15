@@ -482,6 +482,31 @@ export function computeFitScale(
   return Math.max(FIT_MIN, current * (avail / needed));
 }
 
+/**
+ * Next root scale.
+ *
+ * Slack is applied only when something is actually wider than the window.
+ * A full-bleed shell reports a scroll width equal to the window; subtracting
+ * slack from that made every measurement look ~28px too wide, and each title
+ * clock tick multiplied the scale again until it hit the floor.
+ */
+export function resolveFitScale(
+  clientWidth: number,
+  contentWidth: number,
+  current = 1
+): number {
+  if (!(clientWidth > 0)) return current > 0 && current < 1 ? current : 1;
+  if (contentWidth <= clientWidth + 1) {
+    if (current >= 1) return 1;
+    return computeFitScale(clientWidth, Math.max(contentWidth, 1), current);
+  }
+  return computeFitScale(
+    Math.max(0, clientWidth - FIT_SLACK_PX),
+    contentWidth,
+    current
+  );
+}
+
 function maxScrollWidth(root: HTMLElement): number {
   let max = 0;
   const walk = (el: Element) => {
@@ -511,8 +536,8 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
       applying = true;
       const current =
         parseFloat(doc.style.getPropertyValue("--fit-scale")) || 1;
-      const next = computeFitScale(
-        Math.max(0, root.clientWidth - FIT_SLACK_PX),
+      const next = resolveFitScale(
+        root.clientWidth,
         maxScrollWidth(root),
         current
       );

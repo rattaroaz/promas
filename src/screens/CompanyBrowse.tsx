@@ -290,7 +290,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 </button>
               ))}
               {rows.length === 0 && (
-                <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
+                <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
                   {"  ( no records )"}
                 </div>
               )}
@@ -344,12 +344,12 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               </button>
             ))}
             {visibleProps.length === 0 && props.length > 0 && (
-              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
                 {"  ( no properties match that address )"}
               </div>
             )}
             {props.length === 0 && (
-              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
                 {"  Property Empty !! Press Ins to Add Property"}
               </div>
             )}
@@ -466,7 +466,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
             {mode === "detail" && (
-              <div style={{ marginTop: "0.8em", color: "var(--dos-yellow)" }}>
+              <div style={{ marginTop: "0.8em", color: "var(--app-highlight)" }}>
                 Entered: {fmtDate(edit.enterDate || today())}
                 {"  "}
                 <button

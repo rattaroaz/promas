@@ -77,6 +77,66 @@ function propertyComments(property: Property): string {
     .join(" ");
 }
 
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+function firstEmail(...parts: string[]): string {
+  for (const part of parts) {
+    const match = part.match(EMAIL_RE);
+    if (match) return match[0];
+  }
+  return "";
+}
+
+function joinFacts(parts: string[]): string {
+  return parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function contactName(company: Company, property: Property): string {
+  const site = (property.manager || property.contact || "").trim();
+  if (site) return site;
+  const companyContact = company.contact.trim();
+  if (companyContact && !EMAIL_RE.test(companyContact)) return companyContact;
+  return "";
+}
+
+/** Company / property block. Empty fields are omitted, so lines never end with a comma or a blank. */
+export function siteHeaderLines(company: Company, property: Property): string[] {
+  const companyLabel = company.name.trim() || company.companyNo.trim();
+  const propertyName = property.name.trim();
+  const entry = property.keyInfo.trim();
+  const lockBox = lockBoxCode(property);
+  const contact = contactName(company, property);
+  const email = firstEmail(
+    company.contact,
+    company.memo,
+    property.memo,
+    property.comment1,
+    property.comment2
+  );
+  const lines = [
+    joinFacts([companyLabel, propertyName]),
+    formatPropertyAddress(property),
+    joinFacts([
+      entry ? `Entry code: ${entry}` : "",
+      lockBox ? `Lock box code: ${lockBox}` : "",
+    ]),
+    joinFacts([
+      contact ? `Contact: ${contact}` : "",
+      email ? `Email: ${email}` : "",
+    ]),
+    joinFacts([
+      property.phone2.trim() ? `Cell phone: ${property.phone2.trim()}` : "",
+      property.phone.trim() ? `Phone: ${property.phone.trim()}` : "",
+      company.phone4.trim() ? `Fax: ${company.phone4.trim()}` : "",
+    ]),
+    propertyComments(property) ? `Comments: ${propertyComments(property)}` : "",
+  ];
+  return lines.map((line) => line.trim()).filter(Boolean);
+}
+
 function InvoiceLineDescription({
   idx,
   description,
@@ -122,43 +182,12 @@ function InvoiceSiteHeader({
   company: Company;
   property: Property;
 }) {
-  const address = formatPropertyAddress(property);
-  const contact = (property.manager || property.contact).trim();
-  const phone = property.phone.trim();
-  const cell = property.phone2.trim();
-  const entry = property.keyInfo.trim();
-  const lockBox = lockBoxCode(property);
-  const comments = propertyComments(property);
+  const lines = siteHeaderLines(company, property);
   return (
     <div className="invoice-site-header">
-      <div>
-        Company No.: {company.companyNo} {company.name}
-      </div>
-      <div>
-        {property.proNo} {property.name}
-        {address ? ` — ${address}` : ""}
-      </div>
-      {contact ? <div className="invoice-fact">Contact: {contact}</div> : null}
-      {phone || cell ? (
-        <div className="invoice-fact-line">
-          {phone ? <span className="invoice-fact">Phone: {phone}</span> : null}
-          {cell ? <span className="invoice-fact">Cell: {cell}</span> : null}
-        </div>
-      ) : null}
-      {entry || lockBox ? (
-        <div className="invoice-fact-line">
-          {entry ? <span className="invoice-fact">Entry Code: {entry}</span> : null}
-          {lockBox ? (
-            <span className="invoice-fact">Lock Box Code: {lockBox}</span>
-          ) : null}
-        </div>
-      ) : null}
-      {comments ? (
-        <div className="invoice-comments">
-          <span className="invoice-fact">Comments: </span>
-          <span className="invoice-comment-text">{comments}</span>
-        </div>
-      ) : null}
+      {lines.map((line, i) => (
+        <div key={i}>{line}</div>
+      ))}
     </div>
   );
 }
@@ -733,7 +762,7 @@ export function InvoiceProcess({
               </button>
             ))}
             {originalRows.length === 0 && (
-              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
                 {"  (no invoices — press Ins or click New Invoice)"}
               </div>
             )}
@@ -1157,7 +1186,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
@@ -1185,7 +1214,7 @@ export function InvoiceProcess({
               <div>{money(lineTotal)}</div>
               <div></div>
             </div>
-            <div style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+            <div style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
               Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
               {"  "}
               <button
@@ -1200,7 +1229,7 @@ export function InvoiceProcess({
             <div
               style={{
                 marginTop: "0.6em",
-                color: "var(--dos-cyan)",
+                color: "var(--app-accent)",
                 fontSize: "0.85em",
               }}
             >

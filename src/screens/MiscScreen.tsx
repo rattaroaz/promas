@@ -369,7 +369,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
               {isImport ? " Import Original Database " : " Reindex Data Files "}
             </div>
             <div className="menu-body" style={{ padding: "1em 2ch" }}>
-              <div style={{ color: "var(--dos-yellow)", marginBottom: "1em" }}>
+              <div style={{ color: "var(--app-highlight)", marginBottom: "1em" }}>
                 {isImport
                   ? "This REPLACES all current companies, invoices, receipts, and related files."
                   : "*** DO NOT RUN THIS PROGRAM IF OTHER USERS ARE LOGGED IN ***"}
@@ -475,7 +475,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                 </button>
               ))}
               {forms.length === 0 && (
-                <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+                <div className="dos-row" style={{ color: "var(--app-highlight)" }}>
                   {"  Press Ins to add Form #"}
                 </div>
               )}

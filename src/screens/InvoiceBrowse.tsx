@@ -698,7 +698,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   + Line (Ins)
                 </button>
               </div>
-              <div style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ color: "var(--app-highlight)", fontWeight: "bold" }}>
                 Invoice Total : {money(lineTotal)}
               </div>
               <div></div>

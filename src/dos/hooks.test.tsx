@@ -3,6 +3,7 @@ import { render, renderHook, act } from "@testing-library/react";
 import {
   computeFitScale,
   pointerHoverMuted,
+  resolveFitScale,
   useBrowseIndex,
   useDosKeys,
 } from "./hooks";
@@ -23,6 +24,23 @@ describe("computeFitScale", () => {
 
   it("grows back toward 1 when there is slack", () => {
     expect(computeFitScale(800, 400, 0.5)).toBe(1);
+  });
+});
+
+describe("resolveFitScale", () => {
+  it("stays at 1 when the shell is only as wide as the window", () => {
+    let scale = 1;
+    for (let i = 0; i < 40; i++) scale = resolveFitScale(1024, 1024, scale);
+    expect(scale).toBe(1);
+  });
+
+  it("shrinks real overflow once and does not ratchet on later ticks", () => {
+    const first = resolveFitScale(1024, 1600, 1);
+    expect(first).toBeLessThan(0.7);
+    expect(first).toBeGreaterThan(0.5);
+    let scale = first;
+    for (let i = 0; i < 30; i++) scale = resolveFitScale(1024, 1024, scale);
+    expect(scale).toBeCloseTo(first, 5);
   });
 });
 

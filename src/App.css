@@ -5,7 +5,10 @@
 
 :root {
   --fit-scale: 1;
-  --dos-blue: #0000aa;
+  --dos-blue: #ffffff;
+  --app-ink: #161616;
+  --app-accent: #0b4f6c;
+  --app-highlight: #6a4500;
   --dos-blue-bright: #0000ff;
   --dos-cyan: #00aaaa;
   --dos-cyan-bright: #55ffff;
@@ -37,8 +40,8 @@ body,
 #root {
   height: 100%;
   overflow: hidden;
-  background: var(--dos-black);
-  color: var(--dos-white-bright);
+  background: #ffffff;
+  color: var(--app-ink);
   font-family: var(--font-dos);
   /* 2× at the default window; grows with the viewport; --fit-scale keeps screens on-width */
   font-size: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
@@ -69,7 +72,7 @@ textarea {
   width: 100%;
   max-width: 100%;
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -153,16 +156,39 @@ textarea {
   font-weight: bold;
   padding: 0 1ch;
   flex-shrink: 0;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
+  /* Chrome only: the date, title, and clock share one row at the unscaled
+     root size. A smaller bar keeps them from painting over each other. */
+  font-size: 0.68em;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 1.5ch;
+}
+
+.dos-titlebar .left,
+.dos-titlebar .title,
+.dos-titlebar .right {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dos-titlebar .left {
-  float: left;
+  grid-column: 1;
+  justify-self: start;
   font-weight: normal;
 }
 
+.dos-titlebar .title {
+  grid-column: 2;
+  justify-self: center;
+}
+
 .dos-titlebar .right {
-  float: right;
+  grid-column: 3;
+  justify-self: end;
   font-weight: normal;
 }
 
@@ -192,7 +218,7 @@ textarea {
   border: none;
   position: relative;
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -200,22 +226,22 @@ textarea {
 
 .dos-box.cyan-frame {
   box-shadow:
-    0 0 0 1px var(--dos-cyan-bright),
-    inset 0 0 0 1px var(--dos-cyan-bright);
+    0 0 0 1px var(--app-accent),
+    inset 0 0 0 1px var(--app-accent);
   margin: 1px;
 }
 
 .dos-box.white-frame {
   box-shadow:
-    0 0 0 1px var(--dos-white-bright),
-    inset 0 0 0 1px var(--dos-white-bright);
+    0 0 0 1px #222222,
+    inset 0 0 0 1px #222222;
   margin: 1px;
 }
 
 .dos-box.yellow-frame {
   box-shadow:
-    0 0 0 1px var(--dos-yellow),
-    inset 0 0 0 1px var(--dos-yellow);
+    0 0 0 1px var(--app-highlight),
+    inset 0 0 0 1px var(--app-highlight);
   margin: 1px;
 }
 
@@ -255,8 +281,8 @@ textarea {
 
 .dos-menu-frame {
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
-  border: 2px double var(--dos-cyan-bright);
+  color: var(--app-ink);
+  border: 2px double var(--app-accent);
   padding: 0;
   min-width: min(42ch, 100%);
   max-width: 100%;
@@ -270,7 +296,7 @@ textarea {
   text-align: center;
   font-weight: bold;
   padding: 0 1ch;
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  border-bottom: 1px solid var(--app-accent);
 }
 
 .dos-menu-frame .menu-body {
@@ -283,7 +309,7 @@ textarea {
   text-align: left;
   background: transparent;
   border: none;
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   padding: 0 2ch;
   cursor: pointer;
   white-space: pre;
@@ -299,7 +325,7 @@ textarea {
 }
 
 .dos-menu-item .num {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   margin-right: 1ch;
 }
 
@@ -311,7 +337,7 @@ textarea {
 
 .dos-menu-item .accel {
   text-decoration: underline;
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-menu-item.hot .accel,
@@ -321,7 +347,7 @@ textarea {
 
 .dos-copyright {
   margin-top: 1.5em;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   text-align: center;
   font-size: 0.9em;
   white-space: pre-wrap;
@@ -344,7 +370,7 @@ textarea {
 }
 
 .dos-browse-header {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   white-space: pre;
   font-weight: bold;
   border-bottom: 1px solid var(--dos-cyan);
@@ -366,7 +392,7 @@ textarea {
 }
 
 .browse-grid-header {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   font-weight: bold;
   border-bottom: 1px solid var(--dos-cyan);
   padding-bottom: 0;
@@ -400,7 +426,7 @@ textarea {
 
 .browse-grid .sort-btn:hover,
 .browse-grid .sort-btn:focus {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   outline: none;
 }
 
@@ -494,7 +520,7 @@ textarea {
   text-align: left;
   background: transparent;
   border: none;
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   padding: 0 0;
   cursor: pointer;
   white-space: pre;
@@ -565,7 +591,7 @@ textarea {
 
 .dos-dialog {
   background: var(--dos-blue);
-  border: 2px double var(--dos-white-bright);
+  border: 2px double #222222;
   box-shadow: 3px 3px 0 #000044;
   min-width: 0;
   width: min(92ch, 100%);
@@ -573,7 +599,7 @@ textarea {
   max-height: 90%;
   display: flex;
   flex-direction: column;
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   box-sizing: border-box;
 }
 
@@ -590,11 +616,13 @@ textarea {
 .dos-dialog.red {
   border-color: var(--dos-red-bright);
   background: var(--dos-red);
+  color: var(--dos-white-bright);
 }
 
 .dos-dialog .dlg-title {
-  background: var(--dos-white-bright);
-  color: var(--dos-blue);
+  background: #f3f3f3;
+  color: #111111;
+  border-bottom: 2px solid #111111;
   text-align: center;
   font-weight: bold;
   padding: 0 1ch;
@@ -613,9 +641,9 @@ textarea {
 }
 
 .dos-dialog .dlg-foot {
-  border-top: 1px solid var(--dos-cyan);
+  border-top: 1px solid var(--app-accent);
   padding: 0.3em 1ch;
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   text-align: center;
   white-space: pre-wrap;
   font-size: 0.95em;
@@ -638,7 +666,7 @@ textarea {
 }
 
 .dos-field label {
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   white-space: pre;
   flex-shrink: 1;
   min-width: 0;
@@ -674,7 +702,7 @@ textarea {
 .dos-input:disabled,
 .dos-input:read-only,
 .dos-select:disabled {
-  color: var(--dos-white);
+  color: #333333;
   background: transparent;
   border-bottom-color: transparent;
 }
@@ -755,7 +783,7 @@ textarea {
 }
 
 .invoice-line-head {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   margin: 0.5em 0 0.15em;
   align-items: end;
 }
@@ -788,7 +816,8 @@ textarea {
 
 /* Invoice site header: each fact is one label:value that does not split. */
 .invoice-site-header {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
+  font-size: 1.5em;
   padding: 0.2em 0.5ch 0.35em;
   margin-bottom: 0.35em;
   white-space: normal;
@@ -978,9 +1007,9 @@ textarea {
 }
 
 .dos-searchline .dos-input {
-  background: var(--dos-blue);
-  color: var(--dos-white-bright);
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  background: #ffffff;
+  color: var(--app-ink);
+  border-bottom: 1px solid var(--app-accent);
   flex: 1;
 }
 
@@ -995,7 +1024,7 @@ textarea {
   flex: 1;
   overflow: hidden;
   background: var(--dos-blue);
-  color: var(--dos-white-bright);
+  color: var(--app-ink);
   padding: 0.5em 1ch;
   white-space: pre;
   font-family: var(--font-dos);
@@ -1009,12 +1038,12 @@ textarea {
 }
 
 .dos-report .hdr {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   font-weight: bold;
 }
 
 .dos-report .total {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font-weight: bold;
 }
 
@@ -1029,7 +1058,7 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -1037,7 +1066,7 @@ textarea {
 
 .dos-report .aging-cono:hover,
 .dos-report .aging-cono:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .aging-invno {
@@ -1046,7 +1075,7 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -1054,7 +1083,7 @@ textarea {
 
 .aging-invno:hover,
 .aging-invno:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report .sales-row {
@@ -1078,17 +1107,17 @@ textarea {
 
 .dos-report .sales-inv:hover,
 .dos-report .sales-inv:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report .sales-invno {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   text-decoration: underline;
 }
 
 .dos-report .sales-inv:hover .sales-invno,
 .dos-report .sales-inv:focus .sales-invno {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report .sales-sort {
@@ -1097,7 +1126,7 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -1105,7 +1134,7 @@ textarea {
 
 .dos-report .sales-sort:hover,
 .dos-report .sales-sort:focus {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .dos-report.payroll-landscape {
@@ -1129,10 +1158,10 @@ textarea {
 
 .payroll-grid th,
 .payroll-grid td {
-  border-left: 1px solid var(--dos-cyan-bright);
-  border-right: 1px solid var(--dos-cyan-bright);
-  border-top: 1px solid var(--dos-cyan);
-  border-bottom: 1px solid var(--dos-cyan);
+  border-left: 1px solid var(--app-accent);
+  border-right: 1px solid var(--app-accent);
+  border-top: 1px solid var(--app-accent);
+  border-bottom: 1px solid var(--app-accent);
   padding: 0.12em 0.7ch;
   vertical-align: middle;
   overflow: hidden;
@@ -1141,17 +1170,17 @@ textarea {
 }
 
 .payroll-grid thead th {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   font-weight: bold;
-  border-top: 1px solid var(--dos-cyan-bright);
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  border-top: 1px solid var(--app-accent);
+  border-bottom: 1px solid var(--app-accent);
 }
 
 .payroll-grid tfoot td {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font-weight: bold;
-  border-top: 1px solid var(--dos-cyan-bright);
-  border-bottom: 1px solid var(--dos-cyan-bright);
+  border-top: 1px solid var(--app-accent);
+  border-bottom: 1px solid var(--app-accent);
 }
 
 .payroll-grid .num {
@@ -1165,7 +1194,7 @@ textarea {
 }
 
 .payroll-grid .payroll-job {
-  color: var(--dos-white);
+  color: #333333;
   margin-top: 0.1em;
 }
 
@@ -1193,7 +1222,7 @@ textarea {
 }
 
 .payroll-grid tbody tr.payroll-row:hover td {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 .payroll-grid .sales-invno {
@@ -1202,14 +1231,14 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
 }
 
 .payroll-grid tbody tr.payroll-row:hover .sales-invno {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
 }
 
 @media print {
@@ -1277,8 +1306,8 @@ textarea {
 
 .dos-help {
   background: var(--dos-blue);
-  border: 2px double var(--dos-yellow);
-  color: var(--dos-white-bright);
+  border: 2px double var(--app-accent);
+  color: var(--app-ink);
   padding: 0.5em 2ch 1em;
   min-width: 0;
   width: min(70ch, calc(100% - 2ch));
@@ -1287,14 +1316,14 @@ textarea {
 }
 
 .dos-help h3 {
-  color: var(--dos-yellow);
+  color: var(--app-highlight);
   text-align: center;
   margin-bottom: 0.5em;
   font-size: 1em;
 }
 
 .dos-help pre {
-  color: var(--dos-cyan-bright);
+  color: var(--app-accent);
   white-space: pre-wrap;
   font-family: var(--font-dos);
   line-height: 1.35;

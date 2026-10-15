@@ -761,7 +761,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         ) : text ? (
           text
         ) : (
-          <span style={{ color: "var(--dos-yellow)" }}>
+          <span style={{ color: "var(--app-highlight)" }}>
             {running
               ? "Generating report......"
               : "Press Enter to run report."}
@@ -837,7 +837,7 @@ function AgingReport({
               <div>{money(r.openBal)}</div>
             </button>
           ))}
-          <div style={{ gridColumn: "1 / -1", display: "contents", color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em" }}>
+          <div style={{ gridColumn: "1 / -1", display: "contents", color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em" }}>
             <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
             <div>{money(tc)}</div>
             <div>{money(t30)}</div>
@@ -896,7 +896,7 @@ function AgingInvoiceList({
     <>
       <div
         style={{
-          color: "var(--dos-yellow)",
+          color: "var(--app-highlight)",
           padding: "0.3em 0.5ch",
           whiteSpace: "pre",
         }}
@@ -940,7 +940,7 @@ Open Balance.... ${money(company.openBal)}`}
             </button>
           ))}
           {invoices.length === 0 && (
-            <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+            <div className="dos-row" style={{ color: "var(--app-highlight)" }}>
               {"  --> does not exsit in Receivable File !! Press Enter to Exit ..."}
             </div>
           )}
@@ -1028,7 +1028,7 @@ function SalesReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "12ch 7ch 8ch 8ch 12ch 12ch 12ch 12ch 12ch" }}>
+      <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "12ch 7ch 8ch 8ch 12ch 12ch 12ch 12ch 12ch" }}>
         <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
         <div>{money(sa)}</div>
         <div>{money(dep)}</div>
@@ -1100,7 +1100,7 @@ function PayrollReport({
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
+        <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
           <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
           <div>{money(tot)}</div>
           <div>{money(mat)}</div>
@@ -1141,7 +1141,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}>
+        <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}>
           <div style={{ gridColumn: "1 / 7" }}>{`Total Counts: ${rows.length}`}</div>
         </div>
       </div>
@@ -1178,7 +1178,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
           </div>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--dos-yellow)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
+      <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
         <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
         <div>{money(total)}</div>
       </div>
@@ -1216,7 +1216,7 @@ function MissingInvoicesReport({ rows }: { rows: MissingInvoiceRow[] }) {
           </div>
         ))}
       </div>
-      <div style={{ color: "var(--dos-yellow)", marginTop: "0.5em" }}>
+      <div style={{ color: "var(--app-highlight)", marginTop: "0.5em" }}>
         {rows.filter(r => r.status.includes("Void Work")).length} Void Work Orders, {rows.filter(r => r.status.includes("Not Build")).length} Not Built, {rows.filter(r => !r.status.includes("Void") && !r.status.includes("Not Build")).length} Built
       </div>
     </div>
@@ -1283,7 +1283,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
                     </div>
                   ))}
                 </div>
-                <div style={{ color: "var(--dos-yellow)", marginTop: "0.5em" }}>
+                <div style={{ color: "var(--app-highlight)", marginTop: "0.5em" }}>
                   Property Total: {mine.length}
                 </div>
               </>
