@@ -40,15 +40,27 @@ import {
 } from "../../lib/invoiceLinePresets";
 type Mode = "browse" | "edit";
 
-/** Description column is wide enough for the type picker plus 40 characters. */
-const INVOICE_LINE_COLUMNS = "46ch 14ch 12ch 4ch";
-
-/** One line holds 40 characters. The field grows so the whole description stays visible. */
-function descriptionRows(text: string): number {
+/** How many textarea rows `text` needs when one row holds `charsPerLine`. */
+export function descriptionRowCount(text: string, charsPerLine: number): number {
+  const width = Math.max(1, Math.floor(charsPerLine));
   if (!text) return 1;
   return text.split("\n").reduce((rows, line) => {
-    return rows + Math.max(1, Math.ceil(line.length / 40));
+    return rows + Math.max(1, Math.ceil(line.length / width));
   }, 0);
+}
+
+function charsAcross(el: HTMLTextAreaElement): number {
+  const style = getComputedStyle(el);
+  const probe = document.createElement("span");
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:${style.font};`;
+  probe.textContent = "0000000000";
+  document.body.appendChild(probe);
+  const charW = probe.getBoundingClientRect().width / 10;
+  probe.remove();
+  if (!charW || !el.clientWidth) return 0;
+  const pad = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  return Math.max(1, Math.floor((el.clientWidth - pad) / charW));
 }
 
 /**
@@ -179,11 +191,31 @@ function InvoiceLineDescription({
   onChange: (value: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [rows, setRows] = useState(1);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const fit = () => {
+      const across = charsAcross(el);
+      const fromChars = across > 0 ? descriptionRowCount(description, across) : 1;
+      el.rows = 1;
+      el.style.height = "auto";
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+      const measured =
+        lineHeight > 0 ? Math.round(el.scrollHeight / lineHeight) : fromChars;
+      const next = Math.max(fromChars, measured || 1);
+      el.rows = next;
+      el.style.height = "auto";
+      const border = el.offsetHeight - el.clientHeight;
+      el.style.height = `${el.scrollHeight + border}px`;
+      setRows((prev) => (prev === next ? prev : next));
+    };
+    fit();
+    const parent = el.parentElement;
+    if (!parent || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(parent);
+    return () => observer.disconnect();
   }, [description]);
   return (
     <textarea
@@ -191,7 +223,7 @@ function InvoiceLineDescription({
       className="dos-input invoice-line-desc"
       aria-label={`Line ${idx + 1} custom text`}
       readOnly={readOnly}
-      rows={descriptionRows(description)}
+      rows={rows}
       value={description}
       onChange={(e) => {
         if (readOnly) return;
@@ -225,7 +257,7 @@ function InvoiceSiteHeader({
             {row.parts.map((part, j) => (
               <span key={j} className="invoice-fact">
                 {part}
-                {j < row.parts.length - 1 ? "," : ""}
+                {j < row.parts.length - 1 ? ", " : ""}
               </span>
             ))}
           </div>
@@ -253,8 +285,6 @@ export function InvoiceProcess({
   const [isNewInvoice, setIsNewInvoice] = useState(false);
   const [workPersons, setWorkPersons] = useState<string[]>([]);
   const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
-  const [deleteNameAsk, setDeleteNameAsk] = useState<string | null>(null);
-  const [deletePaintAsk, setDeletePaintAsk] = useState<string | null>(null);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
   );
@@ -357,29 +387,6 @@ export function InvoiceProcess({
     }
   }
 
-  async function confirmDeleteWorkPerson() {
-    const name = deleteNameAsk;
-    if (!name) return;
-    try {
-      setWorkPersons(await api.deleteWorkPerson(name));
-    } catch {
-      setWorkPersons((prev) =>
-        prev.filter((n) => n.toLowerCase() !== name.toLowerCase())
-      );
-    }
-    if (editing) {
-      setEditing({
-        ...editing,
-        lines: editing.lines.map((l) =>
-          l.empNo.trim().toLowerCase() === name.toLowerCase()
-            ? { ...l, empNo: "" }
-            : l
-        ),
-      });
-    }
-    setDeleteNameAsk(null);
-  }
-
   async function rememberWorkPerson(raw: string) {
     const name = raw.trim();
     if (!name) return;
@@ -413,25 +420,6 @@ export function InvoiceProcess({
       ...editing,
       lines: editing.lines.map((l) => ({ ...l, empNo: name })),
     });
-  }
-
-  async function confirmDeletePaintSupplyCo() {
-    const name = deletePaintAsk;
-    if (!name) return;
-    try {
-      setPaintSupplyCos(await api.deletePaintSupplyCo(name));
-    } catch {
-      setPaintSupplyCos((prev) =>
-        prev.filter((n) => n.toLowerCase() !== name.toLowerCase())
-      );
-    }
-    if (editing?.invoice.paintSupplyCo.trim().toLowerCase() === name.toLowerCase()) {
-      setEditing({
-        ...editing,
-        invoice: { ...editing.invoice, paintSupplyCo: "" },
-      });
-    }
-    setDeletePaintAsk(null);
   }
 
   async function rememberPaintSupplyCo(raw: string) {
@@ -644,8 +632,6 @@ export function InvoiceProcess({
     onEscape: () => {
       if (help) setHelp(false);
       else if (voidAsk) setVoidAsk(false);
-      else if (deleteNameAsk) setDeleteNameAsk(null);
-      else if (deletePaintAsk) setDeletePaintAsk(null);
       else if (confirmSave) setConfirmSave(false);
       else if (mode === "edit") {
         setEditing(null);
@@ -656,7 +642,7 @@ export function InvoiceProcess({
     },
     onF1: () => setHelp(true),
     onInsert: () => {
-      if (help || voidAsk || confirmSave || deleteNameAsk || deletePaintAsk) return;
+      if (help || voidAsk || confirmSave) return;
       if (mode === "browse") void startNew();
     },
     onEnter: () => {
@@ -680,26 +666,6 @@ export function InvoiceProcess({
       if (mode === "edit") save();
     },
     onChar: (ch) => {
-      if (deleteNameAsk) {
-        if (ch === "y" || ch === "Y") {
-          void confirmDeleteWorkPerson();
-          return true;
-        }
-        if (ch === "n" || ch === "N") {
-          setDeleteNameAsk(null);
-          return true;
-        }
-      }
-      if (deletePaintAsk) {
-        if (ch === "y" || ch === "Y") {
-          void confirmDeletePaintSupplyCo();
-          return true;
-        }
-        if (ch === "n" || ch === "N") {
-          setDeletePaintAsk(null);
-          return true;
-        }
-      }
       if (voidAsk) {
         if (ch === "y" || ch === "Y") {
           doVoid();
@@ -842,7 +808,6 @@ export function InvoiceProcess({
           foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
           <div className="dos-form invoice-edit">
-            <InvoiceSiteHeader company={company} property={property} />
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
                 <input
@@ -1066,21 +1031,6 @@ export function InvoiceProcess({
                       void rememberPaintSupplyCo(editing.invoice.paintSupplyCo);
                     }}
                   />
-                  <button
-                    type="button"
-                    className="dos-btn danger"
-                    aria-label={`Remove ${editing.invoice.paintSupplyCo || "paint supply company"} from list`}
-                    disabled={!listedPaintSupplyCo(editing.invoice.paintSupplyCo ?? "")}
-                    title="Remove name from list"
-                    onClick={() => {
-                      const name = listedPaintSupplyCo(
-                        editing.invoice.paintSupplyCo ?? ""
-                      );
-                      if (name) setDeletePaintAsk(name);
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
               </DotField>
             </div>
@@ -1114,38 +1064,22 @@ export function InvoiceProcess({
                       void rememberWorkPerson(canon);
                     }}
                   />
-                  <button
-                    type="button"
-                    className="dos-btn danger"
-                    aria-label={`Remove ${invoiceWorkPerson(editing.lines) || "work person"} from list`}
-                    disabled={!listedWorkPerson(invoiceWorkPerson(editing.lines))}
-                    title="Remove name from list"
-                    onClick={() => {
-                      const name = listedWorkPerson(
-                        invoiceWorkPerson(editing.lines)
-                      );
-                      if (name) setDeleteNameAsk(name);
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
               </DotField>
             </div>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+            <div className="browse-grid browse-grid-header invoice-line-grid" style={{ margin: "0.5em 0 0.2em" }}>
               <div>Description</div>
-              <div>WorkDate</div>
-              <div>Price</div>
-              <div>Del</div>
+              <div className="invoice-line-end">WorkDate</div>
+              <div className="invoice-line-end">Price</div>
+              <div className="invoice-line-end">Del</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+              <div key={idx} className="browse-grid invoice-line-grid" style={{ marginBottom: "0.12em" }}>
                 <div className="invoice-line-type">
                   <select
                     className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
-                    style={{ flex: "0 0 3ch" }}
                     value={
                       isPresetDescription(line.description)
                         ? line.description
@@ -1179,11 +1113,11 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="invoice-line-end" style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
                     type="date"
-                    style={{ width: "14ch" }}
+                    style={{ width: "100%" }}
                     aria-label={`Line ${idx + 1} work date`}
                     value={line.workDate || editing.invoice.salesDate}
                     onChange={(e) => {
@@ -1193,12 +1127,12 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="invoice-line-end" style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
                     type="number"
                     step="0.01"
-                    style={{ width: "10ch" }}
+                    style={{ width: "100%" }}
                     aria-label={`Price ${idx + 1}`}
                     value={line.price || ""}
                     onChange={(e) => {
@@ -1213,7 +1147,7 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div className="invoice-line-end" style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
                     style={{ width: "100%", minHeight: "44px" }}
@@ -1229,7 +1163,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+            <div className="browse-grid invoice-line-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
@@ -1254,8 +1188,8 @@ export function InvoiceProcess({
                   + Line
                 </button>
               </div>
-              <div>{money(lineTotal)}</div>
-              <div></div>
+              <div className="invoice-line-end">{money(lineTotal)}</div>
+              <div className="invoice-line-end"></div>
             </div>
             <div style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
               Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
@@ -1282,24 +1216,6 @@ export function InvoiceProcess({
         </Dialog>
       )}
 
-      {deleteNameAsk && (
-        <Prompt
-          question={`Remove "${deleteNameAsk}" from Work Person list? (Y/N)`}
-          onYes={() => {
-            void confirmDeleteWorkPerson();
-          }}
-          onNo={() => setDeleteNameAsk(null)}
-        />
-      )}
-      {deletePaintAsk && (
-        <Prompt
-          question={`Remove "${deletePaintAsk}" from Paint Supply Co. list? (Y/N)`}
-          onYes={() => {
-            void confirmDeletePaintSupplyCo();
-          }}
-          onNo={() => setDeletePaintAsk(null)}
-        />
-      )}
       {voidAsk && (
         <Prompt
           question={`Do you want Void (Y/N) ?  Invoice #${current?.invoice}`}

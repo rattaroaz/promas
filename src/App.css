@@ -762,19 +762,30 @@ textarea {
 }
 
 .dos-choice {
-  flex: 0 0 1.45em;
-  width: 1.45em;
-  min-width: 1.45em;
-  max-width: 1.45em;
+  --choice-caret: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3.2 5.4 L8 10.6 L12.8 5.4' fill='none' stroke='%23ffff55' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --choice-caret-on: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3.2 5.4 L8 10.6 L12.8 5.4' fill='none' stroke='%23000000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  flex: 0 0 1.7em;
+  width: 1.7em;
+  min-width: 1.7em;
+  max-width: 1.7em;
+  height: 1.25em;
+  align-self: center;
   padding: 0;
   color: transparent;
   cursor: pointer;
   overflow: hidden;
+  border: 1px solid var(--dos-cyan);
+  background-color: var(--dos-black);
+  background-image: var(--choice-caret);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 1.05em 1.05em;
 }
 
 .dos-choice:focus {
   color: transparent;
-  background: var(--dos-cyan-bright);
+  background-color: var(--dos-cyan-bright);
+  background-image: var(--choice-caret-on);
 }
 
 .dos-choice option {
@@ -795,12 +806,71 @@ textarea {
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 16ch) minmax(0, 11ch) auto;
-  column-gap: 0.4ch;
+  /* Description takes the row. WorkDate, Price, and Del sit on the right edge. */
+  grid-template-columns: minmax(0, 1fr) 14ch 12ch 4ch;
+  /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
+  column-gap: 2ch;
   align-items: center;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+.invoice-line-grid > .invoice-line-end {
+  text-align: right;
+}
+
+.invoice-line-grid > .invoice-line-end .dos-input,
+.invoice-line-grid > .invoice-line-end .dos-btn {
+  text-align: right;
+  padding-right: 0;
+}
+
+/* Spinners sit in the padding box and pull the digits off the column edge. */
+.invoice-line-grid > .invoice-line-end input[type="number"]::-webkit-outer-spin-button,
+.invoice-line-grid > .invoice-line-end input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.invoice-line-grid > .invoice-line-end input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* The picker hit target is only the calendar icon, so the date text stays editable. */
+.invoice-line-grid > .invoice-line-end input[type="date"] {
+  position: relative;
+}
+
+.invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1.35em;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 1;
+  filter: none;
+  cursor: pointer;
+  background-image: none;
+  background-color: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
+  mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: right center;
+  mask-position: right center;
+  -webkit-mask-size: 1.35em 1.35em;
+  mask-size: 1.35em 1.35em;
+}
+
+.invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
+  text-align: right;
+  padding: 0 1.35em 0 0;
+  margin: 0;
 }
 
 .invoice-line-head {
@@ -830,9 +900,9 @@ textarea {
 }
 
 .invoice-line-grid .dos-choice {
-  width: 1.45em;
-  max-width: 1.45em;
-  flex: 0 0 1.45em;
+  width: 1.7em;
+  max-width: 1.7em;
+  flex: 0 0 1.7em;
 }
 
 /* Invoice site header: 1.5× type. Each value stays on one line; the row wraps between values. */
@@ -846,25 +916,19 @@ textarea {
   max-width: 100%;
   min-width: 0;
   overflow: visible;
+  user-select: text;
 }
 
 .invoice-fact-line {
-  display: flex;
-  flex-wrap: wrap;
+  display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
 }
 
 .invoice-fact {
+  display: inline;
   white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-/* A trailing space inside a flex item is dropped. The comma stays on the
-   value; this margin is the space, and the line still wraps between values. */
-.invoice-fact:not(:last-child) {
-  margin-right: 1ch;
 }
 
 .invoice-comments {
@@ -936,12 +1000,12 @@ textarea {
   min-width: 0;
 }
 
-/* 40 characters per line. Height is set from scrollHeight so the whole description shows. */
-.invoice-line-desc {
-  width: 40ch;
-  min-width: 40ch;
-  max-width: 40ch;
-  flex: 0 0 40ch;
+/* Fills the description column beside the caret. Print wraps the same full text. */
+.invoice-line-grid .invoice-line-desc {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  flex: 1 1 0;
   padding: 0;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -963,8 +1027,9 @@ textarea {
 }
 
 .invoice-work-person .dos-choice {
-  flex: 0 0 1.45em;
-  width: 1.45em;
+  flex: 0 0 1.7em;
+  width: 1.7em;
+  max-width: 1.7em;
 }
 
 .invoice-work-person .dos-input {
