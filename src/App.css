@@ -852,8 +852,19 @@ textarea {
   height: 100%;
   margin: 0;
   padding: 0;
-  opacity: 0;
+  opacity: 1;
+  filter: none;
   cursor: pointer;
+  background-image: none;
+  background-color: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
+  mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: right center;
+  mask-position: right center;
+  -webkit-mask-size: 1.35em 1.35em;
+  mask-size: 1.35em 1.35em;
 }
 
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
