@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
-import { InvoiceProcess } from "./InvoiceProcess";
+import { InvoiceProcess, siteHeaderLines } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
@@ -703,9 +703,16 @@ describe("InvoiceProcess", () => {
     expect(screen.queryByText(/Order Person/i)).not.toBeInTheDocument();
   });
 
-  it("shows the full property address and contact facts, wrapping in the header", async () => {
+  it("lays the site header out in order and skips empty fields", async () => {
+    const co = {
+      ...company,
+      name: "OAKS MANAGEMENT COMPANY",
+      contact: "office@oaks.example",
+      phone4: "(714) 851-0999",
+    };
     const site = {
       ...property,
+      name: "WILLOWS APARTMENTS",
       street: "19609 OAKWOOD WAY SUITE 100",
       city: "RESEDA",
       state: "CA",
@@ -719,23 +726,72 @@ describe("InvoiceProcess", () => {
       comment2: "Lock box 1984 on the front gate.",
     };
     renderApp(
-      <InvoiceProcess company={company} property={site} onBack={vi.fn()} />
+      <InvoiceProcess company={co} property={site} onBack={vi.fn()} />
     );
     await screen.findByText(/1 invoices/i);
     const header = document.querySelector(".invoice-site-header");
     expect(header).not.toBeNull();
-    const text = header?.textContent ?? "";
-    expect(text).toContain("19609 OAKWOOD WAY SUITE 100, RESEDA, CA, 91335");
-    expect(text).toContain("Contact: MARIA GONZALEZ");
-    expect(text).toContain("Phone: (818) 555-0191");
-    expect(text).toContain("Cell: (818) 555-0143");
-    expect(text).toContain("Entry Code: *2424");
-    expect(text).toContain("Lock Box Code: 1984");
-    expect(text).not.toContain("Building entry");
-    expect(text).toContain(
-      "Comments: Pick up key from the rental office. Lock box 1984 on the front gate."
+    const lines = [...(header?.children ?? [])].map((el) => el.textContent);
+    expect(lines).toEqual([
+      "OAKS MANAGEMENT COMPANY,WILLOWS APARTMENTS",
+      "19609 OAKWOOD WAY SUITE 100,RESEDA,CA,91335",
+      "Entry code: *2424,Lock box code: 1984",
+      "Contact: MARIA GONZALEZ,Email: office@oaks.example",
+      "Cell phone: (818) 555-0143,Phone: (818) 555-0191,Fax: (714) 851-0999",
+      "Comments: Pick up key from the rental office. Lock box 1984 on the front gate.",
+    ]);
+    expect(lines.join("\n")).not.toMatch(/,\s*(,|$)/);
+    expect(lines.some((line) => line === "")).toBe(false);
+    const facts = [...(header?.querySelectorAll(".invoice-fact") ?? [])].map(
+      (el) => el.textContent
     );
-    expect(text).not.toContain("Unit keys:");
+    expect(facts).toContain("Fax: (714) 851-0999");
+    expect(facts).toContain("RESEDA,");
+    expect(facts).toContain("CA,");
+    expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
+  });
+
+  it("does not throw when company memo and fax are missing", () => {
+    const partial = { ...company } as Partial<typeof company>;
+    delete partial.memo;
+    delete partial.phone4;
+    delete partial.phone3;
+    expect(
+      siteHeaderLines(partial as typeof company, {
+        ...property,
+        state: "",
+        phone: "(818) 555-0100",
+      })
+    ).toEqual(["ACME, Bldg A", "Phone: (818) 555-0100"]);
+  });
+
+  it("omits blank site-header lines when only some fields are filled", () => {
+    const lines = siteHeaderLines(
+      { ...company, name: "ACME", contact: "", phone4: "" },
+      {
+        ...property,
+        name: "Bldg A",
+        street: "1 Main",
+        city: "",
+        state: "",
+        zip: "",
+        phone: "(818) 555-0100",
+        phone2: "",
+        manager: "",
+        contact: "",
+        keyInfo: "",
+        pageMap: "",
+        comment1: "",
+        comment2: "",
+        memo: "",
+      }
+    );
+    expect(lines).toEqual([
+      "ACME, Bldg A",
+      "1 Main",
+      "Phone: (818) 555-0100",
+    ]);
+    expect(lines.join(" ")).not.toMatch(/,\s*,|,\s*$/);
   });
 
   it("shows page map as the lock box code when it is filled", async () => {
@@ -749,16 +805,15 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={site} onBack={vi.fn()} />
     );
     await screen.findByText(/1 invoices/i);
-    const text = document.querySelector(".invoice-site-header")?.textContent ?? "";
-    expect(text).toContain("Entry Code: *2424");
-    expect(text).toContain("Lock Box Code: LB 1984");
-    expect(text).not.toContain("Lock Box Code: 9999");
-    expect(text).not.toContain("Building entry");
-    const facts = [...document.querySelectorAll(".invoice-fact")].map(
-      (el) => el.textContent
+    const lines = [
+      ...(document.querySelector(".invoice-site-header")?.children ?? []),
+    ].map((el) => el.textContent);
+    expect(lines.some((line) => line?.includes("Entry code: *2424"))).toBe(true);
+    expect(lines.some((line) => line?.includes("Lock box code: LB 1984"))).toBe(
+      true
     );
-    expect(facts).toContain("Entry Code: *2424");
-    expect(facts).toContain("Lock Box Code: LB 1984");
+    expect(lines.join(" ")).not.toContain("Lock box code: 9999");
+    expect(lines.join(" ")).not.toContain("Building entry");
   });
 
   it("shows a 40-character description and wraps longer text onto two lines", async () => {

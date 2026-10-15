@@ -442,7 +442,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 </button>
               </div>
               <div></div>
-              <div style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ color: "var(--app-highlight)", fontWeight: "bold" }}>
                 Total: {money(editing.lines.reduce((s, l) => s + l.price, 0))}
               </div>
             </div>

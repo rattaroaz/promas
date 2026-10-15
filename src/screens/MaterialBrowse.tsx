@@ -228,7 +228,7 @@ export function MaterialBrowse({
                 </button>
               ))}
               {rows.length === 0 && (
-                <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+                <div className="dos-row" style={{ color: "var(--app-highlight)" }}>
                   {"  Do you want add Material Data (Y/N) ?  Press Ins"}
                 </div>
               )}

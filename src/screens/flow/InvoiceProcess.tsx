@@ -38,8 +38,6 @@ import {
   isPresetDescription,
   normalizeUnitSize,
 } from "../../lib/invoiceLinePresets";
-import { formatPropertyAddress } from "./CompanyPropertyGate";
-
 type Mode = "browse" | "edit";
 
 /** Description column is wide enough for the type picker plus 40 characters. */
@@ -57,11 +55,15 @@ function descriptionRows(text: string): number {
  * PageMap is the lock box code. Key and the comment lines are only a
  * fallback when PageMap is empty.
  */
+function str(value: string | null | undefined): string {
+  return (value ?? "").trim();
+}
+
 function lockBoxCode(property: Property): string {
-  const fromPage = property.pageMap.trim();
+  const fromPage = str(property.pageMap);
   if (fromPage) return fromPage;
   const blob = [property.keyInfo, property.comment1, property.comment2]
-    .map((part) => part.trim())
+    .map((part) => str(part))
     .filter(Boolean)
     .join(" ");
   const match = blob.match(
@@ -72,9 +74,97 @@ function lockBoxCode(property: Property): string {
 
 function propertyComments(property: Property): string {
   return [property.comment1, property.comment2]
-    .map((part) => part.trim())
+    .map((part) => str(part))
     .filter(Boolean)
     .join(" ");
+}
+
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+function firstEmail(...parts: Array<string | null | undefined>): string {
+  for (const part of parts) {
+    const match = (part ?? "").match(EMAIL_RE);
+    if (match) return match[0];
+  }
+  return "";
+}
+
+function joinFacts(parts: string[]): string {
+  return parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function contactName(company: Company, property: Property): string {
+  const site = str(property.manager) || str(property.contact);
+  if (site) return site;
+  const companyContact = str(company.contact);
+  if (companyContact && !EMAIL_RE.test(companyContact)) return companyContact;
+  return "";
+}
+
+/** One header row. `words` wraps inside the value; `values` wraps only between values. */
+type HeaderRow = { parts: string[]; wrap: "values" | "words" };
+
+function addressParts(property: Property): string[] {
+  return [property.street, property.city, property.state, property.zip]
+    .map((part) => str(part))
+    .filter(Boolean);
+}
+
+function siteHeaderRows(company: Company, property: Property): HeaderRow[] {
+  const companyLabel = str(company.name) || str(company.companyNo);
+  const propertyName = str(property.name);
+  const entry = str(property.keyInfo);
+  const lockBox = lockBoxCode(property);
+  const contact = contactName(company, property);
+  const email = firstEmail(
+    company.contact,
+    company.memo,
+    property.memo,
+    property.comment1,
+    property.comment2
+  );
+  const cell = str(property.phone2);
+  const phone = str(property.phone);
+  const fax = str(company.phone4);
+  const comments = propertyComments(property);
+  const rows: HeaderRow[] = [
+    { wrap: "values", parts: [companyLabel, propertyName].filter(Boolean) },
+    { wrap: "values", parts: addressParts(property) },
+    {
+      wrap: "values",
+      parts: [
+        entry ? `Entry code: ${entry}` : "",
+        lockBox ? `Lock box code: ${lockBox}` : "",
+      ].filter(Boolean),
+    },
+    {
+      wrap: "values",
+      parts: [
+        contact ? `Contact: ${contact}` : "",
+        email ? `Email: ${email}` : "",
+      ].filter(Boolean),
+    },
+    {
+      wrap: "values",
+      parts: [
+        cell ? `Cell phone: ${cell}` : "",
+        phone ? `Phone: ${phone}` : "",
+        fax ? `Fax: ${fax}` : "",
+      ].filter(Boolean),
+    },
+    { wrap: "words", parts: comments ? [`Comments: ${comments}`] : [] },
+  ];
+  return rows.filter((row) => row.parts.length > 0);
+}
+
+/** Company / property block. Empty fields are omitted, so lines never end with a comma or a blank. */
+export function siteHeaderLines(company: Company, property: Property): string[] {
+  return siteHeaderRows(company, property).map((row) =>
+    row.wrap === "words" ? row.parts[0] : joinFacts(row.parts)
+  );
 }
 
 function InvoiceLineDescription({
@@ -122,43 +212,25 @@ function InvoiceSiteHeader({
   company: Company;
   property: Property;
 }) {
-  const address = formatPropertyAddress(property);
-  const contact = (property.manager || property.contact).trim();
-  const phone = property.phone.trim();
-  const cell = property.phone2.trim();
-  const entry = property.keyInfo.trim();
-  const lockBox = lockBoxCode(property);
-  const comments = propertyComments(property);
+  const rows = siteHeaderRows(company, property);
   return (
     <div className="invoice-site-header">
-      <div>
-        Company No.: {company.companyNo} {company.name}
-      </div>
-      <div>
-        {property.proNo} {property.name}
-        {address ? ` — ${address}` : ""}
-      </div>
-      {contact ? <div className="invoice-fact">Contact: {contact}</div> : null}
-      {phone || cell ? (
-        <div className="invoice-fact-line">
-          {phone ? <span className="invoice-fact">Phone: {phone}</span> : null}
-          {cell ? <span className="invoice-fact">Cell: {cell}</span> : null}
-        </div>
-      ) : null}
-      {entry || lockBox ? (
-        <div className="invoice-fact-line">
-          {entry ? <span className="invoice-fact">Entry Code: {entry}</span> : null}
-          {lockBox ? (
-            <span className="invoice-fact">Lock Box Code: {lockBox}</span>
-          ) : null}
-        </div>
-      ) : null}
-      {comments ? (
-        <div className="invoice-comments">
-          <span className="invoice-fact">Comments: </span>
-          <span className="invoice-comment-text">{comments}</span>
-        </div>
-      ) : null}
+      {rows.map((row, i) =>
+        row.wrap === "words" ? (
+          <div key={i} className="invoice-comments">
+            <span className="invoice-comment-text">{row.parts[0]}</span>
+          </div>
+        ) : (
+          <div key={i} className="invoice-fact-line">
+            {row.parts.map((part, j) => (
+              <span key={j} className="invoice-fact">
+                {part}
+                {j < row.parts.length - 1 ? "," : ""}
+              </span>
+            ))}
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -733,7 +805,7 @@ export function InvoiceProcess({
               </button>
             ))}
             {originalRows.length === 0 && (
-              <div className="dos-row content-grid-span" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
                 {"  (no invoices — press Ins or click New Invoice)"}
               </div>
             )}
@@ -769,7 +841,7 @@ export function InvoiceProcess({
           red={editing.invoice.voided}
           foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
         >
-          <div className="dos-form">
+          <div className="dos-form invoice-edit">
             <InvoiceSiteHeader company={company} property={property} />
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
@@ -1157,7 +1229,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: INVOICE_LINE_COLUMNS }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
@@ -1185,7 +1257,7 @@ export function InvoiceProcess({
               <div>{money(lineTotal)}</div>
               <div></div>
             </div>
-            <div style={{ marginTop: "0.4em", color: "var(--dos-yellow)", fontWeight: "bold" }}>
+            <div style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
               Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
               {"  "}
               <button
@@ -1200,7 +1272,7 @@ export function InvoiceProcess({
             <div
               style={{
                 marginTop: "0.6em",
-                color: "var(--dos-cyan)",
+                color: "var(--app-accent)",
                 fontSize: "0.85em",
               }}
             >

@@ -275,7 +275,7 @@ export function WorkOrderProcess({
         <div className="dos-browse">
           <div
             style={{
-              color: "var(--dos-cyan-bright)",
+              color: "var(--app-accent)",
               padding: "0.2em 0.5ch",
             }}
           >
@@ -308,7 +308,7 @@ export function WorkOrderProcess({
               </button>
             ))}
             {rows.length === 0 && (
-              <div className="dos-row" style={{ color: "var(--dos-yellow)" }}>
+              <div className="dos-row" style={{ color: "var(--app-highlight)" }}>
                 {"  (no work orders — press Ins)"}
               </div>
             )}
@@ -544,7 +544,7 @@ export function WorkOrderProcess({
                   + Line (* = free text)
                 </button>
               </div>
-              <div style={{ color: "var(--dos-yellow)", fontWeight: "bold" }}>
+              <div style={{ color: "var(--app-highlight)", fontWeight: "bold" }}>
                 Total: {money(editing.lines.reduce((s, l) => s + l.price, 0))}
               </div>
               <div></div>

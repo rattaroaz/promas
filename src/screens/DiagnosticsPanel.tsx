@@ -236,10 +236,10 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
                 overflow: "auto",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                color: "var(--dos-white-bright)",
+                color: "var(--app-ink)",
                 fontSize: "0.85em",
                 lineHeight: 1.35,
-                background: "rgba(0,0,0,0.25)",
+                background: "#f4f4f4",
                 padding: "0.6em 1ch",
                 border: "1px solid var(--dos-cyan)",
               }}
