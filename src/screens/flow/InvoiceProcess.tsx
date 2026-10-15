@@ -225,7 +225,7 @@ function InvoiceSiteHeader({
             {row.parts.map((part, j) => (
               <span key={j} className="invoice-fact">
                 {part}
-                {j < row.parts.length - 1 ? ", " : ""}
+                {j < row.parts.length - 1 ? "," : ""}
               </span>
             ))}
           </div>

@@ -733,11 +733,11 @@ describe("InvoiceProcess", () => {
     expect(header).not.toBeNull();
     const lines = [...(header?.children ?? [])].map((el) => el.textContent);
     expect(lines).toEqual([
-      "MESA MANAGEMENT COMPANY, HEATHER APARTMENTS",
-      "19609 SHERMAN WAY SUITE 100, RESEDA, CA, 91335",
-      "Entry code: *2424, Lock box code: 1984",
-      "Contact: MARIA GONZALEZ, Email: office@mesa.example",
-      "Cell phone: (818) 445-5443, Phone: (818) 349-8191, Fax: (714) 851-0999",
+      "MESA MANAGEMENT COMPANY,HEATHER APARTMENTS",
+      "19609 SHERMAN WAY SUITE 100,RESEDA,CA,91335",
+      "Entry code: *2424,Lock box code: 1984",
+      "Contact: MARIA GONZALEZ,Email: office@mesa.example",
+      "Cell phone: (818) 445-5443,Phone: (818) 349-8191,Fax: (714) 851-0999",
       "Comments: Pick up key from the rental office. Lock box 1984 on the front gate.",
     ]);
     expect(lines.join("\n")).not.toMatch(/,\s*(,|$)/);
@@ -746,8 +746,8 @@ describe("InvoiceProcess", () => {
       (el) => el.textContent
     );
     expect(facts).toContain("Fax: (714) 851-0999");
-    expect(facts).toContain("RESEDA, ");
-    expect(facts).toContain("CA, ");
+    expect(facts).toContain("RESEDA,");
+    expect(facts).toContain("CA,");
     expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
   });
 

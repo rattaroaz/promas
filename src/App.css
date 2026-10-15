@@ -861,6 +861,12 @@ textarea {
   flex: 0 0 auto;
 }
 
+/* A trailing space inside a flex item is dropped. The comma stays on the
+   value; this margin is the space, and the line still wraps between values. */
+.invoice-fact:not(:last-child) {
+  margin-right: 1ch;
+}
+
 .invoice-comments {
   max-width: 100%;
 }
