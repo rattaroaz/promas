@@ -452,6 +452,7 @@ export function InvoiceProcess({
     inv.companyNo = company.companyNo;
     inv.proNo = property.proNo;
     inv.salesDate = today();
+    inv.orderDate = inv.salesDate;
     try {
       const sys = await api.getSysdata();
       inv.invoice = Math.max(1, sys.nextInvoice || 1);
@@ -810,6 +811,7 @@ export function InvoiceProcess({
           <div className="dos-form invoice-edit">
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
+                <span className="dos-date">
                 <input
                   className="dos-input"
                   type="date"
@@ -825,10 +827,12 @@ export function InvoiceProcess({
                     })
                   }
                 />
+                </span>
               </DotField>
             </div>
             <div className="dos-form-row">
               <DotField label="Due Date" width={12}>
+                <span className="dos-date">
                 <input
                   className="dos-input"
                   type="date"
@@ -844,6 +848,7 @@ export function InvoiceProcess({
                     })
                   }
                 />
+                </span>
               </DotField>
               <DotField label="Terms" width={8}>
                 <input
@@ -873,9 +878,11 @@ export function InvoiceProcess({
                 />
               </DotField>
               <DotField label="Order Date" width={12}>
+                <span className="dos-date">
                 <input
                   className="dos-input"
                   type="date"
+                  aria-label="Order Date"
                   style={{ width: "22ch", minWidth: "22ch" }}
                   value={editing.invoice.orderDate || ""}
                   onChange={(e) =>
@@ -888,6 +895,7 @@ export function InvoiceProcess({
                     })
                   }
                 />
+                </span>
               </DotField>
             </div>
             <div className="dos-form-row">
@@ -1114,6 +1122,7 @@ export function InvoiceProcess({
                   />
                 </div>
                 <div className="invoice-line-end" style={{ minWidth: 0 }}>
+                  <span className="dos-date">
                   <input
                     className="dos-input"
                     type="date"
@@ -1126,6 +1135,7 @@ export function InvoiceProcess({
                       setEditing({ ...editing, lines });
                     }}
                   />
+                  </span>
                 </div>
                 <div className="invoice-line-end" style={{ minWidth: 0 }}>
                   <input

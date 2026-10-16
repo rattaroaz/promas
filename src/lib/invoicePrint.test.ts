@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { inflateRawSync, inflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
-import { buildInvoicePdf, wrapToWidth, type InvoicePrintPayload } from "./invoicePrint";
+import {
+  buildInvoicePdf,
+  wrapDescription,
+  wrapToWidth,
+  PRINT_DESC_SIZE,
+  type InvoicePrintPayload,
+} from "./invoicePrint";
 import type { Company, Property, Invoice, InvoiceLine } from "../api";
 
 const TEMPLATE = readFileSync(
@@ -213,8 +219,14 @@ describe("buildInvoicePdf", () => {
     expect(asText).toContain("OAKS MANAGEMENT");
     expect(asText).toContain("WILLOWS APARTMENTS");
     expect(asText).toContain("INTERIOR PAINT");
-    // Totals: 445 subtotal / 145 paid (45 deposit + 100 cash) / 300 net
+    expect(asText).toContain("DESCRIPTION");
+    expect(asText).toContain("AMOUNT");
+    // Totals: 445 subtotal / 145 paid (45 deposit + 100 cash) / 300 net.
+    // Hours/Qty and Price are no longer drawn; the template file still
+    // embeds those words under the white-out, so totals are the check.
     expect(asText).toMatch(/445\.00|445/);
+    expect(asText).toContain("SUBTOTAL");
+    expect(asText).toContain("NET TO PAY");
   });
 
   it("prints the work order number when customer P.O. is empty", async () => {
@@ -271,6 +283,34 @@ describe("buildInvoicePdf", () => {
     const wrapped = wrapToWidth(font, description, 8, 278);
     expect(wrapped.length).toBeGreaterThan(1);
     expect(wrapped.join(" ")).toBe(description);
+  });
+
+  it("indents only the wrapped continuation of a long description", async () => {
+    const description =
+      "Paint the hallway closet doors and baseboards in this occupied unit today before noon and again after the floor has dried completely across the whole room";
+    const bytes = await buildInvoicePdf(
+      payload({
+        lines: [{ ...payload().lines[0], description, price: 220 }],
+      })
+    );
+    const asText = pdfReadableText(bytes);
+    const { StandardFonts, PDFDocument: Pdf } = await import("pdf-lib");
+    const doc = await Pdf.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const descWidth = 458 - 18 - 16;
+    const wrapped = wrapDescription(font, description, PRINT_DESC_SIZE, descWidth);
+    expect(wrapped.length).toBeGreaterThan(1);
+    expect(wrapped[0].startsWith(" ")).toBe(false);
+    expect(wrapped[1].startsWith("     ")).toBe(true);
+    expect(wrapped[1].slice(5, 6)).not.toBe(" ");
+    expect(
+      wrapped.map((line, i) => (i === 0 ? line : line.replace(/^ {5}/, ""))).join(" ")
+    ).toBe(description);
+    expect(asText).toContain(wrapped[0]);
+    expect(asText).toContain(wrapped[1]);
+    expect(asText).toContain("SUBTOTAL");
+    expect(asText).toContain("220");
+    expect(asText).toContain("NET TO PAY");
   });
 
   it("fills many description rows on letter height without shrinking page", async () => {

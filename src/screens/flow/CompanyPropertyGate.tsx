@@ -39,6 +39,61 @@ const PROCESS_TITLE: Record<ProcessKind, string> = {
   cash: " Cash Receipts Process ",
 };
 
+/**
+ * Next property number in one company's list. Non-numeric numbers are skipped.
+ * The result is zero-padded to the width of the existing numeric numbers
+ * ("01","02" → "03"). A longer next value is not truncated.
+ */
+export function nextPropertyNo(proNos: string[]): string {
+  let max = 0;
+  let width = 0;
+  let any = false;
+  for (const raw of proNos) {
+    const t = (raw ?? "").trim();
+    if (!/^\d+$/.test(t)) continue;
+    any = true;
+    const n = Number.parseInt(t, 10);
+    if (n > max) max = n;
+    if (t.length > width) width = t.length;
+  }
+  const next = String(max + 1);
+  return any ? next.padStart(width, "0") : next;
+}
+
+/**
+ * Company number defaults to "?". The first keystroke replaces that mark
+ * whether the browser appended it or the field was selected.
+ */
+export function typedOverQuestion(previous: string, next: string): string {
+  const prev = previous === "" ? "?" : previous;
+  if (prev !== "?") return next;
+  if (next === "" || next === "?") return "?";
+  if (next.startsWith("?")) {
+    const rest = next.slice(1);
+    return rest === "" ? "?" : rest;
+  }
+  if (next.endsWith("?")) {
+    const rest = next.slice(0, -1);
+    return rest === "" ? "?" : rest;
+  }
+  return next;
+}
+
+function draftProperty(
+  companyNo: string,
+  existing: Property[],
+  seed?: Partial<Property>
+): Property {
+  const rest: Partial<Property> = { ...(seed ?? {}) };
+  delete rest.proNo;
+  return {
+    ...emptyProperty(companyNo),
+    ...rest,
+    companyNo,
+    proNo: nextPropertyNo(existing.map((p) => p.proNo)),
+  };
+}
+
 type Phase =
   | "co-search"
   | "co-browse"
@@ -409,7 +464,7 @@ export function CompanyPropertyGate({
         setMsgKind("error");
         setAskAdd(true);
         setIsNew(true);
-        setEditPr(emptyProperty(company.companyNo));
+        setEditPr(draftProperty(company.companyNo, all));
         return;
       }
       await showPropertyBrowse(
@@ -431,15 +486,14 @@ export function CompanyPropertyGate({
       setMsgKind("error");
       setAskAdd(true);
       setIsNew(true);
-      const blank = emptyProperty(company.companyNo);
-      if (prField === "no") blank.proNo = q;
-      if (prField === "name") blank.name = q;
-      if (prField === "street") blank.street = q;
-      if (prField === "contact") {
-        blank.contact = q;
-        blank.manager = q;
-      }
-      setEditPr(blank);
+      setEditPr(
+        draftProperty(company.companyNo, all, {
+          name: prField === "name" ? q : "",
+          street: prField === "street" ? q : "",
+          contact: prField === "contact" ? q : "",
+          manager: prField === "contact" ? q : "",
+        })
+      );
       return;
     }
     if (list.length === 1 && (prField === "no" || prField === "street" || prField === "contact")) {
@@ -726,10 +780,17 @@ export function CompanyPropertyGate({
           setMsgKind("error");
           return;
         }
-        setIsNew(true);
-        setEditPr(emptyProperty(company.companyNo));
-        pushPhase("pr-edit");
-        setMsg("Enter Property Information (Esc=Exit) !");
+        const companyNo = company.companyNo;
+        void (async () => {
+          const all = await api.listProperties({
+            companyNo,
+            limit: 5000,
+          });
+          setIsNew(true);
+          setEditPr(draftProperty(companyNo, all));
+          pushPhase("pr-edit");
+          setMsg("Enter Property Information (Esc=Exit) !");
+        })();
       }
     },
     onCtrlHome: () => {
@@ -941,24 +1002,34 @@ export function CompanyPropertyGate({
                   <input
                     className="dos-input w15"
                     aria-label="Company NO"
-                    value={firstKind === "company" && coField === "no" ? query : ""}
-                    onFocus={() => {
-                      setFirstKind("company");
-                      setCoField("no");
-                      setQuery("");
+                    value={
+                      firstKind === "company" && coField === "no"
+                        ? query || "?"
+                        : "?"
+                    }
+                    onFocus={(e) => {
+                      if (!(firstKind === "company" && coField === "no")) {
+                        setFirstKind("company");
+                        setCoField("no");
+                        setQuery("?");
+                      }
+                      const el = e.currentTarget;
+                      requestAnimationFrame(() => el.select());
                     }}
                     onChange={(e) => {
+                      const prev =
+                        firstKind === "company" && coField === "no"
+                          ? query || "?"
+                          : "?";
                       setFirstKind("company");
                       setCoField("no");
-                      setQuery(e.target.value);
+                      setQuery(typedOverQuestion(prev, e.target.value));
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         setCoField("no");
-                        searchCompanies(
-                          coField === "no" ? query : e.currentTarget.value
-                        );
+                        searchCompanies(e.currentTarget.value || "?");
                       }
                     }}
                     autoFocus={
@@ -1407,30 +1478,23 @@ export function CompanyPropertyGate({
                 />
               </DotField>
             </div>
-            <DotField label="Phone1" width={14}>
+            <DotField label="Cell#" width={14}>
               <input
                 className="dos-input w15"
+                aria-label="Cell#"
                 value={editCo.phone}
                 onChange={(e) =>
                   setEditCo({ ...editCo, phone: e.target.value })
                 }
               />
             </DotField>
-            <DotField label="Phone2" width={14}>
+            <DotField label="Office#" width={14}>
               <input
                 className="dos-input w15"
+                aria-label="Office#"
                 value={editCo.phone2}
                 onChange={(e) =>
                   setEditCo({ ...editCo, phone2: e.target.value })
-                }
-              />
-            </DotField>
-            <DotField label="Beeper" width={14}>
-              <input
-                className="dos-input w15"
-                value={editCo.phone3}
-                onChange={(e) =>
-                  setEditCo({ ...editCo, phone3: e.target.value })
                 }
               />
             </DotField>
@@ -1469,12 +1533,11 @@ export function CompanyPropertyGate({
             <DotField label="Property NO" width={14}>
               <input
                 className="dos-input w5"
+                aria-label="Property NO"
                 value={editPr.proNo}
-                disabled={!isNew}
-                onChange={(e) =>
-                  setEditPr({ ...editPr, proNo: e.target.value })
-                }
-                autoFocus
+                readOnly
+                disabled
+                aria-readonly="true"
               />
             </DotField>
             <DotField label="PropertyName" width={14}>
@@ -1560,27 +1623,30 @@ export function CompanyPropertyGate({
                 }
               />
             </DotField>
-            <DotField label="Key" width={14}>
+            <DotField label="Gate Code" width={14}>
               <input
                 className="dos-input w12"
+                aria-label="Gate Code"
                 value={editPr.keyInfo}
                 onChange={(e) =>
                   setEditPr({ ...editPr, keyInfo: e.target.value })
                 }
               />
             </DotField>
-            <DotField label="Time" width={14}>
+            <DotField label="Lock Box" width={14}>
               <input
                 className="dos-input w15"
+                aria-label="Lock Box"
                 value={editPr.paintTime}
                 onChange={(e) =>
                   setEditPr({ ...editPr, paintTime: e.target.value })
                 }
               />
             </DotField>
-            <DotField label="PageMap" width={14}>
+            <DotField label="E-mail" width={14}>
               <input
                 className="dos-input w12"
+                aria-label="E-mail"
                 value={editPr.pageMap}
                 onChange={(e) =>
                   setEditPr({ ...editPr, pageMap: e.target.value })
