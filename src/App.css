@@ -1529,20 +1529,37 @@ textarea {
   position: relative;
 }
 
-/* Native calendar glyph from v2.13.0 (af88a3a), before the .dos-date overlay.
-   invert(1) keeps that dark indicator visible on the black field. The indicator
-   itself is the click target — the v2.14 overlay was pointer-events:none and
-   the real control was opacity:0, so the click never reached a picker. */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: 0.6;
-  cursor: pointer;
+/* Calendar glyph from v2.13.0 (af88a3a), before the .dos-date overlay: the
+   browser's hollow calendar, inverted to a light gray (filter:invert(1);
+   opacity:0.6). WebKit will not paint that UA image on appearance:none
+   inputs, so the same hollow calendar is drawn on the field. The UA indicator
+   stays in the hit box at opacity 0; App opens the picker from this glyph.
+   v2.14's .dos-date::after was a different filled icon and pointer-events:none,
+   so clicking it did nothing. */
+input[type="date"].dos-input {
+  background-color: var(--dos-black);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1.25' y='3.1' width='13.5' height='11.7' fill='none' stroke='%23d9d9d9' stroke-width='1.35'/><path d='M1.25 6.35h13.5' stroke='%23d9d9d9' stroke-width='1.2'/><rect x='4' y='1' width='1.7' height='3.3' fill='%23d9d9d9'/><rect x='10.3' y='1' width='1.7' height='3.3' fill='%23d9d9d9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.12em center;
+  background-size: 1em 1em;
+  padding-right: 1.25em;
 }
 
-/* Focus paints the field cyan. Drop the invert so the same glyph stays visible. */
-input[type="date"]:focus::-webkit-calendar-picker-indicator {
-  filter: none;
-  opacity: 0.85;
+input[type="date"].dos-input:focus {
+  background-color: var(--dos-cyan-bright);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1.25' y='3.1' width='13.5' height='11.7' fill='none' stroke='%23111111' stroke-width='1.35'/><path d='M1.25 6.35h13.5' stroke='%23111111' stroke-width='1.2'/><rect x='4' y='1' width='1.7' height='3.3' fill='%23111111'/><rect x='10.3' y='1' width='1.7' height='3.3' fill='%23111111'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.12em center;
+  background-size: 1em 1em;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0;
+  width: 1.15em;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 input[type="number"]::-webkit-inner-spin-button {

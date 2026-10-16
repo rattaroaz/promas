@@ -1,5 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
 
+/** Local calendar arithmetic. ArrowDown in Chromium's picker moves one week. */
+function plusDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${mm}-${dd}`;
+}
+
 /** Invoice Process now gates through Company → Property before the list. */
 async function openInvoiceBrowse(page: Page) {
   await page.goto("/");
@@ -50,46 +59,28 @@ test.describe("invoice process", () => {
     await expect(page.getByText(/Due Date/i)).toBeVisible();
   });
 
-  test("calendar icon is the native indicator and sets a date", async ({
-    page,
-  }) => {
+  test("calendar icon opens the picker and sets the date", async ({ page }) => {
     await openInvoiceBrowse(page);
     await page.getByRole("button", { name: /^New Invoice$/i }).click();
-    const dates = page.locator(".invoice-edit input[type='date']");
-    await expect(dates).toHaveCount(4);
-    await page.evaluate(() => {
-      const active = document.activeElement;
-      if (active instanceof HTMLElement) active.blur();
-    });
-    const labels = ["Invoice Date", "Due Date", "Order Date", "Line 1 work date"];
+    const labels = [
+      "Invoice Date",
+      "Due Date",
+      "Order Date",
+      "Line 1 work date",
+    ];
+    await expect(page.locator(".invoice-edit input[type='date']")).toHaveCount(4);
     for (const label of labels) {
       const field = page.getByLabel(label);
-      const indicator = await field.evaluate((el) => {
-        const style = getComputedStyle(el, "::-webkit-calendar-picker-indicator");
-        return {
-          opacity: Number(style.opacity),
-          filter: style.filter,
-          cursor: style.cursor,
-        };
+      const before = await field.inputValue();
+      const box = await field.boundingBox();
+      expect(box, label).toBeTruthy();
+      await field.click({
+        position: { x: box!.width - 14, y: box!.height / 2 },
       });
-      expect(indicator.opacity).toBeGreaterThan(0.3);
-      expect(indicator.filter).toContain("invert");
-      expect(indicator.cursor).toBe("pointer");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await expect(field).toHaveValue(plusDays(before, 7));
     }
-    const order = page.getByLabel("Order Date");
-    const before = await order.inputValue();
-    const box = await order.boundingBox();
-    expect(box).toBeTruthy();
-    await order.click({
-      position: { x: box!.width - 6, y: box!.height / 2 },
-    });
-    await order.fill("2024-11-02");
-    await expect(order).toHaveValue("2024-11-02");
-    expect(before).not.toBe("2024-11-02");
-    await page.getByLabel("Line 1 work date").fill("2024-11-03");
-    await expect(page.getByLabel("Line 1 work date")).toHaveValue("2024-11-03");
-    await page.getByLabel("Due Date").fill("2024-11-09");
-    await expect(page.getByLabel("Due Date")).toHaveValue("2024-11-09");
   });
 
   test("fills a preset line price from size", async ({ page }) => {
