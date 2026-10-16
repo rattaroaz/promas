@@ -517,7 +517,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       right={agingDetail?.company.companyName.slice(0, 24)}
     >
       {!agingDetail && (
-      <div className="dos-searchline">
+      <div
+        className={
+          report === "payroll" || report === "paint"
+            ? "dos-searchline dos-searchline-fit"
+            : "dos-searchline"
+        }
+      >
         {(report === "aging" || report === "cash") && (
           <>
             <label>Search:</label>

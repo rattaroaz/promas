@@ -61,7 +61,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
       title="*****   Worker Wages Report  *****"
       message={msg}
     >
-      <div className="dos-searchline">
+      <div className="dos-searchline dos-searchline-fit">
         <label>From Worker No :</label>
         <input
           className="dos-input w8"

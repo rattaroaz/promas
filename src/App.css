@@ -806,9 +806,9 @@ textarea {
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  /* Description takes the row. WorkDate, Price, and Del sit on the right edge.
-     WorkDate is wide enough for mm/dd/yyyy plus the calendar glyph. */
-  grid-template-columns: minmax(0, 1fr) calc(12ch + 2.8em) 12ch 4ch;
+  /* Description takes the row. WorkDate stays at main's 14ch; the digit
+     padding below keeps mm/dd/yyyy clear of the calendar glyph. */
+  grid-template-columns: minmax(0, 1fr) 14ch 12ch 4ch;
   /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
   column-gap: 2ch;
   align-items: center;
@@ -848,7 +848,9 @@ textarea {
 
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
   text-align: right;
-  padding: 0;
+  /* Clears the calendar glyph. The line-end rule zeros the input's own
+     padding-right, so this is the gap in front of the icon. */
+  padding: 0 1.3em 0 0;
   margin: 0;
 }
 
@@ -1114,6 +1116,15 @@ textarea {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/* Wages and the Reports payroll/paint line stay on one row. Gaps and the
+   date width are tighter here only; other search lines keep the normal gap. */
+.dos-searchline.dos-searchline-fit {
+  gap: 0.4ch;
+  padding-left: 0.4ch;
+  padding-right: 0.4ch;
+  flex-wrap: nowrap;
 }
 
 .dos-company-toolbar {
@@ -1550,6 +1561,22 @@ input[type="date"].dos-input {
    would otherwise paint these black. */
 .dos-searchline input[type="date"].dos-input {
   background-color: var(--dos-blue);
+}
+
+/* Search-line dates on the fit toolbar stay one row with the labels and
+   buttons. Narrower than the form fields, still wide enough for mm/dd/yyyy
+   and the glyph. Work Person keeps a 40ch basis so the placeholder is whole. */
+.dos-searchline.dos-searchline-fit input[type="date"].dos-input.w12 {
+  flex: 0 0 auto;
+  width: calc(10.4ch + 1.45em);
+  min-width: calc(10.4ch + 1.45em);
+  max-width: calc(10.4ch + 1.45em);
+}
+
+.dos-searchline.dos-searchline-fit input[aria-label="Work person search"] {
+  flex: 1 1 40ch;
+  min-width: 14ch;
+  max-width: 40ch;
 }
 
 input[type="date"].dos-input:focus {
