@@ -100,7 +100,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
             setIsNew(true);
             setEdit(blank);
             setMode("edit");
-            setMsg("Enter Company Information (Esc=Cancel, Ctrl-W=Save & Exit)");
+            setMsg("Enter Company Information (Esc=Cancel, Ctrl-S=Save & Exit)");
           })();
         } else if (mode === "props" && current) {
           setPropEdit(emptyProperty(current.companyNo));
@@ -112,7 +112,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
           setIsNew(false);
           setEdit({ ...current });
           setMode("edit");
-          setMsg("Esc=Cancel, Ctrl-W=Save & Exit, Edit=Arrow_Key");
+          setMsg("Esc=Cancel, Ctrl-S=Save & Exit, Edit=Arrow_Key");
         }
       },
       onEnter: () => {
@@ -137,7 +137,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       onArrowDown: mode === "list" || mode === "props" ? down : undefined,
       onPageUp: mode === "list" || mode === "props" ? pageUp : undefined,
       onPageDown: mode === "list" || mode === "props" ? pageDown : undefined,
-      onCtrlW: async () => {
+      onCtrlS: async () => {
         if (mode === "edit" && edit) await saveCompany();
         if (mode === "propedit" && propEdit) await saveProp();
       },
@@ -370,7 +370,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
           foot={
             mode === "detail"
               ? "Esc=Cancel, Home=Detail_Data, Enter/Ctrl-Home=Edit"
-              : "Esc=Cancel, Ctrl-W=Save & Exit, Edit=Arrow_Key"
+              : "Esc=Cancel, Ctrl-S=Save & Exit, Edit=Arrow_Key"
           }
         >
           <div className="dos-form">
@@ -491,7 +491,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
         <Dialog
           title="Property Information"
           wide
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
             <DotField label="Property NO" width={14}>

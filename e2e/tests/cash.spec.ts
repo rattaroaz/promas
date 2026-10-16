@@ -42,7 +42,7 @@ test.describe("cash receipts process", () => {
       "Enter Your Payment Data"
     );
     await expect(page.locator('input[type="number"]').last()).toHaveValue("250");
-    await page.getByRole("button", { name: /Cntr_W Save/i }).click();
+    await page.getByRole("button", { name: /Cntr_S Save/i }).click();
     await expect(page.getByText(/Ending Balance/i)).toBeVisible();
   });
 });

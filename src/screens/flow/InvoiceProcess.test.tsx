@@ -171,7 +171,7 @@ describe("InvoiceProcess", () => {
     await user.clear(cost);
     await user.type(cost, "42.5");
     await user.type(supplier, "Kelly-Moore");
-    await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
+    await user.click(screen.getByRole("button", { name: /^Ctrl-S Save$/i }));
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
       expect(api.saveInvoice).toHaveBeenCalledWith(
@@ -446,7 +446,7 @@ describe("InvoiceProcess", () => {
     expect(screen.queryByRole("button", { name: /PO-441/i })).not.toBeInTheDocument();
   });
 
-  it("saves a new invoice after Ctrl-W confirm", async () => {
+  it("saves a new invoice after Ctrl-S confirm", async () => {
     const user = userEvent.setup();
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
@@ -455,7 +455,7 @@ describe("InvoiceProcess", () => {
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     await user.type(screen.getByLabelText("Work Person"), "Ana Cruz");
     await user.click(screen.getByRole("button", { name: /^\+ Line$/i }));
-    await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
+    await user.click(screen.getByRole("button", { name: /^Ctrl-S Save$/i }));
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
       expect(api.saveInvoice).toHaveBeenCalled();
@@ -650,7 +650,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByText(/\*\*\* Function Key Description \*\*\*/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^OK$/i }));
 
-    await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
+    await user.click(screen.getByRole("button", { name: /^Ctrl-S Save$/i }));
     expect(
       screen.getAllByText(/Is This Data Correct \? \(Y\/N\)/i).length
     ).toBeGreaterThan(0);

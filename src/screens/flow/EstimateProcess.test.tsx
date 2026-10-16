@@ -62,7 +62,7 @@ describe("EstimateProcess", () => {
     expect(screen.getByRole("button", { name: /^Esc Cancel$/i })).toBeInTheDocument();
   });
 
-  it("saves a new proposal with Ctrl-W", async () => {
+  it("saves a new proposal with Ctrl-S", async () => {
     const user = userEvent.setup();
     renderApp(
       <EstimateProcess company={company} property={property} onBack={vi.fn()} />
@@ -74,7 +74,7 @@ describe("EstimateProcess", () => {
       );
     });
     expect(await screen.findByDisplayValue("EST-1")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveEstimate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -95,7 +95,7 @@ describe("EstimateProcess", () => {
     const formNo = await screen.findByDisplayValue("EST-1");
     await user.clear(formNo);
     await user.type(formNo, "EST-2");
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveEstimate).toHaveBeenCalledWith(
         expect.objectContaining({

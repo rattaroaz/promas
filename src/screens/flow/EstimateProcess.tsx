@@ -70,7 +70,7 @@ export function EstimateProcess({
     e.formNo = "EST-1";
     setIsNew(true);
     setEditing(e);
-    setMsg("Enter Proposal Information (Esc=Cancel, Cntr_W=Save & Exit) !");
+    setMsg("Enter Proposal Information (Esc=Cancel, Cntr_S=Save & Exit) !");
   }
 
   async function save() {
@@ -117,7 +117,7 @@ export function EstimateProcess({
       if (!editing && current) {
         setIsNew(false);
         setEditing({ ...current });
-        setMsg("Enter Proposal Information (Esc=Cancel, Cntr_W=Save & Exit) !");
+        setMsg("Enter Proposal Information (Esc=Cancel, Cntr_S=Save & Exit) !");
       }
     },
     onCtrlHome: () => {
@@ -135,7 +135,7 @@ export function EstimateProcess({
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? end : undefined,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) save();
     },
     onChar: (ch) => {
@@ -165,8 +165,8 @@ export function EstimateProcess({
       {!editing && (
         <div className="dos-browse">
           <div
+            className="dos-info-banner"
             style={{
-              color: "var(--app-accent)",
               padding: "0.2em 0.5ch",
             }}
           >
@@ -218,7 +218,7 @@ export function EstimateProcess({
                 ? "Enter Proposal Information"
                 : "Enter Proposal Information"
           }
-          foot="Esc=Cancel, Cntr_W=Save & Exit"
+          foot="Esc=Cancel, Cntr_S=Save & Exit"
           red={editing.voided}
         >
           <div className="dos-form">

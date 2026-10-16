@@ -33,7 +33,7 @@ test.describe("estimate process", () => {
     await openEstimates(page);
     await page.getByRole("button", { name: /^Ins Add$/i }).click();
     await expect(page.locator('input[value="EST-1"]')).toBeVisible();
-    await page.getByRole("button", { name: /Cntr_W Save/i }).click();
+    await page.getByRole("button", { name: /Cntr_S Save/i }).click();
     await expect(page.getByRole("button", { name: /EST-1/i })).toBeVisible();
     await expect(page.getByText(/1 proposals/i)).toBeVisible();
   });

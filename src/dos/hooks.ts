@@ -227,7 +227,7 @@ export function useDosKeys(
     onArrowLeft?: () => void;
     onArrowRight?: () => void;
     onCtrlHome?: () => void;
-    onCtrlW?: () => void;
+    onCtrlS?: () => void;
     onChar?: (ch: string, e: KeyboardEvent) => boolean | void;
     /** When true, arrow/page keys work even while focused in an input */
     forceNav?: boolean;
@@ -263,9 +263,27 @@ export function useDosKeys(
         h.onF1?.();
         return;
       }
-      if (e.ctrlKey && (e.key === "w" || e.key === "W")) {
+      if (
+        e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        (e.key === "s" || e.key === "S")
+      ) {
+        // Stop the WebView "Save page" dialog, then save.
         e.preventDefault();
-        h.onCtrlW?.();
+        e.stopPropagation();
+        h.onCtrlS?.();
+        return;
+      }
+      if (
+        e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        (e.key === "w" || e.key === "W")
+      ) {
+        // Save moved to Ctrl-S. Keep the window from closing; do not save.
+        e.preventDefault();
+        e.stopPropagation();
         return;
       }
       if (e.ctrlKey && e.key === "Home") {
@@ -406,9 +424,9 @@ export function useDosKeys(
         case "Cntr_Home":
           h.onCtrlHome?.();
           return;
-        case "Ctrl-W":
-        case "Cntr_W":
-          h.onCtrlW?.();
+        case "Ctrl-S":
+        case "Cntr_S":
+          h.onCtrlS?.();
           return;
         case "↑↓":
           h.onArrowDown?.();

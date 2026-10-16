@@ -101,7 +101,7 @@ export function WorkOrderProcess({
       setMsg(
         full.order.voided
           ? "***  V O I D  W O R K  O R D E R ***"
-          : `Order #${full.order.orderNo}  Ctrl-W=Save  Esc=Exit`
+          : `Order #${full.order.orderNo}  Ctrl-S=Save  Esc=Exit`
       );
     }
   }
@@ -221,7 +221,7 @@ export function WorkOrderProcess({
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? end : undefined,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) {
         setConfirmSave(true);
         setMsg("Is This Data Correct ? (Y/N)");
@@ -274,8 +274,8 @@ export function WorkOrderProcess({
       {!editing && (
         <div className="dos-browse">
           <div
+            className="dos-info-banner"
             style={{
-              color: "var(--app-accent)",
               padding: "0.2em 0.5ch",
             }}
           >
@@ -327,7 +327,7 @@ export function WorkOrderProcess({
           }
           wide
           red={editing.order.voided}
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
             <DotField label="Order Date" width={16}>
