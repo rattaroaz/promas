@@ -103,7 +103,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? end : undefined,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) save();
     },
   });
@@ -210,7 +210,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
         <Dialog
           title="Enter Job Order Information"
           wide
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
             <DotField label="Order Date" width={16}>

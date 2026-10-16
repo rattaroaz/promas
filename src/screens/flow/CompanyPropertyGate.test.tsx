@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act } from "@testing-library/react";
+import { act, fireEvent } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import {
   CompanyPropertyGate,
@@ -149,6 +149,40 @@ describe("CompanyPropertyGate", () => {
     expect(api.listProperties).toHaveBeenCalledWith(
       expect.objectContaining({ companyNo: "1000" })
     );
+  });
+
+  it("right-click on Company NO Order selects that company and opens edit", async () => {
+    const user = userEvent.setup();
+    const other = {
+      ...company,
+      companyNo: "2000",
+      name: "BRAVO",
+      contact: "BOB",
+    };
+    vi.mocked(api.listCompanies).mockResolvedValue([company, other]);
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    expect(await screen.findByText(/Company NO Order/i)).toBeInTheDocument();
+    const bravo = await screen.findByRole("button", { name: /2000\s+BRAVO/i });
+    const menu = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(bravo, menu);
+    expect(menu.defaultPrevented).toBe(true);
+    expect(await screen.findByDisplayValue("2000")).toBeInTheDocument();
+    const name = screen.getByDisplayValue("BRAVO");
+    expect(name).not.toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /2000\s+BRAVO/i })
+    ).not.toBeInTheDocument();
   });
 
   it("shows the full 45-character street in its own column on the company property list", async () => {
@@ -540,7 +574,7 @@ describe("CompanyPropertyGate", () => {
 
     const fields = screen.getAllByRole("textbox");
     await user.type(fields[1], "NEWCO");
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveCompany).toHaveBeenCalledWith(
         expect.objectContaining({ companyNo: "1001", name: "NEWCO" })
@@ -567,7 +601,7 @@ describe("CompanyPropertyGate", () => {
       (await screen.findAllByText(/Company Information/i)).length
     ).toBeGreaterThan(0);
     expect(await screen.findByDisplayValue("1001")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     expect(
       await screen.findByText(/Company Name required/i)
     ).toBeInTheDocument();
@@ -603,7 +637,7 @@ describe("CompanyPropertyGate", () => {
 
     const fields = screen.getAllByRole("textbox");
     await user.type(fields[1], "Bldg B");
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveProperty).toHaveBeenCalledWith(
         expect.objectContaining({

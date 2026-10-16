@@ -682,6 +682,14 @@ export function CompanyPropertyGate({
     );
   }
 
+  function editCompanyFromList(c: Company, index: number) {
+    coBrowse.setIndex(index);
+    setIsNew(false);
+    setEditCo({ ...c });
+    pushPhase("co-edit");
+    setMsg("Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key");
+  }
+
   useDosKeys({
     forceNav:
       phase === "co-browse" ||
@@ -726,15 +734,12 @@ export function CompanyPropertyGate({
     },
     onCtrlHome: () => {
       if (phase === "co-browse" && companies[coBrowse.index]) {
-        setIsNew(false);
-        setEditCo({ ...companies[coBrowse.index] });
-        pushPhase("co-edit");
-        setMsg("Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key");
+        editCompanyFromList(companies[coBrowse.index], coBrowse.index);
       } else if (phase === "pr-browse" && properties[prBrowse.index]) {
         setIsNew(false);
         setEditPr({ ...properties[prBrowse.index] });
         pushPhase("pr-edit");
-        setMsg("Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key");
+        setMsg("Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key");
       }
     },
     onEnter: () => {
@@ -752,7 +757,7 @@ export function CompanyPropertyGate({
         searchProperties(query);
       }
     },
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (phase === "co-edit") saveCompany();
       if (phase === "pr-edit") saveProperty();
     },
@@ -761,7 +766,7 @@ export function CompanyPropertyGate({
         setIsNew(false);
         setEditCo({ ...companies[coBrowse.index] });
         pushPhase("co-edit");
-        setMsg("Detaill Company Information — Esc=Cancel, Ctrl-W=Save");
+        setMsg("Detaill Company Information — Esc=Cancel, Ctrl-S=Save");
       } else if (phase === "pr-browse" && properties[prBrowse.index]) {
         setIsNew(false);
         setEditPr({ ...properties[prBrowse.index] });
@@ -1123,6 +1128,12 @@ export function CompanyPropertyGate({
                 }}
                 onClick={() => selectCompany(c)}
                 onDoubleClick={() => selectCompany(c)}
+                onContextMenu={(e) => {
+                  // Company NO Order only: same edit as Ctrl-Home, no browser menu.
+                  if (coField !== "no") return;
+                  e.preventDefault();
+                  editCompanyFromList(c, i);
+                }}
               >
                 <div>{c.companyNo}</div>
                 <div>{c.name}</div>
@@ -1332,7 +1343,7 @@ export function CompanyPropertyGate({
           title={
             isNew ? "Company Information" : "Detaill Company Information"
           }
-          foot="Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key"
+          foot="Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key"
         >
           <div className="dos-form">
             <DotField label="Company NO" width={14}>
@@ -1452,7 +1463,7 @@ export function CompanyPropertyGate({
             isNew ? "Property Information" : "Detaill Property Information"
           }
           wide
-          foot="Esc=Cancel, Cntr_W=Save & Exit, Edit=Arrow_Key"
+          foot="Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key"
         >
           <div className="dos-form">
             <DotField label="Property NO" width={14}>

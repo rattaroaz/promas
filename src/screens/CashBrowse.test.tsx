@@ -66,7 +66,7 @@ describe("CashBrowse", () => {
       screen.getByRole("combobox"),
       "1"
     );
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveCashReceipt).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -89,7 +89,7 @@ describe("CashBrowse", () => {
       );
     });
     await screen.findAllByText(/Enter Your Payment Data/i);
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     expect(await screen.findByText(/Payment is zero/i)).toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
   });

@@ -123,7 +123,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
       inv.invoice = 1;
     }
     setEditing({ invoice: inv, lines: [emptyInvoiceLine(inv, 1)] });
-    setMsg("Enter Invoice Information (Esc=Cancel, Ctrl-W=Save & Exit)");
+    setMsg("Enter Invoice Information (Esc=Cancel, Ctrl-S=Save & Exit)");
   }
 
   async function openEdit(inv: Invoice) {
@@ -144,7 +144,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
       setMsg(
         full.invoice.voided
           ? "*** V O I D  I N V O I C E ***"
-          : `Invoice #${full.invoice.invoice}  —  Esc=Exit  Ctrl-W=Save`
+          : `Invoice #${full.invoice.invoice}  —  Esc=Exit  Ctrl-S=Save`
       );
     }
   }
@@ -178,7 +178,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? () => window.print() : end,
-    onCtrlW: async () => {
+    onCtrlS: async () => {
       if (editing) await save();
     },
     onChar: (ch) => {
@@ -350,7 +350,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
               : "Enter Invoice Information"
           }
           wide
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit"
           red={editing.invoice.voided}
         >
           <div className="dos-form">

@@ -72,7 +72,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? end : undefined,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) save();
     },
     onChar: (ch) => {
@@ -163,7 +163,7 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
       {editing && (
         <Dialog
           title="Work Type Information"
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
             <DotField label="Code NO" width={14}>

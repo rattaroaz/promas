@@ -86,13 +86,13 @@ describe("InvoiceBrowse", () => {
     });
   });
 
-  it("saves from edit dialog via Ctrl-W", async () => {
+  it("saves from edit dialog via Ctrl-S", async () => {
     const user = userEvent.setup();
     renderApp(<InvoiceBrowse onBack={vi.fn()} />);
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /1000/ }));
     await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 1\s+PO-441/i);
-    await user.keyboard("{Control>}w{/Control}");
+    await user.keyboard("{Control>}s{/Control}");
     await waitFor(() => {
       expect(api.saveInvoice).toHaveBeenCalled();
     });
@@ -125,7 +125,7 @@ describe("InvoiceBrowse", () => {
       );
     });
     expect(await screen.findByText(/Invoice No\.\.\.\.\.\.\.\. 8/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     expect(
       await screen.findByText(/Company, Property, Date required/i)
     ).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe("InvoiceBrowse", () => {
     });
     const selects = screen.getAllByRole("combobox");
     await user.selectOptions(selects[1], "01");
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveInvoice).toHaveBeenCalledWith(
         expect.objectContaining({

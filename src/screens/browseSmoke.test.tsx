@@ -135,7 +135,7 @@ describe("browse screen smoke", () => {
     expect(await screen.findByText(/Worker Information/i)).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /Jose Ramirez/i }));
     expect(screen.getByDisplayValue("Jose Ramirez")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Cntr_W Save/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cntr_S Save/i })).toBeInTheDocument();
   });
 
   it("lists work types and opens edit", async () => {
@@ -144,7 +144,7 @@ describe("browse screen smoke", () => {
     expect(await screen.findByText(/Work Type Information/i)).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /Interior Paint/i }));
     expect(screen.getByDisplayValue("Interior Paint")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Cntr_W Save/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cntr_S Save/i })).toBeInTheDocument();
   });
 
   it("lists work orders", async () => {

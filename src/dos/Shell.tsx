@@ -24,9 +24,9 @@ export function statusKeyEvent(key: string): KeyboardEventInit | null {
     case "Ctrl-Home":
     case "Cntr_Home":
       return { key: "Home", ctrlKey: true };
-    case "Ctrl-W":
-    case "Cntr_W":
-      return { key: "w", ctrlKey: true };
+    case "Ctrl-S":
+    case "Cntr_S":
+      return { key: "s", ctrlKey: true };
     case "(A)":
       return { key: "A" };
     case "↑↓":
@@ -61,8 +61,8 @@ const STATUS_KEY_RANK: Record<string, number> = {
   PgUp: 6,
   PgDn: 7,
   End: 8,
-  "Ctrl-W": 9,
-  Cntr_W: 9,
+  "Ctrl-S": 9,
+  Cntr_S: 9,
   F1: 10,
   "↑↓": 11,
   "?": 12,
@@ -321,6 +321,6 @@ export const MENU_KEYS = [
 
 export const FORM_KEYS = [
   { key: "Esc", label: "Cancel" },
-  { key: "Cntr_W", label: "Save & Exit" },
+  { key: "Cntr_S", label: "Save & Exit" },
   { key: "↑↓", label: "Edit=Arrow_Key" },
 ];

@@ -5,10 +5,11 @@
 
 :root {
   --fit-scale: 1;
-  --dos-blue: #ffffff;
-  --app-ink: #161616;
-  --app-accent: #0b4f6c;
-  --app-highlight: #6a4500;
+  --dos-blue: #0000aa;
+  /* Original DOS ink on the blue canvas. Light panels set their own color. */
+  --app-ink: var(--dos-white-bright);
+  --app-accent: var(--dos-cyan-bright);
+  --app-highlight: var(--dos-yellow);
   --dos-blue-bright: #0000ff;
   --dos-cyan: #00aaaa;
   --dos-cyan-bright: #55ffff;
@@ -40,8 +41,8 @@ body,
 #root {
   height: 100%;
   overflow: hidden;
-  background: #ffffff;
-  color: var(--app-ink);
+  background: var(--dos-black);
+  color: var(--dos-white-bright);
   font-family: var(--font-dos);
   /* 2× at the default window; grows with the viewport; --fit-scale keeps screens on-width */
   font-size: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
@@ -150,8 +151,8 @@ textarea {
 }
 
 .dos-titlebar {
-  background: var(--dos-cyan);
-  color: var(--dos-black);
+  background: #ffffff;
+  color: #161616;
   text-align: center;
   font-weight: bold;
   padding: 0 1ch;
@@ -210,8 +211,8 @@ textarea {
 
 .dos-box.white-frame {
   box-shadow:
-    0 0 0 1px #222222,
-    inset 0 0 0 1px #222222;
+    0 0 0 1px var(--dos-white-bright),
+    inset 0 0 0 1px var(--dos-white-bright);
   margin: 1px;
 }
 
@@ -471,7 +472,7 @@ textarea {
   width: 100%;
   max-width: 100%;
   scrollbar-width: auto;
-  scrollbar-color: #007070 var(--dos-blue);
+  scrollbar-color: var(--dos-cyan) var(--dos-blue);
 }
 
 .aging-scroll {
@@ -506,14 +507,14 @@ textarea {
 .dlg-body:has(.invoice-edit)::-webkit-scrollbar {
   width: 16px;
   height: 16px;
-  background: #e6e6e6;
+  background: var(--dos-blue);
 }
 
 .dos-browse-body::-webkit-scrollbar-thumb,
 .aging-scroll::-webkit-scrollbar-thumb,
 .content-grid::-webkit-scrollbar-thumb,
 .dlg-body:has(.invoice-edit)::-webkit-scrollbar-thumb {
-  background: #007070;
+  background: var(--dos-cyan);
 }
 
 .dos-browse-footer {
@@ -612,7 +613,7 @@ textarea {
 
 .dos-dialog {
   background: var(--dos-blue);
-  border: 2px double #222222;
+  border: 2px double var(--dos-white-bright);
   box-shadow: 3px 3px 0 #000044;
   min-width: 0;
   width: min(92ch, 100%);
@@ -642,7 +643,7 @@ textarea {
 
 .dos-dialog .dlg-title {
   background: var(--dos-white-bright);
-  color: #0000aa;
+  color: var(--dos-blue);
   text-align: center;
   font-weight: bold;
   padding: 0 1ch;
@@ -694,8 +695,7 @@ textarea {
 }
 
 .dos-field label .dots {
-  /* #00aaaa on white is 2.86:1. #007070 is about 5.4:1. */
-  color: #007070;
+  color: var(--dos-cyan);
 }
 
 .dos-input,
@@ -723,7 +723,7 @@ textarea {
 .dos-input:disabled,
 .dos-input:read-only,
 .dos-select:disabled {
-  color: #333333;
+  color: var(--dos-white);
   background: transparent;
   border-bottom-color: transparent;
 }
@@ -905,9 +905,11 @@ textarea {
   flex: 0 0 1.7em;
 }
 
-/* Invoice site header: 1.5× type. Each value stays on one line; the row wraps between values. */
+/* Invoice site header: 1.5× type. Each value stays on one line; the row wraps between values.
+   White is only this info block; the columns under it stay Promas blue. */
 .invoice-site-header {
-  color: var(--app-accent);
+  background: #ffffff;
+  color: #161616;
   font-size: 1.5em;
   padding: 0.1em 0 0.15em;
   margin-bottom: 0.15em;
@@ -957,18 +959,18 @@ textarea {
   overflow-y: scroll;
   scrollbar-gutter: stable;
   scrollbar-width: auto;
-  scrollbar-color: #007070 #e6e6e6;
+  scrollbar-color: var(--dos-cyan) var(--dos-blue);
   min-height: 0;
 }
 
 .dlg-body:has(.invoice-edit)::-webkit-scrollbar {
   width: 16px;
   height: 16px;
-  background: #e6e6e6;
+  background: var(--dos-blue);
 }
 
 .dlg-body:has(.invoice-edit)::-webkit-scrollbar-thumb {
-  background: #007070;
+  background: var(--dos-cyan);
 }
 
 .invoice-edit {
@@ -977,12 +979,41 @@ textarea {
   overflow: visible;
 }
 
-/* The 1.5× block stays fully visible. The list below it scrolls. */
-.dos-browse > .invoice-site-header {
+/* The 1.5× block stays fully visible. The list below it scrolls.
+   Bleed uses the list's own 1ch / 0.4em, same as .dos-info-banner.
+   The header's 1.5em would make -1ch too wide and width:100% would
+   leave a blue strip on the right. */
+.dos-browse > .invoice-site-header,
+.dos-browse > .dos-info-banner {
   flex: 0 0 auto;
   min-height: auto;
   min-width: 0;
   overflow: visible;
+  background: #ffffff;
+  color: #161616;
+  margin-top: -0.4em;
+  margin-left: -1ch;
+  margin-right: -1ch;
+  padding-top: 0.4em;
+  padding-left: 1ch;
+  padding-right: 1ch;
+}
+
+.dos-browse > .invoice-site-header {
+  font-size: inherit;
+  width: auto;
+  max-width: none;
+}
+
+.dos-browse > .invoice-site-header > .invoice-fact-line,
+.dos-browse > .invoice-site-header > .invoice-comments {
+  font-size: 1.5em;
+}
+
+/* Company / property line above a list. Columns under it stay blue. */
+.dos-info-banner {
+  background: #ffffff;
+  color: #161616;
 }
 
 .dos-browse > .content-grid {
@@ -1152,8 +1183,8 @@ textarea {
 }
 
 .dos-searchline .dos-input {
-  background: #ffffff;
-  color: var(--app-ink);
+  background: var(--dos-blue);
+  color: var(--dos-white-bright);
   border-bottom: 1px solid var(--app-accent);
   flex: 1;
 }
@@ -1339,7 +1370,7 @@ textarea {
 }
 
 .payroll-grid .payroll-job {
-  color: #333333;
+  color: var(--dos-white);
   margin-top: 0.1em;
 }
 

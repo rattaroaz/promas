@@ -13,7 +13,8 @@ describe("statusKeyEvent", () => {
   it("maps common status captions to keyboard events", () => {
     expect(statusKeyEvent("Esc")).toEqual({ key: "Escape" });
     expect(statusKeyEvent("Ins")).toEqual({ key: "Insert" });
-    expect(statusKeyEvent("Ctrl-W")).toEqual({ key: "w", ctrlKey: true });
+    expect(statusKeyEvent("Ctrl-S")).toEqual({ key: "s", ctrlKey: true });
+    expect(statusKeyEvent("Cntr_S")).toEqual({ key: "s", ctrlKey: true });
     expect(statusKeyEvent("Ctrl-Home")).toEqual({ key: "Home", ctrlKey: true });
     expect(statusKeyEvent("P")).toEqual({ key: "P" });
     expect(statusKeyEvent("1-9")).toBeNull();
@@ -23,22 +24,22 @@ describe("statusKeyEvent", () => {
 function KeyProbe({
   onEscape,
   onInsert,
-  onCtrlW,
+  onCtrlS,
   onEnd,
   onF1,
 }: {
   onEscape?: () => void;
   onInsert?: () => void;
-  onCtrlW?: () => void;
+  onCtrlS?: () => void;
   onEnd?: () => void;
   onF1?: () => void;
 }) {
-  useDosKeys({ onEscape, onInsert, onCtrlW, onEnd, onF1 });
+  useDosKeys({ onEscape, onInsert, onCtrlS, onEnd, onF1 });
   return (
     <StatusBar
       keys={[
         { key: "Esc", label: "Cancel" },
-        { key: "Ctrl-W", label: "Save" },
+        { key: "Ctrl-S", label: "Save" },
         { key: "End", label: "Print Form" },
         { key: "F1", label: "Help" },
         { key: "Ins", label: "Add" },
@@ -93,26 +94,26 @@ describe("StatusBar", () => {
   it("runs the matching handler when a hint is clicked", async () => {
     const user = userEvent.setup();
     const onEscape = vi.fn();
-    const onCtrlW = vi.fn();
+    const onCtrlS = vi.fn();
     const onEnd = vi.fn();
     const onF1 = vi.fn();
     const onInsert = vi.fn();
     render(
       <KeyProbe
         onEscape={onEscape}
-        onCtrlW={onCtrlW}
+        onCtrlS={onCtrlS}
         onEnd={onEnd}
         onF1={onF1}
         onInsert={onInsert}
       />
     );
     await user.click(screen.getByRole("button", { name: /^Esc Cancel$/i }));
-    await user.click(screen.getByRole("button", { name: /^Ctrl-W Save$/i }));
+    await user.click(screen.getByRole("button", { name: /^Ctrl-S Save$/i }));
     await user.click(screen.getByRole("button", { name: /^End Print Form$/i }));
     await user.click(screen.getByRole("button", { name: /^F1 Help$/i }));
     await user.click(screen.getByRole("button", { name: /^Ins Add$/i }));
     expect(onEscape).toHaveBeenCalledTimes(1);
-    expect(onCtrlW).toHaveBeenCalledTimes(1);
+    expect(onCtrlS).toHaveBeenCalledTimes(1);
     expect(onEnd).toHaveBeenCalledTimes(1);
     expect(onF1).toHaveBeenCalledTimes(1);
     expect(onInsert).toHaveBeenCalledTimes(1);

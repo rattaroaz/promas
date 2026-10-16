@@ -65,7 +65,7 @@ describe("WorkOrderProcess", () => {
     expect(api.getWorkOrder).toHaveBeenCalled();
   });
 
-  it("saves a new work order after Ctrl-W confirm", async () => {
+  it("saves a new work order after Ctrl-S confirm", async () => {
     const user = userEvent.setup();
     renderApp(
       <WorkOrderProcess company={company} property={property} onBack={vi.fn()} />
@@ -79,7 +79,7 @@ describe("WorkOrderProcess", () => {
     expect(
       (await screen.findAllByText(/Enter Job Order Information/i)).length
     ).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
       expect(api.saveWorkOrder).toHaveBeenCalledWith(

@@ -105,7 +105,7 @@ export function MaterialBrowse({
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? () => window.print() : end,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) save();
     },
     onChar: (ch) => {
@@ -240,7 +240,7 @@ export function MaterialBrowse({
       {editing && (
         <Dialog
           title="******    Material Maintenance   ******"
-          foot="Esc=Cancel  Ctrl-W=Save & Exit"
+          foot="Esc=Cancel  Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
             <DotField label="Worker No" width={14}>
