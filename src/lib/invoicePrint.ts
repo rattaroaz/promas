@@ -42,9 +42,32 @@ export const PRINT_DESC_SIZE = 11;
 /** Five spaces. Continuation lines only; the first line is not indented. */
 export const PRINT_DESC_INDENT = "     ";
 
+/** Description text origin (pt). The amount rule is the right column line. */
+export const PRINT_DESC_X = 24;
+export const PRINT_AMOUNT_X = 458;
+
+/** Apt/Unit and Size are the first body row, directly under DESCRIPTION. */
+export const PRINT_UNIT_ROW = 0;
+/** One blank spacer row, then the description lines. */
+export const PRINT_SPACER_ROWS_AFTER_UNIT = 1;
+export const PRINT_DESC_START_ROW = PRINT_UNIT_ROW + 1 + PRINT_SPACER_ROWS_AFTER_UNIT;
+
+/**
+ * Width that ends two spaces before the amount column line. A word that does
+ * not fit is moved whole, so a line may stop further left than this. A word
+ * wider than the line is hard-broken at this limit.
+ */
+export function descriptionWrapWidth(
+  font: PDFFont,
+  size = PRINT_DESC_SIZE
+): number {
+  return PRINT_AMOUNT_X - PRINT_DESC_X - font.widthOfTextAtSize("  ", size);
+}
+
 /**
  * Wrap a description. The first line uses the full column. Later lines are
- * indented 5 spaces and wrapped to the remaining width.
+ * indented 5 spaces and wrapped to the remaining width. A word that fits is
+ * moved whole. A word wider than the line is hard-broken at the limit.
  */
 export function wrapDescription(
   font: PDFFont,
@@ -89,18 +112,25 @@ export function wrapDescription(
         current = word;
         continue;
       }
-      let chunk = "";
-      for (const ch of word) {
-        const trial = chunk + ch;
-        if (chunk && font.widthOfTextAtSize(trial, size) > limit()) {
-          current = chunk;
-          flush();
-          chunk = ch;
-        } else {
-          chunk = trial;
+      // Wider than this line: hard-break at the width limit. Continuation
+      // pieces use the indented limit. A word that fits is never split.
+      let rest = word;
+      while (rest) {
+        const lim = limit();
+        if (font.widthOfTextAtSize(rest, size) <= lim) {
+          current = rest;
+          break;
         }
+        let cut = 1;
+        while (
+          cut < rest.length &&
+          font.widthOfTextAtSize(rest.slice(0, cut + 1), size) <= lim
+        ) {
+          cut += 1;
+        }
+        push(rest.slice(0, cut));
+        rest = rest.slice(cut);
       }
-      current = chunk;
     }
     if (current) flush();
   }
@@ -377,12 +407,10 @@ export async function buildInvoicePdf(
   const gapAboveTotals = 14; // one-row space between table and subtotal
   const tableHeaderH = 20;
   const rowH = 16;
-  /** One empty row between the column header and the first content row. */
-  const blankRowsUnderHeader = 1;
 
   // Hours/Qty and Price are not printed. Amount stays; totals are computed
   // from the invoice record below, not from these columns.
-  const colAmt = { x: 458, w: right - 458 };
+  const colAmt = { x: PRINT_AMOUNT_X, w: right - PRINT_AMOUNT_X };
   const colDesc = { x: left, w: colAmt.x - left };
 
   // Totals sit at the bottom of the 11" page
@@ -443,10 +471,11 @@ export async function buildInvoicePdf(
     });
   }
 
-  // Blank row sits directly under the header. Unit/size is the next row.
-  const unitRow = blankRowsUnderHeader;
+  // Apt/Unit and Size sit on the row directly under DESCRIPTION.
+  // One blank spacer row follows, then the description lines.
+  const unitRow = PRINT_UNIT_ROW;
   const row0Top = firstRowTop + unitRow * rowH + 3;
-  draw(page, font, "APT UNIT # :", 24, row0Top, 8);
+  draw(page, font, "APT UNIT # :", PRINT_DESC_X, row0Top, 8);
   draw(page, font, clip(invoice.salesUnit || "", 12), 78, row0Top, 9, {
     maxWidth: 50,
   });
@@ -458,8 +487,8 @@ export async function buildInvoicePdf(
   const itemLines = lines.filter(
     (l) => (l.description || "").trim() || l.price
   );
-  const descWidth = colDesc.w - 16;
-  let row = unitRow + 1;
+  const descWidth = descriptionWrapWidth(font, PRINT_DESC_SIZE);
+  let row = PRINT_DESC_START_ROW;
   for (const line of itemLines) {
     if (row >= maxRows) break;
     const wrapped = wrapDescription(
@@ -471,7 +500,7 @@ export async function buildInvoicePdf(
     wrapped.forEach((part, i) => {
       if (row >= maxRows) return;
       const top = firstRowTop + row * rowH + 2;
-      draw(page, font, part, 24, top, PRINT_DESC_SIZE);
+      draw(page, font, part, PRINT_DESC_X, top, PRINT_DESC_SIZE);
       if (i === 0 && line.price) {
         draw(page, font, moneyPlain(line.price), colAmt.x + 4, top, 9, {
           maxWidth: colAmt.w - 10,
@@ -486,7 +515,7 @@ export async function buildInvoicePdf(
       page,
       font,
       clip(invoice.remark1, 58),
-      24,
+      PRINT_DESC_X,
       firstRowTop + row * rowH + 3,
       8,
       { maxWidth: colDesc.w - 12 }

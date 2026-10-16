@@ -806,7 +806,8 @@ textarea {
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  /* Description takes the row. WorkDate, Price, and Del sit on the right edge. */
+  /* Description takes the row. WorkDate stays at main's 14ch; the digit
+     padding below keeps mm/dd/yyyy clear of the calendar glyph. */
   grid-template-columns: minmax(0, 1fr) 14ch 12ch 4ch;
   /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
   column-gap: 2ch;
@@ -839,20 +840,17 @@ textarea {
   appearance: textfield;
 }
 
-/* WorkDate text stays right-aligned. The calendar glyph itself is the shared
-   .dos-date icon (same as Order Date), pinned to the right edge of the cell. */
-.invoice-line-grid > .invoice-line-end .dos-date {
+/* WorkDate digits stay right-aligned, with the native calendar glyph at the cell edge. */
+.invoice-line-grid > .invoice-line-end input[type="date"] {
   width: 100%;
   flex: 1 1 auto;
 }
 
-.invoice-line-grid > .invoice-line-end .dos-date::after {
-  right: 0;
-}
-
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
   text-align: right;
-  padding: 0 1.15em 0 0;
+  /* Clears the calendar glyph. The line-end rule zeros the input's own
+     padding-right, so this is the gap in front of the icon. */
+  padding: 0 1.3em 0 0;
   margin: 0;
 }
 
@@ -1534,54 +1532,120 @@ textarea {
   position: relative;
 }
 
-/* One calendar glyph for Invoice Date, Due Date, Order Date, and WorkDate.
-   The native indicator stays the click target but is invisible so it cannot
-   paint a different icon. */
-.dos-date {
-  --date-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23ffff55' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
-  position: relative;
+/* Calendar glyph from v2.13.0 (af88a3a): the browser's hollow calendar with
+   filter:invert(1); opacity:0.6. Over black that composites to about 60% grey
+   (#999). WebKit will not paint that UA image on appearance:none inputs, so
+   the same hollow calendar is drawn on the field in that grey. The UA
+   indicator stays in the hit box at opacity 0; App opens the picker from
+   this glyph. v2.14's .dos-date::after was a different filled icon. */
+input[type="date"].dos-input {
+  background-color: var(--dos-black);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1.25' y='3.1' width='13.5' height='11.7' fill='none' stroke='%23999999' stroke-width='1.35'/><path d='M1.25 6.35h13.5' stroke='%23999999' stroke-width='1.2'/><rect x='4' y='1' width='1.7' height='3.3' fill='%23999999'/><rect x='10.3' y='1' width='1.7' height='3.3' fill='%23999999'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.12em center;
+  background-size: 1em 1em;
+  padding-right: 1.25em;
+}
+
+/* Search lines (Wages, Reports) keep the blue field from af88a3a / main.
+   The date rule above is more specific than .dos-searchline .dos-input and
+   would otherwise paint these black. */
+/* One gap for the whole line, on an 8px grid. Wide dates may wrap; the
+   page scale stays with main. Pairs keep a label on the same row as its field. */
+.dos-searchline.dos-searchline-dates {
+  gap: 16px;
+  justify-content: flex-start;
+}
+
+.dos-searchline-pair {
   display: inline-flex;
   align-items: center;
-  min-width: 0;
-  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  gap: 16px;
+  flex: 0 0 auto;
   max-width: 100%;
 }
 
-.dos-date::after {
-  content: "";
-  position: absolute;
-  right: 0.05em;
-  top: 50%;
-  width: 1em;
-  height: 1em;
-  transform: translateY(-50%);
-  background: var(--date-icon) center / 1em 1em no-repeat;
-  pointer-events: none;
+.dos-searchline input[type="date"].dos-input {
+  background-color: var(--dos-blue);
+  /* Icon is 1em, inset 0.12em. The extra 4px is the ink clearance. */
+  padding-right: calc(1em + 0.12em + 4px);
 }
 
-.dos-date:focus-within {
-  --date-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23000000' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
-}
-
-.dos-date > input[type="date"] {
-  width: 100%;
-}
-
-.dos-date > input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0;
-  cursor: pointer;
-  width: 1.15em;
-  height: 100%;
-  margin: 0;
+.dos-searchline input[type="date"].dos-input::-webkit-datetime-edit,
+.dos-searchline input[type="date"].dos-input::-webkit-datetime-edit-fields-wrapper,
+.dos-searchline input[type="date"].dos-input::-webkit-datetime-edit-text {
   padding: 0;
+  margin: 0;
 }
 
-.dos-date > input[type="date"]::-webkit-datetime-edit {
-  padding-right: 1.15em;
+/* Payroll's placeholder is 11 letters. Flex may shrink the field, but not
+   below the placeholder plus the field's own horizontal padding. */
+.dos-searchline input[aria-label="Work person search"] {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 12.2ch;
+  max-width: 40ch;
+}
+
+/* Cash Search and Company were collapsing to a few pixels once dates stopped
+   shrinking. Keep a usable floor. Invoice Register and Sales need the full
+   "Company NO or Name" placeholder. */
+.dos-searchline.dos-searchline-dates input.dos-input.w8 {
+  flex: 0 0 auto;
+  width: 10ch;
+  min-width: 10ch;
+  max-width: 10ch;
+}
+
+.dos-searchline input[aria-label="Cash receipts search"] {
+  flex: 0 0 auto;
+  /* Border box holds the 25-character placeholder plus the field's 0.4ch padding. */
+  width: calc(25ch + 0.8ch);
+  min-width: calc(25ch + 0.8ch);
+  max-width: calc(25ch + 0.8ch);
+}
+
+.dos-searchline input[aria-label="Sales company search"] {
+  flex: 0 0 auto;
+  width: 20ch;
+  min-width: 20ch;
+  max-width: 20ch;
+}
+
+input[type="date"].dos-input:focus {
+  background-color: var(--dos-cyan-bright);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1.25' y='3.1' width='13.5' height='11.7' fill='none' stroke='%23111111' stroke-width='1.35'/><path d='M1.25 6.35h13.5' stroke='%23111111' stroke-width='1.2'/><rect x='4' y='1' width='1.7' height='3.3' fill='%23111111'/><rect x='10.3' y='1' width='1.7' height='3.3' fill='%23111111'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.12em center;
+  background-size: 1em 1em;
+}
+
+/* Form dialogs only. A fixed w12 date was clipping mm/dd/yyyy once the
+   icon padding was added. Search lines keep main's shrinking 14ch cap so
+   the toolbar wraps and scales the way it does there. */
+input[type="date"].dos-input.w12 {
+  flex: 0 0 auto;
+  width: calc(12ch + 2.8em);
+  min-width: calc(12ch + 2.8em);
+  max-width: none;
+}
+
+.dos-searchline input[type="date"].dos-input.w12 {
+  flex: 0 0 auto;
+  width: calc(11.2ch + 1.12em + 4px);
+  min-width: calc(11.2ch + 1.12em + 4px);
+  max-width: none;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
+  opacity: 0;
+  width: 1.15em;
+  height: 100%;
+  /* Sit in the padding reserved for the drawn glyph, not beside the date. */
+  margin: 0 0 0 -1.15em;
+  padding: 0;
 }
 
 input[type="number"]::-webkit-inner-spin-button {
