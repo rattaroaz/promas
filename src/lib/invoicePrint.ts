@@ -54,7 +54,8 @@ export const PRINT_DESC_START_ROW = PRINT_UNIT_ROW + 1 + PRINT_SPACER_ROWS_AFTER
 
 /**
  * Width that ends two spaces before the amount column line. A word that does
- * not fit is moved whole, so a line may stop further left than this.
+ * not fit is moved whole, so a line may stop further left than this. A word
+ * wider than the line is hard-broken at this limit.
  */
 export function descriptionWrapWidth(
   font: PDFFont,
@@ -65,7 +66,8 @@ export function descriptionWrapWidth(
 
 /**
  * Wrap a description. The first line uses the full column. Later lines are
- * indented 5 spaces and wrapped to the remaining width. Words are never split.
+ * indented 5 spaces and wrapped to the remaining width. A word that fits is
+ * moved whole. A word wider than the line is hard-broken at the limit.
  */
 export function wrapDescription(
   font: PDFFont,
@@ -105,10 +107,30 @@ export function wrapDescription(
         current = next;
         continue;
       }
-      // Keep the word whole. If it is wider than the line, it overflows
-      // rather than being broken mid-word.
       if (current) flush();
-      current = word;
+      if (font.widthOfTextAtSize(word, size) <= limit()) {
+        current = word;
+        continue;
+      }
+      // Wider than this line: hard-break at the width limit. Continuation
+      // pieces use the indented limit. A word that fits is never split.
+      let rest = word;
+      while (rest) {
+        const lim = limit();
+        if (font.widthOfTextAtSize(rest, size) <= lim) {
+          current = rest;
+          break;
+        }
+        let cut = 1;
+        while (
+          cut < rest.length &&
+          font.widthOfTextAtSize(rest.slice(0, cut + 1), size) <= lim
+        ) {
+          cut += 1;
+        }
+        push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+      }
     }
     if (current) flush();
   }

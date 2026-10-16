@@ -410,6 +410,55 @@ describe("buildInvoicePdf", () => {
     expect(asText).toContain("APT UNIT");
   });
 
+  it("hard-breaks a word wider than the amount rule", async () => {
+    const { StandardFonts, PDFDocument: Pdf } = await import("pdf-lib");
+    const doc = await Pdf.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const width = descriptionWrapWidth(font);
+    let wide = "M";
+    while (font.widthOfTextAtSize(wide, PRINT_DESC_SIZE) <= PRINT_AMOUNT_X + 12) {
+      wide += "M";
+    }
+    expect(font.widthOfTextAtSize(wide, PRINT_DESC_SIZE)).toBeGreaterThan(PRINT_AMOUNT_X);
+    const description = `Paint ${wide} today`;
+    const wrapped = wrapDescription(font, description, PRINT_DESC_SIZE, width);
+    expect(wrapped.length).toBeGreaterThan(1);
+    const indentW = font.widthOfTextAtSize("     ", PRINT_DESC_SIZE);
+    const twoSpaces = font.widthOfTextAtSize("  ", PRINT_DESC_SIZE);
+    for (const line of wrapped) {
+      const body = line.startsWith("     ") ? line.slice(5) : line;
+      const limit = line.startsWith("     ") ? width - indentW : width;
+      expect(font.widthOfTextAtSize(body, PRINT_DESC_SIZE)).toBeLessThanOrEqual(
+        limit + 0.01
+      );
+      const endX = PRINT_DESC_X + font.widthOfTextAtSize(line, PRINT_DESC_SIZE);
+      expect(endX).toBeLessThanOrEqual(PRINT_AMOUNT_X - twoSpaces + 0.05);
+      expect(endX).toBeLessThanOrEqual(PRINT_AMOUNT_X);
+    }
+    const pieces = wrapped.map((line, i) =>
+      i === 0 ? line : line.replace(/^ {5}/, "")
+    );
+    expect(pieces.join("").replace(/ /g, "")).toBe(description.replace(/ /g, ""));
+    expect(wrapped.some((line) => line.includes(wide))).toBe(false);
+    const bytes = await buildInvoicePdf(
+      payload({
+        lines: [{ ...payload().lines[0], description, price: 80 }],
+      })
+    );
+    const asText = pdfReadableText(bytes);
+    expect(asText).toContain("Paint");
+    expect(asText).toContain("today");
+    expect(asText).toContain(wide.slice(-8));
+    const positions = textPositions(bytes);
+    const drawn = positions.filter((p) => /M{6,}/.test(p.text));
+    expect(drawn.length).toBeGreaterThan(0);
+    for (const piece of drawn) {
+      expect(piece.text).not.toContain(wide);
+      const endX = piece.x + font.widthOfTextAtSize(piece.text, PRINT_DESC_SIZE);
+      expect(endX).toBeLessThanOrEqual(PRINT_AMOUNT_X);
+    }
+  });
+
   it("fills many description rows on letter height without shrinking page", async () => {
     const many = Array.from({ length: 30 }, (_, i) => ({
       ...payload().lines[0],

@@ -806,8 +806,9 @@ textarea {
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  /* Description takes the row. WorkDate, Price, and Del sit on the right edge. */
-  grid-template-columns: minmax(0, 1fr) 14ch 12ch 4ch;
+  /* Description takes the row. WorkDate, Price, and Del sit on the right edge.
+     WorkDate is wide enough for mm/dd/yyyy plus the calendar glyph. */
+  grid-template-columns: minmax(0, 1fr) calc(12ch + 2.8em) 12ch 4ch;
   /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
   column-gap: 2ch;
   align-items: center;
@@ -847,7 +848,7 @@ textarea {
 
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
   text-align: right;
-  padding: 0 1.4em 0 0;
+  padding: 0;
   margin: 0;
 }
 
@@ -1529,20 +1530,26 @@ textarea {
   position: relative;
 }
 
-/* Calendar glyph from v2.13.0 (af88a3a), before the .dos-date overlay: the
-   browser's hollow calendar, inverted to a light gray (filter:invert(1);
-   opacity:0.6). WebKit will not paint that UA image on appearance:none
-   inputs, so the same hollow calendar is drawn on the field. The UA indicator
-   stays in the hit box at opacity 0; App opens the picker from this glyph.
-   v2.14's .dos-date::after was a different filled icon and pointer-events:none,
-   so clicking it did nothing. */
+/* Calendar glyph from v2.13.0 (af88a3a): the browser's hollow calendar with
+   filter:invert(1); opacity:0.6. Over black that composites to about 60% grey
+   (#999). WebKit will not paint that UA image on appearance:none inputs, so
+   the same hollow calendar is drawn on the field in that grey. The UA
+   indicator stays in the hit box at opacity 0; App opens the picker from
+   this glyph. v2.14's .dos-date::after was a different filled icon. */
 input[type="date"].dos-input {
   background-color: var(--dos-black);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1.25' y='3.1' width='13.5' height='11.7' fill='none' stroke='%23d9d9d9' stroke-width='1.35'/><path d='M1.25 6.35h13.5' stroke='%23d9d9d9' stroke-width='1.2'/><rect x='4' y='1' width='1.7' height='3.3' fill='%23d9d9d9'/><rect x='10.3' y='1' width='1.7' height='3.3' fill='%23d9d9d9'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1.25' y='3.1' width='13.5' height='11.7' fill='none' stroke='%23999999' stroke-width='1.35'/><path d='M1.25 6.35h13.5' stroke='%23999999' stroke-width='1.2'/><rect x='4' y='1' width='1.7' height='3.3' fill='%23999999'/><rect x='10.3' y='1' width='1.7' height='3.3' fill='%23999999'/></svg>");
   background-repeat: no-repeat;
   background-position: right 0.12em center;
   background-size: 1em 1em;
   padding-right: 1.25em;
+}
+
+/* Search lines (Wages, Reports) keep the blue field from af88a3a / main.
+   The date rule above is more specific than .dos-searchline .dos-input and
+   would otherwise paint these black. */
+.dos-searchline input[type="date"].dos-input {
+  background-color: var(--dos-blue);
 }
 
 input[type="date"].dos-input:focus {
@@ -1553,12 +1560,23 @@ input[type="date"].dos-input:focus {
   background-size: 1em 1em;
 }
 
+/* w12 is 14ch. padding-right plus the invisible indicator clip mm/dd/yyyy
+   on that width, and search lines shrink the field further. Hold these at
+   a size that fits the date and the glyph, and do not let them shrink. */
+input[type="date"].dos-input.w12 {
+  flex: 0 0 auto;
+  width: calc(12ch + 2.8em);
+  min-width: calc(12ch + 2.8em);
+  max-width: none;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0;
   width: 1.15em;
   height: 100%;
-  margin: 0;
+  /* Sit in the padding reserved for the drawn glyph, not beside the date. */
+  margin: 0 0 0 -1.15em;
   padding: 0;
 }
 
