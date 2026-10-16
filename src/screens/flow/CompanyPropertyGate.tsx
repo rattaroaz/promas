@@ -39,16 +39,25 @@ const PROCESS_TITLE: Record<ProcessKind, string> = {
   cash: " Cash Receipts Process ",
 };
 
-/** Next property number in one company's list. Non-numeric numbers are skipped. */
+/**
+ * Next property number in one company's list. Non-numeric numbers are skipped.
+ * The result is zero-padded to the width of the existing numeric numbers
+ * ("01","02" → "03"). A longer next value is not truncated.
+ */
 export function nextPropertyNo(proNos: string[]): string {
   let max = 0;
+  let width = 0;
+  let any = false;
   for (const raw of proNos) {
     const t = (raw ?? "").trim();
     if (!/^\d+$/.test(t)) continue;
+    any = true;
     const n = Number.parseInt(t, 10);
     if (n > max) max = n;
+    if (t.length > width) width = t.length;
   }
-  return String(max + 1);
+  const next = String(max + 1);
+  return any ? next.padStart(width, "0") : next;
 }
 
 /**

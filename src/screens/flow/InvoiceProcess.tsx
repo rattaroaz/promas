@@ -811,6 +811,7 @@ export function InvoiceProcess({
           <div className="dos-form invoice-edit">
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
+                <span className="dos-date">
                 <input
                   className="dos-input"
                   type="date"
@@ -826,10 +827,12 @@ export function InvoiceProcess({
                     })
                   }
                 />
+                </span>
               </DotField>
             </div>
             <div className="dos-form-row">
               <DotField label="Due Date" width={12}>
+                <span className="dos-date">
                 <input
                   className="dos-input"
                   type="date"
@@ -845,6 +848,7 @@ export function InvoiceProcess({
                     })
                   }
                 />
+                </span>
               </DotField>
               <DotField label="Terms" width={8}>
                 <input

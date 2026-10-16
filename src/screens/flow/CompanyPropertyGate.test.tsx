@@ -5,6 +5,7 @@ import {
   CompanyPropertyGate,
   formatPropertySearchRow,
   INVOICE_SITE_BROWSE,
+  nextPropertyNo,
   PROPERTY_BROWSE_GLOBAL,
   PROPERTY_BROWSE_WITH_NAME,
 } from "./CompanyPropertyGate";
@@ -45,6 +46,16 @@ const property = {
   contact: "MARIA",
   manager: "MARIA",
 };
+
+describe("nextPropertyNo", () => {
+  it("zero-pads the next number to the width of existing numbers", () => {
+    expect(nextPropertyNo(["01", "02"])).toBe("03");
+    expect(nextPropertyNo(["02", "01"])).toBe("03");
+    expect(nextPropertyNo(["01", "02", "LOT-A"])).toBe("03");
+    expect(nextPropertyNo([])).toBe("1");
+    expect(nextPropertyNo(["100"])).toBe("101");
+  });
+});
 
 describe("formatPropertySearchRow", () => {
   it("keeps three spaces between every column and does not clip the street", () => {

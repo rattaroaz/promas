@@ -1534,8 +1534,9 @@ textarea {
   position: relative;
 }
 
-/* One calendar glyph for Order Date and WorkDate. The native indicator stays
-   as the click target but is invisible so it cannot paint a different icon. */
+/* One calendar glyph for Invoice Date, Due Date, Order Date, and WorkDate.
+   The native indicator stays the click target but is invisible so it cannot
+   paint a different icon. */
 .dos-date {
   --date-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23ffff55' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
   position: relative;
