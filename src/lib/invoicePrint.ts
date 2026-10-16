@@ -36,6 +36,77 @@ function clip(s: string, max: number): string {
   return t.slice(0, Math.max(0, max - 1)) + "…";
 }
 
+/** Description type on the printed form (header and rows). */
+export const PRINT_DESC_SIZE = 11;
+
+/** Five spaces. Continuation lines only; the first line is not indented. */
+export const PRINT_DESC_INDENT = "     ";
+
+/**
+ * Wrap a description. The first line uses the full column. Later lines are
+ * indented 5 spaces and wrapped to the remaining width.
+ */
+export function wrapDescription(
+  font: PDFFont,
+  text: string,
+  size: number,
+  maxWidth: number,
+  indent = PRINT_DESC_INDENT
+): string[] {
+  const indentW = font.widthOfTextAtSize(indent, size);
+  const contMax = Math.max(1, maxWidth - indentW);
+  const source = (text ?? "").replace(/\r\n/g, "\n");
+  if (!source) return [""];
+
+  const result: string[] = [];
+  let continuation = false;
+  const limit = () => (continuation ? contMax : maxWidth);
+  const push = (line: string) => {
+    result.push(continuation ? indent + line : line);
+    continuation = true;
+  };
+
+  for (const paragraph of source.split("\n")) {
+    if (!paragraph) {
+      result.push("");
+      continuation = true;
+      continue;
+    }
+    let current = "";
+    const flush = () => {
+      if (!current) return;
+      push(current);
+      current = "";
+    };
+    for (const word of paragraph.split(" ")) {
+      const next = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(next, size) <= limit()) {
+        current = next;
+        continue;
+      }
+      if (current) flush();
+      if (font.widthOfTextAtSize(word, size) <= limit()) {
+        current = word;
+        continue;
+      }
+      let chunk = "";
+      for (const ch of word) {
+        const trial = chunk + ch;
+        if (chunk && font.widthOfTextAtSize(trial, size) > limit()) {
+          current = chunk;
+          flush();
+          chunk = ch;
+        } else {
+          chunk = trial;
+        }
+      }
+      current = chunk;
+    }
+    if (current) flush();
+  }
+  return result.length ? result : [""];
+}
+
 /** Wrap the full string onto lines that fit `maxWidth`. Nothing is dropped. */
 export function wrapToWidth(
   font: PDFFont,
@@ -298,18 +369,21 @@ export async function buildInvoicePdf(
   const tableHeaderTop =
     ADDR_FIRST_RULE + ADDR_RULE_COUNT * ADDR_LINE_H + 8; // ~216
   const tableW = right - left;
-  const colDesc = { x: left, w: 290 };
-  const colQty = { x: 308, w: 75 };
-  const colPrice = { x: 383, w: 75 };
-  const colAmt = { x: 458, w: right - 458 };
 
   const marginBottom = 36; // ~0.5" from physical bottom of letter sheet
   const totalsHeaderH = 16;
   const totalsValueH = 18;
   const totalsBlockH = totalsHeaderH + totalsValueH;
   const gapAboveTotals = 14; // one-row space between table and subtotal
-  const tableHeaderH = 16;
-  const rowH = 14;
+  const tableHeaderH = 20;
+  const rowH = 16;
+  /** One empty row between the column header and the first content row. */
+  const blankRowsUnderHeader = 1;
+
+  // Hours/Qty and Price are not printed. Amount stays; totals are computed
+  // from the invoice record below, not from these columns.
+  const colAmt = { x: 458, w: right - 458 };
+  const colDesc = { x: left, w: colAmt.x - left };
 
   // Totals sit at the bottom of the 11" page
   const totalsTop = PAGE_H - marginBottom - totalsBlockH;
@@ -324,36 +398,32 @@ export async function buildInvoicePdf(
     text: string,
     x: number,
     w: number,
+    size: number,
     align: "left" | "center" = "left"
   ) => {
-    const size = 8;
     let dx = x + 4;
     const tw = font.widthOfTextAtSize(text, size);
     if (align === "center") dx = x + (w - tw) / 2;
     page.drawText(text, {
       x: dx,
-      y: yTop(tableHeaderTop + 4, size),
+      y: yTop(tableHeaderTop + Math.max(3, (tableHeaderH - size) / 2), size),
       size,
       font,
       color: rgb(1, 1, 1),
     });
   };
-  drawHdr("DESCRIPTION", colDesc.x, colDesc.w);
-  drawHdr("HOURS / QTY", colQty.x, colQty.w, "center");
-  drawHdr("PRICE", colPrice.x, colPrice.w, "center");
-  drawHdr("AMOUNT", colAmt.x, colAmt.w, "center");
+  drawHdr("DESCRIPTION", colDesc.x, colDesc.w, PRINT_DESC_SIZE);
+  drawHdr("AMOUNT", colAmt.x, colAmt.w, 8, "center");
 
   const tableHeight = tableHeaderH + maxRows * rowH;
   strokeRect(page, left, tableHeaderTop, tableW, tableHeight, 1);
 
-  for (const x of [colQty.x, colPrice.x, colAmt.x]) {
-    page.drawLine({
-      start: { x, y: PAGE_H - tableHeaderTop - tableHeight },
-      end: { x, y: PAGE_H - tableHeaderTop },
-      thickness: 0.6,
-      color: rgb(0, 0, 0),
-    });
-  }
+  page.drawLine({
+    start: { x: colAmt.x, y: PAGE_H - tableHeaderTop - tableHeight },
+    end: { x: colAmt.x, y: PAGE_H - tableHeaderTop },
+    thickness: 0.6,
+    color: rgb(0, 0, 0),
+  });
   for (let i = 1; i <= maxRows; i++) {
     const y = PAGE_H - (firstRowTop + i * rowH);
     page.drawLine({
@@ -373,8 +443,9 @@ export async function buildInvoicePdf(
     });
   }
 
-  // Row 0 — unit / size
-  const row0Top = firstRowTop + 3;
+  // Blank row sits directly under the header. Unit/size is the next row.
+  const unitRow = blankRowsUnderHeader;
+  const row0Top = firstRowTop + unitRow * rowH + 3;
   draw(page, font, "APT UNIT # :", 24, row0Top, 8);
   draw(page, font, clip(invoice.salesUnit || "", 12), 78, row0Top, 9, {
     maxWidth: 50,
@@ -387,25 +458,22 @@ export async function buildInvoicePdf(
   const itemLines = lines.filter(
     (l) => (l.description || "").trim() || l.price
   );
-  const descWidth = colDesc.w - 12;
-  let row = 1;
+  const descWidth = colDesc.w - 16;
+  let row = unitRow + 1;
   for (const line of itemLines) {
     if (row >= maxRows) break;
-    const wrapped = wrapToWidth(font, line.description || "", 8, descWidth);
+    const wrapped = wrapDescription(
+      font,
+      line.description || "",
+      PRINT_DESC_SIZE,
+      descWidth
+    );
     wrapped.forEach((part, i) => {
       if (row >= maxRows) return;
-      const top = firstRowTop + row * rowH + 3;
-      draw(page, font, part, 24, top, 8);
+      const top = firstRowTop + row * rowH + 2;
+      draw(page, font, part, 24, top, PRINT_DESC_SIZE);
       if (i === 0 && line.price) {
-        draw(page, font, "1", colQty.x + 4, top, 8, {
-          maxWidth: colQty.w - 8,
-          align: "center",
-        });
-        draw(page, font, moneyPlain(line.price), colPrice.x + 4, top, 8, {
-          maxWidth: colPrice.w - 10,
-          align: "right",
-        });
-        draw(page, font, moneyPlain(line.price), colAmt.x + 4, top, 8, {
+        draw(page, font, moneyPlain(line.price), colAmt.x + 4, top, 9, {
           maxWidth: colAmt.w - 10,
           align: "right",
         });

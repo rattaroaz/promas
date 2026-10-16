@@ -186,11 +186,15 @@ export function priceForPreset(
   if (!preset) return null;
   const fixed = fixedPriceOf(preset);
   if (fixed != null) return fixed;
+  if (!("prices" in preset)) return null;
+  const table = preset.prices as Record<string, number>;
   const key = normalizeUnitSize(size);
-  if (!key) return null;
-  return "prices" in preset
-    ? ((preset.prices as Record<string, number>)[key] ?? null)
-    : null;
+  // Occupied is an explicit "no price" size. A blank size is not: the list
+  // pick still has a single-unit price, and the box was staying empty.
+  if (key === "Occupied") return null;
+  if (key && table[key] != null) return table[key];
+  if (!size.trim()) return table.single ?? null;
+  return null;
 }
 
 export function applyPresetPriceToLine(

@@ -38,7 +38,7 @@ describe("normalizeUnitSize", () => {
 describe("priceForPreset", () => {
   it("prices Interior Painting of Wall/Closet Inside from unit size", () => {
     const d = INTERIOR_PAINT_WALL_CLOSET;
-    expect(priceForPreset(d, "")).toBeNull();
+    expect(priceForPreset(d, "")).toBe(220);
     expect(priceForPreset(d, "single")).toBe(220);
     expect(priceForPreset(d, "1+1")).toBe(245);
     expect(priceForPreset(d, "2+1")).toBe(280);
@@ -86,7 +86,7 @@ describe("priceForPreset", () => {
 });
 
 describe("applyPresetPriceToLine", () => {
-  it("clears price when size is empty and leaves non-preset lines alone", () => {
+  it("uses the single price when size is empty and leaves non-preset lines alone", () => {
     const inv = emptyInvoice();
     const preset = {
       ...emptyInvoiceLine(inv, 1),
@@ -98,7 +98,7 @@ describe("applyPresetPriceToLine", () => {
       description: "Custom",
       price: 99,
     };
-    expect(applyPresetPriceToLine(preset, "").price).toBe(0);
+    expect(applyPresetPriceToLine(preset, "").price).toBe(220);
     expect(applyPresetPriceToLine(preset, "2+1").price).toBe(280);
     expect(applyPresetPrices("1+1", [preset, custom]).map((l) => l.price)).toEqual(
       [245, 99]
