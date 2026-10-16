@@ -433,7 +433,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 />
               </DotField>
             </div>
-            <DotField label="Phone1" width={14}>
+            <DotField label="Cell#" width={14}>
               <input
                 className="dos-input w15"
                 value={edit.phone}
@@ -441,7 +441,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
               />
             </DotField>
-            <DotField label="Phone2" width={14}>
+            <DotField label="Office#" width={14}>
               <input
                 className="dos-input w15"
                 value={edit.phone2}
@@ -569,7 +569,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 }
               />
             </DotField>
-            <DotField label="Key" width={14}>
+            <DotField label="Gate Code" width={14}>
               <input
                 className="dos-input w12"
                 value={propEdit.keyInfo}
@@ -578,7 +578,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 }
               />
             </DotField>
-            <DotField label="Time" width={14}>
+            <DotField label="Lock Box" width={14}>
               <input
                 className="dos-input w15"
                 value={propEdit.paintTime}
@@ -587,7 +587,7 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
                 }
               />
             </DotField>
-            <DotField label="PageMap" width={14}>
+            <DotField label="E-mail" width={14}>
               <input
                 className="dos-input w12"
                 value={propEdit.pageMap}

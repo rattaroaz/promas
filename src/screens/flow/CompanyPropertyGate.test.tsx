@@ -119,6 +119,7 @@ describe("CompanyPropertyGate", () => {
     );
     expect(screen.getByRole("textbox", { name: "Property Contact" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("? = first")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Company NO" })).toHaveValue("?");
     expect(screen.getAllByText(/Invoice Process/i).length).toBeGreaterThan(0);
   });
 
@@ -571,6 +572,11 @@ describe("CompanyPropertyGate", () => {
     ).toBeGreaterThan(0);
     expect(await screen.findByDisplayValue("1001")).toBeInTheDocument();
     expect(screen.getByDisplayValue("1001")).toBeDisabled();
+    expect(screen.getByLabelText("Cell#")).toBeInTheDocument();
+    expect(screen.getByLabelText("Office#")).toBeInTheDocument();
+    expect(screen.queryByText(/Beeper/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Phone1/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Phone2/)).not.toBeInTheDocument();
 
     const fields = screen.getAllByRole("textbox");
     await user.type(fields[1], "NEWCO");
@@ -633,7 +639,17 @@ describe("CompanyPropertyGate", () => {
     expect(
       (await screen.findAllByText(/Property Information/i)).length
     ).toBeGreaterThan(0);
-    expect(screen.getByDisplayValue("02")).toBeInTheDocument();
+    const generatedNo = screen.getByRole("textbox", {
+      name: "Property NO",
+      hidden: true,
+    });
+    expect(generatedNo).toHaveValue("1");
+    expect(generatedNo).toBeDisabled();
+    expect(screen.getByLabelText("Gate Code")).toBeInTheDocument();
+    expect(screen.getByLabelText("Lock Box")).toBeInTheDocument();
+    expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
+    expect(screen.queryByText(/^Key/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^PageMap/)).not.toBeInTheDocument();
 
     const fields = screen.getAllByRole("textbox");
     await user.type(fields[1], "Bldg B");
@@ -642,7 +658,7 @@ describe("CompanyPropertyGate", () => {
       expect(api.saveProperty).toHaveBeenCalledWith(
         expect.objectContaining({
           companyNo: "1000",
-          proNo: "02",
+          proNo: "1",
           name: "Bldg B",
         })
       );
@@ -650,7 +666,7 @@ describe("CompanyPropertyGate", () => {
     await waitFor(() => {
       expect(onReady).toHaveBeenCalledWith(
         expect.objectContaining({ companyNo: "1000" }),
-        expect.objectContaining({ proNo: "02", name: "Bldg B" })
+        expect.objectContaining({ proNo: "1", name: "Bldg B" })
       );
     });
   });

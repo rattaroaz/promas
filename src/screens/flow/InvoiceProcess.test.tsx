@@ -156,6 +156,7 @@ describe("InvoiceProcess", () => {
       'input[type="date"]'
     ) as HTMLInputElement;
     expect(dateInput.value).toBe(new Date().toISOString().slice(0, 10));
+    expect(screen.getByLabelText("Order Date")).toHaveValue(dateInput.value);
     expect(api.getSysdata).toHaveBeenCalled();
   });
 
@@ -264,12 +265,41 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
       INTERIOR_PAINT_WALL_CLOSET
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(220);
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(245);
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "Occupied");
     expect(screen.getByLabelText("Custom size")).toHaveValue("Occupied");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue(null);
+  });
+
+  it("fills Painting of Ceiling price and description from the list", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    await user.selectOptions(
+      await screen.findByLabelText("Line 1 description"),
+      PAINTING_OF_CEILING
+    );
+    expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
+      PAINTING_OF_CEILING
+    );
+    const invoiceDate = document.querySelector(
+      'input[type="date"]'
+    ) as HTMLInputElement;
+    expect(screen.getByLabelText("Line 1 work date")).toHaveValue(
+      invoiceDate.value
+    );
+    // No size yet: single-unit price, not a blank box.
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(75);
+    await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(115);
+    expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
+      PAINTING_OF_CEILING
+    );
   });
 
   it("allows a custom description and a manually edited price", async () => {
