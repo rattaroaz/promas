@@ -207,14 +207,36 @@ describe("useDosKeys", () => {
     expect(onF1).toHaveBeenCalledOnce();
   });
 
-  it("handles Ctrl-W and Ctrl-Home", () => {
-    const onCtrlW = vi.fn();
+  it("handles Ctrl-S and Ctrl-Home", () => {
+    const onCtrlS = vi.fn();
     const onCtrlHome = vi.fn();
-    renderHook(() => useDosKeys({ onCtrlW, onCtrlHome }));
-    fire("w", { ctrlKey: true });
+    renderHook(() => useDosKeys({ onCtrlS, onCtrlHome }));
+    const save = new KeyboardEvent("keydown", {
+      key: "s",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(save);
+    fire("S", { ctrlKey: true });
     fire("Home", { ctrlKey: true });
-    expect(onCtrlW).toHaveBeenCalledOnce();
+    expect(save.defaultPrevented).toBe(true);
+    expect(onCtrlS).toHaveBeenCalledTimes(2);
     expect(onCtrlHome).toHaveBeenCalledOnce();
+  });
+
+  it("does not save or close on Ctrl-W", () => {
+    const onCtrlS = vi.fn();
+    renderHook(() => useDosKeys({ onCtrlS }));
+    const close = new KeyboardEvent("keydown", {
+      key: "w",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(close);
+    expect(close.defaultPrevented).toBe(true);
+    expect(onCtrlS).not.toHaveBeenCalled();
   });
 
   it("routes arrow and page keys", () => {
@@ -294,23 +316,23 @@ describe("useDosKeys", () => {
 
   it("runs handlers from status-bar clicks even when an input is focused", () => {
     const onEscape = vi.fn();
-    const onCtrlW = vi.fn();
+    const onCtrlS = vi.fn();
     const onEnd = vi.fn();
     const onInsert = vi.fn();
     const onChar = vi.fn();
     renderHook(() =>
-      useDosKeys({ onEscape, onCtrlW, onEnd, onInsert, onChar })
+      useDosKeys({ onEscape, onCtrlS, onEnd, onInsert, onChar })
     );
     const input = document.createElement("input");
     document.body.appendChild(input);
     input.focus();
     window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Esc" }));
-    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Ctrl-W" }));
+    window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Ctrl-S" }));
     window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "End" }));
     window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "Ins" }));
     window.dispatchEvent(new CustomEvent(STATUS_KEY_CLICK, { detail: "(A)" }));
     expect(onEscape).toHaveBeenCalledOnce();
-    expect(onCtrlW).toHaveBeenCalledOnce();
+    expect(onCtrlS).toHaveBeenCalledOnce();
     expect(onEnd).toHaveBeenCalledOnce();
     expect(onInsert).toHaveBeenCalledOnce();
     expect(onChar).toHaveBeenCalledWith("A", expect.anything());

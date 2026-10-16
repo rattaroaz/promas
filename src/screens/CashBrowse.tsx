@@ -92,7 +92,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? () => window.print() : end,
-    onCtrlW: async () => {
+    onCtrlS: async () => {
       if (editing) await save();
     },
     onEnter: () => {
@@ -225,7 +225,7 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
       {editing && (
         <Dialog
           title="Enter Your Payment Data"
-          foot="Esc=Cancel  Ctrl-W / Enter=Post Receipt"
+          foot="Esc=Cancel  Ctrl-S / Enter=Post Receipt"
         >
           <div className="dos-form">
             <DotField label="Open Invoice" width={16}>

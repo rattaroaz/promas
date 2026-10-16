@@ -236,7 +236,7 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
                 overflow: "auto",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                color: "var(--app-ink)",
+                color: "#161616",
                 fontSize: "0.85em",
                 lineHeight: 1.35,
                 background: "#f4f4f4",

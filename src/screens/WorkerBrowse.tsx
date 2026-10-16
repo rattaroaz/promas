@@ -70,7 +70,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
     onPageDown: !editing ? pageDown : undefined,
     onHome: !editing ? home : undefined,
     onEnd: !editing ? end : undefined,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) save();
     },
     onChar: (ch) => {
@@ -161,7 +161,7 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
       {editing && (
         <Dialog
           title="Worker Information"
-          foot="Esc=Cancel, Ctrl-W=Save & Exit"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
             <DotField label="Worker No" width={14}>

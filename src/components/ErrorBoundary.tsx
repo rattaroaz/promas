@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <pre
             style={{
               whiteSpace: "pre-wrap",
-              color: "var(--app-ink)",
+              color: "#161616",
               background: "#f4f4f4",
               padding: "1em",
               border: "1px solid var(--dos-cyan)",

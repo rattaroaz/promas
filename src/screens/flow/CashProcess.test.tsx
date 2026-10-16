@@ -55,7 +55,7 @@ describe("CashProcess", () => {
     );
   });
 
-  it("opens payment entry with Ins and posts via Ctrl-W", async () => {
+  it("opens payment entry with Ins and posts via Ctrl-S", async () => {
     const user = userEvent.setup();
     renderApp(
       <CashProcess company={company} onBack={vi.fn()} />
@@ -74,7 +74,7 @@ describe("CashProcess", () => {
     });
 
     expect(screen.getByLabelText("Pay Date")).toHaveValue(today());
-    await user.keyboard("{Control>}w{/Control}");
+    await user.keyboard("{Control>}s{/Control}");
 
     await waitFor(() => {
       expect(api.saveCashReceipt).toHaveBeenCalledWith(
@@ -119,7 +119,7 @@ describe("CashProcess", () => {
     ) as HTMLInputElement;
     await user.clear(amount);
     await user.type(amount, "999");
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     expect(
       await screen.findByText(/Payment may not exceed Balance Due/i)
     ).toBeInTheDocument();
@@ -139,7 +139,7 @@ describe("CashProcess", () => {
     ) as HTMLInputElement;
     await user.clear(amount);
     await user.type(amount, "0");
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     expect(await screen.findByText(/Payment is zero/i)).toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
   });
@@ -188,7 +188,7 @@ describe("CashProcess", () => {
         screen.getAllByText(/Enter Automatic Receipt Data/i).length
       ).toBeGreaterThan(0);
     });
-    await user.click(screen.getByRole("button", { name: /Cntr_W Save/i }));
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     await waitFor(() => {
       expect(api.saveCashReceipt).toHaveBeenCalledTimes(2);
     });

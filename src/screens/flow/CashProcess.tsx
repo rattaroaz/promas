@@ -252,7 +252,7 @@ export function CashProcess({
     onPageUp: !editing && !autoMode ? pageUp : undefined,
     onPageDown: !editing && !autoMode ? pageDown : undefined,
     onEnd: !editing && !autoMode ? end : undefined,
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (editing) saveOne();
       if (autoMode) saveAuto();
     },
@@ -281,8 +281,8 @@ export function CashProcess({
       {!editing && !autoMode && (
         <>
           <div
+            className="dos-info-banner"
             style={{
-              color: "var(--app-highlight)",
               padding: "0.3em 0.5ch",
               whiteSpace: "pre",
             }}
@@ -361,7 +361,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
       {editing && (
         <Dialog
           title="Enter Your Payment Data(Esc=Cancel) !"
-          foot="Esc=Cancel  Ctrl-W/Enter=Post Receipt"
+          foot="Esc=Cancel  Ctrl-S/Enter=Post Receipt"
         >
           <div className="dos-form">
             <DotField label="Invoice_No" width={16}>

@@ -79,7 +79,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         else onBack();
       },
       onF1: () => setHelp(true),
-      onCtrlW: () => {
+      onCtrlS: () => {
         if (screen === "date" && data) saveSys();
         if (editForm) saveForm();
       },
@@ -214,7 +214,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
       <Screen
         statusKeys={FORM_KEYS}
         title=" Change System Date "
-        message={msg || "Esc=Cancel, Ctrl-W=Save & Exit"}
+        message={msg || "Esc=Cancel, Ctrl-S=Save & Exit"}
         messageKind={msgKind}
       >
         <div className="dos-main-wrap">
@@ -336,7 +336,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                 </DotField>
               </div>
             </div>
-            <div className="dlg-foot">Esc=Cancel, Ctrl-W=Save & Exit</div>
+            <div className="dlg-foot">Esc=Cancel, Ctrl-S=Save & Exit</div>
           </div>
         </div>
         {help && <HelpOverlay onClose={() => setHelp(false)} />}
@@ -450,7 +450,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
           { key: "Esc", label: "Exit" },
           { key: "Ins", label: "Add" },
           { key: "Enter", label: "Edit" },
-          { key: "Ctrl-W", label: "Save" },
+          { key: "Ctrl-S", label: "Save" },
         ]}
         title=" <<< Form Management >>> "
         message={msg || "Enter Form #(Esc=Exit) !  Ins=Add  Enter=Edit"}
@@ -516,7 +516,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
               <div className="dlg-foot">
-                Esc=Cancel, Ctrl-W=Save & Exit
+                Esc=Cancel, Ctrl-S=Save & Exit
               </div>
             </div>
           </div>

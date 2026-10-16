@@ -490,7 +490,7 @@ export function InvoiceProcess({
       setMsg(
         full.invoice.voided
           ? "*** V O I D  I N V O I C E ***"
-          : `Invoice #${full.invoice.invoice}  Ctrl-W=Save  Esc=Exit`
+          : `Invoice #${full.invoice.invoice}  Ctrl-S=Save  Esc=Exit`
       );
     }
   }
@@ -662,7 +662,7 @@ export function InvoiceProcess({
     onEnd: () => {
       printCurrent();
     },
-    onCtrlW: () => {
+    onCtrlS: () => {
       if (mode === "edit") save();
     },
     onChar: (ch) => {
@@ -699,7 +699,7 @@ export function InvoiceProcess({
         mode === "edit"
           ? [
               { key: "Esc", label: "Cancel" },
-              { key: "Ctrl-W", label: "Save" },
+              { key: "Ctrl-S", label: "Save" },
               { key: "End", label: "Print Form" },
               { key: "F1", label: "Help" },
             ]
@@ -805,7 +805,7 @@ export function InvoiceProcess({
           }
           wide
           red={editing.invoice.voided}
-          foot="Esc=Cancel, Ctrl-W=Save & Exit, End=Print on Form"
+          foot="Esc=Cancel, Ctrl-S=Save & Exit, End=Print on Form"
         >
           <div className="dos-form invoice-edit">
             <div className="dos-form-row">
