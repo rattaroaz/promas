@@ -979,7 +979,10 @@ textarea {
   overflow: visible;
 }
 
-/* The 1.5× block stays fully visible. The list below it scrolls. */
+/* The 1.5× block stays fully visible. The list below it scrolls.
+   Bleed uses the list's own 1ch / 0.4em, same as .dos-info-banner.
+   The header's 1.5em would make -1ch too wide and width:100% would
+   leave a blue strip on the right. */
 .dos-browse > .invoice-site-header,
 .dos-browse > .dos-info-banner {
   flex: 0 0 auto;
@@ -994,6 +997,17 @@ textarea {
   padding-top: 0.4em;
   padding-left: 1ch;
   padding-right: 1ch;
+}
+
+.dos-browse > .invoice-site-header {
+  font-size: inherit;
+  width: auto;
+  max-width: none;
+}
+
+.dos-browse > .invoice-site-header > .invoice-fact-line,
+.dos-browse > .invoice-site-header > .invoice-comments {
+  font-size: 1.5em;
 }
 
 /* Company / property line above a list. Columns under it stay blue. */
