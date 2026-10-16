@@ -547,7 +547,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               className="dos-input"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Company, Contact, or Property Address"
+              placeholder="Company, Contact, Address"
               aria-label="Cash receipts search"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -713,12 +713,25 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             </select>
           </>
         )}
-        <button className="dos-btn" onClick={() => runReport(report)}>
-          Run
-        </button>
-        <button className="dos-btn" onClick={() => window.print()}>
-          Print
-        </button>
+        {report === "cash" ? (
+          <span className="dos-searchline-pair">
+            <button className="dos-btn" onClick={() => runReport(report)}>
+              Run
+            </button>
+            <button className="dos-btn" onClick={() => window.print()}>
+              Print
+            </button>
+          </span>
+        ) : (
+          <>
+            <button className="dos-btn" onClick={() => runReport(report)}>
+              Run
+            </button>
+            <button className="dos-btn" onClick={() => window.print()}>
+              Print
+            </button>
+          </>
+        )}
         {report === "aging" && (
           <button className="dos-btn" onClick={() => void downloadAgingExcel()}>
             Excel

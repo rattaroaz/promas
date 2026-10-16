@@ -1554,6 +1554,7 @@ input[type="date"].dos-input {
    page scale stays with main. Pairs keep a label on the same row as its field. */
 .dos-searchline.dos-searchline-dates {
   gap: 16px;
+  justify-content: flex-start;
 }
 
 .dos-searchline-pair {
@@ -1599,14 +1600,17 @@ input[type="date"].dos-input {
 
 .dos-searchline input[aria-label="Cash receipts search"] {
   flex: 0 0 auto;
-  width: 24ch;
-  min-width: 24ch;
-  max-width: 24ch;
+  /* Border box holds the 25-character placeholder plus the field's 0.4ch padding. */
+  width: calc(25ch + 0.8ch);
+  min-width: calc(25ch + 0.8ch);
+  max-width: calc(25ch + 0.8ch);
 }
 
 .dos-searchline input[aria-label="Sales company search"] {
-  flex: 1 1 20ch;
+  flex: 0 0 auto;
+  width: 20ch;
   min-width: 20ch;
+  max-width: 20ch;
 }
 
 input[type="date"].dos-input:focus {
