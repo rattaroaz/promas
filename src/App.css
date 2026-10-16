@@ -1118,15 +1118,6 @@ textarea {
   box-sizing: border-box;
 }
 
-/* Wages and the Reports payroll/paint line stay on one row. Gaps and the
-   date width are tighter here only; other search lines keep the normal gap. */
-.dos-searchline.dos-searchline-fit {
-  gap: 0.4ch;
-  padding-left: 0.4ch;
-  padding-right: 0.4ch;
-  flex-wrap: nowrap;
-}
-
 .dos-company-toolbar {
   display: flex;
   align-items: center;
@@ -1561,22 +1552,9 @@ input[type="date"].dos-input {
    would otherwise paint these black. */
 .dos-searchline input[type="date"].dos-input {
   background-color: var(--dos-blue);
-}
-
-/* Search-line dates on the fit toolbar stay one row with the labels and
-   buttons. Narrower than the form fields, still wide enough for mm/dd/yyyy
-   and the glyph. Work Person keeps a 40ch basis so the placeholder is whole. */
-.dos-searchline.dos-searchline-fit input[type="date"].dos-input.w12 {
-  flex: 0 0 auto;
-  width: calc(10.4ch + 1.45em);
-  min-width: calc(10.4ch + 1.45em);
-  max-width: calc(10.4ch + 1.45em);
-}
-
-.dos-searchline.dos-searchline-fit input[aria-label="Work person search"] {
-  flex: 1 1 40ch;
-  min-width: 14ch;
-  max-width: 40ch;
+  /* Main's search dates have no extra icon padding, so the 14ch field
+     keeps the same text room. The glyph still sits at the right edge. */
+  padding-right: 0.4ch;
 }
 
 input[type="date"].dos-input:focus {
@@ -1587,14 +1565,21 @@ input[type="date"].dos-input:focus {
   background-size: 1em 1em;
 }
 
-/* w12 is 14ch. padding-right plus the invisible indicator clip mm/dd/yyyy
-   on that width, and search lines shrink the field further. Hold these at
-   a size that fits the date and the glyph, and do not let them shrink. */
+/* Form dialogs only. A fixed w12 date was clipping mm/dd/yyyy once the
+   icon padding was added. Search lines keep main's shrinking 14ch cap so
+   the toolbar wraps and scales the way it does there. */
 input[type="date"].dos-input.w12 {
   flex: 0 0 auto;
   width: calc(12ch + 2.8em);
   min-width: calc(12ch + 2.8em);
   max-width: none;
+}
+
+.dos-searchline input[type="date"].dos-input.w12 {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  max-width: min(14ch, 100%);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
