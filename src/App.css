@@ -839,20 +839,15 @@ textarea {
   appearance: textfield;
 }
 
-/* WorkDate text stays right-aligned. The calendar glyph itself is the shared
-   .dos-date icon (same as Order Date), pinned to the right edge of the cell. */
-.invoice-line-grid > .invoice-line-end .dos-date {
+/* WorkDate digits stay right-aligned, with the native calendar glyph at the cell edge. */
+.invoice-line-grid > .invoice-line-end input[type="date"] {
   width: 100%;
   flex: 1 1 auto;
 }
 
-.invoice-line-grid > .invoice-line-end .dos-date::after {
-  right: 0;
-}
-
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
   text-align: right;
-  padding: 0 1.15em 0 0;
+  padding: 0 1.4em 0 0;
   margin: 0;
 }
 
@@ -1534,54 +1529,20 @@ textarea {
   position: relative;
 }
 
-/* One calendar glyph for Invoice Date, Due Date, Order Date, and WorkDate.
-   The native indicator stays the click target but is invisible so it cannot
-   paint a different icon. */
-.dos-date {
-  --date-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23ffff55' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  flex: 1 1 auto;
-  max-width: 100%;
-}
-
-.dos-date::after {
-  content: "";
-  position: absolute;
-  right: 0.05em;
-  top: 50%;
-  width: 1em;
-  height: 1em;
-  transform: translateY(-50%);
-  background: var(--date-icon) center / 1em 1em no-repeat;
-  pointer-events: none;
-}
-
-.dos-date:focus-within {
-  --date-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%23000000' fill-rule='evenodd' d='M3.2.2h1.8v1.6H3.2V.2zm7.8 0h1.8v1.6h-1.8V.2zM0 2.4h16V16H0V2.4zm1.5 3.2v8.8h13V5.6h-13z'/></svg>");
-}
-
-.dos-date > input[type="date"] {
-  width: 100%;
-}
-
-.dos-date > input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0;
-  cursor: pointer;
-  width: 1.15em;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.dos-date > input[type="date"]::-webkit-datetime-edit {
-  padding-right: 1.15em;
-}
-
+/* Native calendar glyph from v2.13.0 (af88a3a), before the .dos-date overlay.
+   invert(1) keeps that dark indicator visible on the black field. The indicator
+   itself is the click target — the v2.14 overlay was pointer-events:none and
+   the real control was opacity:0, so the click never reached a picker. */
 input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
   cursor: pointer;
+}
+
+/* Focus paints the field cyan. Drop the invert so the same glyph stays visible. */
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.85;
 }
 
 input[type="number"]::-webkit-inner-spin-button {

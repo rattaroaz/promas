@@ -7,7 +7,12 @@ import {
   buildInvoicePdf,
   wrapDescription,
   wrapToWidth,
+  descriptionWrapWidth,
   PRINT_DESC_SIZE,
+  PRINT_DESC_X,
+  PRINT_AMOUNT_X,
+  PRINT_UNIT_ROW,
+  PRINT_DESC_START_ROW,
   type InvoicePrintPayload,
 } from "./invoicePrint";
 import type { Company, Property, Invoice, InvoiceLine } from "../api";
@@ -58,6 +63,46 @@ function pdfReadableText(bytes: Uint8Array): string {
     }
   }
   return decodePdfHexStrings(parts.join("\n"));
+}
+
+/** Text draws with their PDF baseline (larger y is higher on the page). */
+function textPositions(bytes: Uint8Array): { text: string; x: number; y: number }[] {
+  const latin = Buffer.from(bytes).toString("latin1");
+  const streams: string[] = [];
+  const streamRe = /stream\r?\n([\s\S]*?)endstream/g;
+  let sm: RegExpExecArray | null;
+  while ((sm = streamRe.exec(latin))) {
+    let payload = Buffer.from(sm[1], "latin1");
+    while (
+      payload.length > 0 &&
+      (payload[payload.length - 1] === 0x0a ||
+        payload[payload.length - 1] === 0x0d ||
+        payload[payload.length - 1] === 0x20)
+    ) {
+      payload = payload.subarray(0, payload.length - 1);
+    }
+    for (const inflate of [inflateSync, inflateRawSync]) {
+      try {
+        streams.push(inflate(payload).toString("latin1"));
+        break;
+      } catch {
+        /* try next */
+      }
+    }
+  }
+  const out: { text: string; x: number; y: number }[] = [];
+  const re =
+    /1 0 0 1 ([0-9.]+) ([0-9.]+) Tm\s*(?:\(((?:\\.|[^)\\])*)\)|<([0-9A-Fa-f]+)>)\s*Tj/g;
+  for (const stream of streams) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(stream))) {
+      const text = m[4]
+        ? decodePdfHexStrings(`<${m[4]}>`)
+        : (m[3] ?? "").replace(/\\([()\\])/g, "$1");
+      out.push({ text, x: Number(m[1]), y: Number(m[2]) });
+    }
+  }
+  return out;
 }
 
 function payload(overrides?: Partial<InvoicePrintPayload>): InvoicePrintPayload {
@@ -297,7 +342,7 @@ describe("buildInvoicePdf", () => {
     const { StandardFonts, PDFDocument: Pdf } = await import("pdf-lib");
     const doc = await Pdf.create();
     const font = await doc.embedFont(StandardFonts.Helvetica);
-    const descWidth = 458 - 18 - 16;
+    const descWidth = descriptionWrapWidth(font, PRINT_DESC_SIZE);
     const wrapped = wrapDescription(font, description, PRINT_DESC_SIZE, descWidth);
     expect(wrapped.length).toBeGreaterThan(1);
     expect(wrapped[0].startsWith(" ")).toBe(false);
@@ -311,6 +356,58 @@ describe("buildInvoicePdf", () => {
     expect(asText).toContain("SUBTOTAL");
     expect(asText).toContain("220");
     expect(asText).toContain("NET TO PAY");
+    const twoSpaces = font.widthOfTextAtSize("  ", PRINT_DESC_SIZE);
+    expect(PRINT_AMOUNT_X - PRINT_DESC_X - descWidth).toBeCloseTo(twoSpaces, 5);
+    expect(PRINT_UNIT_ROW).toBe(0);
+    expect(PRINT_DESC_START_ROW).toBe(2);
+    for (const line of wrapped) {
+      const body = line.startsWith("     ") ? line.slice(5) : line;
+      const limit = line.startsWith("     ")
+        ? descWidth - font.widthOfTextAtSize("     ", PRINT_DESC_SIZE)
+        : descWidth;
+      if (body.includes(" ")) {
+        expect(font.widthOfTextAtSize(body, PRINT_DESC_SIZE)).toBeLessThanOrEqual(
+          limit + 0.01
+        );
+      }
+    }
+    const positions = textPositions(bytes);
+    const unit = positions.find((p) => p.text === "APT UNIT # :");
+    const firstDesc = positions.find((p) => p.text === wrapped[0]);
+    expect(unit).toBeTruthy();
+    expect(firstDesc).toBeTruthy();
+    // Unit row, then one blank row (16pt), then the description.
+    expect(unit!.y - firstDesc!.y).toBeGreaterThan(24);
+    expect(unit!.y - firstDesc!.y).toBeLessThan(40);
+  });
+
+  it("moves a whole word to the next line instead of breaking it", async () => {
+    const longWord = "Supercalifragilisticexpialidocious";
+    const description = `Paint the hallway ${longWord} before the floor dries completely`;
+    const { StandardFonts, PDFDocument: Pdf } = await import("pdf-lib");
+    const doc = await Pdf.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const width = descriptionWrapWidth(font);
+    const wrapped = wrapDescription(font, description, PRINT_DESC_SIZE, width);
+    const rejoined = wrapped
+      .map((line, i) => (i === 0 ? line : line.replace(/^ {5}/, "")))
+      .join(" ");
+    expect(rejoined).toBe(description);
+    expect(wrapped.some((line) => line.includes(longWord))).toBe(true);
+    for (const line of wrapped) {
+      const body = line.startsWith("     ") ? line.slice(5) : line;
+      expect(body.includes(longWord.slice(0, 10)) && !body.includes(longWord)).toBe(
+        false
+      );
+    }
+    const bytes = await buildInvoicePdf(
+      payload({
+        lines: [{ ...payload().lines[0], description, price: 80 }],
+      })
+    );
+    const asText = pdfReadableText(bytes);
+    expect(asText).toContain(longWord);
+    expect(asText).toContain("APT UNIT");
   });
 
   it("fills many description rows on letter height without shrinking page", async () => {
