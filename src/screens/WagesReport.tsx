@@ -62,27 +62,33 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
       message={msg}
     >
       <div className="dos-searchline dos-searchline-dates">
-        <label>Worker No :</label>
-        <input
-          className="dos-input w8"
-          value={empNo}
-          onChange={(e) => setEmpNo(e.target.value)}
-          autoFocus
-        />
-        <label>Date :</label>
-        <input
-          className="dos-input w12"
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-        />
-        <label>To :</label>
-        <input
-          className="dos-input w12"
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-        />
+        <span className="dos-searchline-pair">
+          <label>From Worker No :</label>
+          <input
+            className="dos-input w8"
+            value={empNo}
+            onChange={(e) => setEmpNo(e.target.value)}
+            autoFocus
+          />
+        </span>
+        <span className="dos-searchline-pair">
+          <label>From Work Date :</label>
+          <input
+            className="dos-input w12"
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </span>
+        <span className="dos-searchline-pair">
+          <label>To Work Date :</label>
+          <input
+            className="dos-input w12"
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </span>
         <button className="dos-btn" onClick={run}>
           Run
         </button>

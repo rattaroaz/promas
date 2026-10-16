@@ -1550,17 +1550,19 @@ input[type="date"].dos-input {
 /* Search lines (Wages, Reports) keep the blue field from af88a3a / main.
    The date rule above is more specific than .dos-searchline .dos-input and
    would otherwise paint these black. */
-/* Date search lines give the glyph a clear lane and take that width back
-   from the gap and the labels, so the row count and fit-scale stay with main. */
+/* One gap for the whole line, on an 8px grid. Wide dates may wrap; the
+   page scale stays with main. Pairs keep a label on the same row as its field. */
 .dos-searchline.dos-searchline-dates {
-  row-gap: 1ch;
-  column-gap: 0.25ch;
-  padding-left: 0.3ch;
-  padding-right: 0.3ch;
+  gap: 16px;
 }
 
-.dos-searchline.dos-searchline-dates label {
-  letter-spacing: -0.06em;
+.dos-searchline-pair {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 16px;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .dos-searchline input[type="date"].dos-input {
@@ -1576,13 +1578,35 @@ input[type="date"].dos-input {
   margin: 0;
 }
 
-/* Payroll's placeholder is 11 letters. Flex may shrink the 40ch field, but
-   not below the placeholder plus the field's own horizontal padding. */
+/* Payroll's placeholder is 11 letters. Flex may shrink the field, but not
+   below the placeholder plus the field's own horizontal padding. */
 .dos-searchline input[aria-label="Work person search"] {
   flex: 1 1 0;
   width: auto;
   min-width: 12.2ch;
   max-width: 40ch;
+}
+
+/* Cash Search and Company were collapsing to a few pixels once dates stopped
+   shrinking. Keep a usable floor. Invoice Register and Sales need the full
+   "Company NO or Name" placeholder. */
+.dos-searchline.dos-searchline-dates input.dos-input.w8 {
+  flex: 0 0 auto;
+  width: 10ch;
+  min-width: 10ch;
+  max-width: 10ch;
+}
+
+.dos-searchline input[aria-label="Cash receipts search"] {
+  flex: 0 0 auto;
+  width: 24ch;
+  min-width: 24ch;
+  max-width: 24ch;
+}
+
+.dos-searchline input[aria-label="Sales company search"] {
+  flex: 1 1 20ch;
+  min-width: 20ch;
 }
 
 input[type="date"].dos-input:focus {
