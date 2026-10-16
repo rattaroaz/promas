@@ -1550,11 +1550,39 @@ input[type="date"].dos-input {
 /* Search lines (Wages, Reports) keep the blue field from af88a3a / main.
    The date rule above is more specific than .dos-searchline .dos-input and
    would otherwise paint these black. */
+/* Date search lines give the glyph a clear lane and take that width back
+   from the gap and the labels, so the row count and fit-scale stay with main. */
+.dos-searchline.dos-searchline-dates {
+  row-gap: 1ch;
+  column-gap: 0.25ch;
+  padding-left: 0.3ch;
+  padding-right: 0.3ch;
+}
+
+.dos-searchline.dos-searchline-dates label {
+  letter-spacing: -0.06em;
+}
+
 .dos-searchline input[type="date"].dos-input {
   background-color: var(--dos-blue);
-  /* Main's search dates have no extra icon padding, so the 14ch field
-     keeps the same text room. The glyph still sits at the right edge. */
-  padding-right: 0.4ch;
+  /* Icon is 1em, inset 0.12em. The extra 4px is the ink clearance. */
+  padding-right: calc(1em + 0.12em + 4px);
+}
+
+.dos-searchline input[type="date"].dos-input::-webkit-datetime-edit,
+.dos-searchline input[type="date"].dos-input::-webkit-datetime-edit-fields-wrapper,
+.dos-searchline input[type="date"].dos-input::-webkit-datetime-edit-text {
+  padding: 0;
+  margin: 0;
+}
+
+/* Payroll's placeholder is 11 letters. Flex may shrink the 40ch field, but
+   not below the placeholder plus the field's own horizontal padding. */
+.dos-searchline input[aria-label="Work person search"] {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 12.2ch;
+  max-width: 40ch;
 }
 
 input[type="date"].dos-input:focus {
@@ -1576,10 +1604,10 @@ input[type="date"].dos-input.w12 {
 }
 
 .dos-searchline input[type="date"].dos-input.w12 {
-  flex: 1;
-  width: auto;
-  min-width: 0;
-  max-width: min(14ch, 100%);
+  flex: 0 0 auto;
+  width: calc(11.2ch + 1.12em + 4px);
+  min-width: calc(11.2ch + 1.12em + 4px);
+  max-width: none;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {

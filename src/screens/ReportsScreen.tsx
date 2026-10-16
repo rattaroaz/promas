@@ -517,7 +517,11 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       right={agingDetail?.company.companyName.slice(0, 24)}
     >
       {!agingDetail && (
-      <div className="dos-searchline">
+      <div className={
+        report === "aging" || report === "customer" || report === "labels"
+          ? "dos-searchline"
+          : "dos-searchline dos-searchline-dates"
+      }>
         {(report === "aging" || report === "cash") && (
           <>
             <label>Search:</label>
@@ -548,11 +552,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           report === "cash" ||
           report === "sales") && (
           <>
-            <label>
-              {report === "sales" || report === "invoice"
-                ? "Company :"
-                : "From Company No :"}
-            </label>
+            <label>Company :</label>
             <input
               className={
                 report === "sales" || report === "invoice"
@@ -604,7 +604,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         )}
         {(report === "paint" || report === "payroll") && (
           <>
-            <label>Work Person :</label>
+            <label>{report === "paint" ? "Person :" : "Work Person :"}</label>
             <input
               className="dos-input"
               list="report-work-person-list"
@@ -612,7 +612,6 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               onChange={(e) => setWorkPerson(e.target.value)}
               placeholder="Work person"
               aria-label="Work person search"
-              style={{ width: "40ch" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -633,11 +632,11 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             <>
               <label>
                 {report === "paint"
-                  ? "From Work Date :"
+                  ? "From :"
                   : report === "sales" || report === "invoice"
                     ? "From Invoice Date :"
-                    : report === "cash"
-                      ? "From Pay Date :"
+                    : report === "cash" || report === "missing"
+                      ? "From :"
                       : "From Date :"}
               </label>
               <input
@@ -659,12 +658,14 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               />
               <label>
                 {report === "paint"
-                  ? "To Work Date :"
+                  ? "To :"
                   : report === "sales" || report === "invoice"
                     ? "To Invoice Date :"
                     : report === "cash"
                       ? "To Pay Date :"
-                      : "To Date :"}
+                      : report === "missing"
+                        ? "To :"
+                        : "To Date :"}
               </label>
               <input
                 className="dos-input w12"

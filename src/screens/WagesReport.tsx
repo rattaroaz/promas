@@ -61,15 +61,15 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
       title="*****   Worker Wages Report  *****"
       message={msg}
     >
-      <div className="dos-searchline">
-        <label>From Worker No :</label>
+      <div className="dos-searchline dos-searchline-dates">
+        <label>Worker No :</label>
         <input
           className="dos-input w8"
           value={empNo}
           onChange={(e) => setEmpNo(e.target.value)}
           autoFocus
         />
-        <label>From Work Date :</label>
+        <label>Date :</label>
         <input
           className="dos-input w12"
           type="date"
