@@ -517,24 +517,20 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       right={agingDetail?.company.companyName.slice(0, 24)}
     >
       {!agingDetail && (
-      <div className="dos-searchline">
-        {(report === "aging" || report === "cash") && (
+      <div className={
+        report === "aging" || report === "customer" || report === "labels"
+          ? "dos-searchline"
+          : "dos-searchline dos-searchline-dates"
+      }>
+        {report === "aging" && (
           <>
             <label>Search:</label>
             <input
               className="dos-input"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={
-                report === "aging"
-                  ? "? = all companies that owe, or Company NO, Name, Contact, Address"
-                  : "Company, Contact, or Property Address"
-              }
-              aria-label={
-                report === "aging"
-                  ? "Aging company search"
-                  : "Cash receipts search"
-              }
+              placeholder="? = all companies that owe, or Company NO, Name, Contact, Address"
+              aria-label="Aging company search"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -544,10 +540,28 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             />
           </>
         )}
+        {report === "cash" && (
+          <span className="dos-searchline-pair">
+            <label>Search:</label>
+            <input
+              className="dos-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Company, Contact, Address"
+              aria-label="Cash receipts search"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            />
+          </span>
+        )}
         {(report === "invoice" ||
           report === "cash" ||
           report === "sales") && (
-          <>
+          <span className="dos-searchline-pair">
             <label>
               {report === "sales" || report === "invoice"
                 ? "Company :"
@@ -578,32 +592,30 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                 }
               }}
             />
-          </>
+          </span>
         )}
         {report === "paint" && (
-          <>
+          <span className="dos-searchline-pair">
             <label>Paint Supply Co. :</label>
-            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-              <select
-                className="dos-select"
-                aria-label="Paint supply search"
-                value={paintSupply}
-                onChange={(e) => setPaintSupply(e.target.value)}
-                style={{ width: "4ch" }}
-              >
-                <option value="">All</option>
-                {paintSupplyOptions.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <span style={{ minWidth: "40ch", maxWidth: "60ch" }}>{paintSupply || "All"}</span>
-            </div>
-          </>
+            <select
+              className="dos-select"
+              aria-label="Paint supply search"
+              value={paintSupply}
+              onChange={(e) => setPaintSupply(e.target.value)}
+              style={{ width: "4ch" }}
+            >
+              <option value="">All</option>
+              {paintSupplyOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <span style={{ maxWidth: "60ch" }}>{paintSupply || "All"}</span>
+          </span>
         )}
         {(report === "paint" || report === "payroll") && (
-          <>
+          <span className="dos-searchline-pair">
             <label>Work Person :</label>
             <input
               className="dos-input"
@@ -612,7 +624,6 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               onChange={(e) => setWorkPerson(e.target.value)}
               placeholder="Work person"
               aria-label="Work person search"
-              style={{ width: "40ch" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -625,12 +636,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                 <option key={name} value={name} />
               ))}
             </datalist>
-          </>
+          </span>
         )}
         {report !== "aging" &&
           report !== "customer" &&
           report !== "labels" && (
             <>
+              <span className="dos-searchline-pair">
               <label>
                 {report === "paint"
                   ? "From Work Date :"
@@ -657,6 +669,8 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                         : undefined
                 }
               />
+              </span>
+              <span className="dos-searchline-pair">
               <label>
                 {report === "paint"
                   ? "To Work Date :"
@@ -683,6 +697,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                         : undefined
                 }
               />
+              </span>
             </>
           )}
         {report === "labels" && (
@@ -698,12 +713,25 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             </select>
           </>
         )}
-        <button className="dos-btn" onClick={() => runReport(report)}>
-          Run
-        </button>
-        <button className="dos-btn" onClick={() => window.print()}>
-          Print
-        </button>
+        {report === "cash" ? (
+          <span className="dos-searchline-pair">
+            <button className="dos-btn" onClick={() => runReport(report)}>
+              Run
+            </button>
+            <button className="dos-btn" onClick={() => window.print()}>
+              Print
+            </button>
+          </span>
+        ) : (
+          <>
+            <button className="dos-btn" onClick={() => runReport(report)}>
+              Run
+            </button>
+            <button className="dos-btn" onClick={() => window.print()}>
+              Print
+            </button>
+          </>
+        )}
         {report === "aging" && (
           <button className="dos-btn" onClick={() => void downloadAgingExcel()}>
             Excel

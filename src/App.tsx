@@ -66,6 +66,26 @@ export default function App() {
     metrics.inc("app.session_start");
   }, []);
 
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target;
+      if (!(target instanceof HTMLInputElement) || target.type !== "date") return;
+      if (target.disabled || target.readOnly) return;
+      const rect = target.getBoundingClientRect();
+      const icon = Math.max(16, rect.height * 0.95);
+      if (e.clientX < rect.right - icon) return;
+      e.preventDefault();
+      target.focus();
+      try {
+        target.showPicker();
+      } catch {
+        /* The engine opens the picker from the indicator click instead. */
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, []);
+
   useEffect(
     () =>
       subscribeQuitRequested(() => {
