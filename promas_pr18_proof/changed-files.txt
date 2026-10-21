@@ -48,7 +48,7 @@ src/screens/flow/WorkOrderProcess.test.tsx
 src/screens/flow/WorkOrderProcess.tsx
 promas_pr18_proof/  (this folder)
 
-Version 2.15.1 is in package.json, package-lock.json, src-tauri/tauri.conf.json
+Version 2.16.0 is in package.json, package-lock.json, src-tauri/tauri.conf.json
 (version and window title), src-tauri/Cargo.toml, and src-tauri/Cargo.lock.
 
 Price inputs covered:

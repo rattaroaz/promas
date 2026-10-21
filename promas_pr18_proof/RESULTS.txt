@@ -2,7 +2,10 @@ Promas PR 18 proof. Draft only. Not merged.
 
 Branch: cursor/money-format-workers-e131
 Base: main (9c0ab8e, v2.15.0)
-Version: 2.15.1
+Version: 2.16.0 (feature release for the Workers list)
+The main menu title and copyright read Promas(P) Version 2.16.0.
+See version_2_16_0_main_menu.png. Settings and Diagnostics use the same
+package.json version. The native window title is in tauri.conf.json.
 
 Screenshots in this folder were taken from the running app
 (Vite with VITE_E2E=true, system Chrome, 1400x900).
@@ -82,12 +85,12 @@ Checks on this head
   Lint: npx tsc --noEmit. Exit 0. The project has no ESLint script; typecheck is the lint step. npm run build runs tsc again.
   Unit tests: npm run test:coverage. 36 files, 326 tests, all passed.
     Statements 66.33% (3228/4866), threshold 56
-    Branches   61.13% (2281/3731), threshold 51
-    Functions  62.00% (772/1245), threshold 50
+    Branches   61.08% (2279/3731), threshold 51
+    Functions  62.08% (773/1245), threshold 50
     Lines      68.33% (2984/4367), threshold 58
-  Build: npm run build. tsc passed, vite built in 2.33s.
-    Chunk size warning only (index-BwNn10L8.js 817.83 kB). No build error.
-  End-to-end, including the focus audit: npx playwright test. 32 passed (5.3m).
+  Build: npm run build. tsc passed, vite built in 1.98s.
+    Chunk size warning only (index-BgHb2CXo.js 817.83 kB). No build error.
+  End-to-end, including the focus audit: npx playwright test. 32 passed (5.5m).
     The audit tests are:
       clicking a field on Invoice Process keeps the font and the neighbouring boxes
       every input, button, and dropdown keeps its font and neighbour boxes
