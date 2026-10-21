@@ -61,6 +61,31 @@ describe("MiscScreen", () => {
     );
   });
 
+  it("closes a Workers delete prompt on Esc without leaving the screen", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+    ]);
+    vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
+    renderApp(<MiscScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /5\.\s*Workers/i }));
+    await user.click(
+      await screen.findByRole("button", { name: "Delete Jose Ramirez" })
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Are you sure? Y/N" })
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add Work Person" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /5\.\s*Workers/i })
+    ).not.toBeInTheDocument();
+    expect(api.deleteWorkPerson).not.toHaveBeenCalled();
+  });
+
   it("lists Import Database as option 4", () => {
     renderApp(<MiscScreen onBack={vi.fn()} />);
     expect(

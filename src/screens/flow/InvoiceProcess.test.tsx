@@ -3,6 +3,7 @@ import { act } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { InvoiceProcess, descriptionRowCount, siteHeaderLines } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
+import { today } from "../../dos/utils";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
   COLOR_CHANGE_WALLS_NAVAJO_WHITE,
@@ -154,9 +155,42 @@ describe("InvoiceProcess", () => {
     const dateInput = document.querySelector(
       'input[type="date"]'
     ) as HTMLInputElement;
-    expect(dateInput.value).toBe(new Date().toISOString().slice(0, 10));
+    expect(dateInput.value).toBe(today());
     expect(screen.getByLabelText("Order Date")).toHaveValue(dateInput.value);
     expect(api.getSysdata).toHaveBeenCalled();
+  });
+
+  it("formats Material Costs and Price on Enter and ArrowDown stays off Invoice Date", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+
+    const material = await screen.findByLabelText("Material Costs");
+    await user.click(material);
+    await user.clear(material);
+    await user.type(material, "100");
+    await user.keyboard("{Enter}");
+    expect(material).toHaveValue("100.00");
+    expect(document.activeElement).toBe(material);
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("Paint Supply Co. list")
+    );
+
+    const price = screen.getByLabelText("Price 1");
+    await user.click(price);
+    await user.type(price, "50");
+    await user.keyboard("{Enter}");
+    expect(price).toHaveValue("50.00");
+    expect(document.activeElement).toBe(price);
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(
+      screen.getAllByRole("button", { name: "Del" })[0]
+    );
+    expect(screen.getByLabelText("Invoice Date")).not.toHaveFocus();
   });
 
   it("saves material costs and paint supply company", async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, WorkPerson } from "../api";
-import { Screen, Prompt } from "../dos/Shell";
+import { Screen } from "../dos/Shell";
 
 type Row = {
   key: string;
@@ -9,6 +9,10 @@ type Row = {
   workerNo: string;
   active: boolean;
 };
+
+function fieldSize(value: string, minChars: number): number {
+  return Math.max(value.length, minChars);
+}
 
 function rowFromPerson(person: WorkPerson, key: string): Row {
   return {
@@ -96,23 +100,42 @@ export function WorkersScreen() {
     saveQueue.current = saveQueue.current.then(run, run);
   }
 
-  async function confirmDelete() {
+  useEffect(() => {
+    if (!pendingDelete) return;
     const row = pendingDelete;
-    setPendingDelete(null);
-    if (!row) return;
-    if (row.originalName) {
-      try {
-        await api.deleteWorkPerson(row.originalName);
-      } catch (e) {
-        setMsg(String(e));
-        setMsgKind("error");
+    let settled = false;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.type !== "keydown") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (settled) return;
+      if (e.key === "y" || e.key === "Y") {
+        settled = true;
+        setPendingDelete(null);
+        void (async () => {
+          if (row.originalName) {
+            try {
+              await api.deleteWorkPerson(row.originalName);
+            } catch (err) {
+              setMsg(String(err));
+              setMsgKind("error");
+              return;
+            }
+          }
+          replaceRows(rowsRef.current.filter((r) => r.key !== row.key));
+          setMsg("");
+          setMsgKind("default");
+        })();
         return;
       }
-    }
-    replaceRows(rowsRef.current.filter((r) => r.key !== row.key));
-    setMsg("");
-    setMsgKind("default");
-  }
+      if (e.key === "n" || e.key === "N" || e.key === "Escape") {
+        settled = true;
+        setPendingDelete(null);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [pendingDelete]);
 
   return (
     <Screen
@@ -133,7 +156,7 @@ export function WorkersScreen() {
             <div>Active</div>
             <div>Name</div>
             <div>Worker Number</div>
-            <div></div>
+            <div>Delete</div>
           </div>
           {rows.map((row, index) => {
             const n = index + 1;
@@ -152,6 +175,7 @@ export function WorkersScreen() {
                 <input
                   className="dos-input"
                   aria-label={`Worker name ${n}`}
+                  size={fieldSize(row.name, 12)}
                   value={row.name}
                   onChange={(e) => patchRow(row.key, { name: e.target.value })}
                   onBlur={() => queueSave(row.key)}
@@ -159,6 +183,7 @@ export function WorkersScreen() {
                 <input
                   className="dos-input"
                   aria-label={`Worker number ${n}`}
+                  size={fieldSize(row.workerNo, 4)}
                   value={row.workerNo}
                   onChange={(e) =>
                     patchRow(row.key, { workerNo: e.target.value })
@@ -176,7 +201,7 @@ export function WorkersScreen() {
               </div>
             );
           })}
-          <div>
+          <div className="workers-add">
             <button
               type="button"
               className="dos-btn"
@@ -197,11 +222,15 @@ export function WorkersScreen() {
         </div>
       </div>
       {pendingDelete && (
-        <Prompt
-          question="Are you sure?"
-          onYes={() => void confirmDelete()}
-          onNo={() => setPendingDelete(null)}
-        />
+        <div className="dos-overlay">
+          <div
+            className="dos-prompt"
+            role="dialog"
+            aria-label="Are you sure? Y/N"
+          >
+            <div className="q">Are you sure? Y/N</div>
+          </div>
+        </div>
       )}
     </Screen>
   );

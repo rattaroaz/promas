@@ -17,6 +17,12 @@ type MoneyInputProps = Omit<
    * line with no price, including Occupied, stays empty.
    */
   blankZero?: boolean;
+  /**
+   * Auto Receipt still leaves the field on Enter, so a following Enter posts
+   * the same way it did before cents formatting. Every other money field
+   * keeps focus.
+   */
+  blurOnEnter?: boolean;
 };
 
 /**
@@ -27,6 +33,7 @@ export function MoneyInput({
   value,
   onValueChange,
   blankZero = false,
+  blurOnEnter = false,
   onBlur,
   onFocus,
   onKeyDown,
@@ -52,6 +59,14 @@ export function MoneyInput({
     (blankZero && value === 0);
   const shown = draft !== null ? draft : blank ? "" : formatMoneyInput(value);
 
+  function commit(raw: string) {
+    if (dirty.current) {
+      setCommittedEmpty(moneyDraftIsEmpty(raw));
+    }
+    dirty.current = false;
+    setDraft(null);
+  }
+
   return (
     <input
       {...rest}
@@ -75,16 +90,14 @@ export function MoneyInput({
         onValueChange(parsed);
       }}
       onBlur={(e) => {
-        if (dirty.current) {
-          setCommittedEmpty(moneyDraftIsEmpty(e.currentTarget.value));
-        }
-        dirty.current = false;
-        setDraft(null);
+        commit(e.currentTarget.value);
         onBlur?.(e);
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.currentTarget.blur();
+        if (e.key === "Enter" && !e.altKey && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          commit(e.currentTarget.value);
+          if (blurOnEnter) e.currentTarget.blur();
         }
         onKeyDown?.(e);
       }}

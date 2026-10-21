@@ -7,10 +7,12 @@ import { MoneyInput } from "./MoneyInput";
 function Harness({
   initial = 0,
   blankZero = false,
+  blurOnEnter = false,
   label = "Amount",
 }: {
   initial?: number;
   blankZero?: boolean;
+  blurOnEnter?: boolean;
   label?: string;
 }) {
   const [value, setValue] = useState(initial);
@@ -19,6 +21,7 @@ function Harness({
       aria-label={label}
       value={value}
       blankZero={blankZero}
+      blurOnEnter={blurOnEnter}
       onValueChange={setValue}
     />
   );
@@ -47,6 +50,32 @@ describe("MoneyInput", () => {
     expect(material).toHaveValue("432");
     await user.keyboard("{Enter}");
     expect(material).toHaveValue("432.00");
+    expect(document.activeElement).toBe(material);
+  });
+
+  it("keeps focus on Enter when blurOnEnter is off and drops it when set", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <Harness label="Price" />
+        <Harness label="Auto Amount Paid" blurOnEnter />
+      </>
+    );
+    const price = screen.getByLabelText("Price");
+    await user.click(price);
+    await user.clear(price);
+    await user.type(price, "100");
+    await user.keyboard("{Enter}");
+    expect(price).toHaveValue("100.00");
+    expect(document.activeElement).toBe(price);
+
+    const auto = screen.getByLabelText("Auto Amount Paid");
+    await user.click(auto);
+    await user.clear(auto);
+    await user.type(auto, "40");
+    await user.keyboard("{Enter}");
+    expect(auto).toHaveValue("40.00");
+    expect(document.activeElement).not.toBe(auto);
   });
 
   it("does not insert decimals or move the caret while typing", async () => {

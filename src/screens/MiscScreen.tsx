@@ -78,6 +78,12 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         else if (confirmReindex) setConfirmReindex(false);
         else if (confirmImport) setConfirmImport(false);
         else if (editForm) setEditForm(null);
+        else if (document.querySelector('[aria-label="Are you sure? Y/N"]')) {
+          // Workers owns this prompt. Its key listener closes it. Leaving
+          // here would exit the screen, because this handler is registered
+          // first and runs before that listener.
+          return;
+        }
         else if (screen) setScreen(null);
         else onBack();
       },

@@ -517,6 +517,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
                 aria-label="Auto Amount Paid"
                 value={autoAmount}
                 onValueChange={setAutoAmount}
+                blurOnEnter
               />
             </DotField>
             <div style={{ color: "var(--app-highlight)", marginTop: "0.5em" }}>

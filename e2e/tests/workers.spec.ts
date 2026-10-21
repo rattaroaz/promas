@@ -42,6 +42,7 @@ test.describe("workers", () => {
     await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
     await expect(page.getByLabel("Worker number 1")).toHaveValue("");
     await expect(page.getByRole("checkbox", { name: "Active Jose Ramirez" })).toBeChecked();
+    await expect(page.locator(".workers-head")).toContainText("Delete");
 
     await page.getByRole("button", { name: "Add Work Person" }).click();
     await page.getByLabel("Worker name 2").fill("Ana Cruz");
@@ -75,9 +76,22 @@ test.describe("workers", () => {
     await backToMain(page);
     await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-    await page.getByRole("button", { name: "Delete Jose Ramirez" }).click();
-    await expect(page.getByText("Are you sure?")).toBeVisible();
-    await page.getByRole("button", { name: /^Y$/i }).click();
+    const deleteJose = page.getByRole("button", { name: "Delete Jose Ramirez" });
+    const sure = page.getByRole("dialog", { name: "Are you sure? Y/N" });
+    await deleteJose.click();
+    await expect(sure).toBeVisible();
+    await page.keyboard.press("x");
+    await expect(sure).toBeVisible();
+    await page.keyboard.press("n");
+    await expect(sure).toHaveCount(0);
+    await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
+    await deleteJose.click();
+    await page.keyboard.press("Escape");
+    await expect(sure).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /5\.\s*Workers/i })).toHaveCount(0);
+    await deleteJose.click();
+    await page.keyboard.press("Y");
     await expect(page.getByLabel("Worker name 1")).not.toHaveValue("Jose Ramirez");
 
     await backToMain(page);
