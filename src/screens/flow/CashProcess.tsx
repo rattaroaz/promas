@@ -175,6 +175,17 @@ export function CashProcess({
 
   /** Auto-apply lump payment oldest-open-first (original Auto_Receipt). */
   async function saveAuto() {
+    if (autoGate.current === "posting") return;
+    autoGate.current = "posting";
+    setConfirmPay(false);
+    try {
+      await postAuto();
+    } finally {
+      autoGate.current = "idle";
+    }
+  }
+
+  async function postAuto() {
     if (!autoAmount || autoAmount <= 0) {
       setMsg("Payment is zero !  Retry !!");
       setMsgKind("error");
@@ -230,6 +241,10 @@ export function CashProcess({
 
   const saveOneRef = useRef(saveOne);
   saveOneRef.current = saveOne;
+  const saveAutoRef = useRef(saveAuto);
+  saveAutoRef.current = saveAuto;
+  const autoGate = useRef<"idle" | "ask" | "posting">("idle");
+  const autoFocusRef = useRef<HTMLElement | null>(null);
 
   function askToPost() {
     if (document.activeElement instanceof HTMLElement) {
@@ -255,6 +270,38 @@ export function CashProcess({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [editing, confirmPay]);
 
+  function closeConfirm() {
+    const restore = autoMode ? autoFocusRef.current : null;
+    if (autoGate.current === "ask") autoGate.current = "idle";
+    setConfirmPay(false);
+    if (restore?.isConnected) restore.focus();
+  }
+
+  function askAuto() {
+    if (autoGate.current !== "idle") return;
+    autoGate.current = "ask";
+    setConfirmPay(true);
+  }
+
+  useEffect(() => {
+    if (!autoMode) {
+      autoFocusRef.current = null;
+      return;
+    }
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        autoFocusRef.current = target;
+      }
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [autoMode]);
+
   useEffect(() => {
     if (!confirmPay) return;
     let settled = false;
@@ -262,27 +309,30 @@ export function CashProcess({
       if (e.type !== "keydown") return;
       e.preventDefault();
       e.stopPropagation();
-      if (settled) return;
+      if (settled || e.repeat) return;
       if (e.key === "y" || e.key === "Y") {
         settled = true;
-        setConfirmPay(false);
-        void saveOneRef.current();
+        if (autoMode) void saveAutoRef.current();
+        else {
+          setConfirmPay(false);
+          void saveOneRef.current();
+        }
         return;
       }
       if (e.key === "n" || e.key === "N" || e.key === "Escape") {
         settled = true;
-        setConfirmPay(false);
+        closeConfirm();
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [confirmPay]);
+  }, [confirmPay, autoMode]);
 
   useDosKeys({
     forceNav: !editing && !autoMode,
     onEscape: () => {
       if (help) setHelp(false);
-      else if (confirmPay) setConfirmPay(false);
+      else if (confirmPay) closeConfirm();
       else if (editing) {
         setEditing(null);
         setMsg("Ins=Payment  A=Auto_Receipt  Esc=Back");
@@ -297,9 +347,9 @@ export function CashProcess({
       if (!editing && !autoMode) startPayment();
     },
     onEnter: () => {
-      if (confirmPay) return;
+      if (confirmPay || autoGate.current !== "idle") return;
       if (editing) askToPost();
-      else if (autoMode) saveAuto();
+      else if (autoMode) askAuto();
       else if (current) startPayment(current);
     },
     onHome: () => {
@@ -311,9 +361,9 @@ export function CashProcess({
     onPageDown: !editing && !autoMode ? pageDown : undefined,
     onEnd: !editing && !autoMode ? end : undefined,
     onCtrlS: () => {
-      if (confirmPay) return;
+      if (confirmPay || autoGate.current !== "idle") return;
       if (editing) saveOne();
-      if (autoMode) saveAuto();
+      else if (autoMode) askAuto();
     },
     onChar: (ch) => {
       if (!editing && !autoMode && (ch === "a" || ch === "A")) {
@@ -323,6 +373,19 @@ export function CashProcess({
       return false;
     },
   });
+
+  const confirmQuestion = autoMode
+    ? `Apply ${money(autoAmount)} to open invoices? Y/N`
+    : `Apply ${money(editing?.payment)} to this invoice? Y/N`;
+  const confirmPrompt = confirmPay ? (
+    <div
+      className="dos-prompt dos-prompt-line"
+      role="dialog"
+      aria-label={confirmQuestion}
+    >
+      <div className="q">{confirmQuestion}</div>
+    </div>
+  ) : null;
 
   return (
     <Screen
@@ -409,6 +472,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
         <Dialog
           title="Enter Your Payment Data(Esc=Cancel) !"
           foot="Esc=Cancel  Enter=Confirm  Ctrl-S=Post Receipt"
+          below={confirmPrompt}
         >
           <div className="dos-form">
             <DotField label="Invoice_No" width={16}>
@@ -490,7 +554,8 @@ Company NO : ${company.companyNo}  ${company.name}`}
       {autoMode && (
         <Dialog
           title="Enter Automatic Receipt Data(Esc=Exit) !"
-          foot="Esc=Cancel  Enter=Apply to open invoices (oldest first)"
+          foot="Esc=Cancel  Enter/Ctrl-S=Apply (asks Y/N)"
+          below={confirmPrompt}
         >
           <div className="dos-form">
             <div style={{ color: "var(--app-accent)", marginBottom: "0.5em" }}>
@@ -526,18 +591,6 @@ Company NO : ${company.companyNo}  ${company.name}`}
             </div>
           </div>
         </Dialog>
-      )}
-
-      {confirmPay && (
-        <div className="dos-overlay">
-          <div
-            className="dos-prompt"
-            role="dialog"
-            aria-label="Are you sure this is correct? Y/N"
-          >
-            <div className="q">Are you sure this is correct? Y/N</div>
-          </div>
-        </div>
       )}
 
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
