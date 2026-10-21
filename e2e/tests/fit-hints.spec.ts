@@ -96,6 +96,103 @@ async function clipReport(page: Page): Promise<string[]> {
         );
       }
     }
+
+    const vh = window.innerHeight;
+    const controls = document.querySelectorAll(
+      ".dos-dialog input, .dos-dialog button, .dos-dialog select, .dos-dialog textarea, .dos-menu-frame .menu-header, .dos-menu-frame button, .dos-menu-frame pre"
+    );
+    for (const el of controls) {
+      if (el.closest(".print-preview-overlay, .dos-help, .dos-prompt")) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      const name = (el.getAttribute("aria-label") || textOf(el)).slice(0, 60);
+      if (box.right > vw + 1 || box.left < -1 || box.bottom > vh + 1 || box.top < -1) {
+        issues.push(
+          `form overflows viewport "${name}" right ${Math.round(box.right)} bottom ${Math.round(box.bottom)} vw ${vw} vh ${vh}`
+        );
+      }
+      const body = el.closest(".dlg-body");
+      if (body) {
+        const br = body.getBoundingClientRect();
+        if (
+          box.right > br.right + 1 ||
+          box.left < br.left - 1 ||
+          box.bottom > br.bottom + 1 ||
+          box.top < br.top - 1
+        ) {
+          issues.push(
+            `form clipped by dialog "${name}" right ${Math.round(box.right)} bottom ${Math.round(box.bottom)} body ${Math.round(br.right)}x${Math.round(br.bottom)}`
+          );
+        }
+      }
+    }
+
+    document.querySelectorAll(".dos-menu-frame").forEach((frame) => {
+      if (frame.closest(".print-preview-overlay, .dos-help, .dos-prompt")) return;
+      const box = frame.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) return;
+      if (box.top < -1 || box.bottom > vh + 1 || box.left < -1 || box.right > vw + 1) {
+        issues.push(
+          `panel overflows viewport top ${Math.round(box.top)} bottom ${Math.round(box.bottom)} vh ${vh}`
+        );
+      }
+    });
+
+    const pre = document.querySelector(".dos-menu-frame pre");
+    if (pre) {
+      const text = pre.textContent || "";
+      const idx = text.indexOf("NOTE:");
+      if (idx >= 0) {
+        const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+        let seen = 0;
+        let target: Text | null = null;
+        let start = 0;
+        let current = walker.nextNode();
+        while (current) {
+          if (current.nodeType === Node.TEXT_NODE) {
+            const next = seen + (current.textContent || "").length;
+            if (idx < next) {
+              target = current as Text;
+              start = idx - seen;
+              break;
+            }
+            seen = next;
+          }
+          current = walker.nextNode();
+        }
+        if (target) {
+          const range = document.createRange();
+          range.setStart(target, start);
+          range.setEnd(target, Math.min(target.length, start + 5));
+          const rect = range.getBoundingClientRect();
+          const preBox = pre.getBoundingClientRect();
+          if (
+            rect.height > 0 &&
+            (rect.bottom > vh + 1 ||
+              rect.top < -1 ||
+              rect.bottom > preBox.bottom + 1 ||
+              rect.top < preBox.top - 1)
+          ) {
+            issues.push(
+              `diagnostics note clipped bottom ${Math.round(rect.bottom)} pre ${Math.round(preBox.bottom)} vh ${vh}`
+            );
+          }
+        }
+      }
+    }
+
+    const header = document.querySelector(".dos-menu-frame .menu-header");
+    if (header) {
+      const box = header.getBoundingClientRect();
+      if (box.width > 2 && box.height > 2) {
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + Math.min(box.height / 2, 8));
+        if (hit && !header.contains(hit)) {
+          issues.push(
+            `title covered "${textOf(header)}" hit "${textOf(hit).slice(0, 40)}"`
+          );
+        }
+      }
+    }
     return issues;
   });
 }
@@ -316,7 +413,60 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
       await waitSettled(page);
       const issues = await clipReport(page);
       for (const issue of issues) failures.push(`${width} ${screen.name}: ${issue}`);
+      if (screen.name === "Material transactions") {
+        const msg = await page.locator(".dos-messagebar").innerText();
+        if (!/Material Maintenance/.test(msg) || !/Ins=Add/.test(msg) || !/Del=Void/.test(msg)) {
+          failures.push(`${width} material status lost the report title: ${msg}`);
+        }
+      }
+      if (screen.name === "Workers") {
+        const msg = await page.locator(".dos-messagebar").innerText();
+        if (
+          !msg.includes(
+            "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
+          )
+        ) {
+          failures.push(`${width} workers status reworded: ${msg}`);
+        }
+      }
     }
   }
   expect(failures, failures.join("\n")).toEqual([]);
+});
+
+test("a long typed value fits, and Delete does not move the scale", async ({ page }) => {
+  test.setTimeout(120_000);
+  page.setDefaultTimeout(8_000);
+  const long = "X".repeat(48);
+  for (const width of [1280, 1024]) {
+    await page.setViewportSize({ width, height: 800 });
+    await openMain(page, /7\.\s*Miscellaneous/i);
+    await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
+    await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
+    const name = page.getByRole("textbox", { name: /Worker name/i }).first();
+    await name.fill(long);
+    await waitSettled(page);
+    const beforeFit = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--fit-scale")
+    );
+    const typed = await clipReport(page);
+    expect(typed, typed.join("\n")).toEqual([]);
+    const del = page.getByRole("button", { name: new RegExp(`Delete ${long}`) });
+    await del.click();
+    await expect(page.getByLabel("Are you sure? Y/N")).toBeVisible();
+    await waitSettled(page);
+    const afterFit = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--fit-scale")
+    );
+    expect(afterFit, `${width} Delete click changed fit-scale`).toBe(beforeFit);
+    const prompted = await clipReport(page);
+    expect(prompted, prompted.join("\n")).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(page.getByLabel("Are you sure? Y/N")).toHaveCount(0);
+    await waitSettled(page);
+    const closed = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--fit-scale")
+    );
+    expect(closed, `${width} dismissing Delete changed fit-scale`).toBe(beforeFit);
+  }
 });

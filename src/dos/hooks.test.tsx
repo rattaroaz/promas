@@ -4,6 +4,7 @@ import {
   computeFitScale,
   contentWidthOf,
   convergeFitScale,
+  verticalFitFactor,
   pointerHoverMuted,
   resolveFitScale,
   useBrowseIndex,
@@ -184,6 +185,84 @@ describe("resolveFitScale", () => {
     expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1400);
     bar.remove();
     expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1400);
+    document.body.removeChild(shell);
+  });
+
+  it("counts a dialog field and ignores a prompt overlay", () => {
+    const shell = document.createElement("div");
+    const overlay = document.createElement("div");
+    overlay.className = "dos-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    const wide = document.createElement("input");
+    overlay.appendChild(dialog);
+    dialog.appendChild(wide);
+    shell.appendChild(overlay);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    box(shell, 1280, 1280);
+    box(overlay, 1280, 1280);
+    box(dialog, 800, 800);
+    box(wide, 800, 1800);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1800);
+
+    const prompt = document.createElement("div");
+    prompt.className = "dos-overlay";
+    const ask = document.createElement("div");
+    ask.className = "dos-prompt";
+    const huge = document.createElement("div");
+    prompt.appendChild(ask);
+    ask.appendChild(huge);
+    shell.appendChild(prompt);
+    box(prompt, 1280, 4000);
+    box(ask, 400, 4000);
+    box(huge, 400, 4000);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1800);
+    expect(contentWidthOf(shell)).toBeLessThan(4000);
+    document.body.removeChild(shell);
+  });
+
+  it("shrinks for a dialog taller than its window and ignores a scrolling list", () => {
+    const shell = document.createElement("div");
+    const overlay = document.createElement("div");
+    overlay.className = "dos-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    const body = document.createElement("div");
+    body.className = "dlg-body";
+    overlay.appendChild(dialog);
+    dialog.appendChild(body);
+    shell.appendChild(overlay);
+    document.body.appendChild(shell);
+    const size = (el: HTMLElement, client: number, scroll: number, offset = client) => {
+      Object.defineProperty(el, "clientHeight", { value: client, configurable: true });
+      Object.defineProperty(el, "scrollHeight", { value: scroll, configurable: true });
+      Object.defineProperty(el, "offsetHeight", { value: offset, configurable: true });
+    };
+    size(overlay, 600, 600);
+    size(dialog, 500, 500, 500);
+    size(body, 400, 900, 400);
+    const tall = verticalFitFactor(shell);
+    expect(tall).toBeLessThan(0.6);
+    expect(tall).toBeGreaterThan(0.4);
+
+    const browse = document.createElement("div");
+    browse.className = "dos-browse-body";
+    body.appendChild(browse);
+    size(body, 400, 900, 400);
+    size(browse, 100, 700, 100);
+    expect(verticalFitFactor(shell)).toBe(1);
     document.body.removeChild(shell);
   });
 });

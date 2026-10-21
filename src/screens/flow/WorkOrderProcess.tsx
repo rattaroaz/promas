@@ -541,10 +541,9 @@ export function WorkOrderProcess({
                   + Line (* = free text)
                 </button>
               </div>
-              <div style={{ color: "var(--app-highlight)", fontWeight: "bold" }}>
+              <div style={{ gridColumn: "4 / 6", color: "var(--app-highlight)", fontWeight: "bold", overflow: "visible", textOverflow: "clip" }}>
                 Total: {money(editing.lines.reduce((s, l) => s + l.price, 0))}
               </div>
-              <div></div>
             </div>
           </div>
         </Dialog>

@@ -462,4 +462,117 @@ test.describe("focus does not resize the screen", () => {
       await audit(page, screen.open, screen.name);
     }
   });
+
+  test("opened dialogs and forms stay put when a field is focused", async ({ page }) => {
+    test.setTimeout(180_000);
+    page.setDefaultTimeout(8_000);
+
+    const forms: { name: string; open: () => Promise<void> }[] = [
+      {
+        name: "Work order edit",
+        open: async () => {
+          await propertyList(page, /2\.\s*Work Order Process/i);
+          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
+          await page.getByRole("button", { name: /7\s+02\/01\/2026|A1/i }).click();
+          await expect(page.locator(".dlg-title")).toBeVisible();
+        },
+      },
+      {
+        name: "Property edit",
+        open: async () => {
+          await propertyList(page, /3\.\s*Invoice Process/i);
+          await page.getByRole("button", { name: "Ctrl-Home" }).click();
+          await expect(page.getByRole("textbox", { name: "Property NO" })).toBeVisible();
+        },
+      },
+      {
+        name: "Material edit",
+        open: async () => {
+          await openMain(page, /5\.\s*Material Process/i);
+          await page.getByRole("button", { name: /1\.\s*Material Transaction/i }).click();
+          await page.getByRole("button", { name: /^Ins Add$/i }).click();
+          await expect(page.getByRole("textbox", { name: "Amount" })).toBeVisible();
+        },
+      },
+      {
+        name: "Diagnostics",
+        open: async () => {
+          await openMain(page, /8\.\s*Settings/i);
+          await page.getByRole("button", { name: /5\.\s*Diagnostics/i }).click();
+          await expect(page.getByText("Metrics · Traces · Logs · State")).toBeVisible();
+        },
+      },
+    ];
+
+    const layout = () =>
+      page.evaluate(() => {
+        const root = document.documentElement;
+        const nodes = [...document.querySelectorAll("input, button, select, textarea, .dlg-title, .menu-header")]
+          .filter((el) => {
+            if (el.closest(".dos-help, .dos-prompt, .print-preview-overlay")) return false;
+            const b = el.getBoundingClientRect();
+            return b.width > 2 && b.height > 2;
+          })
+          .map((el) => {
+            const b = el.getBoundingClientRect();
+            const name = (el.getAttribute("aria-label") || el.textContent || el.tagName)
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 40);
+            return {
+              name,
+              x: Math.round(b.x),
+              y: Math.round(b.y),
+              w: Math.round(b.width),
+              h: Math.round(b.height),
+            };
+          });
+        return {
+          fit: root.style.getPropertyValue("--fit-scale"),
+          font: getComputedStyle(root).fontSize,
+          nodes,
+        };
+      });
+
+    for (const width of [1280, 1024]) {
+      await page.setViewportSize({ width, height: 800 });
+      for (const form of forms) {
+        await form.open();
+        await waitSettled(page);
+        const fields = page.locator(".dos-dialog input:visible, .dos-dialog select:visible, .dos-dialog textarea:visible, .dos-menu-frame button:visible");
+        const count = await fields.count();
+        for (let i = 0; i < count; i++) {
+          const before = await layout();
+          const field = fields.nth(i);
+          if (!(await field.isVisible().catch(() => false))) continue;
+          if (!(await field.isEnabled().catch(() => false))) continue;
+          await field.focus();
+          await frames(page);
+          const after = await layout();
+          expect(after.fit, `${width} ${form.name} focus fit-scale`).toBe(before.fit);
+          expect(parseFloat(after.font), `${width} ${form.name} focus font`).toBeCloseTo(
+            parseFloat(before.font),
+            1
+          );
+          const moved = before.nodes.filter((node, index) => {
+            const next = after.nodes[index];
+            if (!next || next.name !== node.name) return false;
+            return (
+              Math.abs(next.x - node.x) > 1 ||
+              Math.abs(next.y - node.y) > 1 ||
+              Math.abs(next.w - node.w) > 1 ||
+              Math.abs(next.h - node.h) > 1
+            );
+          });
+          expect(
+            moved.length,
+            `${width} ${form.name} focus moved ${moved.length}: ${moved
+              .slice(0, 8)
+              .map((n) => n.name)
+              .join(", ")}`
+          ).toBe(0);
+        }
+      }
+    }
+  });
 });

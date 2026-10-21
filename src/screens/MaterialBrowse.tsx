@@ -48,7 +48,9 @@ export function MaterialBrowse({
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Material | null>(null);
-  const [msg, setMsg] = useState("0  Total Material: 0.00  Ins=Add  Del=Void  Esc=Exit");
+  const [msg, setMsg] = useState(
+    `${SORT_TITLE[sort]}  0  Total Material: 0.00  Ins=Add  Del=Void  Esc=Exit`
+  );
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
     "default"
   );
@@ -70,7 +72,7 @@ export function MaterialBrowse({
       setEmployees(emps);
       const tot = data.reduce((s, r) => s + r.amount, 0);
       setMsg(
-        `${data.length}  Total Material: ${money(tot)}  Ins=Add  Del=Void  Esc=Exit`
+        `${SORT_TITLE[sort]}  ${data.length}  Total Material: ${money(tot)}  Ins=Add  Del=Void  Esc=Exit`
       );
       setMsgKind("default");
     } catch (e) {

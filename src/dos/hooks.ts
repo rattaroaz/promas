@@ -552,17 +552,24 @@ export function resolveFitScale(
  * is not content. Overflow inside a clipped or scrolling box still counts:
  * those boxes often report a scroll width equal to the client width while a
  * child paints past the edge.
- * Status text, key hints, and overlays are not content. A clipped message
- * used to swing the scale, and a focus or a new hint must not move it.
+ * Status text and key hints are not content. A prompt or help overlay is not
+ * content either. A dialog is: its fields are measured, the overlay shell is not.
  */
 function ignoredByFit(el: HTMLElement): boolean {
-  return (
+  if (
     el.classList.contains("print-preview-overlay") ||
     el.classList.contains("dos-messagebar") ||
     el.classList.contains("dos-statusbar") ||
     el.classList.contains("dlg-foot") ||
-    el.classList.contains("dos-overlay")
-  );
+    el.classList.contains("dos-help") ||
+    el.classList.contains("dos-prompt")
+  ) {
+    return true;
+  }
+  // The overlay box is the viewport. A prompt has nothing to fit. A dialog's
+  // children are the content, so the overlay itself is not skipped.
+  if (el.classList.contains("dos-overlay")) return !el.querySelector(".dos-dialog");
+  return false;
 }
 
 export function contentWidthOf(root: HTMLElement): number {
@@ -619,6 +626,205 @@ export function convergeFitScale(
   return scale;
 }
 
+const FIT_PAINTED =
+  ".dos-dialog input, .dos-dialog button, .dos-dialog select, .dos-dialog textarea, .workers-row > *, .workers-head > *, .dos-menu-frame .menu-header, .dos-menu-frame button";
+
+function skipPainted(el: HTMLElement): boolean {
+  return Boolean(
+    el.closest(
+      ".print-preview-overlay, .dos-help, .dos-prompt, .dos-messagebar, .dos-statusbar, .dlg-foot, .dos-browse-body, .dos-report, .aging-scroll"
+    )
+  );
+}
+
+/** Right edge, in viewport pixels, of fields the scale is allowed to see. */
+export function paintedRight(root: HTMLElement): number {
+  let max = 0;
+  root.querySelectorAll(FIT_PAINTED).forEach((node) => {
+    if (!(node instanceof HTMLElement) || skipPainted(node)) return;
+    const box = node.getBoundingClientRect();
+    if (box.width < 2 || box.height < 2) return;
+    max = Math.max(max, box.right);
+  });
+  return max;
+}
+
+function tighten(factor: number, needed: number, avail: number): number {
+  if (!(avail > 0) || !(needed > avail + 1)) return factor;
+  return Math.min(factor, (avail - 8) / needed);
+}
+
+/**
+ * Multiplier for the current scale so dialogs, menu frames, and the
+ * diagnostics note fit the window. 1 means the height already fits.
+ * Browse lists and hint bars are not part of this height.
+ */
+export function verticalFitFactor(root: HTMLElement): number {
+  let factor = 1;
+  const vh = window.innerHeight || root.clientHeight;
+
+  root.querySelectorAll(".dos-dialog").forEach((node) => {
+    if (!(node instanceof HTMLElement)) return;
+    if (node.closest(".dos-help, .dos-prompt, .print-preview-overlay")) return;
+    const body = node.querySelector(".dlg-body");
+    let extra = 0;
+    if (body instanceof HTMLElement) {
+      extra = Math.max(0, body.scrollHeight - body.clientHeight);
+      body.querySelectorAll(".dos-browse-body, .dos-report").forEach((browse) => {
+        if (!(browse instanceof HTMLElement)) return;
+        extra -= Math.max(0, browse.scrollHeight - browse.clientHeight);
+      });
+      extra = Math.max(0, extra);
+    }
+    const avail = (node.parentElement?.clientHeight ?? vh) * 0.9;
+    factor = tighten(factor, node.offsetHeight + extra, avail);
+  });
+
+  root.querySelectorAll(".dos-menu-frame").forEach((node) => {
+    if (!(node instanceof HTMLElement)) return;
+    if (node.closest(".dos-dialog, .dos-help, .print-preview-overlay")) return;
+    const avail = node.parentElement?.clientHeight ?? 0;
+    const needed = Math.max(node.scrollHeight, node.offsetHeight);
+    factor = tighten(factor, needed, avail);
+  });
+
+  root.querySelectorAll(FIT_PAINTED).forEach((node) => {
+    if (!(node instanceof HTMLElement) || skipPainted(node)) return;
+    const box = node.getBoundingClientRect();
+    if (box.width < 2 || box.height < 2) return;
+    factor = tighten(factor, box.bottom, vh);
+  });
+
+  // The diagnostics bundle keeps a NOTE near the top. The log below it scrolls.
+  // The note itself has to land inside the panel.
+  const pre = root.querySelector(".dos-menu-frame pre");
+  if (pre instanceof HTMLElement) {
+    const text = pre.textContent ?? "";
+    const idx = text.indexOf("NOTE:");
+    if (idx >= 0) {
+      const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+      let seen = 0;
+      let target: Text | null = null;
+      let start = 0;
+      let current = walker.nextNode();
+      while (current) {
+        if (current instanceof Text) {
+          const next = seen + current.length;
+          if (idx < next) {
+            target = current;
+            start = idx - seen;
+            break;
+          }
+          seen = next;
+        }
+        current = walker.nextNode();
+      }
+      if (target) {
+        const range = document.createRange();
+        range.setStart(target, start);
+        range.setEnd(target, Math.min(target.length, start + 5));
+        const rect = range.getBoundingClientRect();
+        const preBox = pre.getBoundingClientRect();
+        const limit = Math.min(preBox.bottom || vh, vh);
+        if (rect.height > 0 && rect.bottom > limit + 1) {
+          factor = tighten(factor, rect.bottom, limit);
+        }
+      }
+    }
+  }
+
+  return factor > 0 ? factor : 1;
+}
+
+/**
+ * Pixels a dialog field still sticks out of the dialog's visible box.
+ * A field can sit inside the window and still be clipped by the dialog,
+ * and focusing it then scrolls every other field.
+ */
+export function dialogClip(root: HTMLElement): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  root.querySelectorAll(".dos-dialog .dlg-body").forEach((body) => {
+    if (!(body instanceof HTMLElement)) return;
+    if (body.closest(".dos-help, .dos-prompt")) return;
+    const br = body.getBoundingClientRect();
+    if (br.width < 2 || br.height < 2) return;
+    body.querySelectorAll("input, button, select, textarea").forEach((node) => {
+      if (!(node instanceof HTMLElement) || skipPainted(node)) return;
+      const box = node.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) return;
+      if (box.right > br.right + 1) x = Math.max(x, box.right - br.right);
+      if (box.left < br.left - 1) x = Math.max(x, br.left - box.left);
+      if (box.bottom > br.bottom + 1) y = Math.max(y, box.bottom - br.bottom);
+      if (box.top < br.top - 1) y = Math.max(y, br.top - box.top);
+    });
+  });
+  return { x, y };
+}
+
+function contentSpan(root: HTMLElement): number {
+  return Math.max(contentWidthOf(root), paintedRight(root));
+}
+
+function fitScaleNow(root: HTMLElement, doc: HTMLElement, start: number): number {
+  let scale = start > 0 && start <= 1 ? start : 1;
+  const seen = new Set<string>();
+  for (let pass = 0; pass < 8; pass++) {
+    if (Math.abs(scale - readFitScale(doc)) > 0.0001) writeFitScale(doc, scale);
+    const clientW = root.clientWidth;
+    const clip = dialogClip(root);
+    const contentW = Math.max(contentSpan(root), clip.x > 1 ? clientW + clip.x : 0);
+    let next = scale;
+    if (contentW > clientW + 1) {
+      const avail = Math.max(0, clientW - FIT_SLACK_PX);
+      next = Math.min(next, Math.max(FIT_MIN, (scale * avail) / contentW));
+    }
+    if (clip.y > 1) {
+      const avail = Math.max(0, (window.innerHeight || root.clientHeight) - 8);
+      next = Math.min(next, Math.max(FIT_MIN, (scale * avail) / (avail + clip.y)));
+    }
+    const height = verticalFitFactor(root);
+    if (height < 0.999) next = Math.min(next, Math.max(FIT_MIN, scale * height));
+    if (Math.abs(next - scale) <= 0.004) return scale;
+    const key = next.toFixed(4);
+    if (seen.has(key)) return scale;
+    seen.add(key);
+    scale = next;
+  }
+  return scale;
+}
+
+function mutationMatters(record: MutationRecord): boolean {
+  const nodes = [...record.addedNodes, ...record.removedNodes];
+  if (nodes.length === 0) {
+    const el =
+      record.target instanceof Element ? record.target : record.target.parentElement;
+    if (!el) return false;
+    return !el.closest(
+      ".dos-messagebar, .dos-statusbar, .dlg-foot, .dos-help, .dos-prompt, .print-preview-overlay"
+    );
+  }
+  return nodes.some((node) => {
+    if (!(node instanceof Element)) {
+      const parent = node.parentElement;
+      if (!parent) return false;
+      return !parent.closest(
+        ".dos-messagebar, .dos-statusbar, .dlg-foot, .dos-help, .dos-prompt"
+      );
+    }
+    if (
+      node.closest(
+        ".dos-messagebar, .dos-statusbar, .dlg-foot, .dos-help, .dos-prompt, .print-preview-overlay"
+      )
+    ) {
+      return false;
+    }
+    if (node.classList.contains("dos-overlay") && !node.querySelector(".dos-dialog")) return false;
+    if (node.classList.contains("dos-help") || node.classList.contains("dos-prompt")) return false;
+    return true;
+  });
+}
+
 function readFitScale(doc: HTMLElement): number {
   const n = parseFloat(doc.style.getPropertyValue("--fit-scale"));
   return n > 0 && n <= 1 ? n : 1;
@@ -630,10 +836,11 @@ function writeFitScale(doc: HTMLElement, scale: number) {
 }
 
 /**
- * One scale per screen, from the widest static content (tables, forms, headers).
- * Status text and key hints are not part of that width. Focus, a new message,
- * or a dialog that shares the screen does not move the scale. A different
- * screen, or a real window resize, works the scale out again from 1.
+ * One scale per screen, measured with --fit-scale at 1, then shrunk until the
+ * screen fits. Opening a dialog or growing a field (a long typed name) fits
+ * again. Focus, a click that does not change that content, and the hint bars
+ * do not. Hint text is not part of the measurement, so a wrapping status line
+ * cannot feed the scale.
  */
 export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
@@ -642,36 +849,48 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
     const doc = document.documentElement;
     let frame = 0;
     let settling = false;
-    let lockedClient = -1;
+    let lockedClientW = -1;
+    let lockedClientH = -1;
     let lockedBase = "\0";
     let lockedScale = 1;
+    let lockedSpan = -1;
 
     const screenBase = () => {
       const text = (sel: string) =>
         root.querySelector(sel)?.textContent?.replace(/\s+/g, " ").trim() ?? "";
-      return `${text(".dos-titlebar")}|${text(".menu-header")}`;
+      const titles = [...root.querySelectorAll(".dlg-title")]
+        .map((node) => node.textContent?.replace(/\s+/g, " ").trim() ?? "")
+        .join("~");
+      return `${text(".dos-titlebar")}|${text(".menu-header")}|${titles}`;
     };
 
     const settle = () => {
       if (settling) return;
       settling = true;
       try {
-        const client = root.clientWidth;
+        const clientW = root.clientWidth;
+        const clientH = root.clientHeight;
         const base = screenBase();
-        const fresh = client !== lockedClient || base !== lockedBase;
-        const settled = convergeFitScale((scale) => {
-          if (Math.abs(scale - readFitScale(doc)) > 0.0001) writeFitScale(doc, scale);
-          return {
-            clientWidth: root.clientWidth,
-            contentWidth: contentWidthOf(root),
-          };
-        }, fresh ? 1 : lockedScale);
-        // Same screen: a click, focus, or status line may only hold or shrink.
+        const fresh =
+          clientW !== lockedClientW || clientH !== lockedClientH || base !== lockedBase;
+        const span = contentSpan(root);
+        const clip = dialogClip(root);
+        const overflows =
+          span > clientW + 1 ||
+          clip.x > 1 ||
+          clip.y > 1 ||
+          verticalFitFactor(root) < 0.999;
+        // Same screen, same content: do not write. A Delete click opens a
+        // prompt and must leave the fit string untouched.
+        if (!fresh && !overflows && Math.abs(span - lockedSpan) <= 8) return;
+        const settled = fitScaleNow(root, doc, fresh ? 1 : lockedScale);
         const next = !fresh && settled > lockedScale ? lockedScale : settled;
         if (Math.abs(next - readFitScale(doc)) > 0.0001) writeFitScale(doc, next);
-        lockedClient = root.clientWidth;
+        lockedClientW = root.clientWidth;
+        lockedClientH = root.clientHeight;
         lockedBase = base;
         lockedScale = readFitScale(doc);
+        lockedSpan = contentSpan(root);
       } finally {
         settling = false;
       }
@@ -686,6 +905,12 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
       });
     };
 
+    // The value is a property, not a text node. Wait a frame so React has
+    // committed the wider field before measuring.
+    const onInput = () => {
+      requestAnimationFrame(schedule);
+    };
+
     const ro =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(schedule)
@@ -693,14 +918,18 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
     ro?.observe(root);
     const mo =
       typeof MutationObserver !== "undefined"
-        ? new MutationObserver(schedule)
+        ? new MutationObserver((records) => {
+            if (records.some(mutationMatters)) schedule();
+          })
         : null;
     mo?.observe(root, { childList: true, subtree: true, characterData: true });
+    root.addEventListener("input", onInput);
     window.addEventListener("resize", schedule);
     settle();
     return () => {
       ro?.disconnect();
       mo?.disconnect();
+      root.removeEventListener("input", onInput);
       window.removeEventListener("resize", schedule);
       cancelAnimationFrame(frame);
       doc.style.removeProperty("--fit-scale");
