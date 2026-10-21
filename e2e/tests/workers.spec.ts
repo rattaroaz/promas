@@ -84,7 +84,7 @@ test.describe("workers", () => {
     await expect(sure).toBeVisible();
     await page.keyboard.press("n");
     await expect(sure).toHaveCount(0);
-    await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
+    await expect(page.getByRole("button", { name: "Delete Jose Ramirez" })).toBeVisible();
     await deleteJose.click();
     await page.keyboard.press("Escape");
     await expect(sure).toHaveCount(0);

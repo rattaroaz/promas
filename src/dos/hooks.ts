@@ -562,11 +562,17 @@ export function contentWidthOf(root: HTMLElement): number {
     const ow = el.offsetWidth;
     const parentCw = el.parentElement?.clientWidth ?? 0;
     const stretched = parentCw > 0 && ow + 1 >= parentCw && sw <= ow + 1;
-    if (!stretched && sw > 0) max = Math.max(max, sw);
+    // A clipped bar (the message line, the status keys) ellipsizes on purpose.
+    // Its scroll width is hidden text, and counting it makes the scale oscillate.
+    const clipsX = getComputedStyle(el).overflowX === "hidden";
+    if (!stretched && sw > 0 && !clipsX) max = Math.max(max, sw);
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
-      const right =
-        node.offsetLeft + Math.max(node.scrollWidth, node.offsetWidth);
+      const childClips = getComputedStyle(node).overflowX === "hidden";
+      const childWidth = childClips
+        ? node.offsetWidth
+        : Math.max(node.scrollWidth, node.offsetWidth);
+      const right = node.offsetLeft + childWidth;
       if (right > cw + 1) max = Math.max(max, right);
       visit(node);
     }
