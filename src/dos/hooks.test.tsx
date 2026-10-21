@@ -3,6 +3,8 @@ import { render, renderHook, act } from "@testing-library/react";
 import {
   computeFitScale,
   contentWidthOf,
+  convergeFitScale,
+  verticalFitFactor,
   pointerHoverMuted,
   resolveFitScale,
   useBrowseIndex,
@@ -77,6 +79,26 @@ describe("resolveFitScale", () => {
     }
   });
 
+  it("converges a leftover shrink that one pass leaves for the next click", () => {
+    // Measured on the invoice gate at 1400px: the first scale is 0.8245 and
+    // the row is still 1420px wide, so the next pass (the click) goes to 0.7966.
+    const client = 1400;
+    const widthAt = (scale: number) =>
+      scale === 1 ? 1664 : Math.round(1420 * (scale / 0.8245));
+    const once = resolveFitScale(client, widthAt(1), 1);
+    const leftover = resolveFitScale(client, widthAt(once), once);
+    expect(once).toBeCloseTo(0.8245, 3);
+    expect(leftover).toBeLessThan(once - 0.01);
+
+    const settled = convergeFitScale((scale) => ({
+      clientWidth: client,
+      contentWidth: widthAt(scale),
+    }));
+    const again = resolveFitScale(client, widthAt(settled), settled);
+    expect(Math.abs(again - settled)).toBeLessThanOrEqual(0.004);
+    expect(settled).toBeCloseTo(leftover, 3);
+  });
+
   it("returns to 1 after a shrink-then-restore and does not drift", () => {
     const natural = 877;
     let scale = resolveFitScale(800, natural, 1);
@@ -135,6 +157,155 @@ describe("resolveFitScale", () => {
     expect(contentWidthOf(fitting)).toBe(0);
     document.body.removeChild(shell);
     document.body.removeChild(host);
+  });
+
+  it("ignores a clipped message bar and still counts a static row", () => {
+    const shell = document.createElement("div");
+    const bar = document.createElement("div");
+    bar.className = "dos-messagebar";
+    const row = document.createElement("div");
+    shell.appendChild(bar);
+    shell.appendChild(row);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    box(shell, 1280, 1280);
+    box(bar, 1280, 1991);
+    box(row, 900, 1400, 1400);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1400);
+    bar.remove();
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1400);
+    document.body.removeChild(shell);
+  });
+
+  it("counts a dialog field and ignores a prompt overlay", () => {
+    const shell = document.createElement("div");
+    const overlay = document.createElement("div");
+    overlay.className = "dos-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    const wide = document.createElement("input");
+    overlay.appendChild(dialog);
+    dialog.appendChild(wide);
+    shell.appendChild(overlay);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    box(shell, 1280, 1280);
+    box(overlay, 1280, 1280);
+    box(dialog, 800, 800);
+    box(wide, 800, 1800);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1800);
+
+    const prompt = document.createElement("div");
+    prompt.className = "dos-overlay";
+    const ask = document.createElement("div");
+    ask.className = "dos-prompt";
+    const huge = document.createElement("div");
+    prompt.appendChild(ask);
+    ask.appendChild(huge);
+    shell.appendChild(prompt);
+    box(prompt, 1280, 4000);
+    box(ask, 400, 4000);
+    box(huge, 400, 4000);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1800);
+    expect(contentWidthOf(shell)).toBeLessThan(4000);
+    document.body.removeChild(shell);
+  });
+
+  it("shrinks for a dialog taller than its window and ignores a scrolling list", () => {
+    const shell = document.createElement("div");
+    const overlay = document.createElement("div");
+    overlay.className = "dos-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    const body = document.createElement("div");
+    body.className = "dlg-body";
+    overlay.appendChild(dialog);
+    dialog.appendChild(body);
+    shell.appendChild(overlay);
+    document.body.appendChild(shell);
+    const size = (el: HTMLElement, client: number, scroll: number, offset = client) => {
+      Object.defineProperty(el, "clientHeight", { value: client, configurable: true });
+      Object.defineProperty(el, "scrollHeight", { value: scroll, configurable: true });
+      Object.defineProperty(el, "offsetHeight", { value: offset, configurable: true });
+    };
+    size(overlay, 600, 600);
+    size(dialog, 500, 500, 500);
+    size(body, 400, 900, 400);
+    const tall = verticalFitFactor(shell);
+    expect(tall).toBeLessThan(0.6);
+    expect(tall).toBeGreaterThan(0.4);
+
+    const browse = document.createElement("div");
+    browse.className = "dos-browse-body";
+    body.appendChild(browse);
+    size(body, 400, 900, 400);
+    size(browse, 100, 700, 100);
+    expect(verticalFitFactor(shell)).toBe(1);
+    document.body.removeChild(shell);
+  });
+
+  it("shrinks when a dialog hint paints below the window", () => {
+    const shell = document.createElement("div");
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    const body = document.createElement("div");
+    body.className = "dlg-body";
+    const foot = document.createElement("div");
+    foot.className = "dlg-foot";
+    foot.textContent = "Esc=Cancel, Ctrl-S=Save & Exit";
+    dialog.append(body, foot);
+    shell.appendChild(dialog);
+    document.body.appendChild(shell);
+    const size = (el: HTMLElement, client: number, scroll: number, offset = client) => {
+      Object.defineProperty(el, "clientHeight", { value: client, configurable: true });
+      Object.defineProperty(el, "scrollHeight", { value: scroll, configurable: true });
+      Object.defineProperty(el, "offsetHeight", { value: offset, configurable: true });
+    };
+    size(dialog, 600, 600, 600);
+    size(body, 500, 500, 500);
+    const vh = window.innerHeight || 800;
+    const rect = (bottom: number, height: number) =>
+      ({
+        x: 0,
+        y: bottom - height,
+        top: bottom - height,
+        left: 0,
+        right: 200,
+        bottom,
+        width: 200,
+        height,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+    dialog.getBoundingClientRect = () => rect(vh - 40, 600);
+    foot.getBoundingClientRect = () => rect(vh + 20, 48);
+    const factor = verticalFitFactor(shell);
+    expect(factor).toBeLessThan(0.98);
+    expect(factor).toBeGreaterThan(0.8);
+    document.body.removeChild(shell);
   });
 });
 

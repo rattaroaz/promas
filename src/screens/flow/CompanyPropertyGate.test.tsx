@@ -3,11 +3,14 @@ import { act, fireEvent } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import {
   CompanyPropertyGate,
+  DEFAULT_PROPERTY_SORT,
   formatPropertySearchRow,
   INVOICE_SITE_BROWSE,
   nextPropertyNo,
+  nextPropertySort,
   PROPERTY_BROWSE_GLOBAL,
   PROPERTY_BROWSE_WITH_NAME,
+  sortProperties,
 } from "./CompanyPropertyGate";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
 
@@ -907,5 +910,206 @@ describe("CompanyPropertyGate", () => {
         { focusInvoice: 42 }
       );
     });
+  });
+});
+
+describe("street picker sort", () => {
+  const sites = [
+    {
+      ...property,
+      companyNo: "1000",
+      proNo: "01",
+      street: "14755 NORTH VENTURA",
+      name: "Ventura",
+    },
+    {
+      ...property,
+      companyNo: "1500",
+      proNo: "01",
+      street: "100 ELM ROAD",
+      name: "Cedar",
+    },
+    {
+      ...property,
+      companyNo: "2000",
+      proNo: "01",
+      street: "10 OAK AVENUE",
+      name: "Oak",
+    },
+    {
+      ...property,
+      companyNo: "2000",
+      proNo: "02",
+      street: "9 PINE STREET",
+      name: "Pine",
+    },
+  ];
+
+  it("orders company numbers high to low and streets by number", () => {
+    const byCompany = sortProperties(sites, DEFAULT_PROPERTY_SORT).map(
+      (p) => `${p.companyNo}/${p.proNo} ${p.street}`
+    );
+    expect(byCompany).toEqual([
+      "2000/01 10 OAK AVENUE",
+      "2000/02 9 PINE STREET",
+      "1500/01 100 ELM ROAD",
+      "1000/01 14755 NORTH VENTURA",
+    ]);
+    const asc = nextPropertySort(DEFAULT_PROPERTY_SORT, "company");
+    expect(asc).toEqual({ key: "company", dir: "asc" });
+    expect(sortProperties(sites, asc).map((p) => p.companyNo)).toEqual([
+      "1000",
+      "1500",
+      "2000",
+      "2000",
+    ]);
+    expect(nextPropertySort(asc, "company")).toEqual(DEFAULT_PROPERTY_SORT);
+    const byStreet = sortProperties(sites, nextPropertySort(asc, "street"));
+    expect(byStreet.map((p) => p.street)).toEqual([
+      "9 PINE STREET",
+      "10 OAK AVENUE",
+      "100 ELM ROAD",
+      "14755 NORTH VENTURA",
+    ]);
+  });
+});
+
+describe("street picker interactions", () => {
+  const sites = [
+    {
+      ...property,
+      companyNo: "1000",
+      proNo: "02",
+      street: "88 MAIN ST",
+      name: "Bldg B",
+    },
+    {
+      ...property,
+      companyNo: "2000",
+      proNo: "01",
+      street: "10 OAK AVENUE",
+      name: "Oak",
+    },
+    {
+      ...property,
+      companyNo: "2000",
+      proNo: "02",
+      street: "9 PINE STREET",
+      name: "Pine",
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.listProperties).mockResolvedValue(sites);
+    vi.mocked(api.saveProperty).mockResolvedValue(undefined);
+    vi.mocked(api.getCompany).mockImplementation(async (companyNo: string) => ({
+      ...company,
+      companyNo,
+      name: companyNo === "2000" ? "BAYSIDE" : "ACME",
+    }));
+  });
+
+  async function openStreetPicker() {
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={vi.fn()}
+      />
+    );
+    const street = screen.getByRole("textbox", { name: "Property Street" });
+    await user.click(street);
+    await user.type(street, "?{Enter}");
+    await screen.findByRole("button", { name: /^CoNO v$/ });
+    return user;
+  }
+
+  function rowText(): string[] {
+    return screen
+      .getAllByRole("button")
+      .filter((el) => el.className.includes("dos-row"))
+      .map((el) => (el.textContent ?? "").replace(/\s+/g, " "));
+  }
+
+  it("defaults to company number descending and toggles both headers", async () => {
+    const user = await openStreetPicker();
+    expect(rowText().map((row) => row.slice(0, 4))).toEqual([
+      "2000",
+      "2000",
+      "1000",
+    ]);
+    expect(rowText()[0]).toContain("10 OAK AVENUE");
+    expect(rowText()[1]).toContain("9 PINE STREET");
+
+    await user.click(screen.getByRole("button", { name: /^CoNO v$/ }));
+    expect(screen.getByRole("button", { name: /^CoNO \^$/ })).toBeInTheDocument();
+    expect(rowText()[0]).toContain("88 MAIN ST");
+    expect(rowText()[2]).toContain("9 PINE STREET");
+
+    await user.click(screen.getByRole("button", { name: /^CoNO \^$/ }));
+    expect(rowText()[0]).toContain("10 OAK AVENUE");
+
+    await user.click(screen.getByRole("button", { name: /^Street$/ }));
+    expect(screen.getByRole("button", { name: /^Street \^$/ })).toBeInTheDocument();
+    expect(rowText()[0]).toContain("9 PINE STREET");
+    expect(rowText()[1]).toContain("10 OAK AVENUE");
+    expect(rowText()[2]).toContain("88 MAIN ST");
+  });
+
+  it("right-click edits a property, cancel keeps it, and save stores it", async () => {
+    const onReady = vi.fn();
+    const user = userEvent.setup();
+    renderApp(
+      <CompanyPropertyGate
+        process="invoice"
+        onBack={vi.fn()}
+        onReady={onReady}
+      />
+    );
+    const street = screen.getByRole("textbox", { name: "Property Street" });
+    await user.click(street);
+    await user.type(street, "?{Enter}");
+    const pine = await screen.findByRole("button", { name: /9 PINE STREET/i });
+    const menu = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    fireEvent(pine, menu);
+    expect(menu.defaultPrevented).toBe(true);
+    const streetInput = await screen.findByDisplayValue("9 PINE STREET");
+    fireEvent.change(streetInput, { target: { value: "9 PINE COURT" } });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(await screen.findByRole("button", { name: /9 PINE STREET/i })).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("9 PINE COURT")).not.toBeInTheDocument();
+    expect(api.saveProperty).not.toHaveBeenCalled();
+
+    const again = screen.getByRole("button", { name: /9 PINE STREET/i });
+    const menu2 = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    fireEvent(again, menu2);
+    expect(menu2.defaultPrevented).toBe(true);
+    fireEvent.change(await screen.findByDisplayValue("9 PINE STREET"), {
+      target: { value: "9 PINE COURT" },
+    });
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true })
+      );
+    });
+    await waitFor(() => {
+      expect(api.saveProperty).toHaveBeenCalledWith(
+        expect.objectContaining({
+          companyNo: "2000",
+          proNo: "02",
+          street: "9 PINE COURT",
+        })
+      );
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "2000" }),
+        expect.objectContaining({ street: "9 PINE COURT" })
+      );
+    });
+    expect(await screen.findByRole("button", { name: /9 PINE COURT/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /9 PINE STREET/i })).not.toBeInTheDocument();
   });
 });

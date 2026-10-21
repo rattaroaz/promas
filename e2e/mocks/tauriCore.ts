@@ -1,3 +1,16 @@
+type E2EWorkPerson = { name: string; workerNo: string; active: boolean };
+
+/** Seeded the way a migrated catalog is: current dropdown names, Active, blank numbers. */
+let workPersons: E2EWorkPerson[] = [
+  { name: "Jose Ramirez", workerNo: "", active: true },
+];
+
+function listWorkPersons(): E2EWorkPerson[] {
+  return [...workPersons].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+}
+
 const fixtureCompany = {
   companyNo: "1000",
   name: "ACME",
@@ -28,6 +41,150 @@ const fixtureCompany2 = {
   name: "BAYSIDE",
   class: "B",
 };
+
+const fixtureCompany3 = {
+  ...fixtureCompany,
+  companyNo: "1500",
+  name: "CEDAR",
+  class: "C",
+};
+
+type E2EProperty = {
+  companyNo: string;
+  proNo: string;
+  name: string;
+  class: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+  phone2: string;
+  contact: string;
+  noOfUnit: number;
+  manager: string;
+  pageMap: string;
+  keyInfo: string;
+  paintTime: string;
+  comment1: string;
+  comment2: string;
+  memo: string;
+  voided: boolean;
+};
+
+/** Returned in stored order. The street picker used to show this order as-is. */
+let properties: E2EProperty[] = [
+  {
+    companyNo: "1000",
+    proNo: "01",
+    name: "Bldg A",
+    class: "",
+    street: "14755 NORTH VENTURA CANYON AVENUE BUILDING A1",
+    city: "SHERMAN OAKS",
+    state: "CA",
+    zip: "91403",
+    phone: "(818) 555-0191",
+    phone2: "(818) 555-0143",
+    contact: "MARIA GONZALEZ",
+    noOfUnit: 24,
+    manager: "MARIA GONZALEZ",
+    pageMap: "LB 1984",
+    keyInfo: "*2424",
+    paintTime: "NAVAJO WHITE",
+    comment1: "Pick up key from the rental office.",
+    comment2: "Lock box 1984 on the front gate.",
+    memo: "",
+    voided: false,
+  },
+  {
+    companyNo: "1000",
+    proNo: "02",
+    name: "Bldg B",
+    class: "",
+    street: "88 MAIN ST",
+    city: "RANCHO SANTA MARGARITA",
+    state: "CA",
+    zip: "91335",
+    phone: "(818) 555-0102",
+    phone2: "",
+    contact: "ROSA DIAZ",
+    noOfUnit: 8,
+    manager: "ROSA DIAZ",
+    pageMap: "",
+    keyInfo: "",
+    paintTime: "",
+    comment1: "",
+    comment2: "",
+    memo: "",
+    voided: false,
+  },
+  {
+    companyNo: "1500",
+    proNo: "01",
+    name: "Cedar Court",
+    class: "",
+    street: "100 ELM ROAD",
+    city: "RESEDA",
+    state: "CA",
+    zip: "91335",
+    phone: "(818) 555-0150",
+    phone2: "",
+    contact: "CEDAR DESK",
+    noOfUnit: 4,
+    manager: "CEDAR DESK",
+    pageMap: "",
+    keyInfo: "",
+    paintTime: "",
+    comment1: "",
+    comment2: "",
+    memo: "",
+    voided: false,
+  },
+  {
+    companyNo: "2000",
+    proNo: "01",
+    name: "Oak House",
+    class: "",
+    street: "10 OAK AVENUE",
+    city: "VAN NUYS",
+    state: "CA",
+    zip: "91401",
+    phone: "(818) 555-0201",
+    phone2: "",
+    contact: "OAK DESK",
+    noOfUnit: 2,
+    manager: "OAK DESK",
+    pageMap: "office@bayside.example",
+    keyInfo: "#1001",
+    paintTime: "4400",
+    comment1: "",
+    comment2: "",
+    memo: "",
+    voided: false,
+  },
+  {
+    companyNo: "2000",
+    proNo: "02",
+    name: "Pine House",
+    class: "",
+    street: "9 PINE STREET",
+    city: "VAN NUYS",
+    state: "CA",
+    zip: "91401",
+    phone: "(818) 555-0202",
+    phone2: "",
+    contact: "PINE DESK",
+    noOfUnit: 2,
+    manager: "PINE DESK",
+    pageMap: "",
+    keyInfo: "",
+    paintTime: "",
+    comment1: "",
+    comment2: "",
+    memo: "",
+    voided: false,
+  },
+];
 
 const fixtureInvoice = {
   companyNo: "1000",
@@ -111,13 +268,61 @@ export async function invoke<T = unknown>(
     return undefined as T;
   }
   if (cmd === "list_invoices") {
-    return [fixtureInvoice] as T;
+    // Property 01 keeps the original open invoice. The other rows are only
+    // for the cash ledger: unpaid invoices above paid ones, oldest first.
+    return [
+      fixtureInvoice,
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2026-01-01",
+        invoice: 3,
+        salesTotal: 80,
+        salesBal: 80,
+        payTotal: 0,
+        balance: 80,
+      },
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2026-03-01",
+        invoice: 4,
+        salesTotal: 40,
+        salesBal: 40,
+        payTotal: 0,
+        balance: 40,
+      },
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2025-06-01",
+        invoice: 5,
+        salesTotal: 60,
+        salesBal: 0,
+        payTotal: 60,
+        balance: 0,
+      },
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2026-02-01",
+        invoice: 6,
+        salesTotal: 90,
+        salesBal: 0,
+        payTotal: 90,
+        balance: 0,
+      },
+    ] as T;
   }
   if (cmd === "list_companies") {
-    return [fixtureCompany, fixtureCompany2] as T;
+    return [fixtureCompany, fixtureCompany2, fixtureCompany3] as T;
   }
   if (cmd === "get_company") {
-    return fixtureCompany as T;
+    const companyNo = String(_args?.companyNo ?? "").trim();
+    const found = [fixtureCompany, fixtureCompany2, fixtureCompany3].find(
+      (company) => company.companyNo === companyNo
+    );
+    return (found ?? null) as T;
   }
   if (cmd === "next_company_no") {
     return "1001" as T;
@@ -126,58 +331,37 @@ export async function invoke<T = unknown>(
     return undefined as T;
   }
   if (cmd === "save_property") {
+    const property = (_args?.property ?? {}) as E2EProperty;
+    const companyNo = String(property.companyNo ?? "").trim();
+    const proNo = String(property.proNo ?? "").trim();
+    const index = properties.findIndex(
+      (row) => row.companyNo === companyNo && row.proNo === proNo
+    );
+    if (index >= 0) properties[index] = { ...properties[index], ...property };
+    else properties.push({ ...property });
     return undefined as T;
   }
   if (cmd === "delete_company") {
     return undefined as T;
   }
   if (cmd === "list_properties") {
-    return [
-      {
-        companyNo: "1000",
-        proNo: "01",
-        name: "Bldg A",
-        class: "",
-        street: "14755 NORTH VENTURA CANYON AVENUE BUILDING A1",
-        city: "SHERMAN OAKS",
-        state: "CA",
-        zip: "91403",
-        phone: "(818) 555-0191",
-        phone2: "(818) 555-0143",
-        contact: "MARIA GONZALEZ",
-        noOfUnit: 24,
-        manager: "MARIA GONZALEZ",
-        pageMap: "LB 1984",
-        keyInfo: "*2424",
-        paintTime: "NAVAJO WHITE",
-        comment1: "Pick up key from the rental office.",
-        comment2: "Lock box 1984 on the front gate.",
-        memo: "",
-        voided: false,
-      },
-      {
-        companyNo: "1000",
-        proNo: "02",
-        name: "Bldg B",
-        class: "",
-        street: "88 MAIN ST",
-        city: "RANCHO SANTA MARGARITA",
-        state: "CA",
-        zip: "91335",
-        phone: "(818) 555-0102",
-        phone2: "",
-        contact: "ROSA DIAZ",
-        noOfUnit: 8,
-        manager: "ROSA DIAZ",
-        pageMap: "",
-        keyInfo: "",
-        paintTime: "",
-        comment1: "",
-        comment2: "",
-        memo: "",
-        voided: false,
-      },
-    ] as T;
+    const params = (_args?.params ?? {}) as {
+      companyNo?: string;
+      search?: string;
+    };
+    const companyNo = String(params.companyNo ?? "").trim();
+    const search = String(params.search ?? "").trim().toLowerCase();
+    let rows = properties;
+    if (companyNo) rows = rows.filter((row) => row.companyNo === companyNo);
+    if (search) {
+      rows = rows.filter((row) =>
+        [row.street, row.name, row.proNo, row.contact, row.city, row.companyNo]
+          .join(" ")
+          .toLowerCase()
+          .includes(search)
+      );
+    }
+    return rows.map((row) => ({ ...row })) as T;
   }
   if (cmd === "list_employees" || cmd === "list_work_types") {
     return [] as T;
@@ -195,14 +379,33 @@ export async function invoke<T = unknown>(
     return undefined as T;
   }
   if (cmd === "list_work_persons") {
-    return [] as T;
+    return listWorkPersons() as T;
   }
   if (cmd === "save_work_person") {
-    const name = String(_args?.name ?? "").trim();
-    return (name ? [name] : []) as T;
+    const person = (_args?.person ?? {}) as {
+      name?: string;
+      workerNo?: string;
+      active?: boolean;
+      originalName?: string;
+    };
+    const name = String(person.name ?? "").trim();
+    if (!name) throw new Error("Work person name required");
+    const original = String(person.originalName ?? "").trim();
+    const key = (original || name).toLowerCase();
+    const next = {
+      name,
+      workerNo: String(person.workerNo ?? ""),
+      active: person.active !== false,
+    };
+    const idx = workPersons.findIndex((p) => p.name.toLowerCase() === key);
+    if (idx >= 0) workPersons[idx] = next;
+    else workPersons.push(next);
+    return listWorkPersons() as T;
   }
   if (cmd === "delete_work_person") {
-    return [] as T;
+    const name = String(_args?.name ?? "").trim().toLowerCase();
+    workPersons = workPersons.filter((p) => p.name.toLowerCase() !== name);
+    return listWorkPersons() as T;
   }
   if (cmd === "list_paint_supply_cos") {
     return [] as T;
@@ -348,7 +551,7 @@ export async function invoke<T = unknown>(
           workDate: "2026-01-15",
           workType: "P",
           price: 250,
-          empNo: "",
+          empNo: "Jose Ramirez",
           empPrice: 0,
           commission: 65,
           status: "",

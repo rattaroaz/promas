@@ -34,4 +34,5 @@ test-results
 playwright-report
 blob-report
 .nyc_output
+promas_pr18_proof/
 

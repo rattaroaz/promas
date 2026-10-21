@@ -84,10 +84,16 @@ fn work_persons_seed_from_employee_names_when_catalog_empty() {
     drop(conn);
 
     let conn = open_and_migrate(&path).expect("migrate again");
-    let name: String = conn
-        .query_row("SELECT name FROM work_persons", [], |r| r.get(0))
+    let (name, worker_no, active): (String, String, i64) = conn
+        .query_row(
+            "SELECT name, worker_no, active FROM work_persons",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
         .unwrap();
     assert_eq!(name, "Jose Ramirez");
+    assert_eq!(worker_no, "");
+    assert_eq!(active, 1);
 
     conn.execute(
         "INSERT OR IGNORE INTO work_persons (name) VALUES (?1)",

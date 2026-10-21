@@ -191,14 +191,7 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
         className="dos-main-wrap"
         style={{ alignItems: "stretch", width: "100%" }}
       >
-        <div
-          className="dos-menu-frame"
-          style={{
-            minWidth: "min(92ch, 96vw)",
-            maxWidth: "96vw",
-            width: "100%",
-          }}
-        >
+        <div className="dos-menu-frame diagnostics-frame">
           <div className="menu-header"> Metrics · Traces · Logs · State </div>
           <div className="menu-body" style={{ padding: "0.6em 1ch" }}>
             <div
@@ -232,8 +225,6 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
             <pre
               style={{
                 margin: 0,
-                maxHeight: "58vh",
-                overflow: "auto",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
                 color: "#161616",

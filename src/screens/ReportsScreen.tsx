@@ -125,7 +125,9 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         }
       }
       try {
-        setWorkPersonOptions((await api.listWorkPersons()) ?? []);
+        setWorkPersonOptions(
+          ((await api.listWorkPersons()) ?? []).map((person) => person.name)
+        );
       } catch {
         setWorkPersonOptions([]);
       }
