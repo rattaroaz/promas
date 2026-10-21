@@ -4,6 +4,7 @@
  *  2. Reindex Data Files  (also offered original-data import)
  *  3. Form Management
  *  4. Import Database     — pick original PROMAS folder and load all .DBF files
+ *  5. Workers             — work person list for invoice dropdowns
  */
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -12,6 +13,7 @@ import { useDosKeys } from "../dos/hooks";
 import { Screen, FORM_KEYS, HelpOverlay, Prompt } from "../dos/Shell";
 import { DotField } from "../dos/Field";
 import { SubMenu, MenuItem } from "./SubMenu";
+import { WorkersScreen } from "./WorkersScreen";
 import { log } from "../lib/observability";
 
 const MISC_ITEMS: MenuItem[] = [
@@ -19,6 +21,7 @@ const MISC_ITEMS: MenuItem[] = [
   { id: "reindex", num: "2", label: "Reindex Data Files", accel: "R" },
   { id: "forms", num: "3", label: "Form Management", accel: "F" },
   { id: "import", num: "4", label: "Import Database", accel: "I" },
+  { id: "workers", num: "5", label: "Workers", accel: "W" },
 ];
 
 function formatImportSummary(r: ImportResult): string {
@@ -75,6 +78,12 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         else if (confirmReindex) setConfirmReindex(false);
         else if (confirmImport) setConfirmImport(false);
         else if (editForm) setEditForm(null);
+        else if (document.querySelector('[aria-label="Are you sure? Y/N"]')) {
+          // Workers owns this prompt. Its key listener closes it. Leaving
+          // here would exit the screen, because this handler is registered
+          // first and runs before that listener.
+          return;
+        }
         else if (screen) setScreen(null);
         else onBack();
       },
@@ -524,6 +533,10 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         {help && <HelpOverlay onClose={() => setHelp(false)} />}
       </Screen>
     );
+  }
+
+  if (screen === "workers") {
+    return <WorkersScreen />;
   }
 
   return null;

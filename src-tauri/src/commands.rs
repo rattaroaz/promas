@@ -537,49 +537,96 @@ pub fn delete_employee(state: State<DbState>, emp_no: String) -> Result<(), Stri
     Ok(())
 }
 
-// ─── Work persons (invoice line name list) ────────────────────────────
+// ─── Work persons (invoice Work Person dropdown) ──────────────────────
+// Deleting or renaming a catalog row does not update invoice_lines.
+// Past invoices keep the emp_no text they were saved with.
 
-fn list_work_person_names(conn: &rusqlite::Connection) -> Result<Vec<String>, String> {
+pub fn list_work_person_records(conn: &Connection) -> Result<Vec<WorkPerson>, String> {
     let mut stmt = conn
-        .prepare("SELECT name FROM work_persons ORDER BY name COLLATE NOCASE")
+        .prepare(
+            "SELECT name, COALESCE(worker_no, ''), COALESCE(active, 1) FROM work_persons ORDER BY name COLLATE NOCASE",
+        )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map([], |r| r.get::<_, String>(0))
+        .query_map([], |r| {
+            let active: i64 = r.get(2)?;
+            Ok(WorkPerson {
+                name: r.get(0)?,
+                worker_no: r.get(1)?,
+                active: active != 0,
+                original_name: String::new(),
+            })
+        })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
-#[tauri::command]
-pub fn list_work_persons(state: State<DbState>) -> Result<Vec<String>, String> {
-    let conn = state.0.lock().map_err(map_err)?;
-    list_work_person_names(&conn)
-}
-
-#[tauri::command]
-pub fn save_work_person(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
-    let name = name.trim().to_string();
+pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), String> {
+    let name = person.name.trim();
     if name.is_empty() {
         return Err("Work person name required".into());
     }
-    let conn = state.0.lock().map_err(map_err)?;
+    let worker_no = person.worker_no.trim();
+    let active: i64 = if person.active { 1 } else { 0 };
+    let original = person.original_name.trim();
+    let key = if original.is_empty() { name } else { original };
+
+    if !original.is_empty() && !original.eq_ignore_ascii_case(name) {
+        let clash: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM work_persons WHERE name = ?1 COLLATE NOCASE",
+                params![name],
+                |r| r.get(0),
+            )
+            .map_err(map_err)?;
+        if clash > 0 {
+            return Err("A worker with that name already exists".into());
+        }
+    }
+
+    let updated = conn
+        .execute(
+            "UPDATE work_persons SET name = ?1, worker_no = ?2, active = ?3 WHERE name = ?4 COLLATE NOCASE",
+            params![name, worker_no, active, key],
+        )
+        .map_err(map_err)?;
+    if updated == 0 {
+        conn.execute(
+            "INSERT INTO work_persons (name, worker_no, active) VALUES (?1, ?2, ?3)",
+            params![name, worker_no, active],
+        )
+        .map_err(map_err)?;
+    }
+    Ok(())
+}
+
+pub fn remove_work_person(conn: &Connection, name: &str) -> Result<(), String> {
     conn.execute(
-        "INSERT OR IGNORE INTO work_persons (name) VALUES (?1)",
-        params![name],
+        "DELETE FROM work_persons WHERE name = ?1 COLLATE NOCASE",
+        params![name.trim()],
     )
     .map_err(map_err)?;
-    list_work_person_names(&conn)
+    Ok(())
 }
 
 #[tauri::command]
-pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
-    let name = name.trim().to_string();
+pub fn list_work_persons(state: State<DbState>) -> Result<Vec<WorkPerson>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    conn.execute(
-        "DELETE FROM work_persons WHERE name = ?1 COLLATE NOCASE",
-        params![name],
-    )
-    .map_err(map_err)?;
-    list_work_person_names(&conn)
+    list_work_person_records(&conn)
+}
+
+#[tauri::command]
+pub fn save_work_person(state: State<DbState>, person: WorkPerson) -> Result<Vec<WorkPerson>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    write_work_person(&conn, &person)?;
+    list_work_person_records(&conn)
+}
+
+#[tauri::command]
+pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<WorkPerson>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    remove_work_person(&conn, &name)?;
+    list_work_person_records(&conn)
 }
 
 // ─── Paint supply companies (invoice header list) ─────────────────────

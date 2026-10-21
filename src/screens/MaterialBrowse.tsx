@@ -17,6 +17,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { MoneyInput } from "../dos/MoneyInput";
 import { money, fmtDate, today } from "../dos/utils";
 
 export type MaterialSort = "default" | "worker" | "date" | "desc";
@@ -27,6 +28,14 @@ const SORT_TITLE: Record<MaterialSort, string> = {
   date: "*****   Worker Material Report (Date Order)   *****",
   desc: "***   Worker Material Report (Descript Order) ***",
 };
+
+/** Header labels fit in the tracks, with one spare ch so the last glyph is not clipped. */
+function materialColumns(sort: MaterialSort): string {
+  if (sort === "worker") return "10ch 30ch 16ch";
+  if (sort === "date") return "8ch 30ch 16ch";
+  if (sort === "desc") return "8ch 11ch 16ch";
+  return "9ch 30ch 13ch";
+}
 
 export function MaterialBrowse({
   onBack,
@@ -39,7 +48,9 @@ export function MaterialBrowse({
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Material | null>(null);
-  const [msg, setMsg] = useState(SORT_TITLE[sort]);
+  const [msg, setMsg] = useState(
+    `${SORT_TITLE[sort]}  0  Total Material: 0.00  Ins=Add  Del=Void  Esc=Exit`
+  );
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
     "default"
   );
@@ -182,7 +193,7 @@ export function MaterialBrowse({
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: materialColumns(sort) }}>
               {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
@@ -190,7 +201,7 @@ export function MaterialBrowse({
                 <button
                   key={m.id}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}
+                  style={{ gridTemplateColumns: materialColumns(sort) }}
                   onMouseEnter={() => {
                     if (pointerHoverMuted()) return;
                     setIndex(i);
@@ -239,7 +250,7 @@ export function MaterialBrowse({
 
       {editing && (
         <Dialog
-          title="******    Material Maintenance   ******"
+          title={SORT_TITLE[sort]}
           foot="Esc=Cancel  Ctrl-S=Save & Exit"
         >
           <div className="dos-form">
@@ -280,16 +291,12 @@ export function MaterialBrowse({
               />
             </DotField>
             <DotField label="Amount" width={14}>
-              <input
+              <MoneyInput
                 className="dos-input w12 num"
-                type="number"
-                step="0.01"
+                aria-label="Amount"
                 value={editing.amount}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    amount: parseFloat(e.target.value) || 0,
-                  })
+                onValueChange={(amount) =>
+                  setEditing({ ...editing, amount })
                 }
               />
             </DotField>

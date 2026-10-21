@@ -564,7 +564,9 @@ describe("ReportsScreen paint usage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
-    vi.mocked(api.listWorkPersons).mockResolvedValue(["Jose Ramirez"]);
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+    ]);
     vi.mocked(api.reportPaintUsage).mockResolvedValue([
       {
         workPerson: "Jose Ramirez",
@@ -648,7 +650,9 @@ describe("ReportsScreen paint usage", () => {
 describe("ReportsScreen payroll", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api.listWorkPersons).mockResolvedValue(["Jose Ramirez"]);
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+    ]);
     vi.mocked(api.reportPayroll).mockResolvedValue([
       {
         salesDate: "2026-01-15",

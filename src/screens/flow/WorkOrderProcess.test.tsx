@@ -146,7 +146,7 @@ describe("WorkOrderProcess", () => {
     await user.type(code, "P1");
     await user.tab();
     expect(screen.getByDisplayValue("Interior Paint")).toBeInTheDocument();
-    expect(screen.getByDisplayValue(220)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("220.00")).toBeInTheDocument();
   });
 
   it("offers to add an unknown work-type code", async () => {

@@ -10,6 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { MoneyInput } from "../dos/MoneyInput";
 import { money } from "../dos/utils";
 
 export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
@@ -205,17 +206,11 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
               </select>
             </DotField>
             <DotField label="Price" width={14}>
-              <input
+              <MoneyInput
                 className="dos-input w10 num"
-                type="number"
-                step="0.01"
+                aria-label="Price"
                 value={editing.price}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    price: parseFloat(e.target.value) || 0,
-                  })
-                }
+                onValueChange={(price) => setEditing({ ...editing, price })}
               />
             </DotField>
           </div>

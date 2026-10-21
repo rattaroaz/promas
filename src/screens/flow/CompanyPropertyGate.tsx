@@ -24,7 +24,7 @@ import {
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { ContentGrid } from "../../dos/contentGrid";
-import { cols, padR, fmtDate, today } from "../../dos/utils";
+import { cols, padR, fmtDate, naturalCompare, today } from "../../dos/utils";
 
 export type ProcessKind =
   | "invoice"
@@ -157,6 +157,66 @@ export const PROPERTY_BROWSE_GLOBAL = "repeat(7, max-content)";
 /** Invoice-number hits: Inv#, date, company, property, street. */
 export const INVOICE_SITE_BROWSE = "repeat(5, max-content)";
 
+export type PropertySortKey = "company" | "street";
+export type PropertySortDir = "asc" | "desc";
+export type PropertySort = { key: PropertySortKey; dir: PropertySortDir };
+
+/** Default street-picker order: company number, highest first. */
+export const DEFAULT_PROPERTY_SORT: PropertySort = {
+  key: "company",
+  dir: "desc",
+};
+
+function companyNoValue(companyNo: string): number | null {
+  const digits = String(companyNo ?? "").trim();
+  if (!/^\d+$/.test(digits)) return null;
+  const n = Number.parseInt(digits, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function compareCompanyNo(a: string, b: string): number {
+  const na = companyNoValue(a);
+  const nb = companyNoValue(b);
+  if (na != null && nb != null && na !== nb) return na - nb;
+  return String(a ?? "").localeCompare(String(b ?? ""), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+/**
+ * Street picker order. Company number is numeric. Street order is the leading
+ * street number, then the rest of the address, so 9 comes before 10.
+ */
+export function sortProperties(list: Property[], sort: PropertySort): Property[] {
+  const dir = sort.dir === "asc" ? 1 : -1;
+  return [...list].sort((a, b) => {
+    if (sort.key === "company") {
+      const cmp = compareCompanyNo(a.companyNo, b.companyNo);
+      if (cmp !== 0) return cmp * dir;
+      const pro = naturalCompare(a.proNo, b.proNo);
+      if (pro !== 0) return pro;
+      return naturalCompare(a.street, b.street);
+    }
+    const street = naturalCompare(a.street, b.street);
+    if (street !== 0) return street * dir;
+    const cmp = compareCompanyNo(a.companyNo, b.companyNo);
+    if (cmp !== 0) return cmp;
+    return naturalCompare(a.proNo, b.proNo);
+  });
+}
+
+export function propertySortMark(sort: PropertySort, key: PropertySortKey): string {
+  if (sort.key !== key) return "";
+  return sort.dir === "asc" ? " ^" : " v";
+}
+
+/** First click on a header selects it ascending. Another click toggles. */
+export function nextPropertySort(cur: PropertySort, key: PropertySortKey): PropertySort {
+  if (cur.key !== key) return { key, dir: "asc" };
+  return { key, dir: cur.dir === "asc" ? "desc" : "asc" };
+}
+
 /** Property contact. Legacy PROCONTACT is manager; the property form writes both. */
 export function propertyContactName(p: Property): string {
   return (p.manager || p.contact || "").trim();
@@ -232,6 +292,9 @@ export function CompanyPropertyGate({
   const [query, setQuery] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [propertySort, setPropertySort] = useState<PropertySort>(
+    DEFAULT_PROPERTY_SORT
+  );
   const [company, setCompany] = useState<Company | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
   const [editCo, setEditCo] = useState<Company | null>(null);
@@ -651,11 +714,20 @@ export function CompanyPropertyGate({
   }
 
   function showPropertyBrowse(list: Property[], browseMsg: string) {
+    setPropertySort(DEFAULT_PROPERTY_SORT);
     setProperties(list);
     prBrowse.setIndex(0);
     pushPhase("pr-browse");
     setMsg(browseMsg);
     setMsgKind("default");
+  }
+
+  function editPropertyFromList(p: Property, index: number) {
+    prBrowse.setIndex(index);
+    setIsNew(false);
+    setEditPr({ ...p });
+    pushPhase("pr-edit");
+    setMsg("Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key");
   }
 
   async function saveCompany() {
@@ -685,9 +757,22 @@ export function CompanyPropertyGate({
       return;
     }
     try {
-      await api.saveProperty(editPr);
+      const saved = editPr;
+      await api.saveProperty(saved);
+      setProperties((rows) => {
+        const index = rows.findIndex(
+          (row) =>
+            row.companyNo === saved.companyNo && row.proNo === saved.proNo
+        );
+        if (index < 0) return [...rows, saved];
+        return rows.map((row, i) => (i === index ? saved : row));
+      });
       setEditPr(null);
-      selectProperty(editPr);
+      setPhase((cur) => {
+        if (cur !== "pr-edit") return cur;
+        return trailRef.current.pop() ?? "pr-browse";
+      });
+      selectProperty(saved);
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -744,6 +829,9 @@ export function CompanyPropertyGate({
     setMsg("Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key");
   }
 
+  const listedProperties =
+    company == null ? sortProperties(properties, propertySort) : properties;
+
   useDosKeys({
     forceNav:
       phase === "co-browse" ||
@@ -796,18 +884,18 @@ export function CompanyPropertyGate({
     onCtrlHome: () => {
       if (phase === "co-browse" && companies[coBrowse.index]) {
         editCompanyFromList(companies[coBrowse.index], coBrowse.index);
-      } else if (phase === "pr-browse" && properties[prBrowse.index]) {
-        setIsNew(false);
-        setEditPr({ ...properties[prBrowse.index] });
-        pushPhase("pr-edit");
-        setMsg("Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key");
+      } else if (phase === "pr-browse" && listedProperties[prBrowse.index]) {
+        editPropertyFromList(
+          listedProperties[prBrowse.index],
+          prBrowse.index
+        );
       }
     },
     onEnter: () => {
       if (phase === "co-browse" && companies[coBrowse.index]) {
         selectCompany(companies[coBrowse.index]);
-      } else if (phase === "pr-browse" && properties[prBrowse.index]) {
-        selectProperty(properties[prBrowse.index]);
+      } else if (phase === "pr-browse" && listedProperties[prBrowse.index]) {
+        selectProperty(listedProperties[prBrowse.index]);
       } else if (phase === "inv-browse" && invoiceHits[invBrowse.index]) {
         void pickInvoiceSite(invoiceHits[invBrowse.index]);
       } else if (phase === "co-search") {
@@ -828,10 +916,11 @@ export function CompanyPropertyGate({
         setEditCo({ ...companies[coBrowse.index] });
         pushPhase("co-edit");
         setMsg("Detaill Company Information — Esc=Cancel, Ctrl-S=Save");
-      } else if (phase === "pr-browse" && properties[prBrowse.index]) {
-        setIsNew(false);
-        setEditPr({ ...properties[prBrowse.index] });
-        pushPhase("pr-edit");
+      } else if (phase === "pr-browse" && listedProperties[prBrowse.index]) {
+        editPropertyFromList(
+          listedProperties[prBrowse.index],
+          prBrowse.index
+        );
       } else if (phase === "co-browse") coBrowse.home();
       else if (phase === "pr-browse") prBrowse.home();
     },
@@ -1359,7 +1448,7 @@ export function CompanyPropertyGate({
                 <div>Zip</div>
                 <div>Contact</div>
               </div>
-              {properties.map((p, i) => (
+              {listedProperties.map((p, i) => (
                 <button
                   key={`${p.companyNo}-${p.proNo}`}
                   className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
@@ -1368,6 +1457,10 @@ export function CompanyPropertyGate({
                     prBrowse.setIndex(i);
                   }}
                   onClick={() => selectProperty(p)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    editPropertyFromList(p, i);
+                  }}
                 >
                   <div>{p.proNo}</div>
                   <div>{p.name}</div>
@@ -1379,15 +1472,31 @@ export function CompanyPropertyGate({
           ) : (
             <ContentGrid columns={7}>
               <div className="browse-grid browse-grid-header">
-                <div>CoNO</div>
+                <button
+                  type="button"
+                  className="sort-btn"
+                  onClick={() =>
+                    setPropertySort((cur) => nextPropertySort(cur, "company"))
+                  }
+                >
+                  CoNO{propertySortMark(propertySort, "company")}
+                </button>
                 <div>ProNO</div>
-                <div>Street</div>
+                <button
+                  type="button"
+                  className="sort-btn"
+                  onClick={() =>
+                    setPropertySort((cur) => nextPropertySort(cur, "street"))
+                  }
+                >
+                  Street{propertySortMark(propertySort, "street")}
+                </button>
                 <div>City</div>
                 <div>St</div>
                 <div>Zip</div>
                 <div>Contact</div>
               </div>
-              {properties.map((p, i) => (
+              {listedProperties.map((p, i) => (
                 <button
                   key={`${p.companyNo}-${p.proNo}`}
                   className={`dos-row ${i === prBrowse.index ? "selected" : ""} browse-grid`}
@@ -1396,6 +1505,10 @@ export function CompanyPropertyGate({
                     prBrowse.setIndex(i);
                   }}
                   onClick={() => selectProperty(p)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    editPropertyFromList(p, i);
+                  }}
                 >
                   <div>{p.companyNo}</div>
                   <div>{p.proNo}</div>

@@ -136,6 +136,15 @@ export interface Employee {
   voided: boolean;
 }
 
+/** Catalog row for the invoice Work Person dropdown. */
+export interface WorkPerson {
+  name: string;
+  workerNo: string;
+  active: boolean;
+  /** Previous name when renaming. Empty when adding. Not stored on invoices. */
+  originalName?: string;
+}
+
 export interface WorkType {
   codeNo: string;
   workType: string;
@@ -555,11 +564,11 @@ export const api = {
     invoke<Employee[]>("list_employees", { params }),
   saveEmployee: (employee: Employee) => invoke("save_employee", { employee }),
   deleteEmployee: (empNo: string) => invoke("delete_employee", { empNo }),
-  listWorkPersons: () => invoke<string[]>("list_work_persons"),
-  saveWorkPerson: (name: string) =>
-    invoke<string[]>("save_work_person", { name }),
+  listWorkPersons: () => invoke<WorkPerson[]>("list_work_persons"),
+  saveWorkPerson: (person: WorkPerson) =>
+    invoke<WorkPerson[]>("save_work_person", { person }),
   deleteWorkPerson: (name: string) =>
-    invoke<string[]>("delete_work_person", { name }),
+    invoke<WorkPerson[]>("delete_work_person", { name }),
   listPaintSupplyCos: () => invoke<string[]>("list_paint_supply_cos"),
   savePaintSupplyCo: (name: string) =>
     invoke<string[]>("save_paint_supply_co", { name }),

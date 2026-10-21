@@ -97,9 +97,10 @@ textarea {
   background: var(--dos-black);
   color: var(--dos-white-bright);
   padding: 0 0.5ch 0 0;
-  white-space: nowrap;
-  overflow: hidden;
+  white-space: normal;
+  overflow: visible;
   flex-shrink: 0;
+  flex-wrap: wrap;
   font-size: 0.95em;
   display: flex;
   gap: 0;
@@ -176,9 +177,10 @@ textarea {
   padding: 0 1ch;
   min-height: 1.15em;
   flex-shrink: 0;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .dos-messagebar.error {
@@ -281,6 +283,41 @@ textarea {
   padding: 0.6em 0;
 }
 
+/* Diagnostics fills the content area. The log scrolls inside the frame, so
+   the title cannot slide under the status bar and the note stays reachable. */
+.dos-main-wrap > .diagnostics-frame {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diagnostics-frame .menu-header {
+  flex-shrink: 0;
+}
+
+.diagnostics-frame .menu-body > div:first-child {
+  flex-shrink: 0;
+}
+
+.diagnostics-frame .menu-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diagnostics-frame pre {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
 .dos-menu-item {
   display: block;
   width: 100%;
@@ -358,7 +395,9 @@ textarea {
   overflow: hidden;
 }
 
-/* Generic browse grid - content-sized columns, 8px gap, left-aligned, baseline */
+/* Generic browse grid - content-sized columns, 8px gap, left-aligned, baseline.
+   Width stays inside the parent. The Workers grid is the one that sizes to
+   its fields (.workers-list). */
 .browse-grid {
   display: grid;
   column-gap: 8px;
@@ -654,10 +693,20 @@ textarea {
   color: var(--dos-red);
 }
 
+.dos-dialog .dlg-title,
+.dos-dialog .dlg-foot {
+  flex-shrink: 0;
+}
+
 .dos-dialog .dlg-body {
   padding: 0.6em 1.5ch;
+  overflow-x: hidden;
   overflow-y: auto;
-  flex: 1;
+  /* Grow stays 0 so a short form keeps its height. Shrink is allowed, with
+     a content basis, so a dialog at max-height scrolls the fields and keeps
+     the hint line inside the window. A basis of 0 clipped the last field
+     while the dialog still had room. */
+  flex: 0 1 auto;
   min-height: 0;
 }
 
@@ -1027,6 +1076,12 @@ textarea {
   line-height: 1.15em;
   height: auto;
   box-sizing: border-box;
+}
+
+/* "Type description" uses the same ink as a typed custom description. */
+.invoice-line-grid .invoice-line-desc::placeholder {
+  color: var(--dos-yellow);
+  opacity: 1;
 }
 
 .invoice-work-person {
@@ -1687,4 +1742,76 @@ input[type="number"]::-webkit-inner-spin-button {
   font-family: var(--font-dos);
   font-weight: bold;
   cursor: pointer;
+}
+
+.workers-list {
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content;
+  column-gap: 16px;
+  row-gap: 16px;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 0;
+  align-items: center;
+  justify-items: start;
+}
+
+.workers-head,
+.workers-row {
+  display: contents;
+}
+
+.workers-add {
+  grid-column: 1 / -1;
+}
+
+.workers-head {
+  color: var(--app-highlight);
+  font-weight: bold;
+}
+
+.workers-head > div {
+  justify-self: stretch;
+}
+
+.workers-row .dos-input {
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.workers-row .dos-btn {
+  width: auto;
+}
+
+/* The global appearance:none rule leaves a checkbox with no box. Draw one
+   only here, so other inputs keep their own chrome. */
+.workers-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  justify-self: start;
+  flex: none;
+  border: 3px solid var(--dos-white-bright);
+  background-color: #000000;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 78% 78%;
+  cursor: pointer;
+}
+
+.workers-row input[type="checkbox"]:focus {
+  outline: 3px solid var(--dos-cyan-bright);
+  outline-offset: 2px;
+}
+
+.workers-row input[type="checkbox"]:checked {
+  background-color: var(--dos-yellow);
+  border-color: #000000;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5 6.5 12 13 4' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E");
 }
