@@ -90,7 +90,7 @@ test.describe("invoice process", () => {
       "Interior Painting of Wall/Closet Inside"
     );
     await page.getByLabel("Size", { exact: true }).selectOption("1+1");
-    await expect(page.getByLabel("Price 1")).toHaveValue("245");
+    await expect(page.getByLabel("Price 1")).toHaveValue("245.00");
   });
 });
 

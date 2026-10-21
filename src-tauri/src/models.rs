@@ -350,6 +350,24 @@ pub struct PayrollRow {
     pub pro_no: String,
 }
 
+fn default_active() -> bool {
+    true
+}
+
+/// Invoice Work Person catalog. `original_name` is the row key on rename;
+/// it is empty when the row is new and is not stored.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkPerson {
+    pub name: String,
+    #[serde(default)]
+    pub worker_no: String,
+    #[serde(default = "default_active")]
+    pub active: bool,
+    #[serde(default)]
+    pub original_name: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaintUsageRow {

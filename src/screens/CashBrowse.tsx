@@ -10,6 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 import { money, fmtDate, today } from "../dos/utils";
 
@@ -285,16 +286,12 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
             <DotField label="Amount Paid" width={16}>
-              <input
+              <MoneyInput
                 className="dos-input w12 num"
-                type="number"
-                step="0.01"
+                aria-label="Amount Paid"
                 value={editing.payment}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    payment: parseFloat(e.target.value) || 0,
-                  })
+                onValueChange={(payment) =>
+                  setEditing({ ...editing, payment })
                 }
               />
             </DotField>

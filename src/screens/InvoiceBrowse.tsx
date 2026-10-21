@@ -20,6 +20,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 import { money, fmtDate, today } from "../dos/utils";
 
@@ -502,18 +503,16 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
             </div>
             <div className="dos-form-row">
               <DotField label="Material Costs" width={14}>
-                <input
+                <MoneyInput
                   className="dos-input w10 num"
-                  type="number"
-                  step="0.01"
                   aria-label="Material Costs"
                   value={editing.invoice.materialCost ?? 0}
-                  onChange={(e) =>
+                  onValueChange={(materialCost) =>
                     setEditing({
                       ...editing,
                       invoice: {
                         ...editing.invoice,
-                        materialCost: parseFloat(e.target.value) || 0,
+                        materialCost,
                       },
                     })
                   }
@@ -645,14 +644,12 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   </select>
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <input
+                  <MoneyInput
                     className="dos-input"
-                    type="number"
-                    step="0.01"
+                    aria-label={`Price ${idx + 1}`}
                     value={line.price}
-                    onChange={(e) => {
+                    onValueChange={(price) => {
                       const lines = [...editing.lines];
-                      const price = parseFloat(e.target.value) || 0;
                       lines[idx] = {
                         ...line,
                         price,

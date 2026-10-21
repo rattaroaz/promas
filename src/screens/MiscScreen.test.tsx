@@ -19,6 +19,9 @@ vi.mock("../api", async () => {
       importDbfFolder: vi.fn(),
       getSysdata: vi.fn(),
       listForms: vi.fn(),
+      listWorkPersons: vi.fn(),
+      saveWorkPerson: vi.fn(),
+      deleteWorkPerson: vi.fn(),
     },
   };
 });
@@ -40,6 +43,22 @@ describe("MiscScreen", () => {
       estimates: 0,
       messages: ["Import completed successfully"],
     });
+  });
+
+  it("lists Workers as option 5", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+    ]);
+    renderApp(<MiscScreen onBack={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: /5\.\s*Workers/i })
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /5\.\s*Workers/i }));
+    expect(await screen.findByRole("button", { name: "Add Work Person" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("Worker name 1")).toHaveValue(
+      "Jose Ramirez"
+    );
   });
 
   it("lists Import Database as option 4", () => {

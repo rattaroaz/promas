@@ -49,7 +49,10 @@ describe("CashProcess", () => {
       <CashProcess company={company} onBack={vi.fn()} />
     );
     expect(await screen.findByText(/Customer Ledger/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ending Balance/i)).toBeInTheDocument();
+    expect(screen.getByText(/Unpaid Total/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Balance Total/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Receipt Total/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ending Balance/i)).not.toBeInTheDocument();
     expect(api.listInvoices).toHaveBeenCalledWith(
       expect.objectContaining({ companyNo: "1000" })
     );
@@ -104,6 +107,8 @@ describe("CashProcess", () => {
       ).toBeGreaterThan(0);
     });
     expect(screen.getByLabelText("Pay Date")).toHaveValue(today());
+    expect(screen.getByText(/Balance Due:/)).toBeInTheDocument();
+    expect(screen.queryByText(/Ending Balance Due/i)).not.toBeInTheDocument();
   });
 
   it("rejects a payment that exceeds the invoice balance", async () => {
@@ -114,9 +119,7 @@ describe("CashProcess", () => {
     await screen.findByText(/Customer Ledger/i);
     await user.click(screen.getByRole("button", { name: /250\.00/ }));
     await screen.findAllByText(/Enter Your Payment Data/i);
-    const amount = document.querySelector(
-      'input[type="number"][step="0.01"]'
-    ) as HTMLInputElement;
+    const amount = screen.getByLabelText("Amount Paid");
     await user.clear(amount);
     await user.type(amount, "999");
     await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
@@ -134,9 +137,7 @@ describe("CashProcess", () => {
     await screen.findByText(/Customer Ledger/i);
     await user.click(screen.getByRole("button", { name: /250\.00/ }));
     await screen.findAllByText(/Enter Your Payment Data/i);
-    const amount = document.querySelector(
-      'input[type="number"][step="0.01"]'
-    ) as HTMLInputElement;
+    const amount = screen.getByLabelText("Amount Paid");
     await user.clear(amount);
     await user.type(amount, "0");
     await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
@@ -285,15 +286,135 @@ describe("CashProcess", () => {
     
     const rows = document.querySelectorAll(".dos-browse-body .browse-grid");
     expect(rows).toHaveLength(2);
-    
-    // First row (invoice 1) has no receipts, so PayDate and Check/Ref are empty
-    const row1Cells = rows[0].querySelectorAll("div");
-    expect(row1Cells[3].textContent).toBe(""); // PayDate
-    expect(row1Cells[4].textContent).toBe(""); // Check/Ref
-    
-    // Second row (invoice 2) has a receipt
-    const row2Cells = rows[1].querySelectorAll("div");
-    expect(row2Cells[3].textContent).toContain("01/20/2026"); // PayDate
-    expect(row2Cells[4].textContent).toBe("CHK-123"); // Check/Ref
+
+    // Same invoice date: the higher invoice number is newer and comes first.
+    const newerCells = rows[0].querySelectorAll("div");
+    expect(newerCells[0].textContent).toBe("2");
+    expect(newerCells[3].textContent).toContain("01/20/2026");
+    expect(newerCells[4].textContent).toBe("CHK-123");
+
+    const olderCells = rows[1].querySelectorAll("div");
+    expect(olderCells[0].textContent).toBe("1");
+    expect(olderCells[3].textContent).toBe("");
+    expect(olderCells[4].textContent).toBe("");
+  });
+
+  it("keeps unpaid invoices above paid ones, newest first", async () => {
+    vi.mocked(api.listInvoices).mockResolvedValue([
+      {
+        ...openInv,
+        invoice: 5,
+        salesDate: "2025-06-01",
+        salesTotal: 60,
+        payTotal: 60,
+        balance: 0,
+      },
+      {
+        ...openInv,
+        invoice: 3,
+        salesDate: "2026-01-01",
+        salesTotal: 80,
+        payTotal: 0,
+        balance: 80,
+      },
+      {
+        ...openInv,
+        invoice: 6,
+        salesDate: "2026-02-01",
+        salesTotal: 90,
+        payTotal: 90,
+        balance: 0,
+      },
+      {
+        ...openInv,
+        invoice: 1,
+        salesDate: "2026-01-15",
+        salesTotal: 250,
+        payTotal: 0,
+        balance: 250,
+      },
+      {
+        ...openInv,
+        invoice: 4,
+        salesDate: "2026-03-01",
+        salesTotal: 40,
+        payTotal: 0,
+        balance: 40,
+      },
+    ]);
+    renderApp(<CashProcess company={company} onBack={vi.fn()} />);
+    await screen.findByText(/Unpaid Total/i);
+    const numbers = [
+      ...document.querySelectorAll(".dos-browse-body .dos-row"),
+    ].map((row) => row.querySelector("div")?.textContent);
+    expect(numbers).toEqual(["4", "1", "3", "6", "5"]);
+    expect(screen.getAllByText(/370\.00/).length).toBeGreaterThan(0);
+  });
+
+  it("posts a payment only after Y or y confirms Enter", async () => {
+    const user = userEvent.setup();
+    renderApp(<CashProcess company={company} onBack={vi.fn()} />);
+    await screen.findByText(/Customer Ledger/i);
+    await user.click(screen.getByRole("button", { name: /250\.00/ }));
+    await screen.findAllByText(/Enter Your Payment Data/i);
+
+    await user.keyboard("{Enter}");
+    expect(
+      screen.getByText("Are you sure this is correct? Y/N")
+    ).toBeInTheDocument();
+    expect(api.saveCashReceipt).not.toHaveBeenCalled();
+
+    await user.keyboard("x");
+    expect(
+      screen.getByText("Are you sure this is correct? Y/N")
+    ).toBeInTheDocument();
+    expect(api.saveCashReceipt).not.toHaveBeenCalled();
+
+    await user.keyboard("n");
+    expect(
+      screen.queryByText("Are you sure this is correct? Y/N")
+    ).not.toBeInTheDocument();
+    expect(api.saveCashReceipt).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/Enter Your Payment Data/i).length).toBeGreaterThan(0);
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("N");
+    expect(
+      screen.queryByText("Are you sure this is correct? Y/N")
+    ).not.toBeInTheDocument();
+    expect(api.saveCashReceipt).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/Enter Your Payment Data/i).length).toBeGreaterThan(0);
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByText("Are you sure this is correct? Y/N")
+    ).not.toBeInTheDocument();
+    expect(api.saveCashReceipt).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/Enter Your Payment Data/i).length).toBeGreaterThan(0);
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("y");
+    await waitFor(() => {
+      expect(api.saveCashReceipt).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      screen.queryByText("Are you sure this is correct? Y/N")
+    ).not.toBeInTheDocument();
+  });
+
+  it("posts a payment when uppercase Y confirms Enter", async () => {
+    const user = userEvent.setup();
+    renderApp(<CashProcess company={company} onBack={vi.fn()} />);
+    await screen.findByText(/Customer Ledger/i);
+    await user.click(screen.getByRole("button", { name: /250\.00/ }));
+    await screen.findAllByText(/Enter Your Payment Data/i);
+    await user.keyboard("{Enter}");
+    await user.keyboard("Y");
+    await waitFor(() => {
+      expect(api.saveCashReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({ invoice: 1, payment: 250 })
+      );
+    });
   });
 });

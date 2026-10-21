@@ -10,6 +10,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 
 export function WorkerBrowse({ onBack }: { onBack: () => void }) {
@@ -194,16 +195,12 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
               />
             </DotField>
             <DotField label="Wages Rate" width={14}>
-              <input
+              <MoneyInput
                 className="dos-input w8 num"
-                type="number"
-                step="0.01"
+                aria-label="Wages Rate"
                 value={editing.commission}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    commission: parseFloat(e.target.value) || 0,
-                  })
+                onValueChange={(commission) =>
+                  setEditing({ ...editing, commission })
                 }
               />
               <span style={{ marginLeft: "1ch" }}>%</span>

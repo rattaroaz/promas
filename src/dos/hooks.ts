@@ -576,8 +576,44 @@ export function contentWidthOf(root: HTMLElement): number {
 }
 
 /**
+ * One fit pass is not the settled scale. `ch` widths and px borders do not
+ * shrink in proportion to the first `--fit-scale`, so the row is still wider
+ * than the window. Applying that leftover on the next animation frame — which
+ * used to be the frame a click or focus scheduled — shrinks every font on the
+ * screen. Convergence writes each pass and remeasures until the scale holds.
+ */
+export function convergeFitScale(
+  measure: (scale: number) => { clientWidth: number; contentWidth: number },
+  start = 1
+): number {
+  let scale = start > 0 && start <= 1 ? start : 1;
+  const seen = new Set<string>();
+  for (let pass = 0; pass < 8; pass++) {
+    const { clientWidth, contentWidth } = measure(scale);
+    const next = resolveFitScale(clientWidth, contentWidth, scale);
+    if (Math.abs(next - scale) <= 0.004) return scale;
+    const key = next.toFixed(4);
+    if (seen.has(key)) return scale;
+    seen.add(key);
+    scale = next;
+  }
+  return scale;
+}
+
+function readFitScale(doc: HTMLElement): number {
+  const n = parseFloat(doc.style.getPropertyValue("--fit-scale"));
+  return n > 0 && n <= 1 ? n : 1;
+}
+
+function writeFitScale(doc: HTMLElement, scale: number) {
+  if (scale >= 0.9999) doc.style.removeProperty("--fit-scale");
+  else doc.style.setProperty("--fit-scale", scale.toFixed(4));
+}
+
+/**
  * Shrinks root type (`--fit-scale`) whenever a screen is wider than the window.
  * Type grows back to 1 when the window (or a narrower screen) has room.
+ * The scale settles before paint, so a later click or focus does not resize type.
  */
 export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
@@ -585,26 +621,32 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
     if (!root) return;
     const doc = document.documentElement;
     let frame = 0;
-    let applying = false;
+    let settling = false;
 
-    const apply = () => {
-      if (applying) return;
-      applying = true;
-      const current =
-        parseFloat(doc.style.getPropertyValue("--fit-scale")) || 1;
-      const content = contentWidthOf(root);
-      const next = resolveFitScale(root.clientWidth, content, current);
-      if (Math.abs(next - current) > 0.004) {
-        doc.style.setProperty("--fit-scale", next.toFixed(4));
+    const settle = () => {
+      if (settling) return;
+      settling = true;
+      try {
+        const settled = convergeFitScale((scale) => {
+          if (Math.abs(scale - readFitScale(doc)) > 0.0001) writeFitScale(doc, scale);
+          return {
+            clientWidth: root.clientWidth,
+            contentWidth: contentWidthOf(root),
+          };
+        }, readFitScale(doc));
+        if (Math.abs(settled - readFitScale(doc)) > 0.0001) writeFitScale(doc, settled);
+      } finally {
+        settling = false;
       }
-      requestAnimationFrame(() => {
-        applying = false;
-      });
     };
 
     const schedule = () => {
+      if (settling) return;
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(apply);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        settle();
+      });
     };
 
     const ro =
@@ -618,7 +660,7 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
         : null;
     mo?.observe(root, { childList: true, subtree: true, characterData: true });
     window.addEventListener("resize", schedule);
-    apply();
+    settle();
     return () => {
       ro?.disconnect();
       mo?.disconnect();

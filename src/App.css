@@ -1029,6 +1029,12 @@ textarea {
   box-sizing: border-box;
 }
 
+/* "Type description" uses the same ink as a typed custom description. */
+.invoice-line-grid .invoice-line-desc::placeholder {
+  color: var(--dos-yellow);
+  opacity: 1;
+}
+
 .invoice-work-person {
   display: flex;
   gap: 0.3ch;
@@ -1687,4 +1693,32 @@ input[type="number"]::-webkit-inner-spin-button {
   font-family: var(--font-dos);
   font-weight: bold;
   cursor: pointer;
+}
+
+.workers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  width: min(78ch, 100%);
+  padding: 0.4em 0;
+}
+
+.workers-head,
+.workers-row {
+  display: grid;
+  grid-template-columns: 8ch minmax(12ch, 1fr) 16ch 12ch;
+  column-gap: 1ch;
+  align-items: center;
+}
+
+.workers-head {
+  color: var(--app-highlight);
+  font-weight: bold;
+}
+
+.workers-row input[type="checkbox"] {
+  width: 1.15em;
+  height: 1.15em;
+  justify-self: center;
+  accent-color: var(--dos-yellow);
 }

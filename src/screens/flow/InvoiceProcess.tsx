@@ -11,6 +11,7 @@ import {
   Invoice,
   InvoiceLine,
   InvoiceWithLines,
+  WorkPerson,
   emptyInvoice,
   emptyInvoiceLine,
 } from "../../api";
@@ -22,6 +23,7 @@ import {
   HelpOverlay,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
+import { MoneyInput } from "../../dos/MoneyInput";
 import { ContentGrid } from "../../dos/contentGrid";
 import { money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
@@ -283,7 +285,7 @@ export function InvoiceProcess({
   const [mode, setMode] = useState<Mode>("browse");
   const [editing, setEditing] = useState<InvoiceWithLines | null>(null);
   const [isNewInvoice, setIsNewInvoice] = useState(false);
-  const [workPersons, setWorkPersons] = useState<string[]>([]);
+  const [workPersons, setWorkPersons] = useState<WorkPerson[]>([]);
   const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
@@ -373,7 +375,7 @@ export function InvoiceProcess({
 
   async function loadWorkPersons() {
     try {
-      setWorkPersons(await api.listWorkPersons());
+      setWorkPersons((await api.listWorkPersons()) ?? []);
     } catch {
       setWorkPersons([]);
     }
@@ -387,27 +389,12 @@ export function InvoiceProcess({
     }
   }
 
-  async function rememberWorkPerson(raw: string) {
-    const name = raw.trim();
-    if (!name) return;
-    const listed = workPersons.some(
-      (n) => n.toLowerCase() === name.toLowerCase()
-    );
-    if (listed) return;
-    try {
-      setWorkPersons(await api.saveWorkPerson(name));
-    } catch {
-      setWorkPersons((prev) =>
-        prev.some((n) => n.toLowerCase() === name.toLowerCase())
-          ? prev
-          : [...prev, name].sort((a, b) => a.localeCompare(b))
-      );
-    }
-  }
-
   function listedWorkPerson(name: string) {
     const key = name.trim().toLowerCase();
-    return workPersons.find((n) => n.toLowerCase() === key) ?? "";
+    return (
+      workPersons.find((p) => p.active && p.name.toLowerCase() === key)?.name ??
+      ""
+    );
   }
 
   function invoiceWorkPerson(lines: InvoiceLine[]) {
@@ -504,10 +491,7 @@ export function InvoiceProcess({
       setMsgKind("error");
       return;
     }
-    await Promise.all([
-      rememberWorkPerson(invoiceWorkPerson(editing.lines)),
-      rememberPaintSupplyCo(inv.paintSupplyCo),
-    ]);
+    await rememberPaintSupplyCo(inv.paintSupplyCo);
     setConfirmSave(true);
     setMsg("Is This Data Correct ? (Y/N)");
   }
@@ -976,18 +960,16 @@ export function InvoiceProcess({
             </div>
             <div className="dos-form-row">
               <DotField label="Material Costs" width={14}>
-                <input
+                <MoneyInput
                   className="dos-input w10 num"
-                  type="number"
-                  step="0.01"
                   aria-label="Material Costs"
                   value={editing.invoice.materialCost ?? 0}
-                  onChange={(e) =>
+                  onValueChange={(materialCost) =>
                     setEditing({
                       ...editing,
                       invoice: {
                         ...editing.invoice,
-                        materialCost: parseFloat(e.target.value) || 0,
+                        materialCost,
                       },
                     })
                   }
@@ -1049,11 +1031,13 @@ export function InvoiceProcess({
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                   >
                     <option value=""> </option>
-                    {workPersons.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
+                    {workPersons
+                      .filter((person) => person.active)
+                      .map((person) => (
+                        <option key={person.name} value={person.name}>
+                          {person.name}
+                        </option>
+                      ))}
                   </select>
                   <input
                     className="dos-input"
@@ -1063,9 +1047,8 @@ export function InvoiceProcess({
                     onChange={(e) => setInvoiceWorkPerson(e.target.value)}
                     onBlur={() => {
                       const raw = invoiceWorkPerson(editing.lines);
-                      const canon = listedWorkPerson(raw) || raw.trim();
-                      if (canon !== raw) setInvoiceWorkPerson(canon);
-                      void rememberWorkPerson(canon);
+                      const canon = listedWorkPerson(raw);
+                      if (canon && canon !== raw) setInvoiceWorkPerson(canon);
                     }}
                   />
                 </div>
@@ -1132,15 +1115,13 @@ export function InvoiceProcess({
                   />
                 </div>
                 <div className="invoice-line-end" style={{ minWidth: 0 }}>
-                  <input
+                  <MoneyInput
                     className="dos-input"
-                    type="number"
-                    step="0.01"
                     style={{ width: "100%" }}
                     aria-label={`Price ${idx + 1}`}
-                    value={line.price || ""}
-                    onChange={(e) => {
-                      const price = parseFloat(e.target.value) || 0;
+                    blankZero
+                    value={line.price}
+                    onValueChange={(price) => {
                       const lines = [...editing.lines];
                       lines[idx] = {
                         ...line,

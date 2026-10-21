@@ -22,6 +22,7 @@ import {
   FORM_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
+import { MoneyInput } from "../../dos/MoneyInput";
 import { money, fmtDate, today } from "../../dos/utils";
 
 export function WorkOrderProcess({
@@ -486,17 +487,13 @@ export function WorkOrderProcess({
                   </select>
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <input
+                  <MoneyInput
                     className="dos-input"
-                    type="number"
-                    step="0.01"
+                    aria-label={`Price ${idx + 1}`}
                     value={line.price}
-                    onChange={(e) => {
+                    onValueChange={(price) => {
                       const lines = [...editing.lines];
-                      lines[idx] = {
-                        ...line,
-                        price: parseFloat(e.target.value) || 0,
-                      };
+                      lines[idx] = { ...line, price };
                       setEditing({ ...editing, lines });
                     }}
                   />

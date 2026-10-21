@@ -17,6 +17,7 @@ import {
   HelpOverlay,
 } from "../dos/Shell";
 import { DotField } from "../dos/Field";
+import { MoneyInput } from "../dos/MoneyInput";
 import { money, fmtDate, today } from "../dos/utils";
 
 export type MaterialSort = "default" | "worker" | "date" | "desc";
@@ -280,16 +281,12 @@ export function MaterialBrowse({
               />
             </DotField>
             <DotField label="Amount" width={14}>
-              <input
+              <MoneyInput
                 className="dos-input w12 num"
-                type="number"
-                step="0.01"
+                aria-label="Amount"
                 value={editing.amount}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    amount: parseFloat(e.target.value) || 0,
-                  })
+                onValueChange={(amount) =>
+                  setEditing({ ...editing, amount })
                 }
               />
             </DotField>

@@ -3,6 +3,7 @@ import { render, renderHook, act } from "@testing-library/react";
 import {
   computeFitScale,
   contentWidthOf,
+  convergeFitScale,
   pointerHoverMuted,
   resolveFitScale,
   useBrowseIndex,
@@ -75,6 +76,26 @@ describe("resolveFitScale", () => {
       expect(next).toBeCloseTo(scale, 4);
       scale = next;
     }
+  });
+
+  it("converges a leftover shrink that one pass leaves for the next click", () => {
+    // Measured on the invoice gate at 1400px: the first scale is 0.8245 and
+    // the row is still 1420px wide, so the next pass (the click) goes to 0.7966.
+    const client = 1400;
+    const widthAt = (scale: number) =>
+      scale === 1 ? 1664 : Math.round(1420 * (scale / 0.8245));
+    const once = resolveFitScale(client, widthAt(1), 1);
+    const leftover = resolveFitScale(client, widthAt(once), once);
+    expect(once).toBeCloseTo(0.8245, 3);
+    expect(leftover).toBeLessThan(once - 0.01);
+
+    const settled = convergeFitScale((scale) => ({
+      clientWidth: client,
+      contentWidth: widthAt(scale),
+    }));
+    const again = resolveFitScale(client, widthAt(settled), settled);
+    expect(Math.abs(again - settled)).toBeLessThanOrEqual(0.004);
+    expect(settled).toBeCloseTo(leftover, 3);
   });
 
   it("returns to 1 after a shrink-then-restore and does not drift", () => {

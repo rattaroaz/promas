@@ -2,7 +2,7 @@
  * Cash Receipts Process — company ledger + payment + Auto Receipt.
  * Original keys: Ins / Home / PgUp / PgDn / Esc / (A)uto_Receipt
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   api,
   Company,
@@ -19,6 +19,8 @@ import {
   CASH_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
+import { MoneyInput } from "../../dos/MoneyInput";
+import { formatMoneyInput } from "../../dos/moneyFormat";
 import { DateInput } from "../../dos/DateInput";
 import { money, fmtDate, today } from "../../dos/utils";
 
@@ -49,6 +51,7 @@ export function CashProcess({
     "default"
   );
   const [help, setHelp] = useState(false);
+  const [confirmPay, setConfirmPay] = useState(false);
   const { index, setIndex, up, down, pageUp, pageDown, end } =
     useBrowseIndex(invoices.length);
 
@@ -60,11 +63,14 @@ export function CashProcess({
     const mine = invs.filter(
       (i) => !i.voided && (focusInvoice == null || i.invoice === focusInvoice)
     );
-    // open first, then paid
+    // Unpaid invoices stay above paid ones. Inside each group, newest first.
     mine.sort((a, b) => {
-      if (a.balance > 0 && b.balance <= 0) return -1;
-      if (a.balance <= 0 && b.balance > 0) return 1;
-      return a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice;
+      const aOpen = a.balance > 0;
+      const bOpen = b.balance > 0;
+      if (aOpen !== bOpen) return aOpen ? -1 : 1;
+      const byDate = b.salesDate.localeCompare(a.salesDate);
+      if (byDate !== 0) return byDate;
+      return b.invoice - a.invoice;
     });
 
     // Fetch receipts to populate latest receipt date and ref for each invoice
@@ -99,12 +105,10 @@ export function CashProcess({
   }, [load]);
 
   const current = invoices[index] ?? null;
-  const endingBalance = invoices.reduce(
+  const unpaidTotal = invoices.reduce(
     (s, i) => s + Math.max(0, i.balance),
     0
   );
-  const balanceTotal = invoices.reduce((s, i) => s + (i.salesTotal || 0), 0);
-  const receiptTotal = invoices.reduce((s, i) => s + (i.payTotal || 0), 0);
 
   function startPayment(inv?: Invoice) {
     const target = inv || current;
@@ -125,6 +129,7 @@ export function CashProcess({
     r.payment = target.balance;
     r.payDate = today();
     setAutoMode(false);
+    setConfirmPay(false);
     setEditing(r);
     setMsg("Enter Your Payment Data(Esc=Cancel) !");
     setMsgKind("default");
@@ -132,7 +137,7 @@ export function CashProcess({
 
   function startAuto() {
     setAutoMode(true);
-    setAutoAmount(endingBalance);
+    setAutoAmount(unpaidTotal);
     setAutoRef("");
     setAutoDate(today());
     setEditing(null);
@@ -157,10 +162,11 @@ export function CashProcess({
         ...editing,
         payDate: editing.payDate || today(),
       });
+      setConfirmPay(false);
       setEditing(null);
+      await load();
       setMsg("Receipt posted.");
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -174,8 +180,8 @@ export function CashProcess({
       setMsgKind("error");
       return;
     }
-    if (autoAmount > endingBalance + 0.005) {
-      setMsg("Payment may not exceed End Balance Due !");
+    if (autoAmount > unpaidTotal + 0.005) {
+      setMsg("Payment may not exceed Balance Due !");
       setMsgKind("error");
       return;
     }
@@ -222,10 +228,61 @@ export function CashProcess({
     }
   }
 
+  const saveOneRef = useRef(saveOne);
+  saveOneRef.current = saveOne;
+
+  function askToPost() {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    setConfirmPay(true);
+  }
+
+  useEffect(() => {
+    if (!editing || confirmPay) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      setConfirmPay(true);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [editing, confirmPay]);
+
+  useEffect(() => {
+    if (!confirmPay) return;
+    let settled = false;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.type !== "keydown") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (settled) return;
+      if (e.key === "y" || e.key === "Y") {
+        settled = true;
+        setConfirmPay(false);
+        void saveOneRef.current();
+        return;
+      }
+      if (e.key === "n" || e.key === "N" || e.key === "Escape") {
+        settled = true;
+        setConfirmPay(false);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [confirmPay]);
+
   useDosKeys({
     forceNav: !editing && !autoMode,
     onEscape: () => {
       if (help) setHelp(false);
+      else if (confirmPay) setConfirmPay(false);
       else if (editing) {
         setEditing(null);
         setMsg("Ins=Payment  A=Auto_Receipt  Esc=Back");
@@ -240,7 +297,8 @@ export function CashProcess({
       if (!editing && !autoMode) startPayment();
     },
     onEnter: () => {
-      if (editing) saveOne();
+      if (confirmPay) return;
+      if (editing) askToPost();
       else if (autoMode) saveAuto();
       else if (current) startPayment(current);
     },
@@ -253,6 +311,7 @@ export function CashProcess({
     onPageDown: !editing && !autoMode ? pageDown : undefined,
     onEnd: !editing && !autoMode ? end : undefined,
     onCtrlS: () => {
+      if (confirmPay) return;
       if (editing) saveOne();
       if (autoMode) saveAuto();
     },
@@ -338,20 +397,8 @@ Company NO : ${company.companyNo}  ${company.name}`}
               )}
             </div>
             <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em" }}>
-              <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Balance Total</div>
-              <div>{money(balanceTotal)}</div>
-              <div></div>
-              <div></div>
-            </div>
-            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold" }}>
-              <div style={{ gridColumn: "1 / 6", textAlign: "right" }}>Receipt Total</div>
-              <div>{money(receiptTotal)}</div>
-              <div></div>
-              <div></div>
-            </div>
-            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold" }}>
-              <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Ending Balance</div>
-              <div>{money(endingBalance)}</div>
+              <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Unpaid Total</div>
+              <div>{money(unpaidTotal)}</div>
               <div></div>
             </div>
           </div>
@@ -361,7 +408,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
       {editing && (
         <Dialog
           title="Enter Your Payment Data(Esc=Cancel) !"
-          foot="Esc=Cancel  Ctrl-S/Enter=Post Receipt"
+          foot="Esc=Cancel  Enter=Confirm  Ctrl-S=Post Receipt"
         >
           <div className="dos-form">
             <DotField label="Invoice_No" width={16}>
@@ -380,31 +427,31 @@ Company NO : ${company.companyNo}  ${company.name}`}
             <DotField label="Invoice_Amount" width={16}>
               <input
                 className="dos-input w12 num"
+                aria-label="Invoice Amount"
                 disabled
-                value={
-                  invoices.find((i) => i.invoice === editing.invoice)
-                    ?.salesTotal ?? ""
-                }
+                value={formatMoneyInput(
+                  invoices.find((i) => i.invoice === editing.invoice)?.salesTotal
+                )}
               />
             </DotField>
             <DotField label="Paid Total" width={16}>
               <input
                 className="dos-input w12 num"
+                aria-label="Paid Total"
                 disabled
-                value={
-                  invoices.find((i) => i.invoice === editing.invoice)
-                    ?.payTotal ?? ""
-                }
+                value={formatMoneyInput(
+                  invoices.find((i) => i.invoice === editing.invoice)?.payTotal
+                )}
               />
             </DotField>
             <DotField label="Balance" width={16}>
               <input
                 className="dos-input w12 num"
+                aria-label="Balance"
                 disabled
-                value={
-                  invoices.find((i) => i.invoice === editing.invoice)
-                    ?.balance ?? ""
-                }
+                value={formatMoneyInput(
+                  invoices.find((i) => i.invoice === editing.invoice)?.balance
+                )}
               />
             </DotField>
             <DotField label="Pay Date" width={16}>
@@ -427,16 +474,12 @@ Company NO : ${company.companyNo}  ${company.name}`}
               />
             </DotField>
             <DotField label="Amount Paid" width={16}>
-              <input
+              <MoneyInput
                 className="dos-input w12 num"
-                type="number"
-                step="0.01"
+                aria-label="Amount Paid"
                 value={editing.payment}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    payment: parseFloat(e.target.value) || 0,
-                  })
+                onValueChange={(payment) =>
+                  setEditing({ ...editing, payment })
                 }
               />
             </DotField>
@@ -451,7 +494,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
         >
           <div className="dos-form">
             <div style={{ color: "var(--app-accent)", marginBottom: "0.5em" }}>
-              Ending Balance Due: {money(endingBalance)}
+              Balance Due: {money(unpaidTotal)}
             </div>
             <DotField label="Pay Date" width={16}>
               <DateInput
@@ -469,14 +512,11 @@ Company NO : ${company.companyNo}  ${company.name}`}
               />
             </DotField>
             <DotField label="Amount Paid" width={16}>
-              <input
+              <MoneyInput
                 className="dos-input w12 num"
-                type="number"
-                step="0.01"
+                aria-label="Auto Amount Paid"
                 value={autoAmount}
-                onChange={(e) =>
-                  setAutoAmount(parseFloat(e.target.value) || 0)
-                }
+                onValueChange={setAutoAmount}
               />
             </DotField>
             <div style={{ color: "var(--app-highlight)", marginTop: "0.5em" }}>
@@ -485,6 +525,18 @@ Company NO : ${company.companyNo}  ${company.name}`}
             </div>
           </div>
         </Dialog>
+      )}
+
+      {confirmPay && (
+        <div className="dos-overlay">
+          <div
+            className="dos-prompt"
+            role="dialog"
+            aria-label="Are you sure this is correct? Y/N"
+          >
+            <div className="q">Are you sure this is correct? Y/N</div>
+          </div>
+        </div>
       )}
 
       {help && <HelpOverlay onClose={() => setHelp(false)} />}

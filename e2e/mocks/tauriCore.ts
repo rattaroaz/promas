@@ -1,3 +1,16 @@
+type E2EWorkPerson = { name: string; workerNo: string; active: boolean };
+
+/** Seeded the way a migrated catalog is: current dropdown names, Active, blank numbers. */
+let workPersons: E2EWorkPerson[] = [
+  { name: "Jose Ramirez", workerNo: "", active: true },
+];
+
+function listWorkPersons(): E2EWorkPerson[] {
+  return [...workPersons].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+}
+
 const fixtureCompany = {
   companyNo: "1000",
   name: "ACME",
@@ -111,7 +124,51 @@ export async function invoke<T = unknown>(
     return undefined as T;
   }
   if (cmd === "list_invoices") {
-    return [fixtureInvoice] as T;
+    // Property 01 keeps the original open invoice. The other rows are only
+    // for the cash ledger: unpaid invoices above paid ones, oldest first.
+    return [
+      fixtureInvoice,
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2026-01-01",
+        invoice: 3,
+        salesTotal: 80,
+        salesBal: 80,
+        payTotal: 0,
+        balance: 80,
+      },
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2026-03-01",
+        invoice: 4,
+        salesTotal: 40,
+        salesBal: 40,
+        payTotal: 0,
+        balance: 40,
+      },
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2025-06-01",
+        invoice: 5,
+        salesTotal: 60,
+        salesBal: 0,
+        payTotal: 60,
+        balance: 0,
+      },
+      {
+        ...fixtureInvoice,
+        proNo: "02",
+        salesDate: "2026-02-01",
+        invoice: 6,
+        salesTotal: 90,
+        salesBal: 0,
+        payTotal: 90,
+        balance: 0,
+      },
+    ] as T;
   }
   if (cmd === "list_companies") {
     return [fixtureCompany, fixtureCompany2] as T;
@@ -195,14 +252,33 @@ export async function invoke<T = unknown>(
     return undefined as T;
   }
   if (cmd === "list_work_persons") {
-    return [] as T;
+    return listWorkPersons() as T;
   }
   if (cmd === "save_work_person") {
-    const name = String(_args?.name ?? "").trim();
-    return (name ? [name] : []) as T;
+    const person = (_args?.person ?? {}) as {
+      name?: string;
+      workerNo?: string;
+      active?: boolean;
+      originalName?: string;
+    };
+    const name = String(person.name ?? "").trim();
+    if (!name) throw new Error("Work person name required");
+    const original = String(person.originalName ?? "").trim();
+    const key = (original || name).toLowerCase();
+    const next = {
+      name,
+      workerNo: String(person.workerNo ?? ""),
+      active: person.active !== false,
+    };
+    const idx = workPersons.findIndex((p) => p.name.toLowerCase() === key);
+    if (idx >= 0) workPersons[idx] = next;
+    else workPersons.push(next);
+    return listWorkPersons() as T;
   }
   if (cmd === "delete_work_person") {
-    return [] as T;
+    const name = String(_args?.name ?? "").trim().toLowerCase();
+    workPersons = workPersons.filter((p) => p.name.toLowerCase() !== name);
+    return listWorkPersons() as T;
   }
   if (cmd === "list_paint_supply_cos") {
     return [] as T;
@@ -348,7 +424,7 @@ export async function invoke<T = unknown>(
           workDate: "2026-01-15",
           workType: "P",
           price: 250,
-          empNo: "",
+          empNo: "Jose Ramirez",
           empPrice: 0,
           commission: 65,
           status: "",

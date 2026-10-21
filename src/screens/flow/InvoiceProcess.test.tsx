@@ -66,11 +66,10 @@ describe("InvoiceProcess", () => {
     vi.mocked(api.listInvoices).mockResolvedValue([fixture]);
     vi.mocked(api.listEmployees).mockResolvedValue([]);
     vi.mocked(api.listWorkTypes).mockResolvedValue([]);
-    vi.mocked(api.listWorkPersons).mockResolvedValue(["Jose Ramirez"]);
-    vi.mocked(api.saveWorkPerson).mockImplementation(async (name: string) => {
-      const n = name.trim();
-      return n ? ["Jose Ramirez", n].filter((v, i, a) => a.indexOf(v) === i) : ["Jose Ramirez"];
-    });
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+    ]);
+    vi.mocked(api.saveWorkPerson).mockImplementation(async (person) => [person]);
     vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
     vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) => {
@@ -265,12 +264,12 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
       INTERIOR_PAINT_WALL_CLOSET
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(220);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("220.00");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(245);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("245.00");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "Occupied");
     expect(screen.getByLabelText("Custom size")).toHaveValue("Occupied");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
   });
 
   it("fills Painting of Ceiling price and description from the list", async () => {
@@ -294,9 +293,9 @@ describe("InvoiceProcess", () => {
       invoiceDate.value
     );
     // No size yet: single-unit price, not a blank box.
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(75);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("75.00");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(115);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("115.00");
     expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
       PAINTING_OF_CEILING
     );
@@ -318,9 +317,11 @@ describe("InvoiceProcess", () => {
       "Touch up hallway"
     );
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
     await user.type(screen.getByLabelText(/Price 1/i), "75.50");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(75.5);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("75.50");
+    await user.tab();
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("75.50");
     expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
       "Touch up hallway"
     );
@@ -389,6 +390,91 @@ describe("InvoiceProcess", () => {
     expect(screen.queryByLabelText("Line 1 work person")).not.toBeInTheDocument();
   });
 
+  it("formats a typed price to cents on blur and Enter", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    const price = await screen.findByLabelText(/Price 1/i);
+    await user.type(price, "100");
+    expect(price).toHaveValue("100");
+    await user.tab();
+    expect(price).toHaveValue("100.00");
+
+    const cost = screen.getByLabelText("Material Costs");
+    await user.clear(cost);
+    await user.type(cost, "432");
+    await user.keyboard("{Enter}");
+    expect(cost).toHaveValue("432.00");
+    await user.clear(cost);
+    await user.tab();
+    expect(cost).toHaveValue("");
+  });
+
+  it("lists only active workers and does not add a typed name", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+      { name: "Inactive Ian", workerNo: "9", active: false },
+    ]);
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    const pick = await screen.findByLabelText("Work Person list");
+    expect(Array.from(pick.querySelectorAll("option")).map((o) => o.textContent)).toEqual(
+      [" ", "Jose Ramirez"]
+    );
+    await user.type(screen.getByLabelText("Work Person"), "Custom Pat");
+    await user.tab();
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
+    expect(Array.from(pick.querySelectorAll("option")).map((o) => o.textContent)).toEqual(
+      [" ", "Jose Ramirez"]
+    );
+    expect(screen.getByLabelText("Work Person")).toHaveValue("Custom Pat");
+  });
+
+  it("keeps a deleted worker's name on an existing invoice", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Ana Cruz", workerNo: "15", active: true },
+    ]);
+    vi.mocked(api.getInvoice).mockResolvedValue({
+      invoice: fixture,
+      lines: [
+        {
+          companyNo: "1000",
+          proNo: "01",
+          salesDate: "2026-01-15",
+          invoice: 1,
+          lineNo: 1,
+          codeNo: "*",
+          description: "Hallway",
+          workDate: "2026-01-15",
+          workType: "P",
+          price: 220,
+          empNo: "Jose Ramirez",
+          empPrice: 0,
+          commission: 65,
+          status: "",
+        },
+      ],
+    });
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await user.click(await screen.findByRole("button", { name: /PO-441/i }));
+    expect(await screen.findByLabelText("Work Person")).toHaveValue("Jose Ramirez");
+    expect(
+      Array.from(
+        screen.getByLabelText("Work Person list").querySelectorAll("option")
+      ).map((o) => o.textContent)
+    ).toEqual([" ", "Ana Cruz"]);
+  });
+
   it("lets the user pick, type, and save work person names", async () => {
     const user = userEvent.setup();
     renderApp(
@@ -406,10 +492,12 @@ describe("InvoiceProcess", () => {
     await user.clear(screen.getByLabelText("Work Person"));
     await user.type(screen.getByLabelText("Work Person"), "Ana Cruz");
     await user.tab();
-    expect(api.saveWorkPerson).toHaveBeenCalledWith("Ana Cruz");
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("button", { name: /Remove .* from list/i })
-    ).not.toBeInTheDocument();
+      Array.from(
+        screen.getByLabelText("Work Person list").querySelectorAll("option")
+      ).map((o) => o.textContent)
+    ).toEqual([" ", "Jose Ramirez"]);
     expect(api.deleteWorkPerson).not.toHaveBeenCalled();
   });
 
@@ -424,14 +512,14 @@ describe("InvoiceProcess", () => {
       await screen.findByLabelText("Line 1 description"),
       PAINT_KITCHEN_CABINET_INSIDE
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(130);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("130.00");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "4+2");
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(130);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("130.00");
     await user.selectOptions(
       screen.getByLabelText("Line 1 description"),
       COLOR_CHANGE_CEILING_SWISS_COFFEE
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue(156);
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("156.00");
   });
 
   it("bolds outstanding invoices and not paid ones", async () => {
@@ -490,7 +578,7 @@ describe("InvoiceProcess", () => {
     await waitFor(() => {
       expect(api.saveInvoice).toHaveBeenCalled();
     });
-    expect(api.saveWorkPerson).toHaveBeenCalledWith("Ana Cruz");
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
     expect(api.saveInvoice).toHaveBeenCalledWith(
       expect.objectContaining({
         invoice: expect.objectContaining({

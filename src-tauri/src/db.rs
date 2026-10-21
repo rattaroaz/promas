@@ -598,7 +598,9 @@ fn create_schema(conn: &Connection) -> Result<()> {
         );
 
         CREATE TABLE IF NOT EXISTS work_persons (
-            name TEXT PRIMARY KEY COLLATE NOCASE
+            name TEXT PRIMARY KEY COLLATE NOCASE,
+            worker_no TEXT NOT NULL DEFAULT '',
+            active INTEGER NOT NULL DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS paint_supply_cos (
@@ -616,6 +618,20 @@ fn create_schema(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_cash_date ON cash_receipts(pay_date);
         CREATE INDEX IF NOT EXISTS idx_materials_emp ON materials(emp_no, mat_date);
         "#,
+    )?;
+    // Existing dropdown names stay. New columns default to Active and a blank
+    // worker number so a database that already has work_persons loses nobody.
+    add_column_if_missing(
+        conn,
+        "work_persons",
+        "worker_no",
+        "TEXT NOT NULL DEFAULT ''",
+    )?;
+    add_column_if_missing(
+        conn,
+        "work_persons",
+        "active",
+        "INTEGER NOT NULL DEFAULT 1",
     )?;
     seed_work_persons(conn)?;
     add_column_if_missing(conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")?;
@@ -649,7 +665,9 @@ fn add_column_if_missing(
     Ok(())
 }
 
-/// First launch only: copy existing worker names into the invoice Work Person list.
+/// First launch only: copy employee names into the Work Person list.
+/// Inserted rows use the table defaults: Active, blank worker number.
+/// That is the same set of names the invoice dropdown already offered.
 fn seed_work_persons(conn: &Connection) -> Result<()> {
     let count: i64 =
         conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
