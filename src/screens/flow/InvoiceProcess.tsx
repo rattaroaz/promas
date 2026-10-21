@@ -65,18 +65,36 @@ function charsAcross(el: HTMLTextAreaElement): number {
   return Math.max(1, Math.floor((el.clientWidth - pad) / charW));
 }
 
-/**
- * PageMap is the lock box code. Key and the comment lines are only a
- * fallback when PageMap is empty.
- */
 function str(value: string | null | undefined): string {
   return (value ?? "").trim();
 }
 
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+/** True when the whole value is an email address, not a code that mentions one. */
+function isWholeEmail(value: string): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  const match = text.match(EMAIL_RE);
+  return match?.[0] === text;
+}
+
+/**
+ * Lock box code for the invoice header.
+ *
+ * The property form writes Lock Box into paintTime and E-mail into pageMap.
+ * The header used to prefer pageMap and ignore paintTime, so a code typed in
+ * Lock Box never appeared, and an email in E-mail was shown as the lock box.
+ * Gate code is keyInfo and is labeled Entry code; it is not scanned for a
+ * lock box. Older files that still keep the code in a non-email page map, or
+ * only in a comment, keep that value when Lock Box is blank.
+ */
 function lockBoxCode(property: Property): string {
+  const fromLockBox = str(property.paintTime);
+  if (fromLockBox) return fromLockBox;
   const fromPage = str(property.pageMap);
-  if (fromPage) return fromPage;
-  const blob = [property.keyInfo, property.comment1, property.comment2]
+  if (fromPage && !isWholeEmail(fromPage)) return fromPage;
+  const blob = [property.comment1, property.comment2]
     .map((part) => str(part))
     .filter(Boolean)
     .join(" ");
@@ -92,8 +110,6 @@ function propertyComments(property: Property): string {
     .filter(Boolean)
     .join(" ");
 }
-
-const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 
 function firstEmail(...parts: Array<string | null | undefined>): string {
   for (const part of parts) {

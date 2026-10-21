@@ -1,0 +1,48 @@
+{
+  "viewport": "1400x900",
+  "note": "Before the fix, opening Invoice Process settled one fit pass. Clicking Company NO applied the leftover pass.",
+  "beforeClick": {
+    "fit": "0.8245",
+    "rootFont": "35.4535px",
+    "company": {
+      "font": "35.4535px",
+      "box": {
+        "w": 361.52,
+        "h": 41.77,
+        "x": 396.94,
+        "y": 353.42
+      }
+    },
+    "street": {
+      "font": "35.4535px",
+      "box": {
+        "w": 999.5,
+        "h": 41.77,
+        "x": 396.94,
+        "y": 544.8
+      }
+    }
+  },
+  "afterCompanyNoClick": {
+    "fit": "0.7966",
+    "rootFont": "34.2538px",
+    "company": {
+      "font": "34.2538px",
+      "box": {
+        "w": 349.41,
+        "h": 40.39,
+        "x": 407.11,
+        "y": 356.7
+      }
+    },
+    "street": {
+      "font": "34.2538px",
+      "box": {
+        "w": 966,
+        "h": 40.39,
+        "x": 407.11,
+        "y": 541.58
+      }
+    }
+  }
+}

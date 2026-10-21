@@ -1,0 +1,96 @@
+Promas PR 18 proof. Draft only. Not merged.
+
+Branch: cursor/money-format-workers-e131
+Base: main (9c0ab8e, v2.15.0)
+Version: 2.15.1
+
+Screenshots in this folder were taken from the running app
+(Vite with VITE_E2E=true, system Chrome, 1400x900).
+
+01-money
+  Before: price fields had no cents. The Type Description placeholder was gray.
+  After: 100 commits to 100.00, 432 commits to 432.00 on Enter.
+  Placeholder and typed description both sample as rgb(255, 255, 85),
+  which is var(--dos-yellow) / #ffff55.
+
+02-workers
+  Before (v2.15.0 app on port 4174): Miscellaneous stops at item 4, Import Database.
+  After: item 5 Workers. Rows are Active, Name, Worker Number, Delete.
+  Add Work Person is at the bottom. Delete asks "Are you sure?".
+  An old invoice still shows Jose Ramirez after that worker is deleted.
+  The dropdown lists only active workers. A typed custom name is not added.
+  Migration: work_persons gains worker_no (default blank) and active (default 1).
+  Existing dropdown names stay Active with blank numbers. Invoice lines store
+  the name as text and are not updated on rename or delete.
+  An empty catalog is seeded from employees, not from invoice line names.
+
+03-cash
+  Before: Balance Total, Receipt Total, and Ending Balance were on the ledger.
+  Auto receipt said Ending Balance Due. Enter posted with no question.
+  Paid and unpaid rows were oldest first.
+  After: those two totals are gone. The ledger shows Unpaid Total.
+  Unpaid invoices stay above paid ones, newest sales date first, then higher
+  invoice number. Auto receipt says Balance Due. Enter opens
+  "Are you sure this is correct? Y/N". Only Y or y saves. N, n, and Esc close
+  the question and leave the form open. Any other key leaves the question open.
+
+04-invoice-picker
+  Before: Property Street order followed the stored list (company 1000, then
+  1500, then 2000). 10 OAK AVENUE came before 9 PINE STREET. Headers were
+  plain text, with no sort mark. Right-click did not prevent the menu and did
+  not open the property (defaultPrevented false, edit dialog count 0).
+  The property form's Lock Box field is paintTime and E-mail is pageMap.
+  The header preferred pageMap and ignored paintTime, and it also scanned the
+  gate code (keyInfo) as a lock box. After Lock Box was set to 5555 and E-mail
+  to maria@acme.example, the header read
+  "Entry code: *2424, Lock box code: maria@acme.example".
+  After: default order is company number, highest first, marked "CoNO v"
+  (2000, 2000, 1500, 1000, 1000). Clicking CoNO switches to ascending
+  ("CoNO ^") and clicking it again returns to descending. Clicking Street
+  sorts by street number then the rest of the address ("Street ^"):
+  9 PINE STREET, 10 OAK AVENUE, 88 MAIN ST, 100 ELM ROAD, 14755...
+  Right-click opens Detaill Property Information and suppresses the browser
+  menu on those rows only. Esc leaves 9 PINE STREET unchanged. Ctrl-S saves
+  9 PINE COURT onto the property and into the invoice header.
+  Oak House (gate #1001, Lock Box 4400, E-mail office@bayside.example) shows
+  "Entry code: #1001, Lock box code: 4400". The email is not used as the lock box.
+  Bldg A with Lock Box 5555 and E-mail maria@acme.example shows
+  "Entry code: *2424, Lock box code: 5555".
+  A blank Lock Box still uses a non-email page map, then a lock-box phrase
+  in the comments. The gate code is never parsed as a lock box.
+
+05-focus
+  Before click, Invoice Process had settled one fit pass:
+    --fit-scale 0.8245, root font 35.4535px
+    Company NO box 361.52 x 41.77
+  After clicking Company NO:
+    --fit-scale 0.7966, root font 34.2538px
+    Company NO box 349.41 x 40.39
+    Property Street 999.5 x 41.77 became 966 x 40.39
+  Cause: one fit pass does not settle, because ch widths and borders do not
+  shrink in proportion to the first scale. The follow-up pass was dropped, and
+  the next render (focus setState) applied the leftover shrink. Focus CSS does
+  not change font-size.
+  The audit in e2e/tests/focus-layout.spec.ts compares computed font-size
+  (toBeCloseTo precision 1) and parent-relative boxes (1px) for every input,
+  button, and dropdown it reaches. 35.4535 vs 34.2538 fails that check.
+  After the fix the gate opens already settled at 34.2538px / 0.7966, and
+  clicking Company NO or Property Street does not change the font or the boxes.
+  See before_focus_font_measurements.json and after_focus_font_measurements.json.
+
+Checks on this head
+  Lint: npx tsc --noEmit. Exit 0. The project has no ESLint script; typecheck is the lint step. npm run build runs tsc again.
+  Unit tests: npm run test:coverage. 36 files, 326 tests, all passed.
+    Statements 66.33% (3228/4866), threshold 56
+    Branches   61.13% (2281/3731), threshold 51
+    Functions  62.00% (772/1245), threshold 50
+    Lines      68.33% (2984/4367), threshold 58
+  Build: npm run build. tsc passed, vite built in 2.33s.
+    Chunk size warning only (index-BwNn10L8.js 817.83 kB). No build error.
+  End-to-end, including the focus audit: npx playwright test. 32 passed (5.3m).
+    The audit tests are:
+      clicking a field on Invoice Process keeps the font and the neighbouring boxes
+      every input, button, and dropdown keeps its font and neighbour boxes
+  Rust cargo test was not part of this Linux run. CI runs it on Windows only.
+
+Not merged.

@@ -920,6 +920,39 @@ describe("InvoiceProcess", () => {
     expect(lines.join(" ")).not.toContain("Building entry");
   });
 
+  it("shows the Lock Box field and the gate code, and skips an email page map", () => {
+    const lines = siteHeaderLines(company, {
+      ...property,
+      keyInfo: "*2424",
+      paintTime: "5555",
+      pageMap: "maria@acme.example",
+      comment1: "",
+      comment2: "Lock box 1984 on the front gate.",
+    });
+    expect(lines).toContain("Entry code: *2424, Lock box code: 5555");
+    expect(lines.join(" ")).not.toContain("maria@acme.example");
+    expect(lines.join(" ")).not.toContain("Lock box code: 1984");
+  });
+
+  it("does not read the gate code as a lock box", () => {
+    const lines = siteHeaderLines(company, {
+      ...property,
+      name: "Bldg A",
+      street: "1 Main",
+      keyInfo: "lock box 7777",
+      paintTime: "",
+      pageMap: "maria@acme.example",
+      comment1: "",
+      comment2: "",
+      phone: "",
+      phone2: "",
+      manager: "",
+      contact: "",
+    });
+    expect(lines).toContain("Entry code: lock box 7777");
+    expect(lines.join(" ")).not.toContain("Lock box code");
+  });
+
   it("keeps the full description and sizes rows from the on-screen width", async () => {
     const user = userEvent.setup();
     renderApp(

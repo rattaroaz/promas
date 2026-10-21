@@ -84,6 +84,6 @@ test.describe("arrow key navigation", () => {
 
     await bayside.click();
     await expect(page.getByText("Co:2000")).toBeVisible();
-    await expect(page.getByRole("button", { name: /01\s+Bldg A/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /01\s+Oak House/i })).toBeVisible();
   });
 });
