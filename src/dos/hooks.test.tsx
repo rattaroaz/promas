@@ -265,6 +265,48 @@ describe("resolveFitScale", () => {
     expect(verticalFitFactor(shell)).toBe(1);
     document.body.removeChild(shell);
   });
+
+  it("shrinks when a dialog hint paints below the window", () => {
+    const shell = document.createElement("div");
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    const body = document.createElement("div");
+    body.className = "dlg-body";
+    const foot = document.createElement("div");
+    foot.className = "dlg-foot";
+    foot.textContent = "Esc=Cancel, Ctrl-S=Save & Exit";
+    dialog.append(body, foot);
+    shell.appendChild(dialog);
+    document.body.appendChild(shell);
+    const size = (el: HTMLElement, client: number, scroll: number, offset = client) => {
+      Object.defineProperty(el, "clientHeight", { value: client, configurable: true });
+      Object.defineProperty(el, "scrollHeight", { value: scroll, configurable: true });
+      Object.defineProperty(el, "offsetHeight", { value: offset, configurable: true });
+    };
+    size(dialog, 600, 600, 600);
+    size(body, 500, 500, 500);
+    const vh = window.innerHeight || 800;
+    const rect = (bottom: number, height: number) =>
+      ({
+        x: 0,
+        y: bottom - height,
+        top: bottom - height,
+        left: 0,
+        right: 200,
+        bottom,
+        width: 200,
+        height,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+    dialog.getBoundingClientRect = () => rect(vh - 40, 600);
+    foot.getBoundingClientRect = () => rect(vh + 20, 48);
+    const factor = verticalFitFactor(shell);
+    expect(factor).toBeLessThan(0.98);
+    expect(factor).toBeGreaterThan(0.8);
+    document.body.removeChild(shell);
+  });
 });
 
 describe("useBrowseIndex", () => {

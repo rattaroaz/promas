@@ -693,15 +693,21 @@ textarea {
   color: var(--dos-red);
 }
 
+.dos-dialog .dlg-title,
+.dos-dialog .dlg-foot {
+  flex-shrink: 0;
+}
+
 .dos-dialog .dlg-body {
   padding: 0.6em 1.5ch;
+  overflow-x: hidden;
   overflow-y: auto;
-  /* Don't flex-shrink the form while the dialog still has room under
-     max-height. A basis of 0 clipped the last field and a focus then
-     scrolled the whole form. */
-  flex: none;
+  /* Grow stays 0 so a short form keeps its height. Shrink is allowed, with
+     a content basis, so a dialog at max-height scrolls the fields and keeps
+     the hint line inside the window. A basis of 0 clipped the last field
+     while the dialog still had room. */
+  flex: 0 1 auto;
   min-height: 0;
-  max-height: 100%;
 }
 
 .dos-dialog .dlg-foot {

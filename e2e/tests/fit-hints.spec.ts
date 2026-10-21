@@ -31,6 +31,7 @@ async function clipReport(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const issues: string[] = [];
     const vw = window.innerWidth;
+    const vh = window.innerHeight;
     const textOf = (el: Element) => (el.textContent || "").replace(/\s+/g, " ").trim();
     const rangeBox = (el: Element) => {
       const range = document.createRange();
@@ -53,6 +54,22 @@ async function clipReport(page: Page): Promise<string[]> {
         issues.push(
           `hint bar clipped "${textOf(bar).slice(0, 100)}" scroll ${Math.round(bar.scrollWidth)} client ${Math.round(bar.clientWidth)} textRight ${Math.round(text.right)} barRight ${Math.round(box.right)}`
         );
+      }
+      if (bar.classList.contains("dlg-foot")) {
+        if (box.top < -1 || box.bottom > vh + 1 || box.left < -1 || box.right > vw + 1) {
+          issues.push(
+            `dialog hint outside viewport "${textOf(bar).slice(0, 80)}" top ${Math.round(box.top)} bottom ${Math.round(box.bottom)} vh ${vh}`
+          );
+        }
+        const dialog = bar.closest(".dos-dialog");
+        if (dialog) {
+          const dialogBox = dialog.getBoundingClientRect();
+          if (box.bottom > dialogBox.bottom + 1 || box.top < dialogBox.top - 1) {
+            issues.push(
+              `dialog hint outside dialog "${textOf(bar).slice(0, 80)}" bottom ${Math.round(box.bottom)} dialog ${Math.round(dialogBox.bottom)}`
+            );
+          }
+        }
       }
       if (bar.classList.contains("dos-statusbar")) {
         for (const key of bar.querySelectorAll("button")) {
@@ -97,7 +114,6 @@ async function clipReport(page: Page): Promise<string[]> {
       }
     }
 
-    const vh = window.innerHeight;
     const controls = document.querySelectorAll(
       ".dos-dialog input, .dos-dialog button, .dos-dialog select, .dos-dialog textarea, .dos-menu-frame .menu-header, .dos-menu-frame button, .dos-menu-frame pre"
     );

@@ -678,6 +678,17 @@ export function verticalFitFactor(root: HTMLElement): number {
     }
     const avail = (node.parentElement?.clientHeight ?? vh) * 0.9;
     factor = tighten(factor, node.offsetHeight + extra, avail);
+    const foot = node.querySelector(":scope > .dlg-foot");
+    if (foot instanceof HTMLElement) {
+      const footBox = foot.getBoundingClientRect();
+      if (footBox.height > 2) {
+        factor = tighten(factor, footBox.bottom, vh);
+        const dialogBottom = node.getBoundingClientRect().bottom;
+        if (footBox.bottom > dialogBottom + 1) {
+          factor = tighten(factor, footBox.bottom, dialogBottom);
+        }
+      }
+    }
   });
 
   root.querySelectorAll(".dos-menu-frame").forEach((node) => {
@@ -785,7 +796,9 @@ function fitScaleNow(root: HTMLElement, doc: HTMLElement, start: number): number
     }
     const height = verticalFitFactor(root);
     if (height < 0.999) next = Math.min(next, Math.max(FIT_MIN, scale * height));
-    if (Math.abs(next - scale) <= 0.004) return scale;
+    // A 2px clip is a small scale step. Leaving it in place scrolls the form
+    // on the next focus. Keep going while a field or the hint is still outside.
+    if (Math.abs(next - scale) <= 0.004 && clip.y <= 1 && height >= 0.999) return scale;
     const key = next.toFixed(4);
     if (seen.has(key)) return scale;
     seen.add(key);
