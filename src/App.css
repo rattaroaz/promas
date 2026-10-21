@@ -1157,6 +1157,27 @@ textarea {
   color: var(--dos-yellow);
 }
 
+/* Cash confirm sits on the hint line. 8px padding, no gap under the question. */
+.dos-prompt.dos-prompt-line {
+  width: auto;
+  max-width: none;
+  align-self: stretch;
+  flex-shrink: 0;
+  margin: 0 8px;
+  padding: 8px;
+  box-shadow: none;
+}
+
+.dos-prompt.dos-prompt-line .q {
+  margin: 0;
+}
+
+/* The confirm line is outside the scrolling body. Give the dialog the
+   rest of the content area so the last field is not pushed under it. */
+.dos-dialog:has(.dos-prompt-line) {
+  max-height: 100%;
+}
+
 /* ─── Search prompt line ────────────────────────────────── */
 
 .dos-searchline {

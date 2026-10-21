@@ -374,6 +374,19 @@ export function CashProcess({
     },
   });
 
+  const confirmQuestion = autoMode
+    ? `Apply ${money(autoAmount)} to open invoices? Y/N`
+    : `Apply ${money(editing?.payment)} to this invoice? Y/N`;
+  const confirmPrompt = confirmPay ? (
+    <div
+      className="dos-prompt dos-prompt-line"
+      role="dialog"
+      aria-label={confirmQuestion}
+    >
+      <div className="q">{confirmQuestion}</div>
+    </div>
+  ) : null;
+
   return (
     <Screen
       statusKeys={
@@ -459,6 +472,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
         <Dialog
           title="Enter Your Payment Data(Esc=Cancel) !"
           foot="Esc=Cancel  Enter=Confirm  Ctrl-S=Post Receipt"
+          below={confirmPrompt}
         >
           <div className="dos-form">
             <DotField label="Invoice_No" width={16}>
@@ -540,7 +554,8 @@ Company NO : ${company.companyNo}  ${company.name}`}
       {autoMode && (
         <Dialog
           title="Enter Automatic Receipt Data(Esc=Exit) !"
-          foot="Esc=Cancel  Enter=Apply to open invoices (oldest first)"
+          foot="Esc=Cancel  Enter/Ctrl-S=Apply (asks Y/N)"
+          below={confirmPrompt}
         >
           <div className="dos-form">
             <div style={{ color: "var(--app-accent)", marginBottom: "0.5em" }}>
@@ -576,18 +591,6 @@ Company NO : ${company.companyNo}  ${company.name}`}
             </div>
           </div>
         </Dialog>
-      )}
-
-      {confirmPay && (
-        <div className="dos-overlay">
-          <div
-            className="dos-prompt"
-            role="dialog"
-            aria-label="Are you sure this is correct? Y/N"
-          >
-            <div className="q">Are you sure this is correct? Y/N</div>
-          </div>
-        </div>
       )}
 
       {help && <HelpOverlay onClose={() => setHelp(false)} />}

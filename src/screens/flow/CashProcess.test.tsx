@@ -191,7 +191,7 @@ describe("CashProcess", () => {
     });
     await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
     expect(
-      screen.getByText("Are you sure this is correct? Y/N")
+      screen.getByText("Apply 250.00 to open invoices? Y/N")
     ).toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
     await user.keyboard("y");
@@ -365,19 +365,19 @@ describe("CashProcess", () => {
 
     await user.keyboard("{Enter}");
     expect(
-      screen.getByText("Are you sure this is correct? Y/N")
+      screen.getByText("Apply 250.00 to this invoice? Y/N")
     ).toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
 
     await user.keyboard("x");
     expect(
-      screen.getByText("Are you sure this is correct? Y/N")
+      screen.getByText("Apply 250.00 to this invoice? Y/N")
     ).toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
 
     await user.keyboard("n");
     expect(
-      screen.queryByText("Are you sure this is correct? Y/N")
+      screen.queryByText("Apply 250.00 to this invoice? Y/N")
     ).not.toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
     expect(screen.getAllByText(/Enter Your Payment Data/i).length).toBeGreaterThan(0);
@@ -385,7 +385,7 @@ describe("CashProcess", () => {
     await user.keyboard("{Enter}");
     await user.keyboard("N");
     expect(
-      screen.queryByText("Are you sure this is correct? Y/N")
+      screen.queryByText("Apply 250.00 to this invoice? Y/N")
     ).not.toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
     expect(screen.getAllByText(/Enter Your Payment Data/i).length).toBeGreaterThan(0);
@@ -393,7 +393,7 @@ describe("CashProcess", () => {
     await user.keyboard("{Enter}");
     await user.keyboard("{Escape}");
     expect(
-      screen.queryByText("Are you sure this is correct? Y/N")
+      screen.queryByText("Apply 250.00 to this invoice? Y/N")
     ).not.toBeInTheDocument();
     expect(api.saveCashReceipt).not.toHaveBeenCalled();
     expect(screen.getAllByText(/Enter Your Payment Data/i).length).toBeGreaterThan(0);
@@ -404,7 +404,7 @@ describe("CashProcess", () => {
       expect(api.saveCashReceipt).toHaveBeenCalledTimes(1);
     });
     expect(
-      screen.queryByText("Are you sure this is correct? Y/N")
+      screen.queryByText("Apply 250.00 to this invoice? Y/N")
     ).not.toBeInTheDocument();
   });
 
@@ -424,7 +424,7 @@ describe("CashProcess", () => {
   });
 
   describe("auto receipt asks before Ctrl-S or Enter posts", () => {
-    const question = "Are you sure this is correct? Y/N";
+    const question = "Apply 250.00 to open invoices? Y/N";
 
     async function openAuto() {
       const user = userEvent.setup();
