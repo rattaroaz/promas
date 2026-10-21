@@ -29,6 +29,14 @@ const SORT_TITLE: Record<MaterialSort, string> = {
   desc: "***   Worker Material Report (Descript Order) ***",
 };
 
+/** Header labels fit in the tracks, with one spare ch so the last glyph is not clipped. */
+function materialColumns(sort: MaterialSort): string {
+  if (sort === "worker") return "10ch 30ch 16ch";
+  if (sort === "date") return "8ch 30ch 16ch";
+  if (sort === "desc") return "8ch 11ch 16ch";
+  return "9ch 30ch 13ch";
+}
+
 export function MaterialBrowse({
   onBack,
   sort = "default",
@@ -40,7 +48,7 @@ export function MaterialBrowse({
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Material | null>(null);
-  const [msg, setMsg] = useState(SORT_TITLE[sort]);
+  const [msg, setMsg] = useState("0  Total Material: 0.00  Ins=Add  Del=Void  Esc=Exit");
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
     "default"
   );
@@ -62,7 +70,7 @@ export function MaterialBrowse({
       setEmployees(emps);
       const tot = data.reduce((s, r) => s + r.amount, 0);
       setMsg(
-        `${SORT_TITLE[sort]}  ${data.length}  Total Material: ${money(tot)}  Ins=Add  Del=Void  Esc=Exit`
+        `${data.length}  Total Material: ${money(tot)}  Ins=Add  Del=Void  Esc=Exit`
       );
       setMsgKind("default");
     } catch (e) {
@@ -183,7 +191,7 @@ export function MaterialBrowse({
             />
           </div>
           <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: materialColumns(sort) }}>
               {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
@@ -191,7 +199,7 @@ export function MaterialBrowse({
                 <button
                   key={m.id}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: sort === "worker" || sort === "default" ? "8ch 30ch 12ch" : "12ch 8ch 12ch" }}
+                  style={{ gridTemplateColumns: materialColumns(sort) }}
                   onMouseEnter={() => {
                     if (pointerHoverMuted()) return;
                     setIndex(i);
@@ -240,7 +248,7 @@ export function MaterialBrowse({
 
       {editing && (
         <Dialog
-          title="******    Material Maintenance   ******"
+          title={SORT_TITLE[sort]}
           foot="Esc=Cancel  Ctrl-S=Save & Exit"
         >
           <div className="dos-form">

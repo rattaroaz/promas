@@ -157,6 +157,35 @@ describe("resolveFitScale", () => {
     document.body.removeChild(shell);
     document.body.removeChild(host);
   });
+
+  it("ignores a clipped message bar and still counts a static row", () => {
+    const shell = document.createElement("div");
+    const bar = document.createElement("div");
+    bar.className = "dos-messagebar";
+    const row = document.createElement("div");
+    shell.appendChild(bar);
+    shell.appendChild(row);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    box(shell, 1280, 1280);
+    box(bar, 1280, 1991);
+    box(row, 900, 1400, 1400);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1400);
+    bar.remove();
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1400);
+    document.body.removeChild(shell);
+  });
 });
 
 describe("useBrowseIndex", () => {

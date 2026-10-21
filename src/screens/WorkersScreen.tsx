@@ -146,7 +146,7 @@ export function WorkersScreen() {
       title=" Workers "
       message={
         msg ||
-        "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
+        "Active on new invoices. Delete leaves past invoices unchanged."
       }
       messageKind={msgKind}
     >

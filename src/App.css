@@ -97,9 +97,10 @@ textarea {
   background: var(--dos-black);
   color: var(--dos-white-bright);
   padding: 0 0.5ch 0 0;
-  white-space: nowrap;
-  overflow: hidden;
+  white-space: normal;
+  overflow: visible;
   flex-shrink: 0;
+  flex-wrap: wrap;
   font-size: 0.95em;
   display: flex;
   gap: 0;
@@ -176,9 +177,10 @@ textarea {
   padding: 0 1ch;
   min-height: 1.15em;
   flex-shrink: 0;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .dos-messagebar.error {
@@ -358,13 +360,15 @@ textarea {
   overflow: hidden;
 }
 
-/* Generic browse grid - content-sized columns, 8px gap, left-aligned, baseline */
+/* Generic browse grid - content-sized columns, 8px gap, left-aligned, baseline.
+   max-content keeps a ch track from being crushed inside a 100% row, so the
+   fit scale can see the real table and pull it inside the window. */
 .browse-grid {
   display: grid;
   column-gap: 8px;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
+  width: max-content;
+  max-width: none;
+  min-width: min-content;
   align-items: baseline;
   min-height: 44px;
 }
@@ -555,6 +559,22 @@ textarea {
 .dos-row.browse-grid {
   display: grid;
   white-space: normal;
+  width: max-content;
+  max-width: none;
+}
+
+.content-grid > .dos-row.browse-grid {
+  width: auto;
+  max-width: none;
+}
+
+/* A dialog is already capped to the window. A max-content grid in there
+   would paint past the viewport, and the dialog is not the screen's scale. */
+.dos-overlay .browse-grid,
+.dos-overlay .dos-row.browse-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dos-row:hover {
@@ -1746,7 +1766,7 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  justify-self: end;
+  justify-self: start;
   flex: none;
   border: 3px solid var(--dos-white-bright);
   background-color: #000000;

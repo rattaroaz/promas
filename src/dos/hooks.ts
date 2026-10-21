@@ -552,22 +552,35 @@ export function resolveFitScale(
  * is not content. Overflow inside a clipped or scrolling box still counts:
  * those boxes often report a scroll width equal to the client width while a
  * child paints past the edge.
+ * Status text, key hints, and overlays are not content. A clipped message
+ * used to swing the scale, and a focus or a new hint must not move it.
  */
+function ignoredByFit(el: HTMLElement): boolean {
+  return (
+    el.classList.contains("print-preview-overlay") ||
+    el.classList.contains("dos-messagebar") ||
+    el.classList.contains("dos-statusbar") ||
+    el.classList.contains("dlg-foot") ||
+    el.classList.contains("dos-overlay")
+  );
+}
+
 export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
   const visit = (el: HTMLElement) => {
-    if (el.classList.contains("print-preview-overlay")) return;
+    if (ignoredByFit(el)) return;
     const cw = el.clientWidth;
     const sw = el.scrollWidth;
     const ow = el.offsetWidth;
     const parentCw = el.parentElement?.clientWidth ?? 0;
     const stretched = parentCw > 0 && ow + 1 >= parentCw && sw <= ow + 1;
-    // A clipped bar (the message line, the status keys) ellipsizes on purpose.
-    // Its scroll width is hidden text, and counting it makes the scale oscillate.
+    // Hidden overflow is clipped on purpose. Counting that scroll width made
+    // the scale oscillate. A child that still paints past the edge counts below.
     const clipsX = getComputedStyle(el).overflowX === "hidden";
     if (!stretched && sw > 0 && !clipsX) max = Math.max(max, sw);
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
+      if (ignoredByFit(node)) continue;
       const childClips = getComputedStyle(node).overflowX === "hidden";
       const childWidth = childClips
         ? node.offsetWidth
@@ -617,9 +630,10 @@ function writeFitScale(doc: HTMLElement, scale: number) {
 }
 
 /**
- * Shrinks root type (`--fit-scale`) whenever a screen is wider than the window.
- * Type grows back to 1 when the window (or a narrower screen) has room.
- * The scale settles before paint, so a later click or focus does not resize type.
+ * One scale per screen, from the widest static content (tables, forms, headers).
+ * Status text and key hints are not part of that width. Focus, a new message,
+ * or a dialog that shares the screen does not move the scale. A different
+ * screen, or a real window resize, works the scale out again from 1.
  */
 export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
@@ -628,19 +642,36 @@ export function useFitToWidth(rootRef: RefObject<HTMLElement | null>) {
     const doc = document.documentElement;
     let frame = 0;
     let settling = false;
+    let lockedClient = -1;
+    let lockedBase = "\0";
+    let lockedScale = 1;
+
+    const screenBase = () => {
+      const text = (sel: string) =>
+        root.querySelector(sel)?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      return `${text(".dos-titlebar")}|${text(".menu-header")}`;
+    };
 
     const settle = () => {
       if (settling) return;
       settling = true;
       try {
+        const client = root.clientWidth;
+        const base = screenBase();
+        const fresh = client !== lockedClient || base !== lockedBase;
         const settled = convergeFitScale((scale) => {
           if (Math.abs(scale - readFitScale(doc)) > 0.0001) writeFitScale(doc, scale);
           return {
             clientWidth: root.clientWidth,
             contentWidth: contentWidthOf(root),
           };
-        }, readFitScale(doc));
-        if (Math.abs(settled - readFitScale(doc)) > 0.0001) writeFitScale(doc, settled);
+        }, fresh ? 1 : lockedScale);
+        // Same screen: a click, focus, or status line may only hold or shrink.
+        const next = !fresh && settled > lockedScale ? lockedScale : settled;
+        if (Math.abs(next - readFitScale(doc)) > 0.0001) writeFitScale(doc, next);
+        lockedClient = root.clientWidth;
+        lockedBase = base;
+        lockedScale = readFitScale(doc);
       } finally {
         settling = false;
       }
