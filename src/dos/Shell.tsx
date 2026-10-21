@@ -209,18 +209,22 @@ export function Dialog({
   foot,
   wide,
   red,
+  below,
 }: {
   title: string;
   children: ReactNode;
   foot?: string;
   wide?: boolean;
   red?: boolean;
+  /** Sits under the fields and above the hint line. */
+  below?: ReactNode;
 }) {
   return (
     <div className="dos-overlay">
       <div className={`dos-dialog ${wide ? "wide" : ""} ${red ? "red" : ""}`}>
         <div className="dlg-title"> {title} </div>
         <div className="dlg-body">{children}</div>
+        {below}
         {foot && <div className="dlg-foot">{foot}</div>}
       </div>
     </div>
