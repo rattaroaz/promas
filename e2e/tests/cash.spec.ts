@@ -112,4 +112,67 @@ test.describe("cash receipts process", () => {
     await expect(page.getByText("Balance Due: 370.00")).toBeVisible();
     await expect(page.getByText(/Ending Balance Due/i)).toHaveCount(0);
   });
+
+  test("auto receipt Ctrl-S and Enter ask before posting", async ({ page }) => {
+    const question = "Are you sure this is correct? Y/N";
+    const triggers = ["Enter", "Control+s"] as const;
+    const keys = ["y", "Y", "n", "N", "Escape", "x"] as const;
+
+    for (const trigger of triggers) {
+      for (const key of keys) {
+        await openCashLedger(page);
+        await page.getByRole("button", { name: /\(A\)/i }).click();
+        const amount = page.getByLabel("Auto Amount Paid");
+        await expect(amount).toBeVisible();
+        await amount.focus();
+        if (trigger === "Enter") {
+          await page.keyboard.press("Enter");
+          await page.keyboard.press("Enter");
+        } else {
+          await page.keyboard.press("Control+s");
+        }
+        const prompt = page.getByRole("dialog", { name: question });
+        await expect(prompt, `${trigger} ${key}`).toBeVisible();
+        await expect(page.getByText(/Apply Finished/i)).toHaveCount(0);
+
+        await page.keyboard.press(key);
+        if (key === "x") {
+          await expect(prompt).toBeVisible();
+          await page.keyboard.press("x");
+          await expect(prompt).toBeVisible();
+          await expect(page.locator(".dlg-title")).toContainText(
+            "Enter Automatic Receipt Data"
+          );
+          continue;
+        }
+        if (key === "n" || key === "N" || key === "Escape") {
+          await expect(prompt).toHaveCount(0);
+          await expect(page.locator(".dlg-title")).toContainText(
+            "Enter Automatic Receipt Data"
+          );
+          await expect(amount).toBeFocused();
+          await expect(page.getByText("Balance Due: 370.00")).toBeVisible();
+          continue;
+        }
+        await expect(prompt).toHaveCount(0);
+        await expect(page.getByText(/Unpaid Total/i)).toBeVisible();
+        await expect(page.locator(".dlg-title")).toHaveCount(0);
+        await page.evaluate((held) => {
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", { key: held, repeat: true, bubbles: true })
+          );
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key: "s",
+              ctrlKey: true,
+              repeat: true,
+              bubbles: true,
+            })
+          );
+        }, key);
+        await expect(page.locator(".dlg-title")).toHaveCount(0);
+        await expect(page.getByRole("dialog", { name: question })).toHaveCount(0);
+      }
+    }
+  });
 });

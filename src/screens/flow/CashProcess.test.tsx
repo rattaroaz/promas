@@ -190,6 +190,11 @@ describe("CashProcess", () => {
       ).toBeGreaterThan(0);
     });
     await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
+    expect(
+      screen.getByText("Are you sure this is correct? Y/N")
+    ).toBeInTheDocument();
+    expect(api.saveCashReceipt).not.toHaveBeenCalled();
+    await user.keyboard("y");
     await waitFor(() => {
       expect(api.saveCashReceipt).toHaveBeenCalledTimes(2);
     });
@@ -415,6 +420,97 @@ describe("CashProcess", () => {
       expect(api.saveCashReceipt).toHaveBeenCalledWith(
         expect.objectContaining({ invoice: 1, payment: 250 })
       );
+    });
+  });
+
+  describe("auto receipt asks before Ctrl-S or Enter posts", () => {
+    const question = "Are you sure this is correct? Y/N";
+
+    async function openAuto() {
+      const user = userEvent.setup();
+      renderApp(<CashProcess company={company} onBack={vi.fn()} />);
+      await screen.findByText(/Customer Ledger/i);
+      act(() => {
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "a", bubbles: true })
+        );
+      });
+      await waitFor(() => {
+        expect(
+          screen.getAllByText(/Enter Automatic Receipt Data/i).length
+        ).toBeGreaterThan(0);
+      });
+      const amount = screen.getByLabelText("Auto Amount Paid");
+      amount.focus();
+      return { user, amount: amount as HTMLInputElement };
+    }
+
+    async function ask(user: ReturnType<typeof userEvent.setup>, how: "enter" | "ctrl") {
+      if (how === "enter") {
+        await user.keyboard("{Enter}");
+        await user.keyboard("{Enter}");
+      } else {
+        await user.keyboard("{Control>}s{/Control}");
+      }
+    }
+
+    function repeatKey(key: string) {
+      act(() => {
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", { key, repeat: true, bubbles: true })
+        );
+      });
+    }
+
+    it.each([
+      ["enter", "y"],
+      ["enter", "Y"],
+      ["ctrl", "y"],
+      ["ctrl", "Y"],
+    ] as const)("%s then %s posts once, and a repeat does not post again", async (how, key) => {
+      const { user } = await openAuto();
+      await ask(user, how);
+      expect(screen.getByText(question)).toBeInTheDocument();
+      expect(api.saveCashReceipt).not.toHaveBeenCalled();
+      await user.keyboard(key);
+      await waitFor(() => {
+        expect(api.saveCashReceipt).toHaveBeenCalledTimes(1);
+      });
+      expect(screen.queryByText(question)).not.toBeInTheDocument();
+      repeatKey(key);
+      repeatKey(how === "ctrl" ? "s" : "Enter");
+      expect(api.saveCashReceipt).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["enter", "n"],
+      ["enter", "N"],
+      ["enter", "Escape"],
+      ["enter", "x"],
+      ["ctrl", "n"],
+      ["ctrl", "N"],
+      ["ctrl", "Escape"],
+      ["ctrl", "x"],
+    ] as const)("%s then %s does not post", async (how, key) => {
+      const { user, amount } = await openAuto();
+      await ask(user, how);
+      expect(screen.getByText(question)).toBeInTheDocument();
+      expect(api.saveCashReceipt).not.toHaveBeenCalled();
+      await user.keyboard(key === "Escape" ? "{Escape}" : key);
+      expect(api.saveCashReceipt).not.toHaveBeenCalled();
+      if (key === "x") {
+        expect(screen.getByText(question)).toBeInTheDocument();
+        repeatKey("x");
+        expect(screen.getByText(question)).toBeInTheDocument();
+        expect(api.saveCashReceipt).not.toHaveBeenCalled();
+        return;
+      }
+      expect(screen.queryByText(question)).not.toBeInTheDocument();
+      expect(
+        screen.getAllByText(/Enter Automatic Receipt Data/i).length
+      ).toBeGreaterThan(0);
+      expect(amount).toHaveFocus();
+      expect(screen.queryByText(/Apply Finished/i)).not.toBeInTheDocument();
     });
   });
 });
