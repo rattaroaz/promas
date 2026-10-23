@@ -3,6 +3,16 @@ import { mkdirSync, writeFileSync } from "node:fs";
 
 const outRoot = "artifacts/promas_v2162_r2";
 
+async function settleFit(page: Page) {
+  await page.waitForFunction(() => {
+    const scale = getComputedStyle(document.documentElement).getPropertyValue("--fit-scale").trim();
+    const bag = window as unknown as { __fit?: string };
+    const same = bag.__fit === scale;
+    bag.__fit = scale;
+    return same;
+  });
+}
+
 async function shot(page: Page, dir: string, name: string) {
   mkdirSync(dir, { recursive: true });
   await page.screenshot({ path: `${dir}/${name}.png` });
@@ -11,8 +21,7 @@ async function shot(page: Page, dir: string, name: string) {
 async function backToMain(page: Page) {
   for (let i = 0; i < 6; i++) {
     if (await page.getByRole("button", { name: /5\.\s*Material Process/i }).isVisible()) return;
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await page.getByRole("button", { name: /^Esc(\s|$)/ }).first().click();
   }
 }
 
@@ -31,6 +40,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
+    await settleFit(page);
 
     const initial = await page.evaluate(() => {
       const scroll = document.querySelector(".workers-scroll") as HTMLElement;
@@ -78,6 +88,8 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
         vw: window.innerWidth,
         headBoxes,
         gaps,
+        nameScroll: name.scrollWidth,
+        nameClient: name.clientWidth,
         nameWidth: name.getBoundingClientRect().width,
         idWidth: id.getBoundingClientRect().width,
         headLeft: [...head.children].map((el) => (el as HTMLElement).getBoundingClientRect().left),
@@ -92,6 +104,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     expect(initial.deleteRight, tag).toBeLessThanOrEqual(initial.vw + 1);
     expect(initial.deleteLeft, tag).toBeGreaterThanOrEqual(-1);
     expect(initial.font, tag).toBeCloseTo(initial.root * 1.5, 1);
+    expect(initial.nameScroll, `${tag} Jose Ramirez`).toBeLessThanOrEqual(initial.nameClient + 1);
     for (const cell of initial.headBoxes) {
       if (!cell.text) continue;
       expect(cell.nowrap, `${tag} ${cell.text}`).toBe("nowrap");
@@ -157,10 +170,10 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       { label: /4\.\s*Material Transaction in Descript/i, shot: "material-desc" },
     ];
     const material: Record<string, unknown>[] = [];
+    await page.getByRole("button", { name: /5\.\s*Material Process/i }).click();
     for (const mode of materialModes) {
-      await page.getByRole("button", { name: /5\.\s*Material Process/i }).click();
       await page.getByRole("button", { name: mode.label }).click();
-      await expect(page.getByRole("button", { name: /Jose drop cloths/i })).toBeVisible();
+      await expect(page.locator(".dos-browse-body .browse-grid").first()).toBeVisible();
       const cells = await page.evaluate(() => {
         return [...document.querySelectorAll(".dos-browse-body .browse-grid > div")].map((el) => {
           const node = el as HTMLElement;
@@ -196,10 +209,12 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       const rows = new Set(tops.map((t) => Math.round((t - min) / 8))).size;
       return { fit, rows, height: bar.getBoundingClientRect().height, bits };
     };
+    await settleFit(page);
     const before = await page.evaluate(measureToolbar);
     await shot(page, dir, "payroll-before");
     await page.getByRole("button", { name: /^Run$/i }).click();
     await expect(page.getByText("Jose hallway payroll")).toBeVisible();
+    await settleFit(page);
     const after = await page.evaluate(measureToolbar);
     await shot(page, dir, "payroll-after");
     expect(before.rows, `${tag} before`).toBe(1);

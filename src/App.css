@@ -1818,7 +1818,11 @@ input[type="number"]::-webkit-inner-spin-button {
    Active, ID, and Delete are fixed to their labels so every row has the
    same gaps and the header lines up with the fields. */
 .workers-frame {
-  --workers-cols: 7.4ch minmax(0, 1fr) 9.4ch 7.4ch;
+  --workers-active: 7.6ch;
+  --workers-name: 13.2ch;
+  --workers-id: 9.8ch;
+  --workers-delete: 7.6ch;
+  --workers-cols: var(--workers-active) minmax(var(--workers-name), 1fr) var(--workers-id) var(--workers-delete);
   --workers-gap: 12px;
   --workers-scrollbar: 16px;
   display: flex;
@@ -1827,6 +1831,12 @@ input[type="number"]::-webkit-inner-spin-button {
   align-self: stretch;
   min-height: 0;
   width: 100%;
+  /* The scrollport is this wide minus the scrollbar. The floor includes that
+     bar so the tracks fit the rows instead of slipping 12px under the clip. */
+  min-width: calc(
+    var(--workers-active) + var(--workers-name) + var(--workers-id) + var(--workers-delete) +
+      3 * var(--workers-gap) + var(--workers-scrollbar)
+  );
   max-width: 100%;
   font-size: 1.5em;
 }
