@@ -1,7 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-const outRoot = process.env.PROOF_DIR || "/cursor/stores/self/artifacts/promas_v2162_r3";
+const outRoot = process.env.PROOF_DIR || path.join(os.tmpdir(), "promas_v2162_r3");
 
 async function settleFit(page: Page) {
   await page.waitForFunction(() => {
