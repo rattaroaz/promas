@@ -460,11 +460,16 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
     const name = page.getByRole("textbox", { name: /Worker name/i }).first();
-    await name.fill(long);
     await waitSettled(page);
     const beforeFit = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
+    await name.fill(long);
+    await waitSettled(page);
+    const duringFit = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--fit-scale")
+    );
+    expect(duringFit, `${width} typing a long name changed fit-scale`).toBe(beforeFit);
     const typed = await clipReport(page);
     expect(typed, typed.join("\n")).toEqual([]);
     const del = page.getByRole("button", { name: new RegExp(`Delete ${long}`) });
@@ -484,5 +489,11 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
     expect(closed, `${width} dismissing Delete changed fit-scale`).toBe(beforeFit);
+    await name.fill("Jose Ramirez");
+    await waitSettled(page);
+    const restored = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue("--fit-scale")
+    );
+    expect(restored, `${width} restoring the name changed fit-scale`).toBe(beforeFit);
   }
 });

@@ -1823,7 +1823,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --workers-id: 9.8ch;
   --workers-delete: 7.6ch;
   --workers-cols: var(--workers-active) minmax(var(--workers-name), 1fr) var(--workers-id) var(--workers-delete);
-  --workers-gap: 12px;
+  --workers-gap: 16px;
   --workers-scrollbar: 16px;
   display: flex;
   flex-direction: column;
@@ -1832,13 +1832,16 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   width: 100%;
   /* The scrollport is this wide minus the scrollbar. The floor includes that
-     bar so the tracks fit the rows instead of slipping 12px under the clip. */
+     bar so the tracks fit the rows instead of slipping under the clip. */
   min-width: calc(
     var(--workers-active) + var(--workers-name) + var(--workers-id) + var(--workers-delete) +
       3 * var(--workers-gap) + var(--workers-scrollbar)
   );
   max-width: 100%;
   font-size: 1.5em;
+  /* The screen inherits a pixel line-height sized for the smaller body font.
+     Recompute it here so the 1.5em headers are not clipped. */
+  line-height: 1.15;
 }
 
 .workers-head,
@@ -1915,18 +1918,18 @@ input[type="number"]::-webkit-inner-spin-button {
 .workers-row input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
-  width: 100%;
+  width: 1.15em;
   height: 1.15em;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  justify-self: stretch;
+  justify-self: start;
   flex: none;
   border: 3px solid var(--dos-white-bright);
   background-color: #000000;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 1.15em 1.15em;
+  background-size: 78% 78%;
   cursor: pointer;
 }
 

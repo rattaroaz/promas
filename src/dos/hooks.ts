@@ -572,6 +572,14 @@ function ignoredByFit(el: HTMLElement): boolean {
   return false;
 }
 
+/** Text scrolling inside a box is not a wider layout. Chromium reports
+ *  `overflow-x: clip` on `<input>`, not `hidden`, so a typed name used to
+ *  count as content and shrink `--fit-scale`. */
+function horizontallyClipped(el: HTMLElement): boolean {
+  const overflowX = getComputedStyle(el).overflowX;
+  return overflowX === "hidden" || overflowX === "clip" || el instanceof HTMLInputElement;
+}
+
 export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
   const visit = (el: HTMLElement) => {
@@ -581,15 +589,15 @@ export function contentWidthOf(root: HTMLElement): number {
     const ow = el.offsetWidth;
     const parentCw = el.parentElement?.clientWidth ?? 0;
     const stretched = parentCw > 0 && ow + 1 >= parentCw && sw <= ow + 1;
-    // Hidden overflow is clipped on purpose. Counting that scroll width made
-    // the scale oscillate. A child that still paints past the edge counts below.
-    const clipsX = getComputedStyle(el).overflowX === "hidden";
+    // Hidden or clipped overflow is clipped on purpose. Counting that scroll
+    // width made the scale oscillate. A child that still paints past the edge
+    // counts below.
+    const clipsX = horizontallyClipped(el);
     if (!stretched && sw > 0 && !clipsX) max = Math.max(max, sw);
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
       if (ignoredByFit(node)) continue;
-      const childClips = getComputedStyle(node).overflowX === "hidden";
-      const childWidth = childClips
+      const childWidth = horizontallyClipped(node)
         ? node.offsetWidth
         : Math.max(node.scrollWidth, node.offsetWidth);
       const right = node.offsetLeft + childWidth;
