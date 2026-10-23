@@ -151,12 +151,13 @@ export function WorkersScreen() {
       messageKind={msgKind}
     >
       <div className="dos-main-wrap">
+        <div className="workers-scroll">
         <div className="workers-list">
           <div className="workers-head">
-            <div>Active</div>
-            <div>Name</div>
-            <div>Worker Number</div>
-            <div>Delete</div>
+            <div>Active?</div>
+            <div>Work Person</div>
+            <div>ID number</div>
+            <div></div>
           </div>
           {rows.map((row, index) => {
             const n = index + 1;
@@ -219,6 +220,7 @@ export function WorkersScreen() {
               Add Work Person
             </button>
           </div>
+        </div>
         </div>
       </div>
       {pendingDelete && (

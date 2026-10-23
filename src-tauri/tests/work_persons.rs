@@ -111,6 +111,73 @@ fn existing_dropdown_names_migrate_active_with_blank_worker_numbers() {
 }
 
 #[test]
+fn numeric_employee_ids_fill_blank_worker_numbers() {
+    let (dir, conn) = temp_conn("ids");
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES ('400', 'Jose Ramirez')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES ('E1', 'Ana Cruz')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES ('12', 'Pat Lee')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES ('7', 'Pat Lee')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, active) VALUES ('Jose Ramirez', '', 1)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, active) VALUES ('Ana Cruz', '', 1)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, active) VALUES ('Pat Lee', '', 1)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, active) VALUES ('Kept', '99', 1)",
+        [],
+    )
+    .unwrap();
+    let path = dir.join("promas.db");
+    drop(conn);
+
+    let conn = open_and_migrate(&path).expect("backfill");
+    let mut stmt = conn
+        .prepare("SELECT name, worker_no FROM work_persons ORDER BY name COLLATE NOCASE")
+        .unwrap();
+    let rows: Vec<(String, String)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .unwrap()
+        .filter_map(|r| r.ok())
+        .collect();
+    assert_eq!(
+        rows,
+        vec![
+            ("Ana Cruz".to_string(), "".to_string()),
+            ("Jose Ramirez".to_string(), "400".to_string()),
+            ("Kept".to_string(), "99".to_string()),
+            ("Pat Lee".to_string(), "7".to_string()),
+        ]
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn delete_and_rename_leave_invoice_lines_untouched() {
     let (dir, conn) = temp_conn("keep-invoice");
     write_work_person(&conn, &person("Jose Ramirez", "", true, "")).unwrap();

@@ -95,7 +95,7 @@ async function clipReport(page: Page): Promise<string[]> {
       ".browse-grid-header, .dos-row, .workers-head > div, .workers-row > *, .dos-browse-header, .aging-grid"
     );
     for (const el of rows) {
-      if (el.closest(".print-preview-overlay")) continue;
+      if (el.closest(".print-preview-overlay, .workers-scroll")) continue;
       const box = el.getBoundingClientRect();
       if (box.width < 2 || box.height < 2) continue;
       if (box.right > vw + 1 || box.left < -1) {
@@ -106,7 +106,7 @@ async function clipReport(page: Page): Promise<string[]> {
     }
 
     for (const cell of document.querySelectorAll(".browse-grid-header > div, .workers-head > div")) {
-      if (cell.closest(".print-preview-overlay")) continue;
+      if (cell.closest(".print-preview-overlay, .workers-scroll")) continue;
       if (cell.scrollWidth > cell.clientWidth + 1) {
         issues.push(
           `header text clipped "${textOf(cell)}" scroll ${Math.round(cell.scrollWidth)} client ${Math.round(cell.clientWidth)}`

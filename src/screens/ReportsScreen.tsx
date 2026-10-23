@@ -12,6 +12,7 @@ import {
   Company,
   Invoice,
   CashReceipt,
+  WorkPerson,
   emptyCompany,
   emptyProperty,
 } from "../api";
@@ -96,6 +97,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [workPerson, setWorkPerson] = useState("");
   const [paintSupplyOptions, setPaintSupplyOptions] = useState<string[]>([]);
   const [workPersonOptions, setWorkPersonOptions] = useState<string[]>([]);
+  const [workPersonRows, setWorkPersonRows] = useState<WorkPerson[]>([]);
   const [labelMode, setLabelMode] = useState<"C" | "P">("C");
   const [text, setText] = useState("");
   const [agingRows, setAgingRows] = useState<AgingRow[] | null>(null);
@@ -125,10 +127,11 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         }
       }
       try {
-        setWorkPersonOptions(
-          ((await api.listWorkPersons()) ?? []).map((person) => person.name)
-        );
+        const people = (await api.listWorkPersons()) ?? [];
+        setWorkPersonRows(people);
+        setWorkPersonOptions(people.map((person) => person.name));
       } catch {
+        setWorkPersonRows([]);
         setWorkPersonOptions([]);
       }
     })();
@@ -616,7 +619,39 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             <span style={{ maxWidth: "60ch" }}>{paintSupply || "All"}</span>
           </span>
         )}
-        {(report === "paint" || report === "payroll") && (
+        {report === "payroll" && (
+          <span className="dos-searchline-pair">
+            <label>Work Person :</label>
+            <select
+              className="dos-select"
+              aria-label="Work person search"
+              value={
+                workPersonRows.some(
+                  (person) => person.active !== false && person.name === workPerson
+                )
+                  ? workPerson
+                  : ""
+              }
+              onChange={(e) => setWorkPerson(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            >
+              <option value="">All</option>
+              {workPersonRows
+                .filter((person) => person.active !== false)
+                .map((person) => (
+                  <option key={person.name} value={person.name}>
+                    {person.name}
+                  </option>
+                ))}
+            </select>
+          </span>
+        )}
+        {report === "paint" && (
           <span className="dos-searchline-pair">
             <label>Work Person :</label>
             <input

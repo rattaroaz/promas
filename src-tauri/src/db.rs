@@ -634,6 +634,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "INTEGER NOT NULL DEFAULT 1",
     )?;
     seed_work_persons(conn)?;
+    backfill_numeric_worker_numbers(conn)?;
     add_column_if_missing(conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")?;
     add_column_if_missing(
         conn,
@@ -666,8 +667,9 @@ fn add_column_if_missing(
 }
 
 /// First launch only: copy employee names into the Work Person list.
-/// Inserted rows use the table defaults: Active, blank worker number.
-/// That is the same set of names the invoice dropdown already offered.
+/// Inserted rows are Active. A blank ID number is filled afterwards from a
+/// numeric employees.emp_no. That is the same set of names the invoice
+/// dropdown already offered.
 fn seed_work_persons(conn: &Connection) -> Result<()> {
     let count: i64 =
         conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
@@ -678,6 +680,32 @@ fn seed_work_persons(conn: &Connection) -> Result<()> {
         r#"INSERT OR IGNORE INTO work_persons (name)
            SELECT DISTINCT TRIM(name) FROM employees
            WHERE TRIM(COALESCE(name,'')) != ''"#,
+    )?;
+    Ok(())
+}
+
+/// Copy employees.emp_no into work_persons.worker_no when the ID is blank
+/// and the employee number is all digits. The lowest number wins when one
+/// name has several. A non-numeric emp_no (for example "E1") stays blank,
+/// and a worker number the user already set is left alone.
+fn backfill_numeric_worker_numbers(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        r#"UPDATE work_persons
+           SET worker_no = (
+             SELECT TRIM(emp_no) FROM employees
+             WHERE LOWER(TRIM(name)) = LOWER(TRIM(work_persons.name))
+               AND TRIM(emp_no) GLOB '[0-9]*'
+               AND TRIM(emp_no) NOT GLOB '*[^0-9]*'
+             ORDER BY CAST(TRIM(emp_no) AS INTEGER), TRIM(emp_no)
+             LIMIT 1
+           )
+           WHERE TRIM(COALESCE(worker_no, '')) = ''
+             AND EXISTS (
+               SELECT 1 FROM employees
+               WHERE LOWER(TRIM(name)) = LOWER(TRIM(work_persons.name))
+                 AND TRIM(emp_no) GLOB '[0-9]*'
+                 AND TRIM(emp_no) NOT GLOB '*[^0-9]*'
+             )"#,
     )?;
     Ok(())
 }

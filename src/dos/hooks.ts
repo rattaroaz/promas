@@ -576,6 +576,9 @@ export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
   const visit = (el: HTMLElement) => {
     if (ignoredByFit(el)) return;
+    // The workers list scrolls in both directions. Its 1.5× type is allowed
+    // to be wider than the window without shrinking every other screen font.
+    if (el.classList.contains("workers-scroll")) return;
     const cw = el.clientWidth;
     const sw = el.scrollWidth;
     const ow = el.offsetWidth;
@@ -588,6 +591,11 @@ export function contentWidthOf(root: HTMLElement): number {
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
       if (ignoredByFit(node)) continue;
+      if (node.classList.contains("workers-scroll")) {
+        const edge = node.offsetLeft + node.offsetWidth;
+        if (edge > cw + 1) max = Math.max(max, edge);
+        continue;
+      }
       const childClips = getComputedStyle(node).overflowX === "hidden";
       const childWidth = childClips
         ? node.offsetWidth
@@ -632,7 +640,7 @@ const FIT_PAINTED =
 function skipPainted(el: HTMLElement): boolean {
   return Boolean(
     el.closest(
-      ".print-preview-overlay, .dos-help, .dos-prompt, .dos-messagebar, .dos-statusbar, .dlg-foot, .dos-browse-body, .dos-report, .aging-scroll"
+      ".print-preview-overlay, .dos-help, .dos-prompt, .dos-messagebar, .dos-statusbar, .dlg-foot, .dos-browse-body, .dos-report, .aging-scroll, .workers-scroll"
     )
   );
 }

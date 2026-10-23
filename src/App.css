@@ -28,6 +28,8 @@
   --font-dos: "Consolas", "Lucida Console", "Courier New", monospace;
   --cell: 1ch;
   --row: 1.15em;
+  /* Every date is MM-DD-YYYY plus the calendar glyph. One border-box width. */
+  --dos-date-width: calc(12ch + 2.8em);
 }
 
 * {
@@ -855,9 +857,9 @@ textarea {
 /* Invoice line columns: labels stay over their fields */
 .invoice-line-grid {
   display: grid;
-  /* Description takes the row. WorkDate stays at main's 14ch; the digit
+  /* Description takes the row. WorkDate uses the shared date width; the digit
      padding below keeps mm/dd/yyyy clear of the calendar glyph. */
-  grid-template-columns: minmax(0, 1fr) 14ch 12ch 4ch;
+  grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 4ch;
   /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
   column-gap: 2ch;
   align-items: center;
@@ -889,10 +891,12 @@ textarea {
   appearance: textfield;
 }
 
-/* WorkDate digits stay right-aligned, with the native calendar glyph at the cell edge. */
+/* WorkDate uses the same border box as every other date, with the glyph at the edge. */
 .invoice-line-grid > .invoice-line-end input[type="date"] {
-  width: 100%;
-  flex: 1 1 auto;
+  width: var(--dos-date-width);
+  min-width: var(--dos-date-width);
+  max-width: var(--dos-date-width);
+  flex: 0 0 auto;
 }
 
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
@@ -1127,6 +1131,23 @@ textarea {
 .dos-form-row .dos-field {
   flex: 1 1 16ch;
   min-width: 0;
+}
+
+/* Terms and Order Date share a column, so their inputs start on the same left edge. */
+.invoice-terms-order {
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content;
+  column-gap: 2ch;
+  row-gap: 0.15em;
+  align-items: baseline;
+  justify-items: start;
+  width: max-content;
+  max-width: 100%;
+}
+
+.invoice-terms-order > .dos-form-row,
+.invoice-terms-order .dos-field {
+  display: contents;
 }
 
 /* ─── Prompt / yes-no ───────────────────────────────────── */
@@ -1621,6 +1642,11 @@ input[type="date"].dos-input {
   background-position: right 0.12em center;
   background-size: 1em 1em;
   padding-right: 1.25em;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: var(--dos-date-width);
+  min-width: var(--dos-date-width);
+  max-width: var(--dos-date-width);
 }
 
 /* Search lines (Wages, Reports) keep the blue field from af88a3a / main.
@@ -1697,21 +1723,23 @@ input[type="date"].dos-input:focus {
   background-size: 1em 1em;
 }
 
-/* Form dialogs only. A fixed w12 date was clipping mm/dd/yyyy once the
-   icon padding was added. Search lines keep main's shrinking 14ch cap so
-   the toolbar wraps and scales the way it does there. */
-input[type="date"].dos-input.w12 {
-  flex: 0 0 auto;
-  width: calc(12ch + 2.8em);
-  min-width: calc(12ch + 2.8em);
-  max-width: none;
-}
-
+/* Same border box on form dialogs and search lines. The glyph padding stays
+   inside the box, so mm/dd/yyyy is not clipped and focus does not resize it. */
+input[type="date"].dos-input.w12,
 .dos-searchline input[type="date"].dos-input.w12 {
   flex: 0 0 auto;
-  width: calc(11.2ch + 1.12em + 4px);
-  min-width: calc(11.2ch + 1.12em + 4px);
-  max-width: none;
+  width: var(--dos-date-width);
+  min-width: var(--dos-date-width);
+  max-width: var(--dos-date-width);
+}
+
+.dos-searchline select[aria-label="From Worker Name"],
+.dos-searchline select[aria-label="Work person search"] {
+  flex: 0 0 auto;
+  width: 20ch;
+  min-width: 20ch;
+  max-width: 20ch;
+  font-size: inherit;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -1765,16 +1793,32 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: pointer;
 }
 
+.dos-main-wrap:has(.workers-scroll) {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.workers-scroll {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: scroll;
+}
+
 .workers-list {
   display: grid;
   grid-template-columns: max-content max-content max-content max-content;
-  column-gap: 16px;
-  row-gap: 16px;
+  column-gap: 8px;
+  row-gap: 12px;
   width: max-content;
   max-width: 100%;
-  padding: 8px 0;
+  padding: 8px 12px 8px 0;
   align-items: center;
   justify-items: start;
+  font-size: 1.5em;
 }
 
 .workers-head,
@@ -1795,15 +1839,25 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-self: stretch;
 }
 
+.workers-head > div:nth-child(3) {
+  width: 6.2ch;
+  white-space: normal;
+  line-height: 1.05;
+}
+
 .workers-row .dos-input {
   flex: none;
-  box-sizing: border-box;
-  width: 100%;
+  /* content-box keeps the size= width for the letters. border-box was
+     spending the field's padding inside that width and hiding the first glyph. */
+  box-sizing: content-box;
+  width: auto;
   min-width: 0;
+  max-width: none;
 }
 
 .workers-row .dos-btn {
   width: auto;
+  padding: 0 0.5ch;
 }
 
 /* The global appearance:none rule leaves a checkbox with no box. Draw one

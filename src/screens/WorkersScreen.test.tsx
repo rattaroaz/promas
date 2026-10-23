@@ -18,7 +18,7 @@ vi.mock("../api", async () => {
 
 const jose: WorkPerson = {
   name: "Jose Ramirez",
-  workerNo: "",
+  workerNo: "400",
   active: true,
 };
 
@@ -32,15 +32,18 @@ describe("WorkersScreen", () => {
     vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
   });
 
-  it("shows seeded workers as active with a blank worker number", async () => {
+  it("shows seeded workers as active with the numeric ID number", async () => {
     renderApp(<WorkersScreen />);
     expect(await screen.findByLabelText("Worker name 1")).toHaveValue(
       "Jose Ramirez"
     );
-    expect(screen.getByLabelText("Worker number 1")).toHaveValue("");
+    expect(screen.getByLabelText("Worker number 1")).toHaveValue("400");
     expect(screen.getByRole("checkbox", { name: "Active Jose Ramirez" })).toBeChecked();
     expect(document.querySelector(".workers-head")?.textContent).toBe(
-      "ActiveNameWorker NumberDelete"
+      "Active?Work PersonID number"
+    );
+    expect(document.querySelector(".workers-head")?.textContent).not.toContain(
+      "Delete"
     );
     expect(
       screen.getByRole("button", { name: "Add Work Person" })

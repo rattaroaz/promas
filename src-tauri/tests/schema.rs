@@ -92,7 +92,7 @@ fn work_persons_seed_from_employee_names_when_catalog_empty() {
         )
         .unwrap();
     assert_eq!(name, "Jose Ramirez");
-    assert_eq!(worker_no, "");
+    assert_eq!(worker_no, "400");
     assert_eq!(active, 1);
 
     conn.execute(
