@@ -1,7 +1,7 @@
 /**
  * Material Process browse — supports original sort orders:
  *  1 Add/Modify (default date order)
- *  2 Worker No order
+ *  2 Worker Name order
  *  3 Date order
  *  4 Descript order
  */
@@ -29,12 +29,12 @@ const SORT_TITLE: Record<MaterialSort, string> = {
   desc: "***   Worker Material Report (Descript Order) ***",
 };
 
-/** Header labels fit in the tracks, with one spare ch so the last glyph is not clipped. */
+/** Tracks keep MM/DD/YYYY and worker names fully inside the cell. */
 function materialColumns(sort: MaterialSort): string {
-  if (sort === "worker") return "10ch 30ch 16ch";
-  if (sort === "date") return "8ch 30ch 16ch";
-  if (sort === "desc") return "8ch 11ch 16ch";
-  return "9ch 30ch 13ch";
+  if (sort === "worker") return "13ch 30ch 17ch";
+  if (sort === "date") return "18ch 30ch 17ch";
+  if (sort === "desc") return "18ch 13ch 17ch";
+  return "13ch 30ch 14ch";
 }
 
 export function MaterialBrowse({

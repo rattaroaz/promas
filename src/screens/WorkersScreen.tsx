@@ -10,10 +10,6 @@ type Row = {
   active: boolean;
 };
 
-function fieldSize(value: string, minChars: number): number {
-  return Math.max(value.length, minChars);
-}
-
 function rowFromPerson(person: WorkPerson, key: string): Row {
   return {
     key,
@@ -151,14 +147,15 @@ export function WorkersScreen() {
       messageKind={msgKind}
     >
       <div className="dos-main-wrap">
-        <div className="workers-scroll">
-        <div className="workers-list">
+        <div className="workers-frame">
           <div className="workers-head">
             <div>Active?</div>
             <div>Work Person</div>
             <div>ID number</div>
             <div></div>
           </div>
+          <div className="workers-scroll">
+        <div className="workers-list">
           {rows.map((row, index) => {
             const n = index + 1;
             const who = row.name.trim() || "new worker";
@@ -176,7 +173,6 @@ export function WorkersScreen() {
                 <input
                   className="dos-input"
                   aria-label={`Worker name ${n}`}
-                  size={fieldSize(row.name, 12)}
                   value={row.name}
                   onChange={(e) => patchRow(row.key, { name: e.target.value })}
                   onBlur={() => queueSave(row.key)}
@@ -184,7 +180,6 @@ export function WorkersScreen() {
                 <input
                   className="dos-input"
                   aria-label={`Worker number ${n}`}
-                  size={fieldSize(row.workerNo, 4)}
                   value={row.workerNo}
                   onChange={(e) =>
                     patchRow(row.key, { workerNo: e.target.value })
@@ -221,6 +216,7 @@ export function WorkersScreen() {
             </button>
           </div>
         </div>
+          </div>
         </div>
       </div>
       {pendingDelete && (

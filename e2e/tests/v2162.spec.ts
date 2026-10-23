@@ -275,7 +275,7 @@ test.describe("promas 2.16.2", () => {
 
     await backToMain(page);
     await page.getByRole("button", { name: /5\.\s*Material Process/i }).click();
-    await page.getByRole("button", { name: /2\.\s*Material Transaction in Worker No/i }).click();
+    await page.getByRole("button", { name: /2\.\s*Material Transaction in Worker Name/i }).click();
     await expect(page.getByText("From Worker Name :")).toBeVisible();
     const material = page.getByLabel("From Worker Name");
     await expect(material).toHaveJSProperty("tagName", "SELECT");

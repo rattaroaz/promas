@@ -522,11 +522,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       right={agingDetail?.company.companyName.slice(0, 24)}
     >
       {!agingDetail && (
-      <div className={
+      <div className={[
+        "dos-searchline",
         report === "aging" || report === "customer" || report === "labels"
-          ? "dos-searchline"
-          : "dos-searchline dos-searchline-dates"
-      }>
+          ? ""
+          : "dos-searchline-dates",
+        report === "payroll" ? "payroll-toolbar" : "",
+      ].filter(Boolean).join(" ")}>
         {report === "aging" && (
           <>
             <label>Search:</label>
@@ -1119,7 +1121,7 @@ function PayrollReport({
     mat += r.materialCost;
   }
   return (
-    <div className="payroll-wrap">
+    <div className="payroll-wrap payroll-fit">
       <div className="hdr">*****   Payroll Report   *****</div>
       <div className="dos-browse">
         <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>

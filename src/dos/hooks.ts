@@ -576,9 +576,6 @@ export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
   const visit = (el: HTMLElement) => {
     if (ignoredByFit(el)) return;
-    // The workers list scrolls in both directions. Its 1.5× type is allowed
-    // to be wider than the window without shrinking every other screen font.
-    if (el.classList.contains("workers-scroll")) return;
     const cw = el.clientWidth;
     const sw = el.scrollWidth;
     const ow = el.offsetWidth;
@@ -591,11 +588,6 @@ export function contentWidthOf(root: HTMLElement): number {
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
       if (ignoredByFit(node)) continue;
-      if (node.classList.contains("workers-scroll")) {
-        const edge = node.offsetLeft + node.offsetWidth;
-        if (edge > cw + 1) max = Math.max(max, edge);
-        continue;
-      }
       const childClips = getComputedStyle(node).overflowX === "hidden";
       const childWidth = childClips
         ? node.offsetWidth
@@ -640,7 +632,7 @@ const FIT_PAINTED =
 function skipPainted(el: HTMLElement): boolean {
   return Boolean(
     el.closest(
-      ".print-preview-overlay, .dos-help, .dos-prompt, .dos-messagebar, .dos-statusbar, .dlg-foot, .dos-browse-body, .dos-report, .aging-scroll, .workers-scroll"
+      ".print-preview-overlay, .dos-help, .dos-prompt, .dos-messagebar, .dos-statusbar, .dlg-foot, .dos-browse-body, .dos-report, .aging-scroll"
     )
   );
 }
@@ -660,6 +652,31 @@ export function paintedRight(root: HTMLElement): number {
 function tighten(factor: number, needed: number, avail: number): number {
   if (!(avail > 0) || !(needed > avail + 1)) return factor;
   return Math.min(factor, (avail - 8) / needed);
+}
+
+/**
+ * Bottom of the part of `el` that an overflow ancestor has not clipped.
+ * A workers row scrolled out of the list is not painted, so its layout
+ * bottom must not shrink the window. Null means the element is fully clipped.
+ * Horizontal overflow is still measured by paintedRight and contentWidthOf.
+ */
+function visibleBottom(el: HTMLElement): number | null {
+  const box = el.getBoundingClientRect();
+  if (box.width < 2 || box.height < 2) return null;
+  let top = box.top;
+  let bottom = box.bottom;
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const oy = getComputedStyle(node).overflowY;
+    if (oy === "hidden" || oy === "auto" || oy === "scroll") {
+      const host = node.getBoundingClientRect();
+      if (bottom <= host.top + 1 || top >= host.bottom - 1) return null;
+      top = Math.max(top, host.top);
+      bottom = Math.min(bottom, host.bottom);
+    }
+    node = node.parentElement;
+  }
+  return bottom;
 }
 
 /**
@@ -709,9 +726,9 @@ export function verticalFitFactor(root: HTMLElement): number {
 
   root.querySelectorAll(FIT_PAINTED).forEach((node) => {
     if (!(node instanceof HTMLElement) || skipPainted(node)) return;
-    const box = node.getBoundingClientRect();
-    if (box.width < 2 || box.height < 2) return;
-    factor = tighten(factor, box.bottom, vh);
+    const bottom = visibleBottom(node);
+    if (bottom == null) return;
+    factor = tighten(factor, bottom, vh);
   });
 
   // The diagnostics bundle keeps a NOTE near the top. The log below it scrolls.

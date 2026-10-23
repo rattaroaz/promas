@@ -161,7 +161,7 @@ describe("browse screen smoke", () => {
     expect(screen.getByRole("button", { name: /Drop cloths/i })).toBeInTheDocument();
   });
 
-  it("filters Material Transaction in Worker No by active worker name", async () => {
+  it("filters Material Transaction in Worker Name by active worker name", async () => {
     const user = userEvent.setup();
     vi.mocked(api.listWorkPersons).mockResolvedValue([
       { name: "Jose Ramirez", workerNo: "400", active: true },

@@ -153,6 +153,11 @@ fn numeric_employee_ids_fill_blank_worker_numbers() {
         [],
     )
     .unwrap();
+    conn.execute(
+        "DELETE FROM app_meta WHERE key = 'worker_no_backfill_v1'",
+        [],
+    )
+    .unwrap();
     let path = dir.join("promas.db");
     drop(conn);
 
@@ -215,5 +220,31 @@ fn delete_and_rename_leave_invoice_lines_untouched() {
         .query_row("SELECT active FROM work_persons", [], |r| r.get(0))
         .unwrap();
     assert_eq!(active, 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn cleared_worker_number_stays_cleared_across_restart() {
+    let (dir, conn) = temp_conn("keep-cleared");
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES ('400', 'Jose Ramirez')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, active) VALUES ('Jose Ramirez', '400', 1)",
+        [],
+    )
+    .unwrap();
+    conn.execute("UPDATE work_persons SET worker_no = ''", [])
+        .unwrap();
+    let path = dir.join("promas.db");
+    drop(conn);
+
+    let conn = open_and_migrate(&path).expect("reopen");
+    let worker_no: String = conn
+        .query_row("SELECT worker_no FROM work_persons", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(worker_no, "");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result};
+use rusqlite::{params, Connection, Result};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
@@ -633,8 +633,14 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "active",
         "INTEGER NOT NULL DEFAULT 1",
     )?;
-    seed_work_persons(conn)?;
-    backfill_numeric_worker_numbers(conn)?;
+    ensure_app_meta(conn)?;
+    let seeded = seed_work_persons(conn)?;
+    // Fill numbers on the first migration, and when this open just copied
+    // an empty catalog from employees. A number cleared after that stays blank.
+    if seeded || !worker_no_backfill_done(conn)? {
+        backfill_numeric_worker_numbers(conn)?;
+        mark_worker_no_backfill_done(conn)?;
+    }
     add_column_if_missing(conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")?;
     add_column_if_missing(
         conn,
@@ -670,25 +676,27 @@ fn add_column_if_missing(
 /// Inserted rows are Active. A blank ID number is filled afterwards from a
 /// numeric employees.emp_no. That is the same set of names the invoice
 /// dropdown already offered.
-fn seed_work_persons(conn: &Connection) -> Result<()> {
+pub(crate) fn seed_work_persons(conn: &Connection) -> Result<bool> {
     let count: i64 =
         conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
     if count > 0 {
-        return Ok(());
+        return Ok(false);
     }
     conn.execute_batch(
         r#"INSERT OR IGNORE INTO work_persons (name)
            SELECT DISTINCT TRIM(name) FROM employees
            WHERE TRIM(COALESCE(name,'')) != ''"#,
     )?;
-    Ok(())
+    let after: i64 =
+        conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
+    Ok(after > 0)
 }
 
 /// Copy employees.emp_no into work_persons.worker_no when the ID is blank
 /// and the employee number is all digits. The lowest number wins when one
 /// name has several. A non-numeric emp_no (for example "E1") stays blank,
 /// and a worker number the user already set is left alone.
-fn backfill_numeric_worker_numbers(conn: &Connection) -> Result<()> {
+pub(crate) fn backfill_numeric_worker_numbers(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"UPDATE work_persons
            SET worker_no = (
@@ -706,6 +714,37 @@ fn backfill_numeric_worker_numbers(conn: &Connection) -> Result<()> {
                  AND TRIM(emp_no) GLOB '[0-9]*'
                  AND TRIM(emp_no) NOT GLOB '*[^0-9]*'
              )"#,
+    )?;
+    Ok(())
+}
+
+const WORKER_NO_BACKFILL_KEY: &str = "worker_no_backfill_v1";
+
+fn ensure_app_meta(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS app_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+         );",
+    )?;
+    Ok(())
+}
+
+fn worker_no_backfill_done(conn: &Connection) -> Result<bool> {
+    ensure_app_meta(conn)?;
+    let n: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM app_meta WHERE key = ?1",
+        params![WORKER_NO_BACKFILL_KEY],
+        |r| r.get(0),
+    )?;
+    Ok(n > 0)
+}
+
+pub(crate) fn mark_worker_no_backfill_done(conn: &Connection) -> Result<()> {
+    ensure_app_meta(conn)?;
+    conn.execute(
+        "INSERT OR IGNORE INTO app_meta (key, value) VALUES (?1, '1')",
+        params![WORKER_NO_BACKFILL_KEY],
     )?;
     Ok(())
 }

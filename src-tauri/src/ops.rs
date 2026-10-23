@@ -382,6 +382,64 @@ pub fn report_sales_analysis(
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
+pub fn list_materials(conn: &Connection, params: &ListParams) -> Result<Vec<Material>, String> {
+    let search = params.search.clone().unwrap_or_default();
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let like = format!("%{}%", search);
+    let sort = params.sort.clone().unwrap_or_default().to_lowercase();
+    let order_by = match sort.as_str() {
+        "worker" => "m.emp_no, m.mat_date, m.description",
+        "date" => "m.mat_date, m.emp_no, m.description",
+        "desc" | "descript" => "m.description, m.emp_no, m.mat_date",
+        _ => "m.mat_date DESC, m.id DESC",
+    };
+    let sql = format!(
+        r#"SELECT m.id,m.emp_no,m.description,m.mat_date,m.amount,m.status,m.voided,e.name
+           FROM materials m
+           LEFT JOIN employees e ON e.emp_no=m.emp_no
+           WHERE m.voided=0
+             AND (?1='' OR m.mat_date>=?1)
+             AND (?2='' OR m.mat_date<=?2)
+             AND (?3='' OR m.emp_no LIKE ?4 OR m.description LIKE ?4 OR e.name LIKE ?4
+               OR EXISTS (
+                 SELECT 1 FROM work_persons wp
+                 WHERE TRIM(COALESCE(wp.worker_no, '')) != ''
+                   AND m.emp_no = wp.worker_no
+                   AND (
+                     wp.name LIKE ?4 COLLATE NOCASE
+                     OR wp.worker_no LIKE ?4 COLLATE NOCASE
+                   )
+               )
+               OR EXISTS (
+                 SELECT 1 FROM employees em
+                 WHERE TRIM(COALESCE(em.emp_no, '')) != ''
+                   AND m.emp_no = em.emp_no
+                   AND (
+                     em.name LIKE ?4 COLLATE NOCASE
+                     OR em.emp_no LIKE ?4 COLLATE NOCASE
+                   )
+               ))
+           ORDER BY {order_by}"#
+    );
+    let mut stmt = conn.prepare(&sql).map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![from_date, to_date, search, like], |r| {
+            Ok(Material {
+                id: r.get(0)?,
+                emp_no: r.get(1)?,
+                description: r.get(2)?,
+                mat_date: r.get(3)?,
+                amount: r.get(4)?,
+                status: r.get(5)?,
+                voided: r.get::<_, i64>(6)? != 0,
+                emp_name: r.get(7)?,
+            })
+        })
+        .map_err(map_err)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
 pub fn report_payroll(
     conn: &Connection,
     params: &ListParams,
@@ -423,7 +481,27 @@ pub fn report_payroll(
                    SELECT 1 FROM invoice_lines l
                    WHERE l.company_no=i.company_no AND l.pro_no=i.pro_no
                      AND l.sales_date=i.sales_date AND l.invoice=i.invoice
-                     AND l.emp_no LIKE ?4 COLLATE NOCASE
+                     AND (
+                       l.emp_no LIKE ?4 COLLATE NOCASE
+                       OR EXISTS (
+                         SELECT 1 FROM work_persons wp
+                         WHERE TRIM(COALESCE(wp.worker_no, '')) != ''
+                           AND l.emp_no = wp.worker_no
+                           AND (
+                             wp.name LIKE ?4 COLLATE NOCASE
+                             OR wp.worker_no LIKE ?4 COLLATE NOCASE
+                           )
+                       )
+                       OR EXISTS (
+                         SELECT 1 FROM employees em
+                         WHERE TRIM(COALESCE(em.emp_no, '')) != ''
+                           AND l.emp_no = em.emp_no
+                           AND (
+                             em.name LIKE ?4 COLLATE NOCASE
+                             OR em.emp_no LIKE ?4 COLLATE NOCASE
+                           )
+                       )
+                     )
                  ))
                ORDER BY i.sales_date, i.invoice"#,
         )
@@ -492,7 +570,27 @@ pub fn report_paint_usage(
                    SELECT 1 FROM invoice_lines w
                    WHERE w.company_no=i.company_no AND w.pro_no=i.pro_no
                      AND w.sales_date=i.sales_date AND w.invoice=i.invoice
-                     AND w.emp_no LIKE ?6 COLLATE NOCASE
+                     AND (
+                       w.emp_no LIKE ?6 COLLATE NOCASE
+                       OR EXISTS (
+                         SELECT 1 FROM work_persons wp
+                         WHERE TRIM(COALESCE(wp.worker_no, '')) != ''
+                           AND w.emp_no = wp.worker_no
+                           AND (
+                             wp.name LIKE ?6 COLLATE NOCASE
+                             OR wp.worker_no LIKE ?6 COLLATE NOCASE
+                           )
+                       )
+                       OR EXISTS (
+                         SELECT 1 FROM employees em
+                         WHERE TRIM(COALESCE(em.emp_no, '')) != ''
+                           AND w.emp_no = em.emp_no
+                           AND (
+                             em.name LIKE ?6 COLLATE NOCASE
+                             OR em.emp_no LIKE ?6 COLLATE NOCASE
+                           )
+                       )
+                     )
                  ))
                GROUP BY i.company_no, i.pro_no, i.sales_date, i.invoice
                HAVING

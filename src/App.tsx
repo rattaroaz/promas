@@ -195,7 +195,7 @@ export default function App() {
             {
               id: "worker",
               num: "2",
-              label: "Material Transaction in Worker No",
+              label: "Material Transaction in Worker Name",
             },
             {
               id: "date",
