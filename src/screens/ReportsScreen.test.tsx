@@ -651,7 +651,8 @@ describe("ReportsScreen payroll", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.listWorkPersons).mockResolvedValue([
-      { name: "Jose Ramirez", workerNo: "", active: true },
+      { name: "Jose Ramirez", workerNo: "400", active: true },
+      { name: "Inactive Ian", workerNo: "9", active: false },
     ]);
     vi.mocked(api.reportPayroll).mockResolvedValue([
       {
@@ -718,7 +719,12 @@ describe("ReportsScreen payroll", () => {
     renderApp(<ReportsScreen onBack={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /Payroll Report/i }));
 
-    await user.type(await screen.findByLabelText("Work person search"), "Jose");
+    const person = await screen.findByLabelText("Work person search");
+    expect(person.tagName).toBe("SELECT");
+    expect(screen.getByRole("option", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Jose Ramirez" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Inactive Ian" })).not.toBeInTheDocument();
+    await user.selectOptions(person, "Jose Ramirez");
     fireEvent.change(screen.getByLabelText("From invoice date"), {
       target: { value: "2026-01-01" },
     });
@@ -730,7 +736,7 @@ describe("ReportsScreen payroll", () => {
     await waitFor(() => {
       expect(api.reportPayroll).toHaveBeenCalledWith(
         expect.objectContaining({
-          search: "Jose",
+          search: "Jose Ramirez",
           fromDate: "2026-01-01",
           toDate: "2026-01-31",
         })

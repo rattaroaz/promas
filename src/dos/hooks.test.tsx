@@ -194,7 +194,7 @@ describe("resolveFitScale", () => {
     overlay.className = "dos-overlay";
     const dialog = document.createElement("div");
     dialog.className = "dos-dialog";
-    const wide = document.createElement("input");
+    const wide = document.createElement("div");
     overlay.appendChild(dialog);
     dialog.appendChild(wide);
     shell.appendChild(overlay);
@@ -216,6 +216,12 @@ describe("resolveFitScale", () => {
     box(dialog, 800, 800);
     box(wide, 800, 1800);
     expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1800);
+
+    const field = document.createElement("input");
+    dialog.appendChild(field);
+    box(field, 800, 9000, 800);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1800);
+    expect(contentWidthOf(shell)).toBeLessThan(9000);
 
     const prompt = document.createElement("div");
     prompt.className = "dos-overlay";

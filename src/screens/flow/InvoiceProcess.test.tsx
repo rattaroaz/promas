@@ -157,6 +157,9 @@ describe("InvoiceProcess", () => {
     ) as HTMLInputElement;
     expect(dateInput.value).toBe(today());
     expect(screen.getByLabelText("Order Date")).toHaveValue(dateInput.value);
+    const descriptions = screen.getAllByPlaceholderText("Type description");
+    expect(descriptions).toHaveLength(4);
+    for (const field of descriptions) expect(field).toHaveValue("");
     expect(api.getSysdata).toHaveBeenCalled();
   });
 
@@ -621,6 +624,9 @@ describe("InvoiceProcess", () => {
           invoice: 2,
         }),
         lines: [
+          expect.objectContaining({ empNo: "Ana Cruz" }),
+          expect.objectContaining({ empNo: "Ana Cruz" }),
+          expect.objectContaining({ empNo: "Ana Cruz" }),
           expect.objectContaining({ empNo: "Ana Cruz" }),
           expect.objectContaining({ empNo: "Ana Cruz" }),
         ],

@@ -12,6 +12,7 @@ import {
   Company,
   Invoice,
   CashReceipt,
+  WorkPerson,
   emptyCompany,
   emptyProperty,
 } from "../api";
@@ -96,6 +97,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
   const [workPerson, setWorkPerson] = useState("");
   const [paintSupplyOptions, setPaintSupplyOptions] = useState<string[]>([]);
   const [workPersonOptions, setWorkPersonOptions] = useState<string[]>([]);
+  const [workPersonRows, setWorkPersonRows] = useState<WorkPerson[]>([]);
   const [labelMode, setLabelMode] = useState<"C" | "P">("C");
   const [text, setText] = useState("");
   const [agingRows, setAgingRows] = useState<AgingRow[] | null>(null);
@@ -125,10 +127,11 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         }
       }
       try {
-        setWorkPersonOptions(
-          ((await api.listWorkPersons()) ?? []).map((person) => person.name)
-        );
+        const people = (await api.listWorkPersons()) ?? [];
+        setWorkPersonRows(people);
+        setWorkPersonOptions(people.map((person) => person.name));
       } catch {
+        setWorkPersonRows([]);
         setWorkPersonOptions([]);
       }
     })();
@@ -519,11 +522,13 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       right={agingDetail?.company.companyName.slice(0, 24)}
     >
       {!agingDetail && (
-      <div className={
+      <div className={[
+        "dos-searchline",
         report === "aging" || report === "customer" || report === "labels"
-          ? "dos-searchline"
-          : "dos-searchline dos-searchline-dates"
-      }>
+          ? ""
+          : "dos-searchline-dates",
+        report === "payroll" ? "payroll-toolbar" : "",
+      ].filter(Boolean).join(" ")}>
         {report === "aging" && (
           <>
             <label>Search:</label>
@@ -616,7 +621,39 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             <span style={{ maxWidth: "60ch" }}>{paintSupply || "All"}</span>
           </span>
         )}
-        {(report === "paint" || report === "payroll") && (
+        {report === "payroll" && (
+          <span className="dos-searchline-pair">
+            <label>Work Person :</label>
+            <select
+              className="dos-select"
+              aria-label="Work person search"
+              value={
+                workPersonRows.some(
+                  (person) => person.active !== false && person.name === workPerson
+                )
+                  ? workPerson
+                  : ""
+              }
+              onChange={(e) => setWorkPerson(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runReport(report);
+                }
+              }}
+            >
+              <option value="">All</option>
+              {workPersonRows
+                .filter((person) => person.active !== false)
+                .map((person) => (
+                  <option key={person.name} value={person.name}>
+                    {person.name}
+                  </option>
+                ))}
+            </select>
+          </span>
+        )}
+        {report === "paint" && (
           <span className="dos-searchline-pair">
             <label>Work Person :</label>
             <input
@@ -1084,7 +1121,7 @@ function PayrollReport({
     mat += r.materialCost;
   }
   return (
-    <div className="payroll-wrap">
+    <div className="payroll-wrap payroll-fit">
       <div className="hdr">*****   Payroll Report   *****</div>
       <div className="dos-browse">
         <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>

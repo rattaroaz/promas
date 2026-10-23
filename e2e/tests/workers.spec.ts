@@ -40,9 +40,9 @@ test.describe("workers", () => {
   }) => {
     await openWorkers(page);
     await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
-    await expect(page.getByLabel("Worker number 1")).toHaveValue("");
+    await expect(page.getByLabel("Worker number 1")).toHaveValue("400");
     await expect(page.getByRole("checkbox", { name: "Active Jose Ramirez" })).toBeChecked();
-    await expect(page.locator(".workers-head")).toContainText("Delete");
+    await expect(page.locator(".workers-head")).toHaveText("Active?Work PersonID number");
 
     await page.getByRole("button", { name: "Add Work Person" }).click();
     await page.getByLabel("Worker name 2").fill("Ana Cruz");

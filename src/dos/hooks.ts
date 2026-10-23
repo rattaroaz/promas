@@ -572,6 +572,14 @@ function ignoredByFit(el: HTMLElement): boolean {
   return false;
 }
 
+/** Text scrolling inside a box is not a wider layout. Chromium reports
+ *  `overflow-x: clip` on `<input>`, not `hidden`, so a typed name used to
+ *  count as content and shrink `--fit-scale`. */
+function horizontallyClipped(el: HTMLElement): boolean {
+  const overflowX = getComputedStyle(el).overflowX;
+  return overflowX === "hidden" || overflowX === "clip" || el instanceof HTMLInputElement;
+}
+
 export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
   const visit = (el: HTMLElement) => {
@@ -581,15 +589,15 @@ export function contentWidthOf(root: HTMLElement): number {
     const ow = el.offsetWidth;
     const parentCw = el.parentElement?.clientWidth ?? 0;
     const stretched = parentCw > 0 && ow + 1 >= parentCw && sw <= ow + 1;
-    // Hidden overflow is clipped on purpose. Counting that scroll width made
-    // the scale oscillate. A child that still paints past the edge counts below.
-    const clipsX = getComputedStyle(el).overflowX === "hidden";
+    // Hidden or clipped overflow is clipped on purpose. Counting that scroll
+    // width made the scale oscillate. A child that still paints past the edge
+    // counts below.
+    const clipsX = horizontallyClipped(el);
     if (!stretched && sw > 0 && !clipsX) max = Math.max(max, sw);
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
       if (ignoredByFit(node)) continue;
-      const childClips = getComputedStyle(node).overflowX === "hidden";
-      const childWidth = childClips
+      const childWidth = horizontallyClipped(node)
         ? node.offsetWidth
         : Math.max(node.scrollWidth, node.offsetWidth);
       const right = node.offsetLeft + childWidth;
@@ -655,6 +663,31 @@ function tighten(factor: number, needed: number, avail: number): number {
 }
 
 /**
+ * Bottom of the part of `el` that an overflow ancestor has not clipped.
+ * A workers row scrolled out of the list is not painted, so its layout
+ * bottom must not shrink the window. Null means the element is fully clipped.
+ * Horizontal overflow is still measured by paintedRight and contentWidthOf.
+ */
+function visibleBottom(el: HTMLElement): number | null {
+  const box = el.getBoundingClientRect();
+  if (box.width < 2 || box.height < 2) return null;
+  let top = box.top;
+  let bottom = box.bottom;
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const oy = getComputedStyle(node).overflowY;
+    if (oy === "hidden" || oy === "auto" || oy === "scroll") {
+      const host = node.getBoundingClientRect();
+      if (bottom <= host.top + 1 || top >= host.bottom - 1) return null;
+      top = Math.max(top, host.top);
+      bottom = Math.min(bottom, host.bottom);
+    }
+    node = node.parentElement;
+  }
+  return bottom;
+}
+
+/**
  * Multiplier for the current scale so dialogs, menu frames, and the
  * diagnostics note fit the window. 1 means the height already fits.
  * Browse lists and hint bars are not part of this height.
@@ -701,9 +734,9 @@ export function verticalFitFactor(root: HTMLElement): number {
 
   root.querySelectorAll(FIT_PAINTED).forEach((node) => {
     if (!(node instanceof HTMLElement) || skipPainted(node)) return;
-    const box = node.getBoundingClientRect();
-    if (box.width < 2 || box.height < 2) return;
-    factor = tighten(factor, box.bottom, vh);
+    const bottom = visibleBottom(node);
+    if (bottom == null) return;
+    factor = tighten(factor, bottom, vh);
   });
 
   // The diagnostics bundle keeps a NOTE near the top. The log below it scrolls.
