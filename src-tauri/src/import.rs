@@ -610,6 +610,12 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
         log::error!(target: "promas::import", "commit failed: {e}");
         format!("commit: {e}")
     })?;
+    // The catalog is filled here, not on the next launch. Startup backfill
+    // runs once, so a number cleared after this import stays cleared.
+    crate::db::seed_work_persons(conn).map_err(|e| format!("work persons: {e}"))?;
+    crate::db::backfill_numeric_worker_numbers(conn)
+        .map_err(|e| format!("worker numbers: {e}"))?;
+    crate::db::mark_worker_no_backfill_done(conn).map_err(|e| e.to_string())?;
     result.messages.push("Import completed successfully".into());
     log::info!(
         target: "promas::import",
@@ -653,6 +659,23 @@ mod tests {
             )
             .unwrap();
         assert_eq!(name, "ACME");
+        conn.execute(
+            "INSERT INTO employees (emp_no, name) VALUES ('400', 'Jose Ramirez')",
+            [],
+        )
+        .unwrap();
+        conn.execute("DELETE FROM work_persons", []).unwrap();
+        crate::db::seed_work_persons(&conn).unwrap();
+        crate::db::backfill_numeric_worker_numbers(&conn).unwrap();
+        let (worker, worker_no): (String, String) = conn
+            .query_row(
+                "SELECT name, worker_no FROM work_persons",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(worker, "Jose Ramirez");
+        assert_eq!(worker_no, "400");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

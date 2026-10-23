@@ -1,12 +1,12 @@
 /**
  * Material Process browse — supports original sort orders:
  *  1 Add/Modify (default date order)
- *  2 Worker No order
+ *  2 Worker Name order
  *  3 Date order
  *  4 Descript order
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, Material, Employee, emptyMaterial } from "../api";
+import { api, Material, Employee, WorkPerson, emptyMaterial } from "../api";
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import {
   Screen,
@@ -29,12 +29,12 @@ const SORT_TITLE: Record<MaterialSort, string> = {
   desc: "***   Worker Material Report (Descript Order) ***",
 };
 
-/** Header labels fit in the tracks, with one spare ch so the last glyph is not clipped. */
+/** Tracks keep MM/DD/YYYY and worker names fully inside the cell. */
 function materialColumns(sort: MaterialSort): string {
-  if (sort === "worker") return "10ch 30ch 16ch";
-  if (sort === "date") return "8ch 30ch 16ch";
-  if (sort === "desc") return "8ch 11ch 16ch";
-  return "9ch 30ch 13ch";
+  if (sort === "worker") return "13ch 30ch 17ch";
+  if (sort === "date") return "18ch 30ch 17ch";
+  if (sort === "desc") return "18ch 13ch 17ch";
+  return "13ch 30ch 14ch";
 }
 
 export function MaterialBrowse({
@@ -46,6 +46,7 @@ export function MaterialBrowse({
 }) {
   const [rows, setRows] = useState<Material[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [workPersons, setWorkPersons] = useState<WorkPerson[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Material | null>(null);
   const [msg, setMsg] = useState(
@@ -85,6 +86,21 @@ export function MaterialBrowse({
     const t = setTimeout(load, 150);
     return () => clearTimeout(t);
   }, [load]);
+
+  useEffect(() => {
+    let cancel = false;
+    api
+      .listWorkPersons()
+      .then((list) => {
+        if (!cancel) setWorkPersons(list ?? []);
+      })
+      .catch(() => {
+        if (!cancel) setWorkPersons([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   const current = rows[index] ?? null;
 
@@ -178,19 +194,46 @@ export function MaterialBrowse({
           <div className="dos-searchline">
             <label>
               {sort === "worker"
-                ? "From Worker No :"
+                ? "From Worker Name :"
                 : sort === "desc"
                   ? "From Descript :"
                   : "Search:"}
             </label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-            />
+            {sort === "worker" ? (
+              <select
+                className="dos-select"
+                aria-label="From Worker Name"
+                value={
+                  workPersons.some(
+                    (person) => person.active !== false && person.name === search
+                  )
+                    ? search
+                    : ""
+                }
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+              >
+                <option value="">All</option>
+                {workPersons
+                  .filter((person) => person.active !== false)
+                  .map((person) => (
+                    <option key={person.name} value={person.name}>
+                      {person.name}
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+              />
+            )}
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: materialColumns(sort) }}>

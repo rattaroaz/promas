@@ -1024,44 +1024,7 @@ pub fn find_work_order(
 #[tauri::command]
 pub fn list_materials(state: State<DbState>, params: ListParams) -> Result<Vec<Material>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    let search = params.search.unwrap_or_default();
-    let from_date = params.from_date.unwrap_or_default();
-    let to_date = params.to_date.unwrap_or_default();
-    let like = format!("%{}%", search);
-    let sort = params.sort.unwrap_or_default().to_lowercase();
-    // Original Material Process sort orders (NTX keys)
-    let order_by = match sort.as_str() {
-        "worker" => "m.emp_no, m.mat_date, m.description",
-        "date" => "m.mat_date, m.emp_no, m.description",
-        "desc" | "descript" => "m.description, m.emp_no, m.mat_date",
-        _ => "m.mat_date DESC, m.id DESC",
-    };
-    let sql = format!(
-        r#"SELECT m.id,m.emp_no,m.description,m.mat_date,m.amount,m.status,m.voided,e.name
-           FROM materials m
-           LEFT JOIN employees e ON e.emp_no=m.emp_no
-           WHERE m.voided=0
-             AND (?1='' OR m.mat_date>=?1)
-             AND (?2='' OR m.mat_date<=?2)
-             AND (?3='' OR m.emp_no LIKE ?4 OR m.description LIKE ?4 OR e.name LIKE ?4)
-           ORDER BY {order_by}"#
-    );
-    let mut stmt = conn.prepare(&sql).map_err(map_err)?;
-    let rows = stmt
-        .query_map(params![from_date, to_date, search, like], |r| {
-            Ok(Material {
-                id: r.get(0)?,
-                emp_no: r.get(1)?,
-                description: r.get(2)?,
-                mat_date: r.get(3)?,
-                amount: r.get(4)?,
-                status: r.get(5)?,
-                voided: r.get::<_, i64>(6)? != 0,
-                emp_name: r.get(7)?,
-            })
-        })
-        .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    crate::ops::list_materials(&conn, &params)
 }
 
 #[tauri::command]

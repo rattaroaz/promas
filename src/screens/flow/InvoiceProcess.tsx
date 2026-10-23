@@ -473,7 +473,7 @@ export function InvoiceProcess({
     }
     setEditing({
       invoice: inv,
-      lines: [blankNewInvoiceLine(inv, 1)],
+      lines: [1, 2, 3, 4].map((n) => blankNewInvoiceLine(inv, n)),
     });
     setIsNewInvoice(true);
     setMode("edit");
@@ -815,7 +815,6 @@ export function InvoiceProcess({
                   className="dos-input"
                   type="date"
                   aria-label="Invoice Date"
-                  style={{ width: "22ch", minWidth: "22ch" }}
                   value={editing.invoice.salesDate}
                   onChange={(e) =>
                     setEditing({
@@ -829,13 +828,13 @@ export function InvoiceProcess({
                 />
               </DotField>
             </div>
+            <div className="invoice-terms-order">
             <div className="dos-form-row">
               <DotField label="Due Date" width={12}>
                 <input
                   className="dos-input"
                   type="date"
                   aria-label="Due Date"
-                  style={{ width: "22ch", minWidth: "22ch" }}
                   value={editing.invoice.salesDue || ""}
                   onChange={(e) =>
                     setEditing({
@@ -880,7 +879,6 @@ export function InvoiceProcess({
                   className="dos-input"
                   type="date"
                   aria-label="Order Date"
-                  style={{ width: "22ch", minWidth: "22ch" }}
                   value={editing.invoice.orderDate || ""}
                   onChange={(e) =>
                     setEditing({
@@ -893,6 +891,7 @@ export function InvoiceProcess({
                   }
                 />
               </DotField>
+            </div>
             </div>
             <div className="dos-form-row">
               <DotField label="Unit" width={14}>
@@ -1120,7 +1119,6 @@ export function InvoiceProcess({
                   <input
                     className="dos-input"
                     type="date"
-                    style={{ width: "100%" }}
                     aria-label={`Line ${idx + 1} work date`}
                     value={line.workDate || editing.invoice.salesDate}
                     onChange={(e) => {

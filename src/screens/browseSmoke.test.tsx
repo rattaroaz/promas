@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderApp, screen, userEvent } from "../test/render";
+import { renderApp, screen, userEvent, waitFor } from "../test/render";
 import { CashBrowse } from "./CashBrowse";
 import { CompanyBrowse } from "./CompanyBrowse";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
@@ -30,6 +30,7 @@ vi.mock("../api", async () => {
       listWorkTypes: vi.fn(),
       listWorkOrders: vi.fn(),
       listMaterials: vi.fn(),
+      listWorkPersons: vi.fn(),
       listInvoices: vi.fn(),
       listProperties: vi.fn(),
       reportWorkerWages: vi.fn(),
@@ -79,6 +80,7 @@ describe("browse screen smoke", () => {
         propertyName: "Bldg A",
       },
     ]);
+    vi.mocked(api.listWorkPersons).mockResolvedValue([]);
     vi.mocked(api.listMaterials).mockResolvedValue([
       {
         ...emptyMaterial(),
@@ -157,6 +159,28 @@ describe("browse screen smoke", () => {
     renderApp(<MaterialBrowse onBack={vi.fn()} />);
     expect(await screen.findByText(/1\s+Total Material/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Drop cloths/i })).toBeInTheDocument();
+  });
+
+  it("filters Material Transaction in Worker Name by active worker name", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "400", active: true },
+      { name: "Inactive Ian", workerNo: "9", active: false },
+    ]);
+    renderApp(<MaterialBrowse onBack={vi.fn()} sort="worker" />);
+    expect(await screen.findByText("From Worker Name :")).toBeInTheDocument();
+    const picker = await screen.findByLabelText("From Worker Name");
+    expect(screen.getByRole("option", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Jose Ramirez" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Inactive Ian" })
+    ).not.toBeInTheDocument();
+    await user.selectOptions(picker, "Jose Ramirez");
+    await waitFor(() => {
+      expect(api.listMaterials).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "Jose Ramirez", sort: "worker" })
+      );
+    });
   });
 
   it("runs the worker wages report", async () => {

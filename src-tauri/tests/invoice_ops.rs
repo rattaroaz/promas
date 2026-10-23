@@ -989,3 +989,83 @@ fn report_payroll_filters_by_invoice_date_and_work_person() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn report_payroll_matches_numeric_emp_no_for_worker_name() {
+    let (dir, mut conn) = temp_conn("payroll-id");
+    seed_company(&conn);
+    conn.execute(
+        "INSERT INTO employees (emp_no, name) VALUES ('400', 'Jose Ramirez')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, active) VALUES ('Jose Ramirez', '400', 1)",
+        [],
+    )
+    .unwrap();
+
+    let mut inv = blank_invoice();
+    inv.material_cost = 40.0;
+    let mut jose = line(250.0);
+    jose.emp_no = "400".into();
+    jose.description = "Jose hallway payroll".into();
+    ops::save_invoice(
+        &mut conn,
+        InvoiceWithLines {
+            invoice: inv,
+            lines: vec![jose],
+        },
+    )
+    .unwrap();
+
+    let by_name = ops::report_payroll(
+        &conn,
+        &ListParams {
+            search: Some("Jose Ramirez".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_name.len(), 1);
+    assert_eq!(by_name[0].job_description, "Jose hallway payroll");
+
+    let by_number = ops::report_payroll(
+        &conn,
+        &ListParams {
+            search: Some("400".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(by_number.len(), 1);
+
+    let nobody = ops::report_payroll(
+        &conn,
+        &ListParams {
+            search: Some("Nobody".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(nobody.is_empty());
+
+    conn.execute(
+        "INSERT INTO materials (emp_no, description, mat_date, amount) VALUES ('400', 'Jose drop cloths', '2026-02-01', 18.50)",
+        [],
+    )
+    .unwrap();
+    let materials = ops::list_materials(
+        &conn,
+        &ListParams {
+            search: Some("Jose Ramirez".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(materials.len(), 1);
+    assert_eq!(materials[0].description, "Jose drop cloths");
+    assert_eq!(materials[0].emp_no, "400");
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

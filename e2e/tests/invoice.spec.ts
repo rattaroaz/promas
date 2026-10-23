@@ -68,7 +68,7 @@ test.describe("invoice process", () => {
       "Order Date",
       "Line 1 work date",
     ];
-    await expect(page.locator(".invoice-edit input[type='date']")).toHaveCount(4);
+    await expect(page.locator(".invoice-edit input[type='date']")).toHaveCount(7);
     for (const label of labels) {
       const field = page.getByLabel(label);
       const before = await field.inputValue();

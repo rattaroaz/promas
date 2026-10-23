@@ -1,8 +1,8 @@
 type E2EWorkPerson = { name: string; workerNo: string; active: boolean };
 
-/** Seeded the way a migrated catalog is: current dropdown names, Active, blank numbers. */
+/** Seeded the way a migrated catalog is: Jose's numeric employees.emp_no is 400. */
 let workPersons: E2EWorkPerson[] = [
-  { name: "Jose Ramirez", workerNo: "", active: true },
+  { name: "Jose Ramirez", workerNo: "400", active: true },
 ];
 
 function listWorkPersons(): E2EWorkPerson[] {
@@ -421,7 +421,35 @@ export async function invoke<T = unknown>(
     return [] as T;
   }
   if (cmd === "report_payroll") {
-    return [] as T;
+    const params = (_args?.params ?? {}) as { search?: string };
+    const search = String(params.search ?? "").trim().toLowerCase();
+    const rows = [
+      {
+        salesDate: "2026-01-15",
+        invoice: 12,
+        invoiceTotal: 250,
+        materialCost: 40,
+        propertyAddress: "1105 QUAIL ST.",
+        jobDescription: "Jose hallway payroll",
+        salesUnit: "A1",
+        companyNo: "1000",
+        proNo: "01",
+        worker: "jose ramirez",
+      },
+      {
+        salesDate: "2026-02-02",
+        invoice: 13,
+        invoiceTotal: 80,
+        materialCost: 10,
+        propertyAddress: "220 OAK AVE.",
+        jobDescription: "Ana closet payroll",
+        salesUnit: "B2",
+        companyNo: "1000",
+        proNo: "01",
+        worker: "ana cruz",
+      },
+    ].filter((row) => !search || row.worker.includes(search));
+    return rows.map(({ worker: _worker, ...row }) => row) as T;
   }
   if (cmd === "list_work_orders") {
     return [
@@ -516,7 +544,38 @@ export async function invoke<T = unknown>(
     return [] as T;
   }
   if (cmd === "list_materials") {
-    return [] as T;
+    const params = (_args?.params ?? {}) as { search?: string };
+    const search = String(params.search ?? "").trim().toLowerCase();
+    const rows = [
+      {
+        id: 1,
+        empNo: "Jose Ramirez",
+        description: "Jose drop cloths",
+        matDate: "2026-02-01",
+        amount: 18.5,
+        status: "",
+        voided: false,
+        empName: "Jose Ramirez",
+      },
+      {
+        id: 2,
+        empNo: "Inactive Ian",
+        description: "Ian tape",
+        matDate: "2026-02-02",
+        amount: 4,
+        status: "",
+        voided: false,
+        empName: "Inactive Ian",
+      },
+    ].filter((row) =>
+      !search
+        ? true
+        : [row.empNo, row.description, row.empName]
+            .join(" ")
+            .toLowerCase()
+            .includes(search)
+    );
+    return rows.map((row) => ({ ...row })) as T;
   }
   if (cmd === "save_material") {
     return undefined as T;
