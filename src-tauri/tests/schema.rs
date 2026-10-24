@@ -63,6 +63,7 @@ fn companies_and_invoices_round_trip() {
         .unwrap();
     assert_eq!(paint, 1);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -108,5 +109,6 @@ fn work_persons_seed_from_employee_names_when_catalog_empty() {
         .unwrap();
     assert_eq!(count, 2);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

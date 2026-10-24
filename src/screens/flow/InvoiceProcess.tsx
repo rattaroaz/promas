@@ -25,7 +25,7 @@ import {
 import { DotField } from "../../dos/Field";
 import { MoneyInput } from "../../dos/MoneyInput";
 import { ContentGrid } from "../../dos/contentGrid";
-import { money, fmtDate, today, naturalCompare } from "../../dos/utils";
+import { addDays, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
@@ -337,6 +337,7 @@ export function InvoiceProcess({
         ? `${mine.length} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
         : "No invoices for this property. Press Ins or click New Invoice."
     );
+    setMsgKind("default");
   }, [company.companyNo, property.proNo, focusInvoice, setIndex]);
 
   const toggleUnitSort = useCallback(() => {
@@ -375,10 +376,15 @@ export function InvoiceProcess({
     }
     
     setMsg(`${sortMsg}${count} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`);
-  }, [mode, originalRows.length, unitSortDirection]);
+    // Not keyed on the row count: load() announces the count itself, and a
+    // save or void then replaces that with its own notice.
+  }, [mode, unitSortDirection]);
 
   useEffect(() => {
-    load();
+    load().catch((e: unknown) => {
+      setMsg(String(e));
+      setMsgKind("error");
+    });
   }, [load]);
 
   useEffect(() => {
@@ -460,15 +466,11 @@ export function InvoiceProcess({
       const sys = await api.getSysdata();
       inv.invoice = Math.max(1, sys.nextInvoice || 1);
       const days = sys.termsDays || 7;
-      const d = new Date(inv.salesDate);
-      d.setDate(d.getDate() + days);
-      inv.salesDue = d.toISOString().slice(0, 10);
+      inv.salesDue = addDays(inv.salesDate, days);
       inv.salesTerm = `Net  ${days} Days`;
     } catch {
       inv.invoice = 1;
-      const d = new Date(inv.salesDate);
-      d.setDate(d.getDate() + 7);
-      inv.salesDue = d.toISOString().slice(0, 10);
+      inv.salesDue = addDays(inv.salesDate, 7);
       inv.salesTerm = "Net  7 Days";
     }
     setEditing({
@@ -482,12 +484,17 @@ export function InvoiceProcess({
   }
 
   async function openEdit(inv: Invoice) {
-    const [full] = await Promise.all([
-      api.getInvoice(inv.companyNo, inv.proNo, inv.salesDate, inv.invoice),
-      loadWorkPersons(),
-      loadPaintSupplyCos(),
-    ]);
-    if (full) {
+    try {
+      const [full] = await Promise.all([
+        api.getInvoice(inv.companyNo, inv.proNo, inv.salesDate, inv.invoice),
+        loadWorkPersons(),
+        loadPaintSupplyCos(),
+      ]);
+      if (!full) {
+        setMsg("--> does not exist in Invoice File !!!");
+        setMsgKind("error");
+        return;
+      }
       setEditing(full);
       setIsNewInvoice(false);
       setMode("edit");
@@ -496,6 +503,10 @@ export function InvoiceProcess({
           ? "*** V O I D  I N V O I C E ***"
           : `Invoice #${full.invoice.invoice}  Ctrl-S=Save  Esc=Exit`
       );
+      setMsgKind("default");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
     }
   }
 
@@ -539,9 +550,9 @@ export function InvoiceProcess({
       setIsNewInvoice(false);
       setConfirmSave(false);
       setMode("browse");
+      await load();
       setMsg(`Invoice #${no} saved.`);
       setMsgKind("info");
-      await load();
     } catch (e) {
       setConfirmSave(false);
       setMsg(String(e));
@@ -551,15 +562,20 @@ export function InvoiceProcess({
 
   async function doVoid() {
     if (!current) return;
-    await api.voidInvoice(
-      current.companyNo,
-      current.proNo,
-      current.salesDate,
-      current.invoice
-    );
     setVoidAsk(false);
-    setMsg(`*** Void Invoice ***  #${current.invoice}`);
-    await load();
+    try {
+      await api.voidInvoice(
+        current.companyNo,
+        current.proNo,
+        current.salesDate,
+        current.invoice
+      );
+      await load();
+      setMsg(`*** Void Invoice ***  #${current.invoice}`);
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
   }
 
   /** End = Print on the official invoice_template.pdf form */
@@ -639,6 +655,7 @@ export function InvoiceProcess({
         setIsNewInvoice(false);
         setMode("browse");
         setMsg("Ins=Add  Enter=Edit  Del=Void  Esc=Back");
+        setMsgKind("default");
       } else onBack();
     },
     onF1: () => setHelp(true),
@@ -1162,7 +1179,7 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid invoice-line-grid" style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
+            <div className="browse-grid invoice-line-grid dos-total" style={{ marginTop: "0.4em" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
@@ -1190,7 +1207,7 @@ export function InvoiceProcess({
               <div className="invoice-line-end">{money(lineTotal)}</div>
               <div className="invoice-line-end"></div>
             </div>
-            <div style={{ marginTop: "0.4em", color: "var(--app-highlight)", fontWeight: "bold" }}>
+            <div className="dos-total" style={{ marginTop: "0.4em" }}>
               Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
               {"  "}
               <button
@@ -1202,13 +1219,7 @@ export function InvoiceProcess({
                 Print Form (End)
               </button>
             </div>
-            <div
-              style={{
-                marginTop: "0.6em",
-                color: "var(--app-accent)",
-                fontSize: "0.85em",
-              }}
-            >
+            <div className="dos-note" style={{ marginTop: "0.6em" }}>
               1.5% interest charged on past due accounts over 30 days.
             </div>
           </div>

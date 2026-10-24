@@ -46,16 +46,22 @@ export function EstimateProcess({
     useBrowseIndex(rows.length);
 
   const load = useCallback(async () => {
-    // Original EST is keyed by company; property is context only
-    const data = await api.listEstimates({
-      companyNo: company.companyNo,
-    });
-    setRows(data);
-    setMsg(
-      data.length
-        ? `${data.length} proposals  —  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
-        : "No proposals. Press Ins — Enter Proposal Information (Esc=Exit) !"
-    );
+    try {
+      // Original EST is keyed by company; property is context only
+      const data = await api.listEstimates({
+        companyNo: company.companyNo,
+      });
+      setRows(data);
+      setMsg(
+        data.length
+          ? `${data.length} proposals  —  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
+          : "No proposals. Press Ins — Enter Proposal Information (Esc=Exit) !"
+      );
+      setMsgKind("default");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
   }, [company.companyNo]);
 
   useEffect(() => {
@@ -78,12 +84,13 @@ export function EstimateProcess({
     try {
       const no = await api.saveEstimate({
         ...editing,
+        estDate: editing.estDate || today(),
         companyNo: company.companyNo,
       });
       setEditing(null);
+      await load();
       setMsg(`Proposal #${no} saved.`);
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -92,10 +99,15 @@ export function EstimateProcess({
 
   async function doVoid() {
     if (!current?.id) return;
-    await api.voidEstimate(current.id);
     setVoidAsk(false);
-    setMsg(" Void Proposal ");
-    await load();
+    try {
+      await api.voidEstimate(current.id);
+      await load();
+      setMsg(" Void Proposal ");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
   }
 
   useDosKeys({

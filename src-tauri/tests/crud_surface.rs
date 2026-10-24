@@ -72,6 +72,7 @@ fn company_property_soft_delete_and_list() {
         .unwrap();
     assert_eq!(active, 0);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -135,6 +136,7 @@ fn work_order_save_find_and_void() {
         .unwrap();
     assert_eq!(voided, 1);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -182,6 +184,7 @@ fn material_and_estimate_round_trip() {
         .unwrap();
     assert_eq!(voided, 1);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -251,6 +254,7 @@ fn aging_report_after_open_invoice() {
     assert!(!rows.is_empty());
     assert!(rows.iter().any(|r| r.company_no == "1000"));
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -290,6 +294,7 @@ fn property_and_company_search_match_street_city_zip() {
         .unwrap();
     assert_eq!(co, 1);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -332,5 +337,6 @@ fn company_and_property_search_match_contact() {
         .unwrap();
     assert_eq!(pr, 1);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

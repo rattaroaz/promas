@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  addDays,
   cols,
   fmtDate,
   labelDots,
@@ -70,11 +71,28 @@ describe("labelDots / withAccel", () => {
   });
 });
 
-describe("today", () => {
-  it("returns the local calendar date as yyyy-mm-dd", () => {
-    const d = new Date();
-    const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    expect(today()).toBe(expected);
+describe("today / addDays", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs in Pacific time, where a UTC date is a day ahead each evening", () => {
+    expect(new Date(2026, 0, 1).getTimezoneOffset()).toBe(480);
+  });
+
+  it("returns the local date in the evening", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-03-10T20:30:00-07:00"));
+    expect(today()).toBe("2026-03-10");
+  });
+
+  it("adds whole days across clock changes, month ends, and leap days", () => {
+    expect(addDays("2026-03-05", 7)).toBe("2026-03-12");
+    expect(addDays("2026-10-28", 7)).toBe("2026-11-04");
+    expect(addDays("2026-01-28", 7)).toBe("2026-02-04");
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2026-03-12", -7)).toBe("2026-03-05");
   });
 });
 

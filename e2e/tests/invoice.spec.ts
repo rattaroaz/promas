@@ -1,13 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-
-/** Local calendar arithmetic. ArrowDown in Chromium's picker moves one week. */
-function plusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${dt.getFullYear()}-${mm}-${dd}`;
-}
+import { plusDays } from "../support/app";
 
 /** Invoice Process now gates through Company → Property before the list. */
 async function openInvoiceBrowse(page: Page) {
@@ -38,14 +30,14 @@ test.describe("invoice process", () => {
     await page
       .getByRole("button", { name: /01\/15\/2026\s+1\s+A1\s+250\.00/ })
       .click();
-    await expect(page.getByLabel("Invoice Number")).toHaveValue("1");
+    await expect(page.getByLabel("Invoice Number", { exact: true })).toHaveValue("1");
     await expect(page.getByText(/Invoice Number 1/i)).toBeVisible();
   });
 
   test("Ins status hint adds a new invoice from the list", async ({ page }) => {
     await openInvoiceBrowse(page);
     await page.getByRole("button", { name: /^Ins Add$/i }).click();
-    await expect(page.getByLabel("Invoice Number")).toHaveValue("2");
+    await expect(page.getByLabel("Invoice Number", { exact: true })).toHaveValue("2");
     await expect(page.getByText(/Invoice Number 2/i)).toBeVisible();
   });
 
@@ -54,7 +46,7 @@ test.describe("invoice process", () => {
   }) => {
     await openInvoiceBrowse(page);
     await page.getByRole("button", { name: /^New Invoice$/i }).click();
-    await expect(page.getByLabel("Invoice Number")).toHaveValue("2");
+    await expect(page.getByLabel("Invoice Number", { exact: true })).toHaveValue("2");
     await expect(page.getByText(/Invoice Number 2/i)).toBeVisible();
     await expect(page.getByText(/Due Date/i)).toBeVisible();
   });

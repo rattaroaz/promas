@@ -81,7 +81,7 @@ describe("MoneyInput", () => {
   it("does not insert decimals or move the caret while typing", async () => {
     const user = userEvent.setup();
     render(<Harness label="Price" blankZero />);
-    const price = screen.getByLabelText("Price");
+    const price = screen.getByLabelText<HTMLInputElement>("Price");
     await user.click(price);
     await user.type(price, "100");
     price.setSelectionRange(1, 1);

@@ -315,6 +315,8 @@ export function CompanyPropertyGate({
   const prBrowse = useBrowseIndex(properties.length);
   const invBrowse = useBrowseIndex(invoiceHits.length);
   const trailRef = useRef<Phase[]>([]);
+  /** Shown ahead of the search prompt until the user leaves the company search. */
+  const noticeRef = useRef("");
 
   function pushPhase(next: Phase) {
     setPhase((cur) => {
@@ -325,8 +327,9 @@ export function CompanyPropertyGate({
     });
   }
 
-  function resetToCompanySearch(message?: string) {
+  function resetToCompanySearch(notice = "") {
     trailRef.current = [];
+    noticeRef.current = notice;
     setCompany(null);
     setProperty(null);
     setProperties([]);
@@ -334,7 +337,6 @@ export function CompanyPropertyGate({
     setFirstKind("company");
     setPhase("co-search");
     setMsgKind("default");
-    if (message) setMsg(message);
   }
 
   function goBackScreen() {
@@ -361,16 +363,21 @@ export function CompanyPropertyGate({
 
   // Before paint, so the status line matches the field the arrow just focused.
   useLayoutEffect(() => {
+    if (phase !== "co-search") noticeRef.current = "";
     if (phase === "co-search") {
+      // The search box that takes focus re-runs this, so keep the notice in front.
+      const lead = noticeRef.current ? `${noticeRef.current}  ` : "";
       if (firstKind === "property") {
         setMsg(
-          prField === "contact"
-            ? "Enter Search Property Contact (Esc=Exit, ?=First)"
-            : "Enter Search Property Street (Esc=Exit) !"
+          lead +
+            (prField === "contact"
+              ? "Enter Search Property Contact (Esc=Exit, ?=First)"
+              : "Enter Search Property Street (Esc=Exit) !")
         );
       } else {
         setMsg(
-          firstKind === "invoice"
+          lead +
+          (firstKind === "invoice"
             ? "Enter Search Invoice NO (Esc=Exit)"
             : coField === "no"
               ? "Enter Search Company NO (Esc=Exit, ?=First)"
@@ -378,7 +385,7 @@ export function CompanyPropertyGate({
                 ? "Enter Search Company Name (Esc=Exit, ?=First)"
                 : coField === "phone"
                   ? "Enter Search Company Phone (Esc=Exit, ?=First)"
-                  : "Enter Search Company Contact (Esc=Exit, ?=First)"
+                  : "Enter Search Company Contact (Esc=Exit, ?=First)")
         );
       }
     } else if (phase === "pr-search") {
@@ -394,7 +401,16 @@ export function CompanyPropertyGate({
     }
   }, [phase, coField, prField, firstKind]);
 
+  /** Lookups start from keys and clicks; a failed call shows its error on the status line. */
+  function attempt(task: Promise<unknown>) {
+    task.catch((e: unknown) => {
+      setMsg(String(e));
+      setMsgKind("error");
+    });
+  }
+
   async function searchCompanies(raw: string) {
+    noticeRef.current = "";
     const q = raw.trim();
     if (q === "?") {
       const all = await api.listCompanies({ limit: 2000 });
@@ -605,6 +621,7 @@ export function CompanyPropertyGate({
   }
 
   async function searchByInvoiceNumber(raw: string) {
+    noticeRef.current = "";
     const q = raw.trim();
     if (!q) {
       setMsg("--> enter invoice number !!");
@@ -644,7 +661,7 @@ export function CompanyPropertyGate({
   }
 
   function selectProperty(p: Property) {
-    void pickPropertyWithCompany(p);
+    attempt(pickPropertyWithCompany(p));
   }
 
   function filterProperties(all: Property[], q: string, field: PrField): Property[] {
@@ -667,6 +684,7 @@ export function CompanyPropertyGate({
 
   /** First-screen search across all properties (any company). */
   async function searchPropertiesGlobal(raw: string) {
+    noticeRef.current = "";
     const q = raw.trim();
     const all = await api.listProperties({
       search: q === "?" ? "" : q,
@@ -783,11 +801,8 @@ export function CompanyPropertyGate({
     if (!company) return;
     try {
       await api.deleteCompany(company.companyNo);
-      const gone = company.companyNo;
       setAskDeleteCompany(false);
-      resetToCompanySearch(
-        `Company ${gone} deleted. Enter Search Company NO (Esc=Exit, ?=First)`
-      );
+      resetToCompanySearch(`Company ${company.companyNo} deleted.`);
     } catch (e) {
       setAskDeleteCompany(false);
       setMsg(String(e));
@@ -869,16 +884,18 @@ export function CompanyPropertyGate({
           return;
         }
         const companyNo = company.companyNo;
-        void (async () => {
-          const all = await api.listProperties({
-            companyNo,
-            limit: 5000,
-          });
-          setIsNew(true);
-          setEditPr(draftProperty(companyNo, all));
-          pushPhase("pr-edit");
-          setMsg("Enter Property Information (Esc=Exit) !");
-        })();
+        attempt(
+          (async () => {
+            const all = await api.listProperties({
+              companyNo,
+              limit: 5000,
+            });
+            setIsNew(true);
+            setEditPr(draftProperty(companyNo, all));
+            pushPhase("pr-edit");
+            setMsg("Enter Property Information (Esc=Exit) !");
+          })()
+        );
       }
     },
     onCtrlHome: () => {
@@ -893,17 +910,17 @@ export function CompanyPropertyGate({
     },
     onEnter: () => {
       if (phase === "co-browse" && companies[coBrowse.index]) {
-        selectCompany(companies[coBrowse.index]);
+        attempt(selectCompany(companies[coBrowse.index]));
       } else if (phase === "pr-browse" && listedProperties[prBrowse.index]) {
         selectProperty(listedProperties[prBrowse.index]);
       } else if (phase === "inv-browse" && invoiceHits[invBrowse.index]) {
-        void pickInvoiceSite(invoiceHits[invBrowse.index]);
+        attempt(pickInvoiceSite(invoiceHits[invBrowse.index]));
       } else if (phase === "co-search") {
-        if (firstKind === "invoice") void searchByInvoiceNumber(query);
-        else if (firstKind === "property") void searchPropertiesGlobal(query);
-        else void searchCompanies(query);
+        if (firstKind === "invoice") attempt(searchByInvoiceNumber(query));
+        else if (firstKind === "property") attempt(searchPropertiesGlobal(query));
+        else attempt(searchCompanies(query));
       } else if (phase === "pr-search") {
-        searchProperties(query);
+        attempt(searchProperties(query));
       }
     },
     onCtrlS: () => {
@@ -1035,7 +1052,7 @@ export function CompanyPropertyGate({
           if (e.key === "Enter") {
             e.preventDefault();
             setFirstKind("invoice");
-            void searchByInvoiceNumber(e.currentTarget.value);
+            attempt(searchByInvoiceNumber(e.currentTarget.value));
           }
         }}
       />
@@ -1118,7 +1135,7 @@ export function CompanyPropertyGate({
                       if (e.key === "Enter") {
                         e.preventDefault();
                         setCoField("no");
-                        searchCompanies(e.currentTarget.value || "?");
+                        attempt(searchCompanies(e.currentTarget.value || "?"));
                       }
                     }}
                     autoFocus={
@@ -1147,7 +1164,7 @@ export function CompanyPropertyGate({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        searchCompanies(e.currentTarget.value);
+                        attempt(searchCompanies(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1170,7 +1187,7 @@ export function CompanyPropertyGate({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        searchCompanies(e.currentTarget.value);
+                        attempt(searchCompanies(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1199,7 +1216,7 @@ export function CompanyPropertyGate({
                         e.preventDefault();
                         setFirstKind("company");
                         setCoField("contact");
-                        void searchCompanies(e.currentTarget.value);
+                        attempt(searchCompanies(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1228,7 +1245,7 @@ export function CompanyPropertyGate({
                         e.preventDefault();
                         setFirstKind("property");
                         setPrField("street");
-                        void searchPropertiesGlobal(e.currentTarget.value);
+                        attempt(searchPropertiesGlobal(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1257,7 +1274,7 @@ export function CompanyPropertyGate({
                         e.preventDefault();
                         setFirstKind("property");
                         setPrField("contact");
-                        void searchPropertiesGlobal(e.currentTarget.value);
+                        attempt(searchPropertiesGlobal(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1286,8 +1303,8 @@ export function CompanyPropertyGate({
                   if (pointerHoverMuted()) return;
                   coBrowse.setIndex(i);
                 }}
-                onClick={() => selectCompany(c)}
-                onDoubleClick={() => selectCompany(c)}
+                onClick={() => attempt(selectCompany(c))}
+                onDoubleClick={() => attempt(selectCompany(c))}
                 onContextMenu={(e) => {
                   // Company NO Order only: same edit as Ctrl-Home, no browser menu.
                   if (coField !== "no") return;
@@ -1324,7 +1341,7 @@ export function CompanyPropertyGate({
                   if (pointerHoverMuted()) return;
                   invBrowse.setIndex(i);
                 }}
-                onClick={() => void pickInvoiceSite(inv)}
+                onClick={() => attempt(pickInvoiceSite(inv))}
               >
                 <div>{inv.invoice}</div>
                 <div>{fmtDate(inv.salesDate)}</div>
@@ -1360,7 +1377,7 @@ export function CompanyPropertyGate({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        searchProperties(e.currentTarget.value);
+                        attempt(searchProperties(e.currentTarget.value));
                       }
                     }}
                     autoFocus
@@ -1383,7 +1400,7 @@ export function CompanyPropertyGate({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        searchProperties(e.currentTarget.value);
+                        attempt(searchProperties(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1404,7 +1421,7 @@ export function CompanyPropertyGate({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        searchProperties(e.currentTarget.value);
+                        attempt(searchProperties(e.currentTarget.value));
                       }
                     }}
                   />
@@ -1425,7 +1442,7 @@ export function CompanyPropertyGate({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        searchProperties(e.currentTarget.value);
+                        attempt(searchProperties(e.currentTarget.value));
                       }
                     }}
                   />

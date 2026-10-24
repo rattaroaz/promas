@@ -69,6 +69,7 @@ fn insert_ignore_and_delete_are_case_insensitive() {
     .unwrap();
     assert_eq!(names(&conn), vec!["Ana Cruz".to_string()]);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -76,6 +77,7 @@ fn insert_ignore_and_delete_are_case_insensitive() {
 fn empty_catalog_is_valid() {
     let (dir, conn) = temp_conn("empty");
     assert!(names(&conn).is_empty());
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -107,6 +109,7 @@ fn existing_dropdown_names_migrate_active_with_blank_worker_numbers() {
     assert_eq!(name, "Jose Ramirez");
     assert_eq!(worker_no, "");
     assert_eq!(active, 1);
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -179,6 +182,8 @@ fn numeric_employee_ids_fill_blank_worker_numbers() {
             ("Pat Lee".to_string(), "7".to_string()),
         ]
     );
+    drop(stmt);
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -220,6 +225,7 @@ fn delete_and_rename_leave_invoice_lines_untouched() {
         .query_row("SELECT active FROM work_persons", [], |r| r.get(0))
         .unwrap();
     assert_eq!(active, 0);
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -246,5 +252,6 @@ fn cleared_worker_number_stays_cleared_across_restart() {
         .query_row("SELECT worker_no FROM work_persons", [], |r| r.get(0))
         .unwrap();
     assert_eq!(worker_no, "");
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

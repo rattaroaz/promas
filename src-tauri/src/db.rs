@@ -217,6 +217,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(tables, 1);
+        drop(conn);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -241,6 +242,8 @@ mod tests {
             .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
             .unwrap();
         assert_eq!(company, "Export Co");
+        drop(conn);
+        drop(exported);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -261,6 +264,8 @@ mod tests {
         let _: String = guard
             .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
             .unwrap();
+        drop(guard);
+        drop(state);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -329,6 +334,7 @@ mod tests {
             .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
             .unwrap();
         assert_eq!(company, "Keep Me");
+        drop(state);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -355,6 +361,7 @@ mod tests {
             .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
             .unwrap();
         assert!(!company.is_empty());
+        drop(state);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -385,6 +392,7 @@ mod tests {
             .unwrap();
         assert_eq!(company, "New Co");
         assert!(import_replace_database(&current, &current).is_err());
+        drop(opened);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

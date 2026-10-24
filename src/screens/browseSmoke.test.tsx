@@ -168,8 +168,8 @@ describe("browse screen smoke", () => {
       { name: "Inactive Ian", workerNo: "9", active: false },
     ]);
     renderApp(<MaterialBrowse onBack={vi.fn()} sort="worker" />);
-    expect(await screen.findByText("From Worker Name :")).toBeInTheDocument();
-    const picker = await screen.findByLabelText("From Worker Name");
+    const picker = await screen.findByRole("combobox", { name: "From Worker Name" });
+    expect(screen.getByText("From Worker Name").closest("label")).toHaveTextContent("From Worker Name :");
     expect(screen.getByRole("option", { name: "All" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Jose Ramirez" })).toBeInTheDocument();
     expect(

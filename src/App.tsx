@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFitToWidth } from "./dos/hooks";
 import { MainMenu, MainAction } from "./screens/MainMenu";
 import { Prompt } from "./dos/Shell";
@@ -55,6 +55,8 @@ type Screen =
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "main" });
   const [quitAsk, setQuitAsk] = useState(false);
+  const quitAskRef = useRef(quitAsk);
+  quitAskRef.current = quitAsk;
   const appRef = useRef<HTMLDivElement>(null);
   useFitToWidth(appRef);
 
@@ -95,25 +97,26 @@ export default function App() {
     []
   );
 
-  useEffect(() => {
-    if (!quitAsk) return;
+  // Registered for the life of the app, ahead of each screen's key handler
+  // (as UpdateDialog does). Binding when the prompt opens would run after
+  // them, so Esc or Enter would also act on the screen behind the prompt.
+  // Tab still moves between Y and N, and Enter presses the one with focus;
+  // Alt shortcuts belong to the system.
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!quitAskRef.current || e.key === "Tab" || e.altKey) return;
+      e.stopImmediatePropagation();
+      const answer =
+        e.target instanceof HTMLButtonElement && e.target.closest(".dos-prompt");
+      if (e.key === "Enter" && answer) return;
+      e.preventDefault();
       const ch = e.key;
-      if (ch === "y" || ch === "Y" || ch === "Enter") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        void doQuit();
-        return;
-      }
-      if (ch === "n" || ch === "N" || ch === "Escape") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        setQuitAsk(false);
-      }
+      if (ch === "y" || ch === "Y" || ch === "Enter") void doQuit();
+      else if (ch === "n" || ch === "N" || ch === "Escape") setQuitAsk(false);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [quitAsk]);
+  }, []);
 
   useEffect(() => {
     setCurrentScreen(screen.name);

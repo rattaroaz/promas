@@ -136,6 +136,7 @@ fn save_invoice_allocates_number_and_totals() {
         .unwrap();
     assert_eq!(lines, 2);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -164,6 +165,7 @@ fn save_invoice_stores_material_cost_and_paint_supply() {
     assert_eq!(cost, 37.5);
     assert_eq!(supplier, "Dunn-Edwards");
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -192,6 +194,7 @@ fn void_invoice_sets_status() {
     assert_eq!(voided, 1);
     assert_eq!(status, "V");
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -234,6 +237,7 @@ fn cash_receipt_updates_invoice_balance() {
     assert_eq!(pay_total, 100.0);
     assert_eq!(balance, 150.0);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -305,6 +309,7 @@ fn report_aging_buckets_by_age() {
     assert_eq!(by_qmark.len(), 1);
     assert_eq!(by_qmark[0].open_bal, 150.0);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -378,6 +383,7 @@ fn report_sales_analysis_lists_open_invoices() {
     .unwrap();
     assert!(miss.is_empty());
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -450,6 +456,7 @@ fn report_sales_analysis_filters_by_invoice_date_not_pay_date() {
     assert_eq!(by_invoice_month[0].invoice, inv_no);
     assert_eq!(by_invoice_month[0].sales_date, "2026-01-15");
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -501,6 +508,7 @@ fn deposit_and_cash_combine_for_balance() {
         .unwrap();
     assert_eq!(bal, 124.5);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -539,6 +547,7 @@ fn voided_invoices_excluded_from_aging_and_sales() {
     .unwrap();
     assert!(sales.is_empty());
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -586,6 +595,7 @@ fn report_worker_wages_includes_emp_lines() {
     assert_eq!(rows[0].emp_name, "Pat Worker");
     assert_eq!(rows[0].wages, 100.0); // 200 * 50%
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -639,6 +649,7 @@ fn delete_cash_receipt_voids_and_restores_balance() {
     assert_eq!(pay, 0.0);
     assert_eq!(bal, 250.0);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -678,6 +689,7 @@ fn overpayment_allowed_negative_balance() {
         .unwrap();
     assert_eq!(bal, -25.0);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -720,6 +732,7 @@ fn two_receipts_sum_to_pay_total() {
     assert_eq!(pay, 250.5);
     assert_eq!(bal, 249.5);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -799,6 +812,7 @@ fn list_cash_receipts_matches_property_address() {
     .unwrap();
     assert!(miss.is_empty());
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -911,6 +925,7 @@ fn report_paint_usage_filters_by_supply_work_date_and_person() {
     .unwrap();
     assert!(miss_person.is_empty());
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -987,6 +1002,7 @@ fn report_payroll_filters_by_invoice_date_and_work_person() {
     .unwrap();
     assert!(miss.is_empty());
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -1067,5 +1083,146 @@ fn report_payroll_matches_numeric_emp_no_for_worker_name() {
     assert_eq!(materials[0].description, "Jose drop cloths");
     assert_eq!(materials[0].emp_no, "400");
 
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn save_order(
+    conn: &mut rusqlite::Connection,
+    pro_no: &str,
+    order_date: &str,
+    (order_by, unit, size): (&str, &str, &str),
+) -> i64 {
+    ops::save_work_order(
+        conn,
+        WorkOrderWithLines {
+            order: WorkOrder {
+                company_no: "1000".into(),
+                pro_no: pro_no.into(),
+                order_date: order_date.into(),
+                order_no: 0,
+                work_date: None,
+                order_unit: unit.into(),
+                order_size: size.into(),
+                order_man: "MGR".into(),
+                order_by: order_by.into(),
+                cust_po_no: "".into(),
+                remark1: "".into(),
+                remark2: "".into(),
+                status: "".into(),
+                voided: false,
+                company_name: None,
+                property_name: None,
+            },
+            lines: vec![],
+        },
+    )
+    .unwrap()
+}
+
+fn invoice_order(
+    conn: &mut rusqlite::Connection,
+    pro_no: &str,
+    sales_date: &str,
+    order_no: i64,
+    price: f64,
+) -> i64 {
+    ops::save_invoice(
+        conn,
+        InvoiceWithLines {
+            invoice: Invoice {
+                pro_no: pro_no.into(),
+                sales_date: sales_date.into(),
+                order_no,
+                ..blank_invoice()
+            },
+            lines: vec![InvoiceLine {
+                pro_no: pro_no.into(),
+                sales_date: sales_date.into(),
+                ..line(price)
+            }],
+        },
+    )
+    .unwrap()
+}
+
+#[test]
+fn report_missing_invoices_labels_each_work_order() {
+    let (dir, mut conn) = temp_conn("missing_inv");
+    seed_company(&conn);
+    conn.execute(
+        "INSERT INTO properties (company_no, pro_no, name) VALUES ('1000', '02', 'Bldg B')",
+        [],
+    )
+    .unwrap();
+
+    let before = save_order(&mut conn, "01", "2026-01-20", ("", "A0", ""));
+    let unbuilt = save_order(&mut conn, "01", "2026-02-01", ("", "A1", ""));
+    let built = save_order(&mut conn, "01", "2026-02-03", ("JOE", "B2", "2BR"));
+    let void = save_order(&mut conn, "01", "2026-02-05", ("", "C3", ""));
+    let void_invoice = save_order(&mut conn, "01", "2026-02-07", ("", "D4", ""));
+    let other_property = save_order(&mut conn, "02", "2026-02-09", ("", "E5", ""));
+    let after = save_order(&mut conn, "01", "2026-03-01", ("", "F6", ""));
+
+    let built_invoice = invoice_order(&mut conn, "01", "2026-02-10", built, 150.0);
+    ops::void_work_order(&conn, "1000", "01", "2026-02-05", void).unwrap();
+    let voided = invoice_order(&mut conn, "01", "2026-02-11", void_invoice, 80.0);
+    ops::void_invoice(&conn, "1000", "01", "2026-02-11", voided).unwrap();
+    // Same order number, different property: it does not build this order.
+    invoice_order(&mut conn, "01", "2026-02-12", other_property, 60.0);
+
+    let rows = ops::report_missing_invoices(
+        &conn,
+        &ListParams {
+            from_date: Some("2026-02-01".into()),
+            to_date: Some("2026-02-28".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let orders: Vec<i64> = rows.iter().map(|r| r.order_no).collect();
+    assert_eq!(
+        orders,
+        vec![unbuilt, built, void, void_invoice, other_property]
+    );
+    assert!(!orders.contains(&before) && !orders.contains(&after));
+
+    let status: Vec<&str> = rows.iter().map(|r| r.status.as_str()).collect();
+    assert_eq!(
+        status,
+        vec![
+            "*** Not Build Invoice ***",
+            "Built",
+            "**** Void Work Order ****",
+            "*** Not Build Invoice ***",
+            "*** Not Build Invoice ***",
+        ]
+    );
+
+    let unbuilt_row = &rows[0];
+    assert_eq!(unbuilt_row.invoice, None);
+    assert_eq!(unbuilt_row.inv_date, None);
+    assert_eq!(unbuilt_row.balance, 0.0);
+    assert_eq!(unbuilt_row.order_by, "MGR", "falls back to who ordered it");
+    assert_eq!(unbuilt_row.unit_size, "A1");
+    assert_eq!(unbuilt_row.property_address, "1105 MAPLE ST.");
+
+    let built_row = &rows[1];
+    assert_eq!(built_row.invoice, Some(built_invoice));
+    assert_eq!(built_row.inv_date.as_deref(), Some("2026-02-10"));
+    assert_eq!(built_row.balance, 150.0);
+    assert_eq!(built_row.order_by, "JOE");
+    assert_eq!(built_row.unit_size, "B2/2BR");
+
+    assert_eq!(
+        rows[4].property_address, "Bldg B",
+        "no street, so the property name"
+    );
+
+    let everything = ops::report_missing_invoices(&conn, &ListParams::default()).unwrap();
+    assert_eq!(everything.len(), 7);
+
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -101,7 +101,10 @@ export function CashProcess({
   }, [company.companyNo, focusInvoice, setIndex]);
 
   useEffect(() => {
-    load();
+    load().catch((e: unknown) => {
+      setMsg(String(e));
+      setMsgKind("error");
+    });
   }, [load]);
 
   const current = invoices[index] ?? null;
@@ -226,14 +229,18 @@ export function CashProcess({
         remaining = Math.round((remaining - pay) * 100) / 100;
       }
       setAutoMode(false);
+      await load();
       setMsg(
         remaining > 0.005
           ? `Auto Receipts Apply Finished. Remaining unapplied: ${money(remaining)}`
           : "Auto Receipts Apply Finished. Press any key to Exit ..."
       );
       setMsgKind("info");
-      await load();
     } catch (e) {
+      // Receipts posted before the failure stay posted. Show the balances they
+      // left and keep only the unapplied part, so trying again cannot pay twice.
+      setAutoAmount(remaining);
+      await load().catch(() => undefined);
       setMsg(String(e));
       setMsgKind("error");
     }
@@ -336,9 +343,11 @@ export function CashProcess({
       else if (editing) {
         setEditing(null);
         setMsg("Ins=Payment  A=Auto_Receipt  Esc=Back");
+        setMsgKind("default");
       } else if (autoMode) {
         setAutoMode(false);
         setMsg("Ins=Payment  A=Auto_Receipt  Esc=Back");
+        setMsgKind("default");
       } else onBack();
     },
     onF1: () => setHelp(true),
@@ -459,7 +468,7 @@ Company NO : ${company.companyNo}  ${company.name}`}
                 </div>
               )}
             </div>
-            <div className="browse-grid" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em" }}>
+            <div className="browse-grid dos-total" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", marginTop: "0.5em" }}>
               <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Unpaid Total</div>
               <div>{money(unpaidTotal)}</div>
               <div></div>

@@ -19,7 +19,7 @@ import {
   Prompt,
   HelpOverlay,
 } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 import { money, fmtDate, today } from "../dos/utils";
@@ -218,9 +218,9 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
         })),
       });
       setEditing(null);
+      await load();
       setMsg(`Invoice #${no} saved.`);
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -236,8 +236,8 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
       current.invoice
     );
     setVoidAsk(false);
-    setMsg(`*** Void Invoice ***  #${current.invoice}`);
     await load();
+    setMsg(`*** Void Invoice ***  #${current.invoice}`);
   }
 
   async function onCompanyChange(companyNo: string) {
@@ -267,26 +267,29 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-              placeholder="Invoice#, Company, Contact, Address, Unit, PO"
-            />
-            <label>From:</label>
-            <DateInput
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-            <label>To:</label>
-            <DateInput
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
+            <InlineField label="Search:">
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+                placeholder="Invoice#, Company, Contact, Address, Unit, PO"
+              />
+            </InlineField>
+            <InlineField label="From:">
+              <DateInput
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </InlineField>
+            <InlineField label="To:">
+              <DateInput
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </InlineField>
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 8ch 8ch 8ch 9ch 6ch 12ch 12ch 12ch 4ch" }}>
@@ -578,6 +581,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   <select
                     className="dos-select"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} code`}
                     value={line.codeNo}
                     onChange={(e) => {
                       const code = e.target.value;
@@ -605,6 +609,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   <input
                     className="dos-input"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} description`}
                     value={line.description}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -615,6 +620,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <DateInput
+                    aria-label={`Line ${idx + 1} work date`}
                     value={line.workDate || today()}
                     style={{ width: "100%" }}
                     onChange={(e) => {
@@ -628,6 +634,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   <select
                     className="dos-select"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} employee`}
                     value={line.empNo}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -695,7 +702,7 @@ export function InvoiceBrowse({ onBack }: { onBack: () => void }) {
                   + Line (Ins)
                 </button>
               </div>
-              <div style={{ color: "var(--app-highlight)", fontWeight: "bold" }}>
+              <div className="dos-total">
                 Invoice Total : {money(lineTotal)}
               </div>
               <div></div>

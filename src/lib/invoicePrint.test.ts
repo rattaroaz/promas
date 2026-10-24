@@ -2,12 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { inflateRawSync, inflateSync } from "node:zlib";
-import { PDFDocument } from "pdf-lib";
+import { PDFDict, PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 import {
   buildInvoicePdf,
+  downloadInvoicePdf,
+  printInvoiceOnTemplate,
   wrapDescription,
   wrapToWidth,
   descriptionWrapWidth,
+  PRINT_DESC_INDENT,
   PRINT_DESC_SIZE,
   PRINT_DESC_X,
   PRINT_AMOUNT_X,
@@ -16,6 +19,7 @@ import {
   type InvoicePrintPayload,
 } from "./invoicePrint";
 import type { Company, Property, Invoice, InvoiceLine } from "../api";
+import { getPrintPreviewUrl } from "../stores/printPreviewStore";
 
 const TEMPLATE = readFileSync(
   resolve(__dirname, "../../public/invoice_template.pdf")
@@ -218,23 +222,27 @@ function payload(overrides?: Partial<InvoicePrintPayload>): InvoicePrintPayload 
   };
 }
 
+function stubTemplateFetch() {
+  // Copy into a standalone ArrayBuffer — Node Buffer.buffer may be a larger
+  // shared pool and pdf-lib rejects detached / wrong-offset views.
+  const templateAb = (): ArrayBuffer => {
+    const copy = new Uint8Array(TEMPLATE.byteLength);
+    copy.set(TEMPLATE);
+    return copy.buffer;
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => templateAb(),
+    }))
+  );
+}
+
 describe("buildInvoicePdf", () => {
   beforeEach(() => {
-    // Copy into a standalone ArrayBuffer — Node Buffer.buffer may be a larger
-    // shared pool and pdf-lib rejects detached / wrong-offset views.
-    const templateAb = (): ArrayBuffer => {
-      const copy = new Uint8Array(TEMPLATE.byteLength);
-      copy.set(TEMPLATE);
-      return copy.buffer;
-    };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        status: 200,
-        arrayBuffer: async () => templateAb(),
-      }))
-    );
+    stubTemplateFetch();
   });
 
   afterEach(() => {
@@ -475,5 +483,207 @@ describe("buildInvoicePdf", () => {
     expect(asText).toContain("LINE ITEM 1");
     // Not all 30 fit; at least first few rows are drawn
     expect(asText).toContain("LINE ITEM 2");
+  });
+});
+
+describe("invoice form contents", () => {
+  beforeEach(() => {
+    stubTemplateFetch();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const base = payload();
+  const drawn = async (overrides: Partial<InvoicePrintPayload>) =>
+    textPositions(await buildInvoicePdf(payload(overrides)));
+  const texts = (positions: { text: string }[]) => positions.map((p) => p.text);
+  const at = (positions: { text: string; y: number }[], text: string) =>
+    positions.find((p) => p.text === text);
+
+  it("fills in every value in regular Helvetica, never bold", async () => {
+    const bytes = await buildInvoicePdf(
+      payload({ invoice: { ...base.invoice, voided: true, remark1: "Thank you" } })
+    );
+    const page = (await PDFDocument.load(bytes)).getPages()[0];
+    const fonts = page.node.Resources()!.lookup(PDFName.of("Font"), PDFDict);
+    const faces = fonts.keys().map((key) => String(fonts.lookup(key, PDFDict).get(PDFName.of("BaseFont"))));
+    expect(faces.length).toBeGreaterThan(0);
+    expect(new Set(faces)).toEqual(new Set(["/Helvetica"]));
+  });
+
+  it("prints the stored total, the deposit plus cash paid, and the stored balance", async () => {
+    const positions = await drawn({});
+    expect(texts(positions).filter((t) => t === "445.00")).toHaveLength(2);
+    expect(texts(positions)).toContain("145.00");
+    expect(texts(positions)).toContain("300.00");
+    expect(texts(positions)).toContain("0.00");
+  });
+
+  it("totals the lines when the invoice has no stored total, and works out the balance", async () => {
+    const positions = await drawn({
+      invoice: { ...base.invoice, salesTotal: 0, balance: null as unknown as number },
+      lines: [
+        { ...base.lines[0], price: 100 },
+        { ...base.lines[1], price: 50 },
+      ],
+    });
+    expect(texts(positions).filter((t) => t === "150.00")).toHaveLength(2);
+    expect(texts(positions)).toContain("5.00");
+  });
+
+  it("skips lines with neither a description nor a price", async () => {
+    const alone = await drawn({ lines: [base.lines[1]] });
+    const withBlank = await drawn({
+      lines: [{ ...base.lines[0], description: "  ", price: 0 }, base.lines[1]],
+    });
+    expect(at(withBlank, "CEILING")?.y).toBe(at(alone, "CEILING")?.y);
+  });
+
+  it("prints remark 1 under the last line, clipped to fit", async () => {
+    const remark = "Touch-up visit included within thirty days of completion at no extra charge";
+    expect(remark.length).toBeGreaterThan(58);
+    const positions = await drawn({ invoice: { ...base.invoice, remark1: remark } });
+    const line = positions.find((p) => p.text.startsWith("Touch-up visit"));
+    expect(line?.text.startsWith(remark.slice(0, 57))).toBe(true);
+    expect(line?.text).not.toContain("no extra charge");
+    expect(line!.y).toBeLessThan(at(positions, "CEILING")!.y);
+  });
+
+  it("labels the contacts and leaves out empty address parts", async () => {
+    const full = await drawn({});
+    expect(texts(full)).toContain("Attn: ELAINE");
+    expect(texts(full)).toContain("NEWPORT BEACH, CA, 92660");
+    expect(texts(full)).toContain("Contact: OFFICE");
+
+    const sparse = await drawn({
+      company: { ...base.company, phone: "", state: "" },
+      property: { ...base.property, manager: "", contact: "JOE" },
+    });
+    expect(texts(sparse)).toContain("NEWPORT BEACH, 92660");
+    expect(texts(sparse)).toContain("Contact: JOE");
+    expect(at(sparse, "Attn: ELAINE")!.y).toBeGreaterThan(at(full, "Attn: ELAINE")!.y);
+  });
+
+  it("clips a long company name to the address column", async () => {
+    const name = "OAKS MANAGEMENT COMPANY OF SOUTHERN CALIFORNIA INC";
+    const positions = await drawn({ company: { ...base.company, name } });
+    const printed = positions.find((p) => p.text.startsWith("OAKS MANAGEMENT"))!;
+    const visible = printed.text.replace(/\u0085$/, "");
+    expect(name.startsWith(visible)).toBe(true);
+    expect(visible.length).toBeLessThan(name.length);
+  });
+
+  it("prints Net 7 Days when the invoice has no terms", async () => {
+    const positions = await drawn({ invoice: { ...base.invoice, salesTerm: "" } });
+    expect(texts(positions)).toContain("Net  7 Days");
+  });
+
+  it("prints nothing for the P.O. box when there is no P.O. or work order", async () => {
+    const positions = await drawn({ invoice: { ...base.invoice, custPoNo: "", orderNo: 0 } });
+    expect(texts(positions)).not.toContain("PO9");
+    expect(texts(positions)).not.toContain("99");
+  });
+});
+
+describe("opening the printed invoice", () => {
+  let created: Blob[];
+  const original = Object.getOwnPropertyDescriptors(URL);
+
+  beforeEach(() => {
+    stubTemplateFetch();
+    created = [];
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn((blob: Blob) => {
+        created.push(blob);
+        return "blob:invoice";
+      }),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    for (const name of ["createObjectURL", "revokeObjectURL"] as const) {
+      if (original[name]) Object.defineProperty(URL, name, original[name]);
+      else delete (URL as unknown as Record<string, unknown>)[name];
+    }
+  });
+
+  it("shows the PDF in the print preview", async () => {
+    await printInvoiceOnTemplate(payload());
+    expect(getPrintPreviewUrl()).toBe("blob:invoice");
+    expect(created[0].type).toBe("application/pdf");
+  });
+
+  it("downloads the PDF named after the invoice and company, then frees it", async () => {
+    const clicked: HTMLAnchorElement[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this);
+    });
+    const realSetTimeout = globalThis.setTimeout;
+    let release: (() => void) | undefined;
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void, ms?: number) => {
+      if (ms === 10_000) {
+        release = fn;
+        return 0;
+      }
+      return realSetTimeout(fn, ms);
+    }) as typeof setTimeout);
+
+    await downloadInvoicePdf(payload());
+    expect(clicked).toHaveLength(1);
+    expect(clicked[0].download).toBe("Invoice_52629_1000.pdf");
+    expect(clicked[0].href).toBe("blob:invoice");
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    release!();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:invoice");
+  });
+
+  it("names an unnumbered invoice as a draft, or uses the name given", async () => {
+    const clicked: HTMLAnchorElement[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this);
+    });
+    const draft = payload();
+    await downloadInvoicePdf({ ...draft, invoice: { ...draft.invoice, invoice: 0 } });
+    await downloadInvoicePdf(payload(), "custom.pdf");
+    expect(clicked.map((a) => a.download)).toEqual(["Invoice_draft_1000.pdf", "custom.pdf"]);
+  });
+});
+
+describe("wrapping text to a width", () => {
+  let font: Awaited<ReturnType<PDFDocument["embedFont"]>>;
+  beforeEach(async () => {
+    font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+  });
+
+  it("returns one empty line for no text", () => {
+    expect(wrapToWidth(font, "", 9, 100)).toEqual([""]);
+    expect(wrapDescription(font, "", 9, 100)).toEqual([""]);
+  });
+
+  it("keeps blank lines between paragraphs and treats CRLF like LF", () => {
+    expect(wrapToWidth(font, "first\r\n\r\nsecond", 9, 200)).toEqual(["first", "", "second"]);
+    expect(wrapDescription(font, "first\r\n\r\nsecond", 9, 200)).toEqual([
+      "first",
+      "",
+      `${PRINT_DESC_INDENT}second`,
+    ]);
+  });
+
+  it("splits a word wider than the line into pieces that each fit", () => {
+    const word = "Supercalifragilisticexpialidocious";
+    const width = font.widthOfTextAtSize("Supercali", 9);
+    const lines = wrapToWidth(font, `a ${word} b`, 9, width);
+    expect(lines[0]).toBe("a");
+    expect(lines[lines.length - 1]).toBe("b");
+    const pieces = lines.slice(1, -1);
+    expect(pieces.join("")).toBe(word);
+    for (const piece of pieces) {
+      expect(font.widthOfTextAtSize(piece, 9)).toBeLessThanOrEqual(width);
+    }
   });
 });

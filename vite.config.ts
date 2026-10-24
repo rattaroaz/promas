@@ -57,6 +57,9 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: true,
+    // The business runs on Pacific time, and CI machines run on UTC. Testing
+    // in Pacific time makes a UTC date used as "today" fail the suite.
+    env: { TZ: "America/Los_Angeles" },
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
@@ -73,10 +76,10 @@ export default defineConfig({
       // not on normal branch noise. Raise after adding tests, never lower
       // to hide a drop.
       thresholds: {
-        statements: 56,
-        branches: 51,
-        functions: 50,
-        lines: 58,
+        statements: 89,
+        branches: 81,
+        functions: 90,
+        lines: 91,
       },
     },
   },

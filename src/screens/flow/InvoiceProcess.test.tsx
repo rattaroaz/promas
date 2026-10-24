@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "@testing-library/react";
-import { renderApp, screen, userEvent, waitFor } from "../../test/render";
+import { fireEvent, renderApp, screen, userEvent, waitFor, within } from "../../test/render";
 import { InvoiceProcess, descriptionRowCount, siteHeaderLines } from "./InvoiceProcess";
-import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
+import { api, emptyCompany, emptyInvoice, emptyInvoiceLine, emptyProperty } from "../../api";
 import { today } from "../../dos/utils";
+import { downloadInvoicePdf, printInvoiceOnTemplate } from "../../lib/invoicePrint";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
   COLOR_CHANGE_WALLS_NAVAJO_WHITE,
@@ -44,6 +45,11 @@ vi.mock("../../api", async () => {
     },
   };
 });
+
+vi.mock("../../lib/invoicePrint", () => ({
+  printInvoiceOnTemplate: vi.fn(),
+  downloadInvoicePdf: vi.fn(),
+}));
 
 const company = { ...emptyCompany(), companyNo: "1000", name: "ACME" };
 const property = { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" };
@@ -161,6 +167,56 @@ describe("InvoiceProcess", () => {
     expect(descriptions).toHaveLength(4);
     for (const field of descriptions) expect(field).toHaveValue("");
     expect(api.getSysdata).toHaveBeenCalled();
+  });
+
+  it("dates a new invoice by the local day and counts terms in whole days across the clock change", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-03-05T19:00:00-08:00"));
+      vi.mocked(api.getSysdata).mockResolvedValue({
+        company: "Test",
+        address1: "",
+        address2: "",
+        city: "",
+        zip: "",
+        closeDate: null,
+        nextInvoice: 2,
+        nextOrder: 1,
+        nextEstimate: 1,
+        termsDays: 10,
+        interestRate: 1.5,
+      });
+      renderApp(
+        <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+      );
+      await screen.findByText(/1 invoices/i);
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Insert", bubbles: true }));
+      });
+      expect(await screen.findByLabelText("Invoice Date")).toHaveValue("2026-03-05");
+      expect(screen.getByLabelText("Due Date")).toHaveValue("2026-03-15");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to invoice 1, due in 7 days, when the system record cannot be read", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-03-03T12:00:00-08:00"));
+      vi.mocked(api.getSysdata).mockRejectedValue(new Error("no sysdata row"));
+      renderApp(
+        <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+      );
+      await screen.findByText(/1 invoices/i);
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Insert", bubbles: true }));
+      });
+      expect(await screen.findByLabelText("Invoice Number")).toHaveValue("1");
+      expect(screen.getByLabelText("Due Date")).toHaveValue("2026-03-10");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("formats Material Costs and Price on Enter and ArrowDown stays off Invoice Date", async () => {
@@ -1017,5 +1073,418 @@ describe("InvoiceProcess", () => {
     expect(
       screen.queryByRole("button", { name: /Remove .* from list/i })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("InvoiceProcess keys, printing and failures", () => {
+  const second = {
+    ...fixture,
+    invoice: 2,
+    salesDate: "2026-02-01",
+    salesUnit: "B2",
+    custPoNo: "PO-552",
+  };
+  const line = { ...emptyInvoiceLine(fixture, 1), description: "Paint", price: 250 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.listInvoices).mockResolvedValue([fixture, second]);
+    vi.mocked(api.getInvoice).mockImplementation(async (_co, _pro, _date, no) => ({
+      invoice: no === 2 ? second : fixture,
+      lines: [line],
+    }));
+    vi.mocked(api.listWorkPersons).mockResolvedValue([]);
+    vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
+    vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) =>
+      ["Dunn-Edwards", name].sort()
+    );
+    vi.mocked(api.getSysdata).mockResolvedValue({
+      company: "Test",
+      address1: "",
+      address2: "",
+      city: "",
+      zip: "",
+      closeDate: null,
+      nextInvoice: 3,
+      nextOrder: 1,
+      nextEstimate: 1,
+      termsDays: 7,
+      interestRate: 1.5,
+    });
+    vi.mocked(api.saveInvoice).mockResolvedValue(3);
+    vi.mocked(api.voidInvoice).mockResolvedValue(undefined);
+    vi.mocked(printInvoiceOnTemplate).mockResolvedValue(undefined);
+    vi.mocked(downloadInvoicePdf).mockResolvedValue(undefined);
+  });
+
+  function key(k: string, init: KeyboardEventInit = {}, target: EventTarget = window) {
+    act(() => {
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...init })
+      );
+    });
+  }
+  const messageBar = () => document.querySelector(".dos-messagebar");
+  const row = (po: RegExp) => screen.getByRole("button", { name: po });
+  const form = () => screen.queryByRole("dialog", { name: /Invoice Number|Enter Invoice/ });
+  const voidQuestion = () => screen.queryByRole("dialog", { name: /Do you want Void/ });
+  const saveQuestion = () => screen.queryByRole("dialog", { name: /Is This Data Correct/ });
+
+  async function renderList(onBack = vi.fn()) {
+    const user = userEvent.setup();
+    renderApp(<InvoiceProcess company={company} property={property} onBack={onBack} />);
+    await screen.findByText(/2 invoices/);
+    return { user, onBack };
+  }
+
+  async function openNewForm(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/ }));
+    await screen.findByRole("dialog", { name: /Invoice Number 3/ });
+  }
+
+  describe("printing", () => {
+    it("End prints the selected invoice on the form", async () => {
+      await renderList();
+      key("ArrowDown");
+      key("End");
+      await waitFor(() =>
+        expect(printInvoiceOnTemplate).toHaveBeenCalledWith({
+          company,
+          property,
+          invoice: second,
+          lines: [line],
+        })
+      );
+      expect(api.getInvoice).toHaveBeenCalledWith("1000", "01", "2026-02-01", 2);
+      await waitFor(() =>
+        expect(messageBar()).toHaveTextContent("Invoice #2 sent to printer form.")
+      );
+    });
+
+    it("End with no invoices asks for one to print", async () => {
+      vi.mocked(api.listInvoices).mockResolvedValue([]);
+      renderApp(<InvoiceProcess company={company} property={property} onBack={vi.fn()} />);
+      await screen.findByText(/No invoices for this property/);
+      key("End");
+      await waitFor(() =>
+        expect(messageBar()).toHaveTextContent("--> Select or open an invoice to print !!")
+      );
+      expect(messageBar()).toHaveClass("error");
+      expect(printInvoiceOnTemplate).not.toHaveBeenCalled();
+    });
+
+    it("End reports an invoice that is no longer on file", async () => {
+      vi.mocked(api.getInvoice).mockResolvedValue(null);
+      await renderList();
+      key("End");
+      await waitFor(() =>
+        expect(messageBar()).toHaveTextContent("--> does not exist in Invoice File !!!")
+      );
+      expect(printInvoiceOnTemplate).not.toHaveBeenCalled();
+    });
+
+    it("prints the open form as shown, unsaved changes included", async () => {
+      const { user } = await renderList();
+      await user.click(row(/PO-441/));
+      await screen.findByRole("dialog", { name: /Invoice Number 1/ });
+      fireEvent.change(screen.getByLabelText(/^Customer P\.O/), { target: { value: "PO-NEW" } });
+      await user.click(screen.getByRole("button", { name: /^Print Form \(End\)$/ }));
+      await waitFor(() => expect(printInvoiceOnTemplate).toHaveBeenCalledTimes(1));
+      expect(printInvoiceOnTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoice: expect.objectContaining({ invoice: 1, custPoNo: "PO-NEW" }),
+          lines: [line],
+        })
+      );
+      expect(api.getInvoice).toHaveBeenCalledTimes(1);
+    });
+
+    it("downloads the PDF when the form cannot be shown", async () => {
+      vi.mocked(printInvoiceOnTemplate).mockRejectedValueOnce(new Error("no printer"));
+      await renderList();
+      key("End");
+      await waitFor(() =>
+        expect(messageBar()).toHaveTextContent("Print window blocked — PDF downloaded instead.")
+      );
+      expect(downloadInvoicePdf).toHaveBeenCalledWith({
+        company,
+        property,
+        invoice: fixture,
+        lines: [line],
+      });
+    });
+
+    it("keeps the print error when the download fails too", async () => {
+      vi.mocked(printInvoiceOnTemplate).mockRejectedValueOnce(new Error("no printer"));
+      vi.mocked(downloadInvoicePdf).mockRejectedValueOnce(new Error("no disk"));
+      const { user } = await renderList();
+      await user.click(row(/PO-441/));
+      await screen.findByRole("dialog", { name: /Invoice Number 1/ });
+      key("End");
+      await waitFor(() => expect(downloadInvoicePdf).toHaveBeenCalledTimes(1));
+      expect(messageBar()).toHaveTextContent("Error: no printer");
+      expect(messageBar()).toHaveClass("error");
+    });
+  });
+
+  describe("list keys", () => {
+    it("arrows move the selection, and Enter or Ctrl-Home opens it", async () => {
+      await renderList();
+      expect(row(/PO-441/)).toHaveClass("selected");
+      key("ArrowDown");
+      expect(row(/PO-552/)).toHaveClass("selected");
+      key("Enter");
+      expect(await screen.findByRole("dialog", { name: /Invoice Number 2/ })).toBeInTheDocument();
+
+      key("Escape");
+      expect(form()).not.toBeInTheDocument();
+      key("Home");
+      expect(row(/PO-441/)).toHaveClass("selected");
+      key("Home", { ctrlKey: true });
+      expect(await screen.findByRole("dialog", { name: /Invoice Number 1/ })).toBeInTheDocument();
+    });
+
+    it("Esc closes help, then the form, then leaves", async () => {
+      const { user, onBack } = await renderList();
+      await user.click(row(/PO-441/));
+      await screen.findByRole("dialog", { name: /Invoice Number 1/ });
+      key("F1");
+      expect(screen.getByText(/Function Key Description/)).toBeInTheDocument();
+      key("Escape");
+      expect(screen.queryByText(/Function Key Description/)).not.toBeInTheDocument();
+      expect(form()).toBeInTheDocument();
+      key("Escape");
+      expect(form()).not.toBeInTheDocument();
+      expect(onBack).not.toHaveBeenCalled();
+      key("Escape");
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("Enter on help's OK closes it without opening the invoice behind", async () => {
+      const { user } = await renderList();
+      key("F1");
+      expect(screen.getByRole("button", { name: "OK" })).toHaveFocus();
+      await user.keyboard("{Enter}");
+      expect(screen.queryByText(/Function Key Description/)).not.toBeInTheDocument();
+      expect(form()).not.toBeInTheDocument();
+      expect(api.getInvoice).not.toHaveBeenCalled();
+    });
+
+    it("Ins does nothing while help is open", async () => {
+      await renderList();
+      key("F1");
+      key("Insert");
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(form()).not.toBeInTheDocument();
+      expect(api.getSysdata).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the void question", () => {
+    it("Y voids, and N or Esc keep the invoice", async () => {
+      await renderList();
+      key("Delete");
+      expect(voidQuestion()).toHaveAccessibleName(/Invoice #1$/);
+      key("n");
+      expect(voidQuestion()).not.toBeInTheDocument();
+      key("Delete");
+      key("Escape");
+      expect(voidQuestion()).not.toBeInTheDocument();
+      expect(api.voidInvoice).not.toHaveBeenCalled();
+
+      key("Delete");
+      key("y");
+      await waitFor(() =>
+        expect(api.voidInvoice).toHaveBeenCalledWith("1000", "01", "2026-01-15", 1)
+      );
+      await waitFor(() => expect(messageBar()).toHaveTextContent("*** Void Invoice *** #1"));
+      expect(voidQuestion()).not.toBeInTheDocument();
+    });
+
+    it("keys behind the question do nothing; arrows move between Y and N", async () => {
+      const { user } = await renderList();
+      key("Delete");
+      const yes = within(voidQuestion()!).getByRole("button", { name: "Y" });
+      expect(yes).toHaveFocus();
+
+      key("ArrowDown", {}, yes);
+      expect(row(/PO-441/)).toHaveClass("selected");
+      expect(voidQuestion()).toHaveAccessibleName(/Invoice #1$/);
+      const no = within(voidQuestion()!).getByRole("button", { name: "N" });
+      expect(no).toHaveFocus();
+
+      for (const k of ["End", "PageDown", "Home", "Delete"]) key(k, {}, no);
+      key("Home", { ctrlKey: true }, no);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(printInvoiceOnTemplate).not.toHaveBeenCalled();
+      expect(api.getInvoice).not.toHaveBeenCalled();
+      expect(row(/PO-441/)).toHaveClass("selected");
+
+      await user.keyboard("{Enter}");
+      expect(voidQuestion()).not.toBeInTheDocument();
+      expect(form()).not.toBeInTheDocument();
+      expect(api.voidInvoice).not.toHaveBeenCalled();
+    });
+
+    it("Enter on the focused Y voids", async () => {
+      const { user } = await renderList();
+      key("Delete");
+      await user.keyboard("{Enter}");
+      await waitFor(() => expect(api.voidInvoice).toHaveBeenCalledTimes(1));
+      expect(api.getInvoice).not.toHaveBeenCalled();
+    });
+
+    it("a failed void closes the question and shows the error", async () => {
+      vi.mocked(api.voidInvoice).mockRejectedValueOnce("database is locked");
+      await renderList();
+      key("Delete");
+      key("y");
+      await waitFor(() => expect(messageBar()).toHaveTextContent("database is locked"));
+      expect(messageBar()).toHaveClass("error");
+      expect(voidQuestion()).not.toBeInTheDocument();
+    });
+
+    it("does not ask to void an invoice that is already void", async () => {
+      vi.mocked(api.listInvoices).mockResolvedValue([{ ...fixture, voided: true }]);
+      renderApp(<InvoiceProcess company={company} property={property} onBack={vi.fn()} />);
+      await screen.findByText(/1 invoices/);
+      key("Delete");
+      expect(voidQuestion()).not.toBeInTheDocument();
+    });
+  });
+
+  describe("saving the form", () => {
+    it("N and Esc on the save question keep the form; Y saves it", async () => {
+      const { user } = await renderList();
+      await openNewForm(user);
+      key("s", { ctrlKey: true });
+      expect(await screen.findByRole("dialog", { name: /Is This Data Correct/ })).toBeInTheDocument();
+      key("N");
+      expect(saveQuestion()).not.toBeInTheDocument();
+      expect(form()).toBeInTheDocument();
+
+      key("s", { ctrlKey: true });
+      await screen.findByRole("dialog", { name: /Is This Data Correct/ });
+      key("Escape");
+      expect(saveQuestion()).not.toBeInTheDocument();
+      expect(form()).toBeInTheDocument();
+      expect(api.saveInvoice).not.toHaveBeenCalled();
+
+      key("s", { ctrlKey: true });
+      await screen.findByRole("dialog", { name: /Is This Data Correct/ });
+      key("Y");
+      await waitFor(() => expect(messageBar()).toHaveTextContent("Invoice #3 saved."));
+      expect(messageBar()).toHaveClass("info");
+      expect(form()).not.toBeInTheDocument();
+    });
+
+    it("refuses a blank Invoice Date, and the error clears when the form closes", async () => {
+      const { user } = await renderList();
+      await openNewForm(user);
+      fireEvent.change(screen.getByLabelText("Invoice Date"), { target: { value: "" } });
+      key("s", { ctrlKey: true });
+      await waitFor(() => expect(messageBar()).toHaveTextContent("--> Invoice Date required !!"));
+      expect(messageBar()).toHaveClass("error");
+      expect(saveQuestion()).not.toBeInTheDocument();
+
+      key("Escape");
+      expect(form()).not.toBeInTheDocument();
+      expect(messageBar()).not.toHaveClass("error");
+    });
+
+    it("a failed save keeps the form open and shows the error", async () => {
+      vi.mocked(api.saveInvoice).mockRejectedValueOnce("disk full");
+      const { user } = await renderList();
+      await openNewForm(user);
+      key("s", { ctrlKey: true });
+      await screen.findByRole("dialog", { name: /Is This Data Correct/ });
+      key("y");
+      await waitFor(() => expect(messageBar()).toHaveTextContent("disk full"));
+      expect(messageBar()).toHaveClass("error");
+      expect(saveQuestion()).not.toBeInTheDocument();
+      expect(form()).toBeInTheDocument();
+    });
+
+    it("saves the dates, terms, unit, size, P.O. and line changes", async () => {
+      const { user } = await renderList();
+      await openNewForm(user);
+      fireEvent.change(screen.getByLabelText("Due Date"), { target: { value: "2026-03-01" } });
+      fireEvent.change(screen.getByLabelText(/^Terms/), { target: { value: "Net 30 Days" } });
+      fireEvent.change(screen.getByLabelText("Order Date"), { target: { value: "" } });
+      fireEvent.change(screen.getByLabelText(/^Unit/), { target: { value: "C3" } });
+      fireEvent.change(screen.getByLabelText("Custom size"), { target: { value: "Penthouse" } });
+      fireEvent.change(screen.getByLabelText(/^Customer P\.O/), { target: { value: "PO-9" } });
+      fireEvent.change(screen.getByLabelText("Line 1 work date"), { target: { value: "2026-01-20" } });
+      const deletes = screen.getAllByRole("button", { name: /^Del$/ });
+      expect(deletes).toHaveLength(4);
+      await user.click(deletes[3]);
+      expect(screen.getAllByRole("button", { name: /^Del$/ })).toHaveLength(3);
+      await user.click(screen.getByRole("button", { name: /^\+ Line$/ }));
+
+      key("s", { ctrlKey: true });
+      await screen.findByRole("dialog", { name: /Is This Data Correct/ });
+      key("y");
+      await waitFor(() => expect(api.saveInvoice).toHaveBeenCalledTimes(1));
+      const saved = vi.mocked(api.saveInvoice).mock.calls[0][0];
+      expect(saved.invoice).toEqual(
+        expect.objectContaining({
+          salesDue: "2026-03-01",
+          salesTerm: "Net 30 Days",
+          orderDate: null,
+          salesUnit: "C3",
+          salesSize: "Penthouse",
+          custPoNo: "PO-9",
+        })
+      );
+      expect(saved.lines.map((l) => l.lineNo)).toEqual([1, 2, 3, 4]);
+      expect(saved.lines[0].workDate).toBe("2026-01-20");
+    });
+
+    it("keeps a typed paint supply company in the list when saving it fails", async () => {
+      vi.mocked(api.savePaintSupplyCo).mockRejectedValueOnce("offline");
+      const { user } = await renderList();
+      await openNewForm(user);
+      await user.type(screen.getByLabelText("Paint Supply Co."), "Vista Paint");
+      await user.tab();
+      const list = screen.getByLabelText("Paint Supply Co. list");
+      await waitFor(() =>
+        expect(within(list).getByRole("option", { name: "Vista Paint" })).toBeInTheDocument()
+      );
+      expect(list).toHaveValue("Vista Paint");
+      expect(
+        within(list).getAllByRole("option").map((o) => o.textContent?.trim())
+      ).toEqual(["", "Dunn-Edwards", "Vista Paint"]);
+    });
+  });
+
+  describe("load failures", () => {
+    it("says why the invoice list could not be read", async () => {
+      vi.mocked(api.listInvoices).mockRejectedValueOnce("database is locked");
+      renderApp(<InvoiceProcess company={company} property={property} onBack={vi.fn()} />);
+      await waitFor(() => expect(messageBar()).toHaveTextContent("database is locked"));
+      expect(messageBar()).toHaveClass("error");
+    });
+
+    it("says why an invoice could not be opened", async () => {
+      vi.mocked(api.getInvoice).mockRejectedValueOnce("timeout");
+      const { user } = await renderList();
+      await user.click(row(/PO-441/));
+      await waitFor(() => expect(messageBar()).toHaveTextContent("timeout"));
+      expect(form()).not.toBeInTheDocument();
+    });
+
+    it("says so when the invoice to open is no longer on file", async () => {
+      vi.mocked(api.getInvoice).mockResolvedValueOnce(null);
+      const { user } = await renderList();
+      await user.click(row(/PO-441/));
+      await waitFor(() =>
+        expect(messageBar()).toHaveTextContent("--> does not exist in Invoice File !!!")
+      );
+      expect(form()).not.toBeInTheDocument();
+    });
   });
 });

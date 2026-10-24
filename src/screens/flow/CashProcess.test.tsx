@@ -242,8 +242,8 @@ describe("CashProcess", () => {
       <CashProcess company={company} onBack={vi.fn()} />
     );
     await screen.findByText(/Customer Ledger/i);
-    const header = document.querySelector(".browse-grid-header");
-    const firstRow = document.querySelector(".dos-browse-body .browse-grid");
+    const header = document.querySelector<HTMLElement>(".browse-grid-header")!;
+    const firstRow = document.querySelector<HTMLElement>(".dos-browse-body .browse-grid")!;
     
     expect(header).toHaveClass("browse-grid");
     expect(firstRow).toHaveClass("browse-grid");
@@ -512,5 +512,162 @@ describe("CashProcess", () => {
       expect(amount).toHaveFocus();
       expect(screen.queryByText(/Apply Finished/i)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("CashProcess results, failures and keys", () => {
+  const older = { ...openInv, salesDate: "2026-01-10", invoice: 1, salesTotal: 100, balance: 100 };
+  const newer = { ...openInv, salesDate: "2026-01-20", invoice: 2, salesTotal: 150, balance: 150 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.listInvoices).mockResolvedValue([newer, older]);
+    vi.mocked(api.listCashReceipts).mockResolvedValue([]);
+    vi.mocked(api.saveCashReceipt).mockResolvedValue(undefined);
+  });
+
+  function key(k: string, init: KeyboardEventInit = {}) {
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...init })
+      );
+    });
+  }
+  const messageBar = () => document.querySelector(".dos-messagebar");
+  const formTitle = () => document.querySelector(".dlg-title")?.textContent ?? "";
+
+  async function renderLedger(onBack = vi.fn()) {
+    const user = userEvent.setup();
+    renderApp(<CashProcess company={company} onBack={onBack} />);
+    await screen.findByText(/Open 250\.00/);
+    return { user, onBack };
+  }
+
+  it("says the auto receipt finished once the ledger shows the new balances", async () => {
+    const { user } = await renderLedger();
+    vi.mocked(api.listInvoices).mockResolvedValue([
+      { ...newer, balance: 0, payTotal: 150 },
+      { ...older, balance: 0, payTotal: 100 },
+    ]);
+    key("a");
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
+    await user.keyboard("y");
+    await waitFor(() =>
+      expect(messageBar()).toHaveTextContent("Auto Receipts Apply Finished. Press any key to Exit ...")
+    );
+    expect(messageBar()).toHaveClass("info");
+    expect(api.listInvoices).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText("0.00").length).toBeGreaterThan(0);
+  });
+
+  it("after a failure partway through, shows the new balances and keeps only the unapplied amount", async () => {
+    const { user } = await renderLedger();
+    vi.mocked(api.saveCashReceipt)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce("database is locked");
+    vi.mocked(api.listInvoices).mockResolvedValue([newer, { ...older, balance: 0, payTotal: 100 }]);
+    key("a");
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
+    await user.keyboard("y");
+
+    await waitFor(() => expect(messageBar()).toHaveTextContent("database is locked"));
+    expect(messageBar()).toHaveClass("error");
+    expect(api.saveCashReceipt).toHaveBeenNthCalledWith(1, expect.objectContaining({ invoice: 1, payment: 100 }));
+    expect(api.listInvoices).toHaveBeenCalledTimes(2);
+    expect(formTitle()).toContain("Enter Automatic Receipt Data");
+    expect(screen.getByLabelText("Auto Amount Paid")).toHaveValue("150.00");
+    expect(screen.getByText("Balance Due: 150.00")).toBeInTheDocument();
+
+    vi.mocked(api.saveCashReceipt).mockClear();
+    await user.click(screen.getByRole("button", { name: /Cntr_S Save/i }));
+    expect(screen.getByText("Apply 150.00 to open invoices? Y/N")).toBeInTheDocument();
+    await user.keyboard("y");
+    await waitFor(() => expect(api.saveCashReceipt).toHaveBeenCalledTimes(1));
+    expect(api.saveCashReceipt).toHaveBeenCalledWith(expect.objectContaining({ invoice: 2, payment: 150 }));
+  });
+
+  it("says why the ledger could not be read", async () => {
+    vi.mocked(api.listCashReceipts).mockRejectedValueOnce("database is locked");
+    renderApp(<CashProcess company={company} onBack={vi.fn()} />);
+    await waitFor(() => expect(messageBar()).toHaveTextContent("database is locked"));
+    expect(messageBar()).toHaveClass("error");
+  });
+
+  it("a payment that fails to post keeps the form and shows the error", async () => {
+    vi.mocked(api.saveCashReceipt).mockRejectedValueOnce("disk full");
+    const { user } = await renderLedger();
+    key("Insert");
+    await screen.findByLabelText("Amount Paid");
+    await user.keyboard("{Control>}s{/Control}");
+    await waitFor(() => expect(messageBar()).toHaveTextContent("disk full"));
+    expect(messageBar()).toHaveClass("error");
+    expect(formTitle()).toContain("Enter Your Payment Data");
+  });
+
+  it("Esc steps back from help, the question, the payment form, then leaves", async () => {
+    const { onBack } = await renderLedger();
+    key("Enter");
+    await screen.findByLabelText("Amount Paid");
+    expect(screen.getByLabelText("Amount Paid")).toHaveValue("150.00");
+
+    key("Enter");
+    expect(screen.getByRole("dialog", { name: "Apply 150.00 to this invoice? Y/N" })).toBeInTheDocument();
+    key("Escape");
+    expect(screen.queryByRole("dialog", { name: /to this invoice/ })).not.toBeInTheDocument();
+    expect(formTitle()).toContain("Enter Your Payment Data");
+
+    key("F1");
+    expect(screen.getByText(/Function Key Description/)).toBeInTheDocument();
+    key("Escape");
+    expect(screen.queryByText(/Function Key Description/)).not.toBeInTheDocument();
+    key("Escape");
+    expect(formTitle()).toBe("");
+    expect(onBack).not.toHaveBeenCalled();
+    key("Escape");
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("closing a form clears its red error from the status line", async () => {
+    const { user } = await renderLedger();
+    key("Insert");
+    const amount = await screen.findByLabelText("Amount Paid");
+    await user.clear(amount);
+    await user.keyboard("{Control>}s{/Control}");
+    await waitFor(() => expect(messageBar()).toHaveTextContent("Payment is zero"));
+    expect(messageBar()).toHaveClass("error");
+    key("Escape");
+    expect(messageBar()).toHaveTextContent("Ins=Payment A=Auto_Receipt Esc=Back");
+    expect(messageBar()).not.toHaveClass("error");
+
+    key("Home");
+    expect(formTitle()).toContain("Enter Automatic Receipt Data");
+    key("Escape");
+    expect(formTitle()).toBe("");
+    expect(messageBar()).not.toHaveClass("error");
+  });
+
+  it("arrow keys pick the invoice to pay, and Ins with no invoices asks for one", async () => {
+    await renderLedger();
+    const rows = () => document.querySelectorAll(".dos-browse-body .dos-row");
+    expect(rows()[0]).toHaveClass("selected");
+    key("ArrowDown");
+    expect(rows()[1]).toHaveClass("selected");
+    key("Enter");
+    expect(await screen.findByLabelText("Amount Paid")).toHaveValue("100.00");
+    key("Escape");
+    key("ArrowUp");
+    expect(rows()[0]).toHaveClass("selected");
+    key("End");
+    expect(rows()[1]).toHaveClass("selected");
+  });
+
+  it("asks for an invoice when there is none to pay", async () => {
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    renderApp(<CashProcess company={company} onBack={vi.fn()} />);
+    await screen.findByText(/does not exsit in Receivable File/);
+    key("Insert");
+    expect(messageBar()).toHaveTextContent("--> Select an invoice first !!");
+    expect(messageBar()).toHaveClass("error");
+    expect(formTitle()).toBe("");
   });
 });

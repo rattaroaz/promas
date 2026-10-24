@@ -9,7 +9,7 @@ import {
   Prompt,
   HelpOverlay,
 } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 
@@ -25,7 +25,11 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
     useBrowseIndex(rows.length);
 
   const load = useCallback(async () => {
-    setRows(await api.listEmployees({ search }));
+    try {
+      setRows(await api.listEmployees({ search }));
+    } catch (e) {
+      setMsg(String(e));
+    }
   }, [search]);
 
   useEffect(() => {
@@ -94,7 +98,12 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
       setMsg("--> Worker No and Name required !!");
       return;
     }
-    await api.saveEmployee(editing);
+    try {
+      await api.saveEmployee(editing);
+    } catch (e) {
+      setMsg(String(e));
+      return;
+    }
     setEditing(null);
     await load();
     setMsg(`Worker ${editing.empNo} saved.`);
@@ -102,8 +111,13 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
 
   async function doVoid() {
     if (!current) return;
-    await api.deleteEmployee(current.empNo);
     setVoidAsk(false);
+    try {
+      await api.deleteEmployee(current.empNo);
+    } catch (e) {
+      setMsg(String(e));
+      return;
+    }
     await load();
   }
 
@@ -116,15 +130,16 @@ export function WorkerBrowse({ onBack }: { onBack: () => void }) {
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-            />
+            <InlineField label="Search:">
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+              />
+            </InlineField>
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "10ch 30ch 14ch 12ch" }}>

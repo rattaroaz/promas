@@ -25,9 +25,20 @@
   --dos-magenta: #aa00aa;
   --dos-brown: #aa5500;
   --dos-gray: #555555;
+  /* Type scale. One face; every font-size and line-height in the app is one
+     of these steps (src/typography.test.ts fails on anything else). Sizes
+     are rem, so a step never compounds inside another. The root is 2× at the
+     default window and grows with it; --fit-scale shrinks a screen that would
+     not fit. Paper uses a fixed size instead. */
   --font-dos: "Consolas", "Lucida Console", "Courier New", monospace;
-  --cell: 1ch;
-  --row: 1.15em;
+  --text-root: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
+  --text-print: 10pt;
+  --text-sm: 0.9rem;
+  --text-md: 1rem;
+  --text-lg: 1.5rem;
+  --leading-tight: 1.1;
+  --leading-normal: 1.15;
+  --leading-loose: 1.35;
   /* Every date is MM-DD-YYYY plus the calendar glyph. One border-box width. */
   --dos-date-width: calc(12ch + 2.8em);
 }
@@ -45,15 +56,20 @@ body,
   overflow: hidden;
   background: var(--dos-black);
   color: var(--dos-white-bright);
+  cursor: default;
+  user-select: none;
+}
+
+/* The only place the face, size, and line height are set. Everything else
+   inherits them or picks a step from the scale. The line height is unitless
+   so a smaller or larger step gets a line box sized for itself. */
+html {
   font-family: var(--font-dos);
-  /* 2× at the default window; grows with the viewport; --fit-scale keeps screens on-width */
-  font-size: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
-  line-height: var(--row);
+  font-size: var(--text-root);
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: none;
   font-smooth: never;
   text-rendering: optimizeSpeed;
-  cursor: default;
-  user-select: none;
 }
 
 button,
@@ -66,6 +82,20 @@ textarea {
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+}
+
+/* The browser gives these their own face or size. */
+pre,
+code,
+kbd,
+samp,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font: inherit;
 }
 
 /* ─── App shell ─────────────────────────────────────────── */
@@ -103,7 +133,7 @@ textarea {
   overflow: visible;
   flex-shrink: 0;
   flex-wrap: wrap;
-  font-size: 0.95em;
+  font-size: var(--text-sm);
   display: flex;
   gap: 0;
   position: relative;
@@ -160,7 +190,6 @@ textarea {
   font-weight: bold;
   padding: 0 1ch;
   flex-shrink: 0;
-  letter-spacing: 0.05em;
 }
 
 .dos-titlebar .left {
@@ -177,7 +206,7 @@ textarea {
   background: var(--dos-black);
   color: var(--dos-yellow);
   padding: 0 1ch;
-  min-height: 1.15em;
+  min-height: 1lh;
   flex-shrink: 0;
   white-space: normal;
   overflow-wrap: break-word;
@@ -282,7 +311,7 @@ textarea {
 }
 
 .dos-menu-frame .menu-body {
-  padding: 0.6em 0;
+  padding: 0.3em 0;
 }
 
 /* Diagnostics fills the content area. The log scrolls inside the frame, so
@@ -318,6 +347,7 @@ textarea {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  font-size: var(--text-sm);
 }
 
 .dos-menu-item {
@@ -330,9 +360,7 @@ textarea {
   padding: 0 2ch;
   cursor: pointer;
   white-space: pre;
-  font-family: var(--font-dos);
-  font-size: inherit;
-  line-height: 1.35;
+  line-height: var(--leading-normal);
 }
 
 .dos-menu-item:hover,
@@ -363,12 +391,26 @@ textarea {
 }
 
 .dos-copyright {
-  margin-top: 1.5em;
+  margin-top: 0.5em;
   color: var(--app-accent);
   text-align: center;
-  font-size: 0.9em;
+  font-size: var(--text-sm);
   white-space: pre-wrap;
   max-width: 100%;
+}
+
+.dos-note {
+  color: var(--app-accent);
+  font-size: var(--text-sm);
+}
+
+.dos-total {
+  color: var(--app-highlight);
+  font-weight: bold;
+}
+
+.dos-heading {
+  font-weight: bold;
 }
 
 /* ─── List browser (browse screen) ──────────────────────── */
@@ -587,9 +629,6 @@ textarea {
   padding: 0 0;
   cursor: pointer;
   white-space: pre;
-  font-family: var(--font-dos);
-  font-size: inherit;
-  line-height: 1.2;
 }
 
 /* Grid rows must stay as grids - this comes AFTER .dos-row to override */
@@ -718,7 +757,7 @@ textarea {
   color: var(--app-highlight);
   text-align: center;
   white-space: pre-wrap;
-  font-size: 0.95em;
+  font-size: var(--text-sm);
 }
 
 /* form fields — Clipper label: ....... style */
@@ -757,8 +796,6 @@ textarea {
   border: none;
   border-bottom: 1px solid var(--dos-cyan);
   padding: 0 0.4ch;
-  font-family: var(--font-dos);
-  font-size: inherit;
   min-width: 0;
   flex: 1;
 }
@@ -939,15 +976,14 @@ textarea {
   flex: 0 0 1.7em;
 }
 
-/* Invoice site header: 1.5× type. Each value stays on one line; the row wraps between values.
+/* Invoice site header: large type. Each value stays on one line; the row wraps between values.
    White is only this info block; the columns under it stay Promas blue. */
 .invoice-site-header {
   background: #ffffff;
   color: #161616;
-  font-size: 1.5em;
   padding: 0.1em 0 0.15em;
   margin-bottom: 0.15em;
-  line-height: 1.1;
+  line-height: var(--leading-tight);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -960,6 +996,7 @@ textarea {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  font-size: var(--text-lg);
 }
 
 .invoice-fact {
@@ -969,6 +1006,7 @@ textarea {
 
 .invoice-comments {
   max-width: 100%;
+  font-size: var(--text-lg);
 }
 
 .invoice-comments .invoice-comment-text {
@@ -1013,9 +1051,9 @@ textarea {
   overflow: visible;
 }
 
-/* The 1.5× block stays fully visible. The list below it scrolls.
-   Bleed uses the list's own 1ch / 0.4em, same as .dos-info-banner.
-   The header's 1.5em would make -1ch too wide and width:100% would
+/* The large block stays fully visible. The list below it scrolls.
+   Bleed uses the list's own 1ch / 0.4em, same as .dos-info-banner, so the
+   block stays at body size and only its lines are large. width:100% would
    leave a blue strip on the right. */
 .dos-browse > .invoice-site-header,
 .dos-browse > .dos-info-banner {
@@ -1034,14 +1072,8 @@ textarea {
 }
 
 .dos-browse > .invoice-site-header {
-  font-size: inherit;
   width: auto;
   max-width: none;
-}
-
-.dos-browse > .invoice-site-header > .invoice-fact-line,
-.dos-browse > .invoice-site-header > .invoice-comments {
-  font-size: 1.5em;
 }
 
 /* Company / property line above a list. Columns under it stay blue. */
@@ -1077,7 +1109,6 @@ textarea {
   word-break: break-word;
   resize: none;
   overflow: hidden;
-  line-height: 1.15em;
   height: auto;
   box-sizing: border-box;
 }
@@ -1281,8 +1312,6 @@ textarea {
   color: var(--app-ink);
   padding: 0.5em 1ch;
   white-space: pre;
-  font-family: var(--font-dos);
-  line-height: 1.15;
   min-height: 0;
   min-width: 0;
   width: 100%;
@@ -1421,7 +1450,6 @@ textarea {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: inherit;
   color: inherit;
 }
 
@@ -1459,7 +1487,6 @@ textarea {
 .payroll-grid .addr {
   text-align: left;
   white-space: normal;
-  line-height: 1.2;
 }
 
 .payroll-grid .payroll-job {
@@ -1511,6 +1538,10 @@ textarea {
 }
 
 @media print {
+  html {
+    font-size: var(--text-print);
+  }
+
   html,
   body,
   #root,
@@ -1545,13 +1576,15 @@ textarea {
   .payroll-grid tfoot td,
   .payroll-grid .payroll-job,
   .payroll-grid .sales-invno,
-  .aging-invno {
+  .aging-invno,
+  .dos-total {
     color: #000 !important;
     font-weight: normal;
   }
 
   .dos-report .hdr,
   .dos-report .total,
+  .dos-total,
   .payroll-grid thead th,
   .payroll-grid tfoot td {
     font-weight: bold;
@@ -1588,14 +1621,13 @@ textarea {
   color: var(--app-highlight);
   text-align: center;
   margin-bottom: 0.5em;
-  font-size: 1em;
+  font-weight: bold;
 }
 
 .dos-help pre {
   color: var(--app-accent);
   white-space: pre-wrap;
-  font-family: var(--font-dos);
-  line-height: 1.35;
+  line-height: var(--leading-loose);
   max-width: 100%;
 }
 
@@ -1607,8 +1639,6 @@ textarea {
   border: none;
   padding: 0 1ch;
   cursor: pointer;
-  font-family: var(--font-dos);
-  font-size: inherit;
 }
 
 .dos-btn:hover,
@@ -1754,7 +1784,6 @@ input[type="date"].dos-input.w12,
   width: 20ch;
   min-width: 20ch;
   max-width: 20ch;
-  font-size: inherit;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -1803,7 +1832,6 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid var(--dos-white-bright);
   background: var(--dos-red);
   color: var(--dos-white-bright);
-  font-family: var(--font-dos);
   font-weight: bold;
   cursor: pointer;
 }
@@ -1838,10 +1866,6 @@ input[type="number"]::-webkit-inner-spin-button {
       3 * var(--workers-gap) + var(--workers-scrollbar)
   );
   max-width: 100%;
-  font-size: 1.5em;
-  /* The screen inherits a pixel line-height sized for the smaller body font.
-     Recompute it here so the 1.5em headers are not clipped. */
-  line-height: 1.15;
 }
 
 .workers-head,

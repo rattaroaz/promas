@@ -126,9 +126,9 @@ export function WorkOrderProcess({
       });
       setEditing(null);
       setConfirmSave(false);
+      await load();
       setMsg(`Work Order #${no} saved.`);
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -144,8 +144,8 @@ export function WorkOrderProcess({
       current.orderNo
     );
     setVoidAsk(false);
-    setMsg(" Void Work Order ");
     await load();
+    setMsg(" Void Work Order ");
   }
 
   async function applyCode(idx: number, code: string) {
@@ -446,6 +446,7 @@ export function WorkOrderProcess({
                   <input
                     className="dos-input"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} code`}
                     value={line.codeNo}
                     title="Enter Job Code No (Esc=Exit, * = Command Input) !"
                     onChange={(e) => {
@@ -460,6 +461,7 @@ export function WorkOrderProcess({
                   <input
                     className="dos-input"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} description`}
                     value={line.description}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -472,6 +474,7 @@ export function WorkOrderProcess({
                   <select
                     className="dos-select"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} work type`}
                     value={line.workType}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -541,7 +544,7 @@ export function WorkOrderProcess({
                   + Line (* = free text)
                 </button>
               </div>
-              <div style={{ gridColumn: "4 / 6", color: "var(--app-highlight)", fontWeight: "bold", overflow: "visible", textOverflow: "clip" }}>
+              <div className="dos-total" style={{ gridColumn: "4 / 6", overflow: "visible", textOverflow: "clip" }}>
                 Total: {money(editing.lines.reduce((s, l) => s + l.price, 0))}
               </div>
             </div>

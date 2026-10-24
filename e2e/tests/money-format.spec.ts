@@ -1,16 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
-
-async function openNewInvoice(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
-  const companyNo = page.getByPlaceholder("? = first").first();
-  await companyNo.fill("?");
-  await companyNo.press("Enter");
-  await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-  await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-  await page.getByRole("button", { name: /^New Invoice$/i }).click();
-  await expect(page.getByLabel("Price 1")).toBeVisible();
-}
+import { expect, test } from "@playwright/test";
+import { openNewInvoice } from "../support/app";
 
 test.describe("money inputs", () => {
   test("formats invoice price and material cost on blur and Enter", async ({

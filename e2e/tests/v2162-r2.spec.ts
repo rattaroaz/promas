@@ -1,31 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
-const outRoot = process.env.PROOF_DIR || path.join(os.tmpdir(), "promas_v2162_r3");
-
-async function settleFit(page: Page) {
-  await page.waitForFunction(() => {
-    const scale = getComputedStyle(document.documentElement).getPropertyValue("--fit-scale").trim();
-    const bag = window as unknown as { __fit?: string };
-    const same = bag.__fit === scale;
-    bag.__fit = scale;
-    return same;
-  });
-}
-
-async function shot(page: Page, dir: string, name: string) {
-  mkdirSync(dir, { recursive: true });
-  await page.screenshot({ path: `${dir}/${name}.png` });
-}
-
-async function backToMain(page: Page) {
-  for (let i = 0; i < 6; i++) {
-    if (await page.getByRole("button", { name: /5\.\s*Material Process/i }).isVisible()) return;
-    await page.getByRole("button", { name: /^Esc(\s|$)/ }).first().click();
-  }
-}
+import { expect, test } from "@playwright/test";
+import { attachJson, backToMain, openMain, shot, waitForFit } from "../support/app";
 
 test("round 2 gate at 1280 and 1024", async ({ page }) => {
   test.setTimeout(180_000);
@@ -36,13 +10,11 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     { width: 1024, height: 768 },
   ]) {
     const tag = `${viewport.width}x${viewport.height}`;
-    const dir = `${outRoot}/${tag}`;
     await page.setViewportSize(viewport);
-    await page.goto("/");
-    await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
+    await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
-    await settleFit(page);
+    await waitForFit(page);
 
     const initial = await page.evaluate(() => {
       const scroll = document.querySelector(".workers-scroll") as HTMLElement;
@@ -111,7 +83,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     expect(initial.deleteText, tag).toBe("Delete");
     expect(initial.deleteRight, tag).toBeLessThanOrEqual(initial.vw + 1);
     expect(initial.deleteLeft, tag).toBeGreaterThanOrEqual(-1);
-    expect(initial.font, tag).toBeCloseTo(initial.root * 1.5, 1);
+    expect(initial.font, tag).toBeCloseTo(initial.root, 1);
     expect(initial.nameScroll, `${tag} Jose Ramirez`).toBeLessThanOrEqual(initial.nameClient + 1);
     expect(initial.columnGap, tag).toBe("16px");
     expect(Math.abs(initial.checkWidth - initial.checkHeight), `${tag} checkbox`).toBeLessThanOrEqual(1);
@@ -127,7 +99,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     for (let i = 0; i < 3; i++) {
       expect(Math.abs(initial.headLeft[i] - initial.rowLeft[i]), `${tag} col ${i}`).toBeLessThanOrEqual(2);
     }
-    await shot(page, dir, "workers-initial");
+    await shot(page, `${tag}-workers-initial`);
 
     const readName = () => {
       const scroll = document.querySelector(".workers-scroll") as HTMLElement;
@@ -146,22 +118,22 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       };
     };
     await page.getByLabel("Worker name 1").fill("Bartholomew Montgomery-Fitzgerald");
-    await settleFit(page);
+    await waitForFit(page);
     const named = await page.evaluate(readName);
     expect(named.fitScale, `${tag} 33-char name`).toBe(initial.fitScale);
     expect(named.scrollWidth, tag).toBeLessThanOrEqual(named.clientWidth + 1);
     expect(named.nameRight, tag).toBeLessThanOrEqual(named.vw + 1);
     await page.getByLabel("Worker name 1").fill("X".repeat(48));
-    await settleFit(page);
+    await waitForFit(page);
     const longName = await page.evaluate(readName);
     expect(longName.fitScale, `${tag} 48-char name`).toBe(initial.fitScale);
     expect(longName.scrollWidth, tag).toBeLessThanOrEqual(longName.clientWidth + 1);
     expect(longName.nameLeft, tag).toBeGreaterThanOrEqual(-1);
     expect(longName.nameRight, tag).toBeLessThanOrEqual(longName.vw + 1);
     expect(longName.scrollWidth, tag).toBe(initial.scrollWidth);
-    await shot(page, dir, "workers-longname");
+    await shot(page, `${tag}-workers-longname`);
     await page.getByLabel("Worker name 1").fill("Jose Ramirez");
-    await settleFit(page);
+    await waitForFit(page);
     const restored = await page.evaluate(readName);
     expect(restored.fitScale, `${tag} restored name`).toBe(initial.fitScale);
     expect(restored.value, tag).toBe("Jose Ramirez");
@@ -187,7 +159,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     expect(header.bottom, tag).toBeGreaterThan(header.top);
     expect(header.text).toContain("Active?");
     expect(header.text).toContain("ID number");
-    await shot(page, dir, "workers-scrolled");
+    await shot(page, `${tag}-workers-scrolled`);
 
     await backToMain(page);
     const materialModes = [
@@ -214,7 +186,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
         expect(cell.scroll, `${tag} ${mode.shot} ${cell.text}`).toBeLessThanOrEqual(cell.client + 1);
       }
       material.push({ mode: mode.shot, cells });
-      await shot(page, dir, mode.shot);
+      await shot(page, `${tag}-${mode.shot}`);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("button", { name: /1\.\s*Material Transaction/i })).toBeVisible();
     }
@@ -235,14 +207,18 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       const rows = new Set(tops.map((t) => Math.round((t - min) / 8))).size;
       return { fit, rows, height: bar.getBoundingClientRect().height, bits };
     };
-    await settleFit(page);
+    await expect(page.getByLabel("Work person search").locator("option")).toHaveText([
+      "All",
+      "Jose Ramirez",
+    ]);
+    await waitForFit(page);
     const before = await page.evaluate(measureToolbar);
-    await shot(page, dir, "payroll-before");
+    await shot(page, `${tag}-payroll-before`);
     await page.getByRole("button", { name: /^Run$/i }).click();
     await expect(page.getByText("Jose hallway payroll")).toBeVisible();
-    await settleFit(page);
+    await waitForFit(page);
     const after = await page.evaluate(measureToolbar);
-    await shot(page, dir, "payroll-after");
+    await shot(page, `${tag}-payroll-after`);
     expect(before.rows, `${tag} before`).toBe(1);
     expect(after.rows, `${tag} after`).toBe(1);
     expect(Math.abs(before.fit - after.fit), `${tag} fit ${before.fit} -> ${after.fit}`).toBeLessThanOrEqual(0.01);
@@ -258,31 +234,5 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     });
   }
 
-  mkdirSync(outRoot, { recursive: true });
-  writeFileSync(`${outRoot}/metrics.json`, JSON.stringify(report, null, 2));
-  const lines = ["# Promas v2.16.2 round 3", ""];
-  for (const row of report) {
-    const workers = row.workers as {
-      fitScale: string;
-      columnGap: string;
-      lineHeight: string;
-      checkWidth: number;
-      checkHeight: number;
-      headBoxes: { text: string; scroll: number; client: number; scrollH: number; clientH: number }[];
-    };
-    const named = row.named as { fitScale: string };
-    const longName = row.longName as { fitScale: string };
-    const restored = row.restored as { fitScale: string };
-    lines.push(`## ${row.viewport}`);
-    lines.push("");
-    lines.push(`- \`--fit-scale\` stayed \`${workers.fitScale}\` for a 33-character name (\`${named.fitScale}\`), a 48-character name (\`${longName.fitScale}\`), and after restoring Jose Ramirez (\`${restored.fitScale}\`).`);
-    lines.push(`- Checkbox is ${workers.checkWidth.toFixed(2)} × ${workers.checkHeight.toFixed(2)} px. Column gap is ${workers.columnGap}. Header line box is ${workers.lineHeight}.`);
-    for (const cell of workers.headBoxes) {
-      if (!cell.text) continue;
-      lines.push(`- Header “${cell.text}” is ${cell.scroll}×${cell.scrollH} inside ${cell.client}×${cell.clientH}.`);
-    }
-    lines.push("");
-  }
-  lines.push("Screenshots for 1280×800 and 1024×768 are in the matching folders.");
-  writeFileSync(`${outRoot}/REPORT.md`, `${lines.join("\n")}\n`);
+  await attachJson("metrics.json", report);
 });

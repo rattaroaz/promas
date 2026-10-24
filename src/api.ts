@@ -1,5 +1,6 @@
 import { invoke as rawInvoke } from "@tauri-apps/api/core";
 import { log, metrics, noteApiError, startSpan } from "./lib/observability";
+import { today } from "./dos/utils";
 
 /** Log successful invokes at info when they exceed this (ms). */
 const SLOW_API_MS = 500;
@@ -385,7 +386,7 @@ export interface FormRecord {
 
 export const emptyEstimate = (companyNo = ""): Estimate => ({
   companyNo,
-  estDate: new Date().toISOString().slice(0, 10),
+  estDate: today(),
   estNo: 0,
   formNo: "EST-1",
   memo: "",
@@ -406,7 +407,7 @@ export const emptyCompany = (): Company => ({
   phone3: "",
   phone4: "",
   contact: "",
-  enterDate: new Date().toISOString().slice(0, 10),
+  enterDate: today(),
   pageMap: "",
   lastProId: 100,
   memo: "",
@@ -446,7 +447,7 @@ export const emptyEmployee = (): Employee => ({
   zip: "",
   phone: "",
   contact: "",
-  enterDate: new Date().toISOString().slice(0, 10),
+  enterDate: today(),
   commission: 65,
   ssno: "",
   birthDate: null,
@@ -464,7 +465,7 @@ export const emptyWorkType = (): WorkType => ({
 export const emptyInvoice = (): Invoice => ({
   companyNo: "",
   proNo: "",
-  salesDate: new Date().toISOString().slice(0, 10),
+  salesDate: today(),
   invoice: 0,
   orderNo: 0,
   orderDate: null,
@@ -509,18 +510,18 @@ export const emptyInvoiceLine = (inv: Invoice, lineNo = 1): InvoiceLine => ({
 
 export const emptyCashReceipt = (): CashReceipt => ({
   companyNo: "",
-  salesDate: new Date().toISOString().slice(0, 10),
+  salesDate: today(),
   invoice: 0,
   payment: 0,
   payRefNo: "",
-  payDate: new Date().toISOString().slice(0, 10),
+  payDate: today(),
   voided: false,
 });
 
 export const emptyMaterial = (): Material => ({
   empNo: "",
   description: "",
-  matDate: new Date().toISOString().slice(0, 10),
+  matDate: today(),
   amount: 0,
   status: "",
   voided: false,
@@ -529,7 +530,7 @@ export const emptyMaterial = (): Material => ({
 export const emptyWorkOrder = (): WorkOrder => ({
   companyNo: "",
   proNo: "",
-  orderDate: new Date().toISOString().slice(0, 10),
+  orderDate: today(),
   orderNo: 0,
   workDate: null,
   orderUnit: "",

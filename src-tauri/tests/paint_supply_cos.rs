@@ -61,6 +61,7 @@ fn insert_ignore_and_delete_are_case_insensitive() {
     .unwrap();
     assert_eq!(names(&conn), vec!["Sherwin-Williams".to_string()]);
 
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -68,6 +69,7 @@ fn insert_ignore_and_delete_are_case_insensitive() {
 fn empty_catalog_is_valid() {
     let (dir, conn) = temp_conn("empty");
     assert!(names(&conn).is_empty());
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -89,5 +91,6 @@ fn migrate_copies_paint_supply_from_invoices() {
     drop(conn);
     let conn = open_and_migrate(&path).expect("migrate again");
     assert!(names(&conn).contains(&"Kelly-Moore".to_string()));
+    drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

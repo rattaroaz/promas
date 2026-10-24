@@ -1,20 +1,16 @@
 import { expect, type Page, test } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
-
-const outDir = "/tmp/promas_v2162_r1/after";
-
-function plusDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${dt.getFullYear()}-${mm}-${dd}`;
-}
-
-async function shot(page: Page, name: string) {
-  mkdirSync(outDir, { recursive: true });
-  await page.screenshot({ path: `${outDir}/${name}.png` });
-}
+import {
+  attachJson,
+  backToMain,
+  companyList,
+  home,
+  openMain,
+  openNewInvoice,
+  plusDays,
+  propertyList,
+  shot,
+  waitForFit,
+} from "../support/app";
 
 async function measureDates(page: Page, screen: string) {
   return page.evaluate((screenName) => {
@@ -33,27 +29,6 @@ async function measureDates(page: Page, screen: string) {
     });
     return { screen: screenName, fit, dates };
   }, screen);
-}
-
-async function backToMain(page: Page) {
-  for (let i = 0; i < 6; i++) {
-    if (await page.getByRole("button", { name: /5\.\s*Material Process/i }).isVisible()) {
-      return;
-    }
-    await page.getByRole("button", { name: /^Esc(\s|$)/ }).first().click();
-  }
-}
-
-async function openNewInvoice(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
-  const company = page.getByPlaceholder("? = first").first();
-  await company.fill("?");
-  await company.press("Enter");
-  await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-  await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-  await page.getByRole("button", { name: /^New Invoice$/i }).click();
-  await expect(page.getByLabel("Invoice Number")).toBeVisible();
 }
 
 test.describe("promas 2.16.2", () => {
@@ -95,12 +70,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "estimate-edit",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /1\.\s*Estimate Process/i }).click();
-          const company = page.getByRole("textbox", { name: "Company NO" });
-          await company.fill("?");
-          await company.press("Enter");
-          await page.getByRole("button", { name: /1000\s+ACME/i }).click();
+          await propertyList(page, /1\.\s*Estimate Process/i);
           await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
           await page.getByRole("button", { name: /EST-1/i }).click();
           await expect(page.locator(".dlg-title")).toContainText("Proposal");
@@ -109,12 +79,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "workorder-edit",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /2\.\s*Work Order Process/i }).click();
-          const company = page.getByRole("textbox", { name: "Company NO" });
-          await company.fill("?");
-          await company.press("Enter");
-          await page.getByRole("button", { name: /1000\s+ACME/i }).click();
+          await propertyList(page, /2\.\s*Work Order Process/i);
           await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
           await page.getByRole("button", { name: /7\s+02\/01\/2026|A1/i }).click();
           await expect(page.locator("input[type='date']").first()).toBeVisible();
@@ -123,11 +88,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "cash-payment",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /4\.\s*Cash Receipts Process/i }).click();
-          const company = page.getByPlaceholder("? = first").first();
-          await company.fill("?");
-          await company.press("Enter");
+          await companyList(page, /4\.\s*Cash Receipts Process/i);
           await page.getByRole("button", { name: /1000\s+ACME/i }).click();
           await page.getByRole("button", { name: /^Ins Add$/i }).click();
           await expect(page.getByLabel("Amount Paid")).toBeVisible();
@@ -136,8 +97,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "material-edit",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /5\.\s*Material Process/i }).click();
+          await openMain(page, /5\.\s*Material Process/i);
           await page.getByRole("button", { name: /1\.\s*Material Transaction/i }).click();
           await page.getByRole("button", { name: /^Ins Add$/i }).click();
           await expect(page.getByRole("textbox", { name: "Amount" })).toBeVisible();
@@ -146,8 +106,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "wages",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /5\.\s*Material Process/i }).click();
+          await openMain(page, /5\.\s*Material Process/i);
           await page.getByRole("button", { name: /5\.\s*Worker Wages/i }).click();
           await expect(page.getByText(/Worker Wages/i).first()).toBeVisible();
         },
@@ -155,8 +114,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "payroll",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /6\.\s*Reports Menu/i }).click();
+          await openMain(page, /6\.\s*Reports Menu/i);
           await page.getByRole("button", { name: /1\.\s*Payroll Report/i }).click();
           await expect(page.getByLabel("Work person search")).toBeVisible();
         },
@@ -164,8 +122,7 @@ test.describe("promas 2.16.2", () => {
       {
         name: "system-date",
         open: async () => {
-          await page.goto("/");
-          await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
+          await openMain(page, /7\.\s*Miscellaneous/i);
           await page.getByRole("button", { name: /1\.\s*Change System Date/i }).click();
           await expect(page.locator("input[type='date']").first()).toBeVisible();
         },
@@ -193,28 +150,23 @@ test.describe("promas 2.16.2", () => {
     const normSpread = Math.max(...norms) - Math.min(...norms);
     expect(normSpread, `design widths ${norms.map((n) => n.toFixed(1)).join(",")}`).toBeLessThanOrEqual(2);
 
-    mkdirSync(outDir, { recursive: true });
-    writeFileSync(
-      `${outDir}/dates.json`,
-      JSON.stringify(
-        {
-          termsLeft: termsBox!.x,
-          orderLeft: orderBox!.x,
-          screens: report,
-        },
-        null,
-        2
-      )
-    );
+    await attachJson("dates.json", {
+      termsLeft: termsBox!.x,
+      orderLeft: orderBox!.x,
+      screens: report,
+    });
   });
 
-  test("workers catalog is larger, labeled, scrolling, and keeps numeric IDs", async ({
+  test("workers catalog uses body type, is labeled, scrolls, and keeps numeric IDs", async ({
     page,
   }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto("/");
-    await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
+    await home(page);
+    const menuItem = page.getByRole("button", { name: /7\.\s*Miscellaneous/i });
+    await waitForFit(page);
+    const mainFont = await menuItem.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    await menuItem.click();
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
     await expect(page.getByLabel("Worker number 1")).toHaveValue("400");
@@ -224,12 +176,14 @@ test.describe("promas 2.16.2", () => {
       "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
     );
 
+    await waitForFit(page);
     const font = await page.getByLabel("Worker name 1").evaluate((el) => {
       const root = parseFloat(getComputedStyle(document.documentElement).fontSize);
       const size = parseFloat(getComputedStyle(el).fontSize);
       return { root, size };
     });
-    expect(font.size).toBeCloseTo(font.root * 1.5, 1);
+    expect(font.size).toBeCloseTo(font.root, 1);
+    expect(font.size, "Workers text matches the main menu at 1280x800").toBeCloseTo(mainFont, 1);
     await page.getByLabel("Worker name 1").focus();
     const focused = await page.getByLabel("Worker name 1").evaluate((el) =>
       parseFloat(getComputedStyle(el).fontSize)
@@ -239,7 +193,7 @@ test.describe("promas 2.16.2", () => {
     const scroll = page.locator(".workers-scroll");
     await expect(scroll).toHaveCSS("overflow-y", "scroll");
     await shot(page, "workers");
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 14; i++) {
       await page.getByRole("button", { name: "Add Work Person" }).click();
     }
     const canScroll = await scroll.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
@@ -249,17 +203,12 @@ test.describe("promas 2.16.2", () => {
     });
     await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
     await shot(page, "workers-scrolled");
-    writeFileSync(
-      `${outDir}/workers.json`,
-      JSON.stringify({ fontBeforePx: 39.04, fontAfterPx: font.size, rootPx: font.root }, null, 2)
-    );
   });
 
   test("material and payroll worker fields list active workers only", async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto("/");
-    await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
+    await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     await page.getByRole("button", { name: "Add Work Person" }).click();
     const ian = page.getByLabel("Worker name 2");
@@ -269,9 +218,6 @@ test.describe("promas 2.16.2", () => {
     await expect(
       page.getByRole("checkbox", { name: "Active Inactive Ian" })
     ).not.toBeChecked();
-    await page.locator(".workers-list").evaluate(
-      () => new Promise((resolve) => setTimeout(resolve, 150))
-    );
 
     await backToMain(page);
     await page.getByRole("button", { name: /5\.\s*Material Process/i }).click();
@@ -280,6 +226,7 @@ test.describe("promas 2.16.2", () => {
     const material = page.getByLabel("From Worker Name");
     await expect(material).toHaveJSProperty("tagName", "SELECT");
     await expect(material.locator("option")).toHaveText(["All", "Jose Ramirez"]);
+    await waitForFit(page);
     const materialFont = await material.evaluate((el) => getComputedStyle(el).fontSize);
     await material.focus();
     expect(await material.evaluate((el) => getComputedStyle(el).fontSize)).toBe(materialFont);
@@ -297,6 +244,7 @@ test.describe("promas 2.16.2", () => {
     const payroll = page.getByLabel("Work person search");
     await expect(payroll).toHaveJSProperty("tagName", "SELECT");
     await expect(payroll.locator("option")).toHaveText(["All", "Jose Ramirez"]);
+    await waitForFit(page);
     const payrollFont = await payroll.evaluate((el) => getComputedStyle(el).fontSize);
     await payroll.focus();
     expect(await payroll.evaluate((el) => getComputedStyle(el).fontSize)).toBe(payrollFont);
@@ -316,6 +264,6 @@ test.describe("promas 2.16.2", () => {
     const widths = dates.dates.map((d) => d.width);
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
     await shot(page, "payroll-report");
-    writeFileSync(`${outDir}/payroll.json`, JSON.stringify(dates, null, 2));
+    await attachJson("payroll.json", dates);
   });
 });

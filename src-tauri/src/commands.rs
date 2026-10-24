@@ -1399,64 +1399,7 @@ pub fn report_missing_invoices(
     params: ListParams,
 ) -> Result<Vec<MissingInvoiceRow>, String> {
     let conn = state.0.lock().map_err(map_err)?;
-    let from_date = params.from_date.unwrap_or_default();
-    let to_date = params.to_date.unwrap_or_default();
-    // Work orders that have no matching non-void invoice with same order_no
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT w.order_no,w.order_date,w.company_no,w.pro_no,
-                      w.order_by,w.order_man,w.order_unit,w.order_size,w.status,w.voided,
-                      COALESCE(p.street,''), COALESCE(p.name,''),
-                      i.invoice, i.sales_date, i.balance
-               FROM work_orders w
-               LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
-               LEFT JOIN invoices i ON i.company_no=w.company_no AND i.pro_no=w.pro_no
-                    AND i.order_no=w.order_no AND i.voided=0 AND w.order_no>0
-               WHERE (?1='' OR w.order_date>=?1)
-                 AND (?2='' OR w.order_date<=?2)
-               ORDER BY w.order_date, w.order_no"#,
-        )
-        .map_err(map_err)?;
-    let rows = stmt
-        .query_map(params![from_date, to_date], |r| {
-            let voided: i64 = r.get(9)?;
-            let status: String = r.get(8)?;
-            let inv: Option<i64> = r.get(12)?;
-            let label = if voided != 0 || status.eq_ignore_ascii_case("V") {
-                "**** Void Work Order ****".into()
-            } else if inv.is_none() {
-                "*** Not Build Invoice ***".into()
-            } else {
-                "Built".into()
-            };
-            Ok(MissingInvoiceRow {
-                order_no: r.get(0)?,
-                order_date: r.get(1)?,
-                company_no: r.get(2)?,
-                pro_no: r.get(3)?,
-                order_by: {
-                    let by: String = r.get(4)?;
-                    let man: String = r.get(5)?;
-                    if by.is_empty() { man } else { by }
-                },
-                invoice: inv,
-                inv_date: r.get(13)?,
-                balance: r.get::<_, Option<f64>>(14)?.unwrap_or(0.0),
-                status: label,
-                property_address: {
-                    let street: String = r.get(10)?;
-                    let name: String = r.get(11)?;
-                    if street.is_empty() { name } else { street }
-                },
-                unit_size: {
-                    let u: String = r.get(6)?;
-                    let s: String = r.get(7)?;
-                    if s.is_empty() { u } else { format!("{u}/{s}") }
-                },
-            })
-        })
-        .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    crate::ops::report_missing_invoices(&conn, &params)
 }
 
 // ─── Observability ─────────────────────────────────────────────────────

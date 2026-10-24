@@ -35,6 +35,6 @@ test.describe("estimate process", () => {
     await expect(page.locator('input[value="EST-1"]')).toBeVisible();
     await page.getByRole("button", { name: /Cntr_S Save/i }).click();
     await expect(page.getByRole("button", { name: /EST-1/i })).toBeVisible();
-    await expect(page.getByText(/1 proposals/i)).toBeVisible();
+    await expect(page.locator(".dos-messagebar")).toContainText("Proposal #13 saved.");
   });
 });

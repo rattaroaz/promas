@@ -16,7 +16,7 @@ import {
   FORM_KEYS,
   HelpOverlay,
 } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 import { money, fmtDate, today } from "../dos/utils";
@@ -128,9 +128,9 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
         })),
       });
       setEditing(null);
+      await load();
       setMsg(`Work Order #${no} saved.`);
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -161,16 +161,17 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-              placeholder="Order#, Company, Contact, Address, Unit"
-            />
+            <InlineField label="Search:">
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+                placeholder="Order#, Company, Contact, Address, Unit"
+              />
+            </InlineField>
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 8ch 15ch 9ch 30ch" }}>
@@ -345,6 +346,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                   <select
                     className="dos-select"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} code`}
                     value={line.codeNo}
                     onChange={(e) => {
                       const code = e.target.value;
@@ -372,6 +374,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                   <input
                     className="dos-input"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} description`}
                     value={line.description}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -384,6 +387,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                   <select
                     className="dos-select"
                     style={{ width: "100%" }}
+                    aria-label={`Line ${idx + 1} work type`}
                     value={line.workType}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -439,7 +443,7 @@ export function WorkOrderBrowse({ onBack }: { onBack: () => void }) {
                 </button>
               </div>
               <div></div>
-              <div style={{ color: "var(--app-highlight)", fontWeight: "bold" }}>
+              <div className="dos-total">
                 Total: {money(editing.lines.reduce((s, l) => s + l.price, 0))}
               </div>
             </div>

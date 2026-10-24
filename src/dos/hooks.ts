@@ -9,6 +9,9 @@ export type ArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 /** Form, filter bar, prompt, and help — the surfaces arrows walk like Tab. */
 const FIELD_SCOPE = ".dos-form, .dos-searchline, .dos-prompt, .dos-help";
 
+/** Y/N questions and the help box sit over the screen and answer their own keys. */
+const MODAL_SCOPE = ".dos-prompt, .dos-help";
+
 const FOCUSABLE = [
   "input:not([disabled]):not([type='hidden'])",
   "select:not([disabled])",
@@ -245,6 +248,8 @@ export function useDosKeys(
       const tag = (e.target as HTMLElement)?.tagName;
       const inField =
         tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      const inModal =
+        e.target instanceof Element && e.target.closest(MODAL_SCOPE) != null;
 
       if (e.key === "Escape") {
         e.preventDefault();
@@ -255,7 +260,7 @@ export function useDosKeys(
       if (e.key === "Insert") {
         e.preventDefault();
         e.stopPropagation();
-        h.onInsert?.();
+        if (!inModal) h.onInsert?.();
         return;
       }
       if (e.key === "F1") {
@@ -272,7 +277,7 @@ export function useDosKeys(
         // Stop the WebView "Save page" dialog, then save.
         e.preventDefault();
         e.stopPropagation();
-        h.onCtrlS?.();
+        if (!inModal) h.onCtrlS?.();
         return;
       }
       if (
@@ -288,7 +293,24 @@ export function useDosKeys(
       }
       if (e.ctrlKey && e.key === "Home") {
         e.preventDefault();
-        h.onCtrlHome?.();
+        if (!inModal) h.onCtrlHome?.();
+        return;
+      }
+
+      if (inModal) {
+        // Enter and Space press the focused Y, N or OK button; arrows move
+        // between them; letters reach onChar (Y/N, or any key closes help).
+        // Nothing reaches the list or form underneath.
+        if (
+          isArrowKey(e.key) &&
+          e.target instanceof HTMLElement &&
+          tryMoveFieldFocus(e.target, e.key)
+        ) {
+          mutePointerHover();
+          e.preventDefault();
+        } else if (!e.ctrlKey && !e.altKey && e.key.length === 1) {
+          if (h.onChar?.(e.key, e)) e.preventDefault();
+        }
         return;
       }
 
@@ -662,6 +684,21 @@ function tighten(factor: number, needed: number, avail: number): number {
   return Math.min(factor, (avail - 8) / needed);
 }
 
+/** Top of the first in-flow child to the bottom of the last, margins included. */
+function stackHeight(parent: HTMLElement): number {
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (const child of parent.children) {
+    if (!(child instanceof HTMLElement)) continue;
+    const style = getComputedStyle(child);
+    if (style.display === "none" || style.position === "absolute" || style.position === "fixed") continue;
+    const box = child.getBoundingClientRect();
+    top = Math.min(top, box.top - (parseFloat(style.marginTop) || 0));
+    bottom = Math.max(bottom, box.bottom + (parseFloat(style.marginBottom) || 0));
+  }
+  return bottom > top ? bottom - top : 0;
+}
+
 /**
  * Bottom of the part of `el` that an overflow ancestor has not clipped.
  * A workers row scrolled out of the list is not painted, so its layout
@@ -727,9 +764,15 @@ export function verticalFitFactor(root: HTMLElement): number {
   root.querySelectorAll(".dos-menu-frame").forEach((node) => {
     if (!(node instanceof HTMLElement)) return;
     if (node.closest(".dos-dialog, .dos-help, .print-preview-overlay")) return;
-    const avail = node.parentElement?.clientHeight ?? 0;
+    const parent = node.parentElement;
+    const avail = parent?.clientHeight ?? 0;
     const needed = Math.max(node.scrollHeight, node.offsetHeight);
     factor = tighten(factor, needed, avail);
+    // The wrap centers the frame and the copyright under it as one stack. The
+    // frame can fit on its own while the stack spills past both ends.
+    if (parent?.classList.contains("dos-main-wrap")) {
+      factor = tighten(factor, stackHeight(parent), avail);
+    }
   });
 
   root.querySelectorAll(FIT_PAINTED).forEach((node) => {
@@ -740,12 +783,14 @@ export function verticalFitFactor(root: HTMLElement): number {
   });
 
   // The diagnostics bundle keeps a NOTE near the top. The log below it scrolls.
-  // The note itself has to land inside the panel.
+  // The whole note, including any line it wraps onto, has to land inside the panel.
   const pre = root.querySelector(".dos-menu-frame pre");
   if (pre instanceof HTMLElement) {
     const text = pre.textContent ?? "";
     const idx = text.indexOf("NOTE:");
     if (idx >= 0) {
+      const lineEnd = text.indexOf("\n", idx);
+      const noteLength = (lineEnd < 0 ? text.length : lineEnd) - idx;
       const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
       let seen = 0;
       let target: Text | null = null;
@@ -766,7 +811,7 @@ export function verticalFitFactor(root: HTMLElement): number {
       if (target) {
         const range = document.createRange();
         range.setStart(target, start);
-        range.setEnd(target, Math.min(target.length, start + 5));
+        range.setEnd(target, Math.min(target.length, start + noteLength));
         const rect = range.getBoundingClientRect();
         const preBox = pre.getBoundingClientRect();
         const limit = Math.min(preBox.bottom || vh, vh);

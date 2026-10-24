@@ -126,8 +126,16 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
 
   async function saveSys() {
     if (!data) return;
+    const saved: SysData = {
+      ...data,
+      nextInvoice: data.nextInvoice || 1,
+      nextOrder: data.nextOrder || 1,
+      nextEstimate: data.nextEstimate || 1,
+      termsDays: data.termsDays || 7,
+    };
     try {
-      await api.saveSysdata(data);
+      await api.saveSysdata(saved);
+      setData(saved);
       setMsg("Settings saved.");
       setMsgKind("info");
     } catch (e) {
@@ -295,11 +303,11 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                   <input
                     className="dos-input w8"
                     type="number"
-                    value={data.nextInvoice}
+                    value={data.nextInvoice || ""}
                     onChange={(e) =>
                       setData({
                         ...data,
-                        nextInvoice: parseInt(e.target.value, 10) || 1,
+                        nextInvoice: parseInt(e.target.value, 10) || 0,
                       })
                     }
                   />
@@ -308,11 +316,11 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                   <input
                     className="dos-input w8"
                     type="number"
-                    value={data.nextOrder}
+                    value={data.nextOrder || ""}
                     onChange={(e) =>
                       setData({
                         ...data,
-                        nextOrder: parseInt(e.target.value, 10) || 1,
+                        nextOrder: parseInt(e.target.value, 10) || 0,
                       })
                     }
                   />
@@ -321,11 +329,11 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                   <input
                     className="dos-input w8"
                     type="number"
-                    value={data.nextEstimate}
+                    value={data.nextEstimate || ""}
                     onChange={(e) =>
                       setData({
                         ...data,
-                        nextEstimate: parseInt(e.target.value, 10) || 1,
+                        nextEstimate: parseInt(e.target.value, 10) || 0,
                       })
                     }
                   />
@@ -334,11 +342,11 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
                   <input
                     className="dos-input w5"
                     type="number"
-                    value={data.termsDays}
+                    value={data.termsDays || ""}
                     onChange={(e) =>
                       setData({
                         ...data,
-                        termsDays: parseInt(e.target.value, 10) || 7,
+                        termsDays: parseInt(e.target.value, 10) || 0,
                       })
                     }
                   />

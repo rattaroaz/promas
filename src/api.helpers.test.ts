@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   emptyCashReceipt,
   emptyCompany,
   emptyEmployee,
+  emptyEstimate,
   emptyInvoice,
   emptyInvoiceLine,
   emptyMaterial,
@@ -79,5 +80,22 @@ describe("empty* factories", () => {
     const wt = emptyWorkType();
     expect(wt.codeNo).toBe("");
     expect(wt.workType).toBe("P");
+  });
+
+  it("dates new records with the local day after UTC has rolled over", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-03-10T20:30:00-07:00"));
+      const day = "2026-03-10";
+      expect(emptyEstimate("1000").estDate).toBe(day);
+      expect(emptyCompany().enterDate).toBe(day);
+      expect(emptyEmployee().enterDate).toBe(day);
+      expect(emptyInvoice().salesDate).toBe(day);
+      expect(emptyCashReceipt()).toMatchObject({ salesDate: day, payDate: day });
+      expect(emptyMaterial().matDate).toBe(day);
+      expect(emptyWorkOrder().orderDate).toBe(day);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
+import { InlineField } from "../dos/Field";
 import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
 import { SubMenu, MenuItem } from "./SubMenu";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -74,6 +75,9 @@ export function agingSearchQuery(raw: string): string | undefined {
   if (!q || q === "?") return undefined;
   return q;
 }
+
+const AGING_LIST_MSG =
+  "Click a company number for outstanding invoice items  Esc=Exit  End=Print  (X)cel";
 
 const REPORT_ITEMS: MenuItem[] = [
   { id: "payroll", num: "1", label: "Payroll Report", accel: "Y" },
@@ -137,23 +141,21 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     })();
   }, [report]);
 
+  /** Payroll picks from active work persons; a name typed for Paint Usage may not be one. */
+  const payrollPerson = workPersonRows.some(
+    (person) => person.active !== false && person.name === workPerson
+  )
+    ? workPerson
+    : "";
+
   useDosKeys(
     {
       onEscape: () => {
         if (help) setHelp(false);
-        else if (agingDetail) {
-          setAgingDetail(null);
-          setMsg(
-            "Click a company number for outstanding invoice items  Enter=Run  (X)cel  Esc=Back"
-          );
-        } else if (report) {
+        else if (agingDetail) closeAgingDetail();
+        else if (report) {
           setReport(null);
-          setText("");
-          setAgingRows(null);
-          setAgingDetail(null);
-          setSalesRows(null);
-          setPayrollRows(null);
-          setPaintRows(null);
+          clearOutputs();
         } else onBack();
       },
       onF1: () => setHelp(true),
@@ -175,7 +177,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         }
         if (report === "aging" && ch === "?") {
           setSearch("?");
-          void runReport("aging");
+          void runReport("aging", "?");
           return true;
         }
         if (
@@ -236,13 +238,18 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
     setText("");
   }
 
-  async function runReport(id: string) {
+  function closeAgingDetail() {
+    setAgingDetail(null);
+    setMsg(AGING_LIST_MSG);
+  }
+
+  async function runReport(id: string, agingSearch = search) {
     setRunning(true);
     setMsg("Generating report...");
     try {
       clearOutputs();
       if (id === "aging") {
-        setAgingRows(await api.reportAging(undefined, agingSearchQuery(search)));
+        setAgingRows(await api.reportAging(undefined, agingSearchQuery(agingSearch)));
       } else if (id === "sales" || id === "invoice") {
         const rows = await api.reportSalesAnalysis({
           fromDate: fromDate || undefined,
@@ -255,7 +262,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           await api.listCashReceipts({
             fromDate: fromDate || undefined,
             toDate: toDate || undefined,
-            companyNo: companyNo || undefined,
+            companyNo: companyNo.trim() || undefined,
             search: search.trim() || undefined,
             limit: 2000,
           })
@@ -265,7 +272,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           await api.reportPayroll({
             fromDate: fromDate || undefined,
             toDate: toDate || undefined,
-            search: workPerson.trim() || undefined,
+            search: payrollPerson || undefined,
           })
         );
       } else if (id === "customer") {
@@ -302,7 +309,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
       }
       setMsg(
         id === "aging"
-          ? "Click a company number for outstanding invoice items  Esc=Exit  End=Print  (X)cel"
+          ? AGING_LIST_MSG
           : id === "sales" || id === "invoice"
             ? salesSortMessage(salesSort.key, salesSort.dir)
             : id === "payroll"
@@ -332,7 +339,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
             a.salesDate.localeCompare(b.salesDate) || a.invoice - b.invoice
         );
       setAgingDetail({ company: row, invoices: open });
-      setMsg("Click invoice# to view form  Esc=Back  End=Print  (X)cel");
+      setMsg("Click invoice# to view form  Esc=Back  (X)cel");
     } catch (e) {
       setMsg(String(e));
     } finally {
@@ -442,11 +449,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         filters: [{ name: "Excel Workbook", extensions: ["xls"] }],
       });
       if (!dest) {
-        setMsg(
-          detail
-            ? "Esc=Back to aging  End=Print  (X)cel"
-            : "Click a company number for outstanding invoice items  Esc=Exit  End=Print  (X)cel"
-        );
+        setMsg(detail ? "Esc=Back to aging  (X)cel" : AGING_LIST_MSG);
         return;
       }
       setRunning(true);
@@ -471,12 +474,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         onBack={onBack}
         onSelect={(id) => {
           setReport(id);
-          setText("");
-          setAgingRows(null);
-          setAgingDetail(null);
-          setSalesRows(null);
-          setPayrollRows(null);
-          setPaintRows(null);
+          clearOutputs();
           setSalesSort({ key: "date", dir: "desc" });
           setMsg(
             id === "payroll"
@@ -530,8 +528,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         report === "payroll" ? "payroll-toolbar" : "",
       ].filter(Boolean).join(" ")}>
         {report === "aging" && (
-          <>
-            <label>Search:</label>
+          <InlineField label="Search:">
             <input
               className="dos-input"
               value={search}
@@ -545,131 +542,132 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
                 }
               }}
             />
-          </>
+          </InlineField>
         )}
         {report === "cash" && (
           <span className="dos-searchline-pair">
-            <label>Search:</label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Company, Contact, Address"
-              aria-label="Cash receipts search"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runReport(report);
-                }
-              }}
-            />
+            <InlineField label="Search:">
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Company, Contact, Address"
+                aria-label="Cash receipts search"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runReport(report);
+                  }
+                }}
+              />
+            </InlineField>
           </span>
         )}
         {(report === "invoice" ||
           report === "cash" ||
           report === "sales") && (
           <span className="dos-searchline-pair">
-            <label>
-              {report === "sales" || report === "invoice"
-                ? "Company :"
-                : "From Company No :"}
-            </label>
-            <input
-              className={
+            <InlineField
+              label={
                 report === "sales" || report === "invoice"
-                  ? "dos-input w20"
-                  : "dos-input w8"
+                  ? "Company :"
+                  : "From Company No :"
               }
-              value={companyNo}
-              onChange={(e) => setCompanyNo(e.target.value)}
-              placeholder={
-                report === "sales" || report === "invoice"
-                  ? "Company NO or Name"
-                  : undefined
-              }
-              aria-label={
-                report === "sales" || report === "invoice"
-                  ? "Sales company search"
-                  : undefined
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runReport(report);
+            >
+              <input
+                className={
+                  report === "sales" || report === "invoice"
+                    ? "dos-input w20"
+                    : "dos-input w8"
                 }
-              }}
-            />
+                value={companyNo}
+                onChange={(e) => setCompanyNo(e.target.value)}
+                placeholder={
+                  report === "sales" || report === "invoice"
+                    ? "Company NO or Name"
+                    : undefined
+                }
+                aria-label={
+                  report === "sales" || report === "invoice"
+                    ? "Sales company search"
+                    : undefined
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runReport(report);
+                  }
+                }}
+              />
+            </InlineField>
           </span>
         )}
         {report === "paint" && (
           <span className="dos-searchline-pair">
-            <label>Paint Supply Co. :</label>
-            <select
-              className="dos-select"
-              aria-label="Paint supply search"
-              value={paintSupply}
-              onChange={(e) => setPaintSupply(e.target.value)}
-              style={{ width: "4ch" }}
-            >
-              <option value="">All</option>
-              {paintSupplyOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <InlineField label="Paint Supply Co. :">
+              <select
+                className="dos-select"
+                aria-label="Paint supply search"
+                value={paintSupply}
+                onChange={(e) => setPaintSupply(e.target.value)}
+                style={{ width: "4ch" }}
+              >
+                <option value="">All</option>
+                {paintSupplyOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </InlineField>
             <span style={{ maxWidth: "60ch" }}>{paintSupply || "All"}</span>
           </span>
         )}
         {report === "payroll" && (
           <span className="dos-searchline-pair">
-            <label>Work Person :</label>
-            <select
-              className="dos-select"
-              aria-label="Work person search"
-              value={
-                workPersonRows.some(
-                  (person) => person.active !== false && person.name === workPerson
-                )
-                  ? workPerson
-                  : ""
-              }
-              onChange={(e) => setWorkPerson(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runReport(report);
-                }
-              }}
-            >
-              <option value="">All</option>
-              {workPersonRows
-                .filter((person) => person.active !== false)
-                .map((person) => (
-                  <option key={person.name} value={person.name}>
-                    {person.name}
-                  </option>
-                ))}
-            </select>
+            <InlineField label="Work Person :">
+              <select
+                className="dos-select"
+                aria-label="Work person search"
+                value={payrollPerson}
+                onChange={(e) => setWorkPerson(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runReport(report);
+                  }
+                }}
+              >
+                <option value="">All</option>
+                {workPersonRows
+                  .filter((person) => person.active !== false)
+                  .map((person) => (
+                    <option key={person.name} value={person.name}>
+                      {person.name}
+                    </option>
+                  ))}
+              </select>
+            </InlineField>
           </span>
         )}
         {report === "paint" && (
           <span className="dos-searchline-pair">
-            <label>Work Person :</label>
-            <input
-              className="dos-input"
-              list="report-work-person-list"
-              value={workPerson}
-              onChange={(e) => setWorkPerson(e.target.value)}
-              placeholder="Work person"
-              aria-label="Work person search"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runReport(report);
-                }
-              }}
-            />
+            <InlineField label="Work Person :">
+              <input
+                className="dos-input"
+                list="report-work-person-list"
+                value={workPerson}
+                onChange={(e) => setWorkPerson(e.target.value)}
+                placeholder="Work person"
+                aria-label="Work person search"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runReport(report);
+                  }
+                }}
+              />
+            </InlineField>
             <datalist id="report-work-person-list">
               {workPersonOptions.map((name) => (
                 <option key={name} value={name} />
@@ -682,66 +680,71 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           report !== "labels" && (
             <>
               <span className="dos-searchline-pair">
-              <label>
-                {report === "paint"
-                  ? "From Work Date :"
-                  : report === "sales" || report === "invoice"
-                    ? "From Invoice Date :"
-                    : report === "cash"
-                      ? "From Pay Date :"
-                      : "From Date :"}
-              </label>
-              <input
-                className="dos-input w12"
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                aria-label={
-                  report === "paint"
-                    ? "From work date"
-                    : report === "payroll" ||
-                        report === "sales" ||
-                        report === "invoice"
-                      ? "From invoice date"
-                      : report === "cash"
-                        ? "From pay date"
-                        : undefined
-                }
-              />
+                <InlineField
+                  label={
+                    report === "paint"
+                      ? "From Work Date :"
+                      : report === "sales" || report === "invoice"
+                        ? "From Invoice Date :"
+                        : report === "cash"
+                          ? "From Pay Date :"
+                          : "From Date :"
+                  }
+                >
+                  <input
+                    className="dos-input w12"
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    aria-label={
+                      report === "paint"
+                        ? "From work date"
+                        : report === "payroll" ||
+                            report === "sales" ||
+                            report === "invoice"
+                          ? "From invoice date"
+                          : report === "cash"
+                            ? "From pay date"
+                            : undefined
+                    }
+                  />
+                </InlineField>
               </span>
               <span className="dos-searchline-pair">
-              <label>
-                {report === "paint"
-                  ? "To Work Date :"
-                  : report === "sales" || report === "invoice"
-                    ? "To Invoice Date :"
-                    : report === "cash"
-                      ? "To Pay Date :"
-                      : "To Date :"}
-              </label>
-              <input
-                className="dos-input w12"
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                aria-label={
-                  report === "paint"
-                    ? "To work date"
-                    : report === "payroll" ||
-                        report === "sales" ||
-                        report === "invoice"
-                      ? "To invoice date"
-                      : report === "cash"
-                        ? "To pay date"
-                        : undefined
-                }
-              />
+                <InlineField
+                  label={
+                    report === "paint"
+                      ? "To Work Date :"
+                      : report === "sales" || report === "invoice"
+                        ? "To Invoice Date :"
+                        : report === "cash"
+                          ? "To Pay Date :"
+                          : "To Date :"
+                  }
+                >
+                  <input
+                    className="dos-input w12"
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    aria-label={
+                      report === "paint"
+                        ? "To work date"
+                        : report === "payroll" ||
+                            report === "sales" ||
+                            report === "invoice"
+                          ? "To invoice date"
+                          : report === "cash"
+                            ? "To pay date"
+                            : undefined
+                    }
+                  />
+                </InlineField>
               </span>
             </>
           )}
         {report === "labels" && (
-          <>
-            <label>(C)ustomer / (P)roperty:</label>
+          <InlineField label="(C)ustomer / (P)roperty:">
             <select
               className="dos-select"
               value={labelMode}
@@ -750,7 +753,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
               <option value="C">C Customer</option>
               <option value="P">P Property</option>
             </select>
-          </>
+          </InlineField>
         )}
         {report === "cash" ? (
           <span className="dos-searchline-pair">
@@ -784,6 +787,7 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
           invoices={agingDetail.invoices}
           onExcel={() => void downloadAgingExcel()}
           onInvoice={(inv) => void previewAgingInvoice(inv)}
+          onBack={closeAgingDetail}
         />
       ) : (
       <>
@@ -904,7 +908,7 @@ function AgingReport({
               <div>{money(r.openBal)}</div>
             </button>
           ))}
-          <div style={{ gridColumn: "1 / -1", display: "contents", color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em" }}>
+          <div className="dos-total" style={{ gridColumn: "1 / -1", display: "contents", marginTop: "0.5em" }}>
             <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
             <div>{money(tc)}</div>
             <div>{money(t30)}</div>
@@ -936,11 +940,13 @@ function AgingInvoiceList({
   invoices,
   onExcel,
   onInvoice,
+  onBack,
 }: {
   company: AgingRow;
   invoices: Invoice[];
   onExcel: () => void;
   onInvoice: (inv: Invoice) => void;
+  onBack: () => void;
 }) {
   const { index, setIndex, up, down, pageUp, pageDown, home, end } =
     useBrowseIndex(invoices.length);
@@ -956,6 +962,7 @@ function AgingInvoiceList({
     onEnter: () => {
       const inv = invoices[index];
       if (inv) onInvoice(inv);
+      else onBack();
     },
   });
 
@@ -1095,7 +1102,7 @@ function SalesReport({
           </button>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "12ch 7ch 8ch 8ch 12ch 12ch 12ch 12ch 12ch" }}>
+      <div className="browse-grid dos-total" style={{ marginTop: "0.5em", gridTemplateColumns: "12ch 7ch 8ch 8ch 12ch 12ch 12ch 12ch 12ch" }}>
         <div style={{ gridColumn: "1 / 5" }}>Total Counts: {rows.length}</div>
         <div>{money(sa)}</div>
         <div>{money(dep)}</div>
@@ -1167,7 +1174,7 @@ function PayrollReport({
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
+        <div className="browse-grid dos-total" style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
           <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
           <div>{money(tot)}</div>
           <div>{money(mat)}</div>
@@ -1208,7 +1215,7 @@ function PaintUsageReport({ rows }: { rows: PaintUsageRow[] }) {
             </div>
           ))}
         </div>
-        <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}>
+        <div className="browse-grid dos-total" style={{ gridTemplateColumns: "18ch 12ch 7ch 12ch 30ch 12ch" }}>
           <div style={{ gridColumn: "1 / 7" }}>{`Total Counts: ${rows.length}`}</div>
         </div>
       </div>
@@ -1245,7 +1252,7 @@ function CashReceiptsReport({ rows }: { rows: CashReceipt[] }) {
           </div>
         ))}
       </div>
-      <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
+      <div className="browse-grid dos-total" style={{ marginTop: "0.5em", gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>
         <div style={{ gridColumn: "1 / 7" }}>Cash Receipts Total Counts: {rows.length}</div>
         <div>{money(total)}</div>
       </div>
@@ -1296,13 +1303,13 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
       <div style={{ textAlign: "center", marginBottom: "1em" }}>
         *****  Customer Report  *****
         <br />
-        DATE : {fmtDate(new Date().toISOString().slice(0, 10))}
+        DATE : {fmtDate(today())}
       </div>
       {cos.map((c) => {
         const mine = props.filter((p) => p.companyNo === c.companyNo);
         return (
           <div key={c.companyNo} style={{ marginBottom: "2em" }}>
-            <div style={{ fontWeight: "bold", marginBottom: "0.5em" }}>
+            <div className="dos-heading" style={{ marginBottom: "0.5em" }}>
               ---Company Information---
             </div>
             <div className="browse-grid" style={{ marginBottom: "0.5em", gridTemplateColumns: "12ch 8ch 8ch 8ch" }}>
@@ -1323,7 +1330,7 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
             </div>
             {mine.length > 0 && (
               <>
-                <div style={{ fontWeight: "bold", marginTop: "1em", marginBottom: "0.5em" }}>
+                <div className="dos-heading" style={{ marginTop: "1em", marginBottom: "0.5em" }}>
                   Property Information
                 </div>
                 <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 14ch 12ch 10ch 9ch 15ch 10ch" }}>

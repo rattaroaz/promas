@@ -253,10 +253,9 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
               {blurbs[screen]}
             </div>
             <div
+              className="dos-note"
               style={{
-                color: "var(--app-accent)",
                 marginBottom: "1em",
-                fontSize: "0.9em",
                 wordBreak: "break-all",
               }}
             >

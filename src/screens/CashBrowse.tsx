@@ -9,7 +9,7 @@ import {
   Prompt,
   HelpOverlay,
 } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { MoneyInput } from "../dos/MoneyInput";
 import { DateInput } from "../dos/DateInput";
 import { money, fmtDate, today } from "../dos/utils";
@@ -124,9 +124,9 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
     try {
       await api.saveCashReceipt(editing);
       setEditing(null);
+      await load();
       setMsg("Receipt posted.");
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -166,26 +166,29 @@ export function CashBrowse({ onBack }: { onBack: () => void }) {
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-              placeholder="Invoice#, Company, Contact, or Property Address"
-            />
-            <label>From:</label>
-            <DateInput
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-            <label>To:</label>
-            <DateInput
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
+            <InlineField label="Search:">
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+                placeholder="Invoice#, Company, Contact, or Property Address"
+              />
+            </InlineField>
+            <InlineField label="From:">
+              <DateInput
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </InlineField>
+            <InlineField label="To:">
+              <DateInput
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </InlineField>
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 8ch 30ch 12ch 10ch 12ch" }}>

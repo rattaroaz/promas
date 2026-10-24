@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { openMain, propertyList, waitForFit } from "../support/app";
+import { SCREENS } from "../support/screens";
 
 /**
  * Fonts and field boxes must stay put when a control is focused or clicked.
@@ -29,26 +31,6 @@ async function frames(page: Page) {
         );
       })
   );
-}
-
-/** A screen can fit again when its rows arrive. Wait until type has held still. */
-async function waitSettled(page: Page) {
-  let last = "";
-  let since = Date.now();
-  const start = Date.now();
-  while (Date.now() - start < 2500) {
-    const now = await page.evaluate(() => {
-      const root = document.documentElement;
-      return `${getComputedStyle(root).fontSize}|${root.style.getPropertyValue("--fit-scale")}`;
-    });
-    if (now !== last) {
-      last = now;
-      since = Date.now();
-    } else if (Date.now() - since >= 500) {
-      return;
-    }
-    await page.waitForTimeout(40);
-  }
 }
 
 async function shot(locator: Locator): Promise<Shot> {
@@ -183,7 +165,7 @@ async function poke(page: Page, locator: Locator, where: string, click: boolean)
 async function audit(page: Page, open: () => Promise<void>, screen: string) {
   const show = async () => {
     await open();
-    await waitSettled(page);
+    await waitForFit(page);
   };
   await show();
   const fields = page.locator(FIELDS);
@@ -209,30 +191,6 @@ async function audit(page: Page, open: () => Promise<void>, screen: string) {
   });
 }
 
-async function home(page: Page) {
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: /3\.\s*Invoice Process/i })).toBeVisible();
-}
-
-async function openMain(page: Page, item: RegExp) {
-  await home(page);
-  await page.getByRole("button", { name: item }).click();
-}
-
-async function companyList(page: Page, item: RegExp) {
-  await openMain(page, item);
-  const companyNo = page.getByRole("textbox", { name: "Company NO" });
-  await companyNo.fill("?");
-  await companyNo.press("Enter");
-  await expect(page.getByRole("button", { name: /1000\s+ACME/i })).toBeVisible();
-}
-
-async function propertyList(page: Page, item: RegExp) {
-  await companyList(page, item);
-  await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-  await expect(page.getByRole("button", { name: /01\s+Bldg A/i })).toBeVisible();
-}
-
 test.describe("focus does not resize the screen", () => {
   test.beforeEach(async ({ page }) => {
     page.setDefaultTimeout(8_000);
@@ -250,7 +208,7 @@ test.describe("focus does not resize the screen", () => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await openMain(page, /3\.\s*Invoice Process/i);
     await expect(page.getByRole("textbox", { name: "Company NO" })).toBeVisible();
-    await waitSettled(page);
+    await waitForFit(page);
     const company = page.getByRole("textbox", { name: "Company NO" });
     const street = page.getByRole("textbox", { name: "Property Street" });
     const beforeCompany = await shot(company);
@@ -266,202 +224,15 @@ test.describe("focus does not resize the screen", () => {
     expectStill(beforeCompany, await shot(company), "Invoice Process Property Street click neighbour Company NO");
   });
 
-  test("every input, button, and dropdown keeps its font and neighbour boxes", async ({
-    page,
-  }) => {
-    test.setTimeout(480_000);
-    await page.setViewportSize({ width: 1400, height: 900 });
-
-    const screens: { name: string; open: () => Promise<void> }[] = [
-      { name: "Main menu", open: () => home(page) },
-      { name: "Estimate gate", open: () => openMain(page, /1\.\s*Estimate Process/i) },
-      {
-        name: "Estimate properties",
-        open: () => propertyList(page, /1\.\s*Estimate Process/i),
-      },
-      {
-        name: "Estimate list",
-        open: async () => {
-          await propertyList(page, /1\.\s*Estimate Process/i);
-          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-          await expect(page.getByText(/1 proposals/i)).toBeVisible();
-        },
-      },
-      {
-        name: "Estimate edit",
-        open: async () => {
-          await propertyList(page, /1\.\s*Estimate Process/i);
-          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-          await page.getByRole("button", { name: /EST-1/i }).click();
-          await expect(page.locator(".dlg-title")).toContainText("Proposal");
-        },
-      },
-      { name: "Work order gate", open: () => openMain(page, /2\.\s*Work Order Process/i) },
-      {
-        name: "Work order properties",
-        open: () => propertyList(page, /2\.\s*Work Order Process/i),
-      },
-      {
-        name: "Work order list",
-        open: async () => {
-          await propertyList(page, /2\.\s*Work Order Process/i);
-          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-          await expect(page.getByRole("button", { name: /7\s+02\/01\/2026|A1/i })).toBeVisible();
-        },
-      },
-      {
-        name: "Work order edit",
-        open: async () => {
-          await propertyList(page, /2\.\s*Work Order Process/i);
-          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-          await page.getByRole("button", { name: /7\s+02\/01\/2026|A1/i }).click();
-          await expect(page.locator(".dlg-title")).toBeVisible();
-        },
-      },
-      { name: "Invoice gate", open: () => openMain(page, /3\.\s*Invoice Process/i) },
-      {
-        name: "Invoice companies",
-        open: () => companyList(page, /3\.\s*Invoice Process/i),
-      },
-      {
-        name: "Invoice properties",
-        open: () => propertyList(page, /3\.\s*Invoice Process/i),
-      },
-      {
-        name: "Property edit",
-        open: async () => {
-          await propertyList(page, /3\.\s*Invoice Process/i);
-          await page.getByRole("button", { name: "Ctrl-Home" }).click();
-          await expect(page.getByRole("textbox", { name: "Property NO" })).toBeVisible();
-        },
-      },
-      {
-        name: "Invoice list",
-        open: async () => {
-          await propertyList(page, /3\.\s*Invoice Process/i);
-          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-          await expect(page.getByText(/1 invoices/i)).toBeVisible();
-        },
-      },
-      {
-        name: "Invoice edit",
-        open: async () => {
-          await propertyList(page, /3\.\s*Invoice Process/i);
-          await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-          await page.getByRole("button", { name: /^Ins Add$/i }).click();
-          await expect(page.getByLabel("Invoice Number")).toBeVisible();
-        },
-      },
-      { name: "Cash gate", open: () => openMain(page, /4\.\s*Cash Receipts Process/i) },
-      {
-        name: "Cash ledger",
-        open: async () => {
-          await companyList(page, /4\.\s*Cash Receipts Process/i);
-          await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-          await expect(page.getByText(/Unpaid Total|Open/i).first()).toBeVisible();
-        },
-      },
-      {
-        name: "Cash payment",
-        open: async () => {
-          await companyList(page, /4\.\s*Cash Receipts Process/i);
-          await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-          await page.getByRole("button", { name: /^Ins Add$/i }).click();
-          await expect(page.getByLabel(/Amount Paid/i).first()).toBeVisible();
-        },
-      },
-      { name: "Material menu", open: () => openMain(page, /5\.\s*Material Process/i) },
-      {
-        name: "Material transactions",
-        open: async () => {
-          await openMain(page, /5\.\s*Material Process/i);
-          await page.getByRole("button", { name: /1\.\s*Material Transaction/i }).click();
-          await expect(page.locator(".dos-searchline input")).toBeVisible();
-        },
-      },
-      {
-        name: "Material edit",
-        open: async () => {
-          await openMain(page, /5\.\s*Material Process/i);
-          await page.getByRole("button", { name: /1\.\s*Material Transaction/i }).click();
-          await page.getByRole("button", { name: /^Ins Add$/i }).click();
-          await expect(page.getByRole("textbox", { name: "Amount" })).toBeVisible();
-        },
-      },
-      {
-        name: "Worker wages",
-        open: async () => {
-          await openMain(page, /5\.\s*Material Process/i);
-          await page.getByRole("button", { name: /5\.\s*Worker Wages/i }).click();
-          await expect(page.getByText(/Worker Wages/i).first()).toBeVisible();
-        },
-      },
-      { name: "Reports menu", open: () => openMain(page, /6\.\s*Reports Menu/i) },
-    ];
-
-    const reports = [
-      "Payroll Report",
-      "Customer File",
-      "Invoice Register",
-      "Cash Receipts Register",
-      "Open Receivables Aging",
-      "Sales Analysis",
-      "Check Missing Invoice",
-      "Mailing Labels",
-      "Paint Usage Report",
-    ];
-    for (const label of reports) {
-      screens.push({
-        name: `Report ${label}`,
-        open: async () => {
-          await openMain(page, /6\.\s*Reports Menu/i);
-          await page.getByRole("button", { name: new RegExp(label, "i") }).click();
-          await expect(page.getByRole("button", { name: /1\.\s*Payroll Report/i })).toHaveCount(0);
-        },
-      });
-    }
-
-    screens.push(
-      { name: "Miscellaneous", open: () => openMain(page, /7\.\s*Miscellaneous/i) },
-      {
-        name: "Change system date",
-        open: async () => {
-          await openMain(page, /7\.\s*Miscellaneous/i);
-          await page.getByRole("button", { name: /1\.\s*Change System Date/i }).click();
-          await expect(page.locator("input").first()).toBeVisible();
-        },
-      },
-      {
-        name: "Form management",
-        open: async () => {
-          await openMain(page, /7\.\s*Miscellaneous/i);
-          await page.getByRole("button", { name: /3\.\s*Form Management/i }).click();
-          await expect(page.getByText(/Form/i).first()).toBeVisible();
-        },
-      },
-      {
-        name: "Workers",
-        open: async () => {
-          await openMain(page, /7\.\s*Miscellaneous/i);
-          await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-          await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
-        },
-      },
-      { name: "Settings", open: () => openMain(page, /8\.\s*Settings/i) },
-      {
-        name: "Diagnostics",
-        open: async () => {
-          await openMain(page, /8\.\s*Settings/i);
-          await page.getByRole("button", { name: /5\.\s*Diagnostics/i }).click();
-          await expect(page.getByText(/Diagnostic/i).first()).toBeVisible();
-        },
-      }
-    );
-
-    for (const screen of screens) {
-      await audit(page, screen.open, screen.name);
-    }
-  });
+  for (const screen of SCREENS) {
+    test(`${screen.name}: every input, button, and dropdown keeps its font and neighbour boxes`, async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width: 1400, height: 900 });
+      await audit(page, () => screen.open(page), screen.name);
+    });
+  }
 
   test("opened dialogs and forms stay put when a field is focused", async ({ page }) => {
     test.setTimeout(180_000);
@@ -538,7 +309,7 @@ test.describe("focus does not resize the screen", () => {
       await page.setViewportSize({ width, height: 800 });
       for (const form of forms) {
         await form.open();
-        await waitSettled(page);
+        await waitForFit(page);
         const fields = page.locator(".dos-dialog input:visible, .dos-dialog select:visible, .dos-dialog textarea:visible, .dos-menu-frame button:visible");
         const count = await fields.count();
         for (let i = 0; i < count; i++) {

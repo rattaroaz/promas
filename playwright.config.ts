@@ -7,11 +7,21 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // A retry still records the failure's trace, but a test that only passes on
+  // a retry fails the run.
+  failOnFlakyTests: !!process.env.CI,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: [
+    [process.env.CI ? "github" : "list"],
+    ["html", { open: "never" }],
+  ],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    // The business's clock and locale, not the test machine's (see vite.config.ts).
+    locale: "en-US",
+    timezoneId: "America/Los_Angeles",
   },
   projects: [
     {

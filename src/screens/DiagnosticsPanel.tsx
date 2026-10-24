@@ -228,8 +228,6 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
                 color: "#161616",
-                fontSize: "0.85em",
-                lineHeight: 1.35,
                 background: "#f4f4f4",
                 padding: "0.6em 1ch",
                 border: "1px solid var(--dos-cyan)",

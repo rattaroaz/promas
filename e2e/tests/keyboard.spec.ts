@@ -20,7 +20,7 @@ test.describe("arrow key navigation", () => {
     await expect(workOrder).toHaveClass(/hot/);
 
     await page.keyboard.press("3");
-    const invoiceNo = page.getByLabel("Invoice Number");
+    const invoiceNo = page.getByLabel("Invoice Number", { exact: true });
     const companyNo = page.getByLabel("Company NO");
     const companyName = page.getByLabel("Company Name");
     const companyPhone = page.getByLabel("Company Phone");

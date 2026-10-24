@@ -221,7 +221,11 @@ export function Dialog({
 }) {
   return (
     <div className="dos-overlay">
-      <div className={`dos-dialog ${wide ? "wide" : ""} ${red ? "red" : ""}`}>
+      <div
+        className={`dos-dialog ${wide ? "wide" : ""} ${red ? "red" : ""}`}
+        role="dialog"
+        aria-label={title.trim()}
+      >
         <div className="dlg-title"> {title} </div>
         <div className="dlg-body">{children}</div>
         {below}
@@ -242,7 +246,7 @@ export function Prompt({
 }) {
   return (
     <div className="dos-overlay">
-      <div className="dos-prompt" tabIndex={0}>
+      <div className="dos-prompt" tabIndex={0} role="dialog" aria-label={question}>
         <div className="q">{question}</div>
         <div style={{ marginTop: "0.6em", display: "flex", gap: "2ch", justifyContent: "center" }}>
           <button className="dos-btn" onClick={onYes} autoFocus>

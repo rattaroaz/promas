@@ -16,7 +16,7 @@ import {
   Prompt,
   HelpOverlay,
 } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { MoneyInput } from "../dos/MoneyInput";
 import { money, fmtDate, today } from "../dos/utils";
 
@@ -157,7 +157,7 @@ export function MaterialBrowse({
       return;
     }
     try {
-      await api.saveMaterial(editing);
+      await api.saveMaterial({ ...editing, matDate: editing.matDate || today() });
       setEditing(null);
       await load();
     } catch (e) {
@@ -192,48 +192,51 @@ export function MaterialBrowse({
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>
-              {sort === "worker"
-                ? "From Worker Name :"
-                : sort === "desc"
-                  ? "From Descript :"
-                  : "Search:"}
-            </label>
-            {sort === "worker" ? (
-              <select
-                className="dos-select"
-                aria-label="From Worker Name"
-                value={
-                  workPersons.some(
-                    (person) => person.active !== false && person.name === search
-                  )
-                    ? search
-                    : ""
-                }
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setIndex(0);
-                }}
-              >
-                <option value="">All</option>
-                {workPersons
-                  .filter((person) => person.active !== false)
-                  .map((person) => (
-                    <option key={person.name} value={person.name}>
-                      {person.name}
-                    </option>
-                  ))}
-              </select>
-            ) : (
-              <input
-                className="dos-input"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setIndex(0);
-                }}
-              />
-            )}
+            <InlineField
+              label={
+                sort === "worker"
+                  ? "From Worker Name :"
+                  : sort === "desc"
+                    ? "From Descript :"
+                    : "Search:"
+              }
+            >
+              {sort === "worker" ? (
+                <select
+                  className="dos-select"
+                  aria-label="From Worker Name"
+                  value={
+                    workPersons.some(
+                      (person) => person.active !== false && person.name === search
+                    )
+                      ? search
+                      : ""
+                  }
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setIndex(0);
+                  }}
+                >
+                  <option value="">All</option>
+                  {workPersons
+                    .filter((person) => person.active !== false)
+                    .map((person) => (
+                      <option key={person.name} value={person.name}>
+                        {person.name}
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <input
+                  className="dos-input"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setIndex(0);
+                  }}
+                />
+              )}
+            </InlineField>
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: materialColumns(sort) }}>

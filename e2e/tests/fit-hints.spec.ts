@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { companyList, home, openMain, propertyList, waitForFit } from "../support/app";
 
 /**
  * Every screen must fit the window, and every status line and key hint must
@@ -7,25 +8,9 @@ import { expect, test, type Page } from "@playwright/test";
  * and it must not be cut off either.
  *
  * Widths are 1280 and 1024. Height 800 is the size where the Workers message
- * at scale 1 is 1991px in a 1280px bar.
+ * at scale 1 is 1991px in a 1280px bar. The main menu is also checked full
+ * screen, where the type is largest.
  */
-
-async function waitSettled(page: Page) {
-  let last = "";
-  let since = Date.now();
-  const start = Date.now();
-  while (Date.now() - start < 2500) {
-    const now = await page.evaluate(() => {
-      const root = document.documentElement;
-      return `${getComputedStyle(root).fontSize}|${root.style.getPropertyValue("--fit-scale")}`;
-    });
-    if (now !== last) {
-      last = now;
-      since = Date.now();
-    } else if (Date.now() - since >= 500) return;
-    await page.waitForTimeout(40);
-  }
-}
 
 async function clipReport(page: Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -159,6 +144,8 @@ async function clipReport(page: Page): Promise<string[]> {
       const text = pre.textContent || "";
       const idx = text.indexOf("NOTE:");
       if (idx >= 0) {
+        const lineEnd = text.indexOf("\n", idx);
+        const noteLength = (lineEnd < 0 ? text.length : lineEnd) - idx;
         const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
         let seen = 0;
         let target: Text | null = null;
@@ -179,7 +166,7 @@ async function clipReport(page: Page): Promise<string[]> {
         if (target) {
           const range = document.createRange();
           range.setStart(target, start);
-          range.setEnd(target, Math.min(target.length, start + 5));
+          range.setEnd(target, Math.min(target.length, start + noteLength));
           const rect = range.getBoundingClientRect();
           const preBox = pre.getBoundingClientRect();
           if (
@@ -211,30 +198,6 @@ async function clipReport(page: Page): Promise<string[]> {
     }
     return issues;
   });
-}
-
-async function home(page: Page) {
-  await page.goto("/");
-  await expect(page.getByRole("button", { name: /3\.\s*Invoice Process/i })).toBeVisible();
-}
-
-async function openMain(page: Page, item: RegExp) {
-  await home(page);
-  await page.getByRole("button", { name: item }).click();
-}
-
-async function companyList(page: Page, item: RegExp) {
-  await openMain(page, item);
-  const companyNo = page.getByRole("textbox", { name: "Company NO" });
-  await companyNo.fill("?");
-  await companyNo.press("Enter");
-  await expect(page.getByRole("button", { name: /1000\s+ACME/i })).toBeVisible();
-}
-
-async function propertyList(page: Page, item: RegExp) {
-  await companyList(page, item);
-  await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-  await expect(page.getByRole("button", { name: /01\s+Bldg A/i })).toBeVisible();
 }
 
 test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }) => {
@@ -312,7 +275,7 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
         await propertyList(page, /3\.\s*Invoice Process/i);
         await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
         await page.getByRole("button", { name: /^Ins Add$/i }).click();
-        await expect(page.getByLabel("Invoice Number")).toBeVisible();
+        await expect(page.getByLabel("Invoice Number", { exact: true })).toBeVisible();
       },
     },
     { name: "Cash gate", open: () => openMain(page, /4\.\s*Cash Receipts Process/i) },
@@ -426,7 +389,7 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
     await page.setViewportSize({ width, height: 800 });
     for (const screen of screens) {
       await screen.open();
-      await waitSettled(page);
+      await waitForFit(page);
       const issues = await clipReport(page);
       for (const issue of issues) failures.push(`${width} ${screen.name}: ${issue}`);
       if (screen.name === "Material transactions") {
@@ -460,12 +423,12 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
     const name = page.getByRole("textbox", { name: /Worker name/i }).first();
-    await waitSettled(page);
+    await waitForFit(page);
     const beforeFit = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
     await name.fill(long);
-    await waitSettled(page);
+    await waitForFit(page);
     const duringFit = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
@@ -475,7 +438,7 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     const del = page.getByRole("button", { name: new RegExp(`Delete ${long}`) });
     await del.click();
     await expect(page.getByLabel("Are you sure? Y/N")).toBeVisible();
-    await waitSettled(page);
+    await waitForFit(page);
     const afterFit = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
@@ -484,16 +447,45 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     expect(prompted, prompted.join("\n")).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(page.getByLabel("Are you sure? Y/N")).toHaveCount(0);
-    await waitSettled(page);
+    await waitForFit(page);
     const closed = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
     expect(closed, `${width} dismissing Delete changed fit-scale`).toBe(beforeFit);
     await name.fill("Jose Ramirez");
-    await waitSettled(page);
+    await waitForFit(page);
     const restored = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
     expect(restored, `${width} restoring the name changed fit-scale`).toBe(beforeFit);
   }
+});
+
+test("the main menu and the copyright under it fit a full-screen window", async ({ page }) => {
+  test.setTimeout(60_000);
+  const failures: string[] = [];
+  for (const viewport of [
+    { width: 1920, height: 1080 },
+    { width: 1920, height: 1009 },
+    { width: 2560, height: 1440 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await home(page);
+    await waitForFit(page);
+    const size = `${viewport.width}x${viewport.height}`;
+    for (const issue of await clipReport(page)) failures.push(`${size}: ${issue}`);
+    const spilled = await page.evaluate(() => {
+      const wrap = document.querySelector(".dos-main-wrap");
+      if (!wrap) return ["no .dos-main-wrap"];
+      const box = wrap.getBoundingClientRect();
+      return [...wrap.children].flatMap((child) => {
+        const r = child.getBoundingClientRect();
+        return r.top < box.top - 1 || r.bottom > box.bottom + 1
+          ? [`${child.className} spans ${Math.round(r.top)}..${Math.round(r.bottom)}, wrap ${Math.round(box.top)}..${Math.round(box.bottom)}`]
+          : [];
+      });
+    });
+    for (const issue of spilled) failures.push(`${size}: ${issue}`);
+  }
+  expect(failures, failures.join("\n")).toEqual([]);
 });

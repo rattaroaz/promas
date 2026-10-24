@@ -1,37 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-
-async function pressEsc(page: Page) {
-  await page.getByRole("button", { name: /^Esc(\s|$)/ }).first().click();
-}
-
-async function backToMain(page: Page) {
-  for (let i = 0; i < 8; i++) {
-    if (
-      await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).isVisible()
-    ) {
-      return;
-    }
-    await pressEsc(page);
-  }
-}
+import { backToMain, INVOICE_PROCESS, openMain, openNewInvoice, propertyList } from "../support/app";
 
 async function openWorkers(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
+  await openMain(page, /7\.\s*Miscellaneous/i);
   await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
   await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
-}
-
-async function openNewInvoice(page: Page) {
-  await pressEsc(page);
-  await pressEsc(page);
-  await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
-  const companyNo = page.getByPlaceholder("? = first").first();
-  await companyNo.fill("?");
-  await companyNo.press("Enter");
-  await page.getByRole("button", { name: /1000\s+ACME/i }).click();
-  await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-  await page.getByRole("button", { name: /^New Invoice$/i }).click();
 }
 
 test.describe("workers", () => {
@@ -64,7 +37,7 @@ test.describe("workers", () => {
       page.getByRole("checkbox", { name: "Active Inactive Ian" })
     ).not.toBeChecked();
 
-    await openNewInvoice(page);
+    await openNewInvoice(page, { keepData: true });
     const options = page.getByLabel("Work Person list").locator("option");
     await expect(options).toHaveText([" ", "Ana C. Cruz", "Jose Ramirez"]);
     const person = page.getByRole("textbox", { name: "Work Person" });
@@ -94,12 +67,7 @@ test.describe("workers", () => {
     await page.keyboard.press("Y");
     await expect(page.getByLabel("Worker name 1")).not.toHaveValue("Jose Ramirez");
 
-    await backToMain(page);
-    await page.getByRole("button", { name: /3\.\s*Invoice Process/i }).click();
-    const companyNo = page.getByPlaceholder("? = first").first();
-    await companyNo.fill("?");
-    await companyNo.press("Enter");
-    await page.getByRole("button", { name: /1000\s+ACME/i }).click();
+    await propertyList(page, INVOICE_PROCESS, { keepData: true });
     await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
     await page.getByRole("button", { name: /01\/15\/2026\s+1\s+A1\s+250\.00/ }).click();
     await expect(page.getByRole("textbox", { name: "Work Person" })).toHaveValue(

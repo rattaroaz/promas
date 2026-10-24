@@ -36,12 +36,22 @@ export function fmtDate(d: string | null | undefined): string {
   return d;
 }
 
-export function today(): string {
-  const d = new Date();
+function isoDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** Today's local calendar date, YYYY-MM-DD. */
+export function today(): string {
+  return isoDate(new Date());
+}
+
+/** The calendar date `days` after a YYYY-MM-DD date. Counts local days, so a clock change never shifts it. */
+export function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return isoDate(new Date(y, m - 1, d + days));
 }
 
 export function labelDots(label: string, width = 16): string {

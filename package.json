@@ -1,7 +1,7 @@
 {
   "name": "promas",
   "private": true,
-  "version": "2.16.2",
+  "version": "2.16.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,13 +16,14 @@
     "build:win:x64:signed": "node scripts/tauri-build.mjs --arch x64 --signed",
     "build:win:arm64:signed": "node scripts/tauri-build.mjs --arch arm64 --signed",
     "build:win:all:signed": "node scripts/tauri-build.mjs --arch all --signed",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "test:all": "npm run test && npm run test:rust && npm run test:e2e"
+    "test:all": "npm run typecheck && npm run test:coverage && npm run test:rust && npm run test:e2e"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

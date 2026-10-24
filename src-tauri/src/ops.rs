@@ -890,6 +890,71 @@ pub fn find_work_order(
     }
 }
 
+/// Check Missing Invoice: every work order in the date range, labeled void,
+/// not built (no live invoice carries its order number), or built.
+pub fn report_missing_invoices(
+    conn: &Connection,
+    params: &ListParams,
+) -> Result<Vec<MissingInvoiceRow>, String> {
+    let from_date = params.from_date.clone().unwrap_or_default();
+    let to_date = params.to_date.clone().unwrap_or_default();
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT w.order_no,w.order_date,w.company_no,w.pro_no,
+                      w.order_by,w.order_man,w.order_unit,w.order_size,w.status,w.voided,
+                      COALESCE(p.street,''), COALESCE(p.name,''),
+                      i.invoice, i.sales_date, i.balance
+               FROM work_orders w
+               LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
+               LEFT JOIN invoices i ON i.company_no=w.company_no AND i.pro_no=w.pro_no
+                    AND i.order_no=w.order_no AND i.voided=0 AND w.order_no>0
+               WHERE (?1='' OR w.order_date>=?1)
+                 AND (?2='' OR w.order_date<=?2)
+               ORDER BY w.order_date, w.order_no"#,
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![from_date, to_date], |r| {
+            let voided: i64 = r.get(9)?;
+            let status: String = r.get(8)?;
+            let inv: Option<i64> = r.get(12)?;
+            let label = if voided != 0 || status.eq_ignore_ascii_case("V") {
+                "**** Void Work Order ****".into()
+            } else if inv.is_none() {
+                "*** Not Build Invoice ***".into()
+            } else {
+                "Built".into()
+            };
+            Ok(MissingInvoiceRow {
+                order_no: r.get(0)?,
+                order_date: r.get(1)?,
+                company_no: r.get(2)?,
+                pro_no: r.get(3)?,
+                order_by: {
+                    let by: String = r.get(4)?;
+                    let man: String = r.get(5)?;
+                    if by.is_empty() { man } else { by }
+                },
+                invoice: inv,
+                inv_date: r.get(13)?,
+                balance: r.get::<_, Option<f64>>(14)?.unwrap_or(0.0),
+                status: label,
+                property_address: {
+                    let street: String = r.get(10)?;
+                    let name: String = r.get(11)?;
+                    if street.is_empty() { name } else { street }
+                },
+                unit_size: {
+                    let u: String = r.get(6)?;
+                    let s: String = r.get(7)?;
+                    if s.is_empty() { u } else { format!("{u}/{s}") }
+                },
+            })
+        })
+        .map_err(map_err)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
+}
+
 pub fn report_aging(
     conn: &Connection,
     as_of: Option<String>,
@@ -1097,6 +1162,7 @@ mod tests {
         // 270*0.65 + 75*0.65 = 175.5 + 48.75 = 224.25
         assert_eq!(wages, 224.25);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1191,6 +1257,7 @@ mod tests {
         assert_eq!(pt, 125.0);
         assert_eq!(bal, 75.0);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1248,6 +1315,7 @@ mod tests {
         assert_eq!(pt, 40.0); // preserved from cash_receipts
         assert_eq!(bal, 100.0); // 140 - 40
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1301,6 +1369,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(bal, 250.0); // 400 - 150
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1337,6 +1406,7 @@ mod tests {
             },
         );
         assert!(err.is_err());
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1423,6 +1493,7 @@ mod tests {
         assert!(voided.order.voided);
         assert_eq!(voided.order.status, "V");
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1506,6 +1577,7 @@ mod tests {
         assert_eq!(b1, 0.0); // fully paid
         assert_eq!(b2, 120.0); // 200 - 80 remaining after first took 100
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1543,6 +1615,7 @@ mod tests {
         assert!((r.open_bal - 100.0).abs() < 0.01);
         assert!((r.current + r.days_30 + r.days_60 + r.days_90 + r.days_120 - r.open_bal).abs() < 0.01);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1605,6 +1678,7 @@ mod tests {
         assert_eq!(pay_total, 0.0);
         assert_eq!(balance, 200.0);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1654,6 +1728,7 @@ mod tests {
         assert_eq!(pay_total, 150.0);
         assert_eq!(balance, -50.0);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1705,6 +1780,7 @@ mod tests {
         assert_eq!(rows[0].wages, 130.0); // 200 * 65%
         assert_eq!(rows[0].rate, 65.0);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1768,6 +1844,7 @@ mod tests {
         let aging = report_aging(&conn, Some("2020-02-01".into()), None).unwrap();
         assert!(aging.is_empty());
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 
@@ -1840,6 +1917,7 @@ mod tests {
         assert_eq!(pay_total, 175.25);
         assert_eq!(balance, 124.75);
 
+        drop(conn);
         let _ = std::fs::remove_file(path);
     }
 

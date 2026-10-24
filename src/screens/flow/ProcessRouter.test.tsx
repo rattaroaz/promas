@@ -220,7 +220,7 @@ describe("ProcessRouter observability", () => {
       balance: 100,
     };
     vi.mocked(api.listInvoices).mockImplementation(async (params) => {
-      if (params.search === "42" || params.companyNo === "1000") {
+      if (params?.search === "42" || params?.companyNo === "1000") {
         return [other, found];
       }
       return [];
@@ -268,7 +268,7 @@ describe("ProcessRouter observability", () => {
       balance: 100,
     };
     vi.mocked(api.listInvoices).mockImplementation(async (params) => {
-      if (params.search === "42" || params.companyNo === "1000") {
+      if (params?.search === "42" || params?.companyNo === "1000") {
         return [older, found];
       }
       return [];

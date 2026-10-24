@@ -313,6 +313,44 @@ describe("resolveFitScale", () => {
     expect(factor).toBeGreaterThan(0.8);
     document.body.removeChild(shell);
   });
+
+  it("shrinks when the menu frame fits but the copyright under it spills", () => {
+    const shell = document.createElement("div");
+    const wrap = document.createElement("div");
+    wrap.className = "dos-main-wrap";
+    const frame = document.createElement("div");
+    frame.className = "dos-menu-frame";
+    const copyright = document.createElement("div");
+    copyright.className = "dos-copyright";
+    wrap.append(frame, copyright);
+    shell.appendChild(wrap);
+    document.body.appendChild(shell);
+    Object.defineProperty(wrap, "clientHeight", { value: 890, configurable: true });
+    Object.defineProperty(frame, "scrollHeight", { value: 756, configurable: true });
+    Object.defineProperty(frame, "offsetHeight", { value: 756, configurable: true });
+    const rect = (top: number, bottom: number) =>
+      ({
+        x: 0,
+        y: top,
+        top,
+        left: 0,
+        right: 200,
+        bottom,
+        width: 200,
+        height: bottom - top,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+    // The frame alone fits. Frame plus copyright is 951px in an 890px wrap.
+    frame.getBoundingClientRect = () => rect(94, 850);
+    copyright.getBoundingClientRect = () => rect(927, 1045);
+    expect(verticalFitFactor(shell)).toBeCloseTo((890 - 8) / 951, 4);
+
+    copyright.getBoundingClientRect = () => rect(870, 960);
+    expect(verticalFitFactor(shell)).toBe(1);
+    document.body.removeChild(shell);
+  });
 });
 
 describe("useBrowseIndex", () => {
@@ -490,6 +528,53 @@ describe("useDosKeys", () => {
     fire("Escape");
     expect(onEscape).not.toHaveBeenCalled();
   });
+
+  it.each([".dos-prompt", ".dos-help"])(
+    "leaves keys typed in %s to it, not to the screen underneath",
+    (scope) => {
+      const handlers = {
+        onEnter: vi.fn(),
+        onInsert: vi.fn(),
+        onDelete: vi.fn(),
+        onHome: vi.fn(),
+        onEnd: vi.fn(),
+        onPageDown: vi.fn(),
+        onArrowDown: vi.fn(),
+        onCtrlS: vi.fn(),
+        onCtrlHome: vi.fn(),
+        onEscape: vi.fn(),
+        onChar: vi.fn(() => true),
+      };
+      renderHook(() => useDosKeys({ ...handlers, forceNav: true }));
+      const overlay = document.createElement("div");
+      overlay.className = "dos-overlay";
+      overlay.innerHTML = `<div class="${scope.slice(1)}" tabindex="0"><button>Y</button><button>N</button></div>`;
+      document.body.appendChild(overlay);
+      const [yes, no] = Array.from(overlay.querySelectorAll("button"));
+      yes.focus();
+      const press = (key: string, init: KeyboardEventInit = {}) => {
+        const e = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init });
+        (document.activeElement ?? document.body).dispatchEvent(e);
+        return e;
+      };
+
+      expect(press("Enter").defaultPrevented).toBe(false);
+      expect(press("ArrowRight").defaultPrevented).toBe(true);
+      expect(no).toHaveFocus();
+      for (const k of ["ArrowDown", "Insert", "Delete", "Home", "End", "PageDown"]) press(k);
+      press("s", { ctrlKey: true });
+      press("Home", { ctrlKey: true });
+      for (const [name, fn] of Object.entries(handlers)) {
+        if (name !== "onEscape" && name !== "onChar") expect(fn, name).not.toHaveBeenCalled();
+      }
+
+      expect(press("n").defaultPrevented).toBe(true);
+      expect(handlers.onChar).toHaveBeenCalledWith("n", expect.any(KeyboardEvent));
+      press("Escape");
+      expect(handlers.onEscape).toHaveBeenCalledOnce();
+      overlay.remove();
+    }
+  );
 
   it("runs handlers from status-bar clicks even when an input is focused", () => {
     const onEscape = vi.fn();

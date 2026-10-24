@@ -8,7 +8,7 @@ import {
 } from "../api";
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, BROWSE_KEYS, Dialog, FORM_KEYS, Prompt, HelpOverlay } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { ContentGrid } from "../dos/contentGrid";
 import { fmtDate, today } from "../dos/utils";
 
@@ -174,9 +174,9 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
     try {
       await api.saveCompany(edit);
       setMode("list");
+      await load();
       setMsg(`Company ${edit.companyNo} saved.`);
       setMsgKind("info");
-      await load();
     } catch (e) {
       setMsg(String(e));
       setMsgKind("error");
@@ -245,17 +245,18 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       {(mode === "list" || mode === "detail") && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
-            <input
-              ref={searchRef}
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-              placeholder="Company NO, Name, Phone, Contact, or property address"
-            />
+            <InlineField label="Search:">
+              <input
+                ref={searchRef}
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+                placeholder="Company NO, Name, Phone, Contact, or property address"
+              />
+            </InlineField>
           </div>
           <div className="dos-browse">
             <ContentGrid columns={headerCells.length}>
@@ -302,17 +303,18 @@ export function CompanyBrowse({ onBack }: { onBack: () => void }) {
       {mode === "props" && (
         <>
           <div className="dos-searchline">
-            <label>Search:</label>
-            <input
-              className="dos-input"
-              value={propSearch}
-              onChange={(e) => {
-                setPropSearch(e.target.value);
-                setIndex(0);
-              }}
-              placeholder="Property NO, Name, Street, City, ZIP, or Contact"
-              autoFocus
-            />
+            <InlineField label="Search:">
+              <input
+                className="dos-input"
+                value={propSearch}
+                onChange={(e) => {
+                  setPropSearch(e.target.value);
+                  setIndex(0);
+                }}
+                placeholder="Property NO, Name, Street, City, ZIP, or Contact"
+                autoFocus
+              />
+            </InlineField>
           </div>
         <div className="dos-browse">
           <ContentGrid columns={7}>

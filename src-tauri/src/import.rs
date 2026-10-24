@@ -676,6 +676,7 @@ mod tests {
             .unwrap();
         assert_eq!(worker, "Jose Ramirez");
         assert_eq!(worker_no, "400");
+        drop(conn);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -717,6 +718,7 @@ mod tests {
             .unwrap();
         assert_eq!(desc, "Paint");
 
+        drop(conn);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -742,6 +744,7 @@ mod tests {
         assert_eq!(result.properties, 1);
         assert_eq!(result.invoices, 1);
         assert_eq!(result.invoice_lines, 1);
+        drop(conn);
         let _ = std::fs::remove_file(&tmp);
     }
 
@@ -765,6 +768,7 @@ mod tests {
         assert!(result.invoices > 0, "expected invoices");
         assert!(result.invoice_lines > 0, "expected invoice lines");
         println!("{:?}", result);
+        drop(conn);
         let _ = std::fs::remove_file(&tmp);
     }
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { api, WorkerWageRow } from "../api";
 import { useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
+import { InlineField } from "../dos/Field";
 import { money, fmtDate } from "../dos/utils";
 
 export function WagesReport({ onBack }: { onBack: () => void }) {
@@ -63,31 +64,34 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
     >
       <div className="dos-searchline dos-searchline-dates">
         <span className="dos-searchline-pair">
-          <label>From Worker No :</label>
-          <input
-            className="dos-input w8"
-            value={empNo}
-            onChange={(e) => setEmpNo(e.target.value)}
-            autoFocus
-          />
+          <InlineField label="From Worker No :">
+            <input
+              className="dos-input w8"
+              value={empNo}
+              onChange={(e) => setEmpNo(e.target.value)}
+              autoFocus
+            />
+          </InlineField>
         </span>
         <span className="dos-searchline-pair">
-          <label>From Work Date :</label>
-          <input
-            className="dos-input w12"
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-          />
+          <InlineField label="From Work Date :">
+            <input
+              className="dos-input w12"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </InlineField>
         </span>
         <span className="dos-searchline-pair">
-          <label>To Work Date :</label>
-          <input
-            className="dos-input w12"
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
+          <InlineField label="To Work Date :">
+            <input
+              className="dos-input w12"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </InlineField>
         </span>
         <button className="dos-btn" onClick={run}>
           Run
@@ -124,7 +128,7 @@ export function WagesReport({ onBack }: { onBack: () => void }) {
                 </div>
               ))}
             </div>
-            <div className="browse-grid" style={{ color: "var(--app-highlight)", fontWeight: "bold", marginTop: "0.5em", gridTemplateColumns: "8ch 12ch 7ch 10ch 12ch 8ch 12ch 30ch" }}>
+            <div className="browse-grid dos-total" style={{ marginTop: "0.5em", gridTemplateColumns: "8ch 12ch 7ch 10ch 12ch 8ch 12ch 30ch" }}>
               <div style={{ gridColumn: "1 / 5" }}>Grand Total</div>
               <div>{money(totalInv)}</div>
               <div></div>

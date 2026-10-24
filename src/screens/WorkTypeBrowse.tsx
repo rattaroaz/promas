@@ -9,7 +9,7 @@ import {
   Prompt,
   HelpOverlay,
 } from "../dos/Shell";
-import { DotField } from "../dos/Field";
+import { DotField, InlineField } from "../dos/Field";
 import { MoneyInput } from "../dos/MoneyInput";
 import { money } from "../dos/utils";
 
@@ -27,7 +27,11 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
     useBrowseIndex(rows.length);
 
   const load = useCallback(async () => {
-    setRows(await api.listWorkTypes({ search }));
+    try {
+      setRows(await api.listWorkTypes({ search }));
+    } catch (e) {
+      setMsg(String(e));
+    }
   }, [search]);
 
   useEffect(() => {
@@ -96,7 +100,12 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
       setMsg("--> Code NO required !!");
       return;
     }
-    await api.saveWorkType(editing);
+    try {
+      await api.saveWorkType(editing);
+    } catch (e) {
+      setMsg(String(e));
+      return;
+    }
     setEditing(null);
     await load();
     setMsg(`Code ${editing.codeNo} saved.`);
@@ -104,8 +113,13 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
 
   async function doVoid() {
     if (!current) return;
-    await api.deleteWorkType(current.codeNo);
     setVoidAsk(false);
+    try {
+      await api.deleteWorkType(current.codeNo);
+    } catch (e) {
+      setMsg(String(e));
+      return;
+    }
     await load();
   }
 
@@ -118,15 +132,16 @@ export function WorkTypeBrowse({ onBack }: { onBack: () => void }) {
       {!editing && (
         <>
           <div className="dos-searchline">
-            <label>Enter Job Code No (Esc=Exit) !</label>
-            <input
-              className="dos-input"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIndex(0);
-              }}
-            />
+            <InlineField label="Enter Job Code No (Esc=Exit) !">
+              <input
+                className="dos-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setIndex(0);
+                }}
+              />
+            </InlineField>
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "8ch 30ch 8ch 12ch" }}>
