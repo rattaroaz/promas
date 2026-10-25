@@ -45,7 +45,7 @@ export function resetUndoDeletesForTests() {
 /** Put back the most recent delete. Earlier ones stay until F2 is used again. */
 export async function undoLastDelete() {
   if (busy) return;
-  const entry = stack.at(-1);
+  const entry = stack[stack.length - 1];
   if (!entry) return;
   busy = true;
   stack = stack.slice(0, -1);
