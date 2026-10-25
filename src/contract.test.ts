@@ -337,3 +337,21 @@ describe("api argument shaping", () => {
     await expect(api.importDatabase("D:\\old\\promas.db")).resolves.toBe("D:\\data\\imported.db");
   });
 });
+
+describe("content security policy", () => {
+  const csp: Record<string, string> = JSON.parse(read("src-tauri/tauri.conf.json")).app.security.csp;
+  const sources = (directive: string) => (csp[directive] ?? "").split(/\s+/);
+
+  it("is set and allows no unsafe or wildcard sources", () => {
+    expect(csp["default-src"]).toBe("'self'");
+    expect(Object.values(csp).join(" ")).not.toMatch(/'unsafe-|\*/);
+  });
+
+  it("allows Tauri's IPC, the data: icons in App.css, and the blob: invoice preview", () => {
+    expect(sources("connect-src")).toEqual(expect.arrayContaining(["ipc:", "http://ipc.localhost"]));
+    expect(read("src/App.css")).toContain('url("data:image/svg+xml');
+    expect(sources("img-src")).toContain("data:");
+    expect(read("src/lib/invoicePrint.ts")).toContain("URL.createObjectURL");
+    expect(sources("frame-src")).toContain("blob:");
+  });
+});
