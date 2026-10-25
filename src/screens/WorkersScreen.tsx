@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, WorkPerson } from "../api";
 import { Screen } from "../dos/Shell";
+import { pushUndoDelete } from "../lib/undoDelete";
 
 type Row = {
   key: string;
@@ -118,9 +119,27 @@ export function WorkersScreen() {
               return;
             }
           }
+          const index = rowsRef.current.findIndex((r) => r.key === row.key);
           replaceRows(rowsRef.current.filter((r) => r.key !== row.key));
           setMsg("");
           setMsgKind("default");
+          pushUndoDelete(async () => {
+            const name = row.name.trim() || row.originalName;
+            if (row.originalName && name) {
+              await api.saveWorkPerson({
+                name,
+                workerNo: row.workerNo.trim(),
+                active: row.active,
+                originalName: "",
+              });
+            }
+            if (rowsRef.current.some((r) => r.key === row.key)) return;
+            const next = [...rowsRef.current];
+            next.splice(Math.min(Math.max(index, 0), next.length), 0, row);
+            replaceRows(next);
+            setMsg("Delete undone.");
+            setMsgKind("info");
+          });
         })();
         return;
       }

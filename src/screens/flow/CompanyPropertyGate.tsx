@@ -14,6 +14,7 @@ import {
   emptyProperty,
 } from "../../api";
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
+import { pushUndoDelete } from "../../lib/undoDelete";
 import {
   Screen,
   Dialog,
@@ -270,16 +271,21 @@ export function CompanyPropertyGate({
   const prBrowse = useBrowseIndex(properties.length);
   const invBrowse = useBrowseIndex(invoiceHits.length);
   const trailRef = useRef<Phase[]>([]);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   /** Shown ahead of the search prompt until the user leaves the company search. */
   const noticeRef = useRef("");
 
   function pushPhase(next: Phase) {
-    setPhase((cur) => {
-      if (cur !== next && STACK_PHASES.includes(cur)) {
-        trailRef.current.push(cur);
-      }
-      return next;
-    });
+    const cur = phaseRef.current;
+    if (cur !== next && STACK_PHASES.includes(cur)) {
+      const trail = trailRef.current;
+      // Record the screen being left once. A repeated push of the same screen
+      // would make the next Esc look like it did nothing.
+      if (trail[trail.length - 1] !== cur) trail.push(cur);
+    }
+    phaseRef.current = next;
+    setPhase(next);
   }
 
   function resetToCompanySearch(notice = "") {
@@ -290,12 +296,15 @@ export function CompanyPropertyGate({
     setProperties([]);
     setQuery("");
     setFirstKind("company");
+    phaseRef.current = "co-search";
     setPhase("co-search");
     setMsgKind("default");
   }
 
   function goBackScreen() {
-    const prev = trailRef.current.pop();
+    let prev = trailRef.current.pop();
+    // Skip a copy of the screen already showing, so one Esc leaves it.
+    while (prev === phaseRef.current) prev = trailRef.current.pop();
     if (!prev) {
       onBack();
       return;
@@ -314,6 +323,7 @@ export function CompanyPropertyGate({
       setMsg("Enter=Select  Ins=Add  Esc=Back");
     }
     setPhase(prev);
+    phaseRef.current = prev;
   }
 
   // Before paint, so the status line matches the field the arrow just focused.
@@ -741,10 +751,11 @@ export function CompanyPropertyGate({
         return rows.map((row, i) => (i === index ? saved : row));
       });
       setEditPr(null);
-      setPhase((cur) => {
-        if (cur !== "pr-edit") return cur;
-        return trailRef.current.pop() ?? "pr-browse";
-      });
+      if (phaseRef.current === "pr-edit") {
+        const back = trailRef.current.pop() ?? "pr-browse";
+        phaseRef.current = back;
+        setPhase(back);
+      }
       selectProperty(saved);
     } catch (e) {
       setMsg(String(e));
@@ -754,10 +765,16 @@ export function CompanyPropertyGate({
 
   async function confirmDeleteCompany() {
     if (!company) return;
+    const snapshot = { ...company, voided: false };
     try {
       await api.deleteCompany(company.companyNo);
       setAskDeleteCompany(false);
       resetToCompanySearch(`Company ${company.companyNo} deleted.`);
+      pushUndoDelete(async () => {
+        await api.saveCompany(snapshot);
+        setMsg(`Company ${snapshot.companyNo} restored.`);
+        setMsgKind("info");
+      });
     } catch (e) {
       setAskDeleteCompany(false);
       setMsg(String(e));

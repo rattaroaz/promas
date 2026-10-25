@@ -530,6 +530,145 @@ pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<Wor
     list_work_person_records(&conn)
 }
 
+// ─── Job descriptions (invoice and work-order description list) ───────
+// Deleting or renaming a catalog row does not rewrite invoice lines.
+
+fn job_from_row(r: &rusqlite::Row) -> rusqlite::Result<JobDescription> {
+    Ok(JobDescription {
+        description: r.get(0)?,
+        original_description: String::new(),
+        single: r.get(1)?,
+        one_plus_one: r.get(2)?,
+        two_plus_one: r.get(3)?,
+        two_plus_two: r.get(4)?,
+        three_plus_two: r.get(5)?,
+        four_plus_two: r.get(6)?,
+        occupied: r.get(7)?,
+        fixed: r.get(8)?,
+    })
+}
+
+pub fn list_job_description_records(conn: &Connection) -> Result<Vec<JobDescription>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT description, price_single, price_11, price_21, price_22, price_32, price_42, price_occupied, fixed_price
+             FROM job_descriptions ORDER BY sort_order, description COLLATE NOCASE",
+        )
+        .map_err(map_err)?;
+    let rows = stmt.query_map([], |r| job_from_row(r)).map_err(map_err)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
+}
+
+pub fn write_job_description(conn: &Connection, job: &JobDescription) -> Result<(), String> {
+    let description = job.description.trim();
+    if description.is_empty() {
+        return Err("Job description required".into());
+    }
+    let original = job.original_description.trim();
+    let key = if original.is_empty() {
+        description
+    } else {
+        original
+    };
+    if !original.is_empty() && !original.eq_ignore_ascii_case(description) {
+        let clash: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM job_descriptions WHERE description = ?1 COLLATE NOCASE",
+                params![description],
+                |r| r.get(0),
+            )
+            .map_err(map_err)?;
+        if clash > 0 {
+            return Err("A job description with that name already exists".into());
+        }
+    }
+    let updated = conn
+        .execute(
+            "UPDATE job_descriptions
+             SET description = ?1,
+                 price_single = ?2, price_11 = ?3, price_21 = ?4,
+                 price_22 = ?5, price_32 = ?6, price_42 = ?7, price_occupied = ?8, fixed_price = ?9
+             WHERE description = ?10 COLLATE NOCASE",
+            params![
+                description,
+                job.single,
+                job.one_plus_one,
+                job.two_plus_one,
+                job.two_plus_two,
+                job.three_plus_two,
+                job.four_plus_two,
+                job.occupied,
+                job.fixed,
+                key,
+            ],
+        )
+        .map_err(map_err)?;
+    if updated == 0 {
+        let next: i64 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM job_descriptions",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(map_err)?;
+        conn.execute(
+            "INSERT INTO job_descriptions (
+                description, sort_order,
+                price_single, price_11, price_21, price_22, price_32, price_42, price_occupied, fixed_price
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![
+                description,
+                next,
+                job.single,
+                job.one_plus_one,
+                job.two_plus_one,
+                job.two_plus_two,
+                job.three_plus_two,
+                job.four_plus_two,
+                job.occupied,
+                job.fixed,
+            ],
+        )
+        .map_err(map_err)?;
+    }
+    Ok(())
+}
+
+pub fn remove_job_description(conn: &Connection, description: &str) -> Result<(), String> {
+    conn.execute(
+        "DELETE FROM job_descriptions WHERE description = ?1 COLLATE NOCASE",
+        params![description.trim()],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_job_descriptions(state: State<DbState>) -> Result<Vec<JobDescription>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    list_job_description_records(&conn)
+}
+
+#[tauri::command]
+pub fn save_job_description(
+    state: State<DbState>,
+    job: JobDescription,
+) -> Result<Vec<JobDescription>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    write_job_description(&conn, &job)?;
+    list_job_description_records(&conn)
+}
+
+#[tauri::command]
+pub fn delete_job_description(
+    state: State<DbState>,
+    description: String,
+) -> Result<Vec<JobDescription>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    remove_job_description(&conn, &description)?;
+    list_job_description_records(&conn)
+}
+
 // ─── Paint supply companies (invoice header list) ─────────────────────
 
 fn list_paint_supply_names(conn: &rusqlite::Connection) -> Result<Vec<String>, String> {

@@ -411,15 +411,9 @@ export function CashProcess({
     >
       {!editing && !autoMode && (
         <>
-          <div
-            className="dos-info-banner"
-            style={{
-              padding: "0.3em 0.5ch",
-              whiteSpace: "pre",
-            }}
-          >
-            {`*****   Customer Ledger   *****
-Company NO : ${company.companyNo}  ${company.name}`}
+          <div className="dos-info-banner">*****   Customer Ledger   *****</div>
+          <div className="dos-info-banner">
+            {`Company NO : ${company.companyNo}  ${company.name}`}
           </div>
           <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch" }}>

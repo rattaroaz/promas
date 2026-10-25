@@ -35,7 +35,7 @@ import "./App.css";
  *    4 Cash Receipts Process → Company → Ledger/Pay
  *    5 Material Process      → sub-menu
  *    6 Reports Menu          → sub-menu
- *    7 Miscellaneous         → Change System Date / Reindex / Form Management / Import Database
+ *    7 Miscellaneous         → Change System Date / Reindex / Form Management / Import Database / Workers / Job Descriptions
  *    8 Settings              → modern only (import/backup/db) — leave alone
  *    Quit (Y/N)
  */

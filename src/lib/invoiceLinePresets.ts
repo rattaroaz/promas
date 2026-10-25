@@ -1,4 +1,32 @@
 import { Invoice, InvoiceLine } from "../api";
+import {
+  findJobDescription,
+  isPresetDescription,
+  presetJobDescriptions,
+  priceForPreset,
+  type JobDescription,
+} from "./jobCatalog";
+
+export {
+  COLOR_CHANGE_CEILING_SWISS_COFFEE,
+  COLOR_CHANGE_WALLS_NAVAJO_WHITE,
+  INTERIOR_PAINT_WALL_CLOSET,
+  PAINT_ALL_ENAMEL_SURFACES,
+  PAINT_BASE_BOARD,
+  PAINTING_OF_CEILING,
+  PAINT_KITCHEN_CABINET_BOTH,
+  PAINT_KITCHEN_CABINET_INSIDE,
+  PAINT_KITCHEN_CABINET_OUTSIDE,
+  PAINT_OVER_CABINETS_PRIMER_INSIDE,
+  PAINT_OVER_CABINETS_PRIMER_OUTSIDE,
+  PLASTIC_COVERING_OF_FLOOR,
+  TWO_TONE_COLORS,
+  TWO_TONE_HASHED_HUE,
+  VARNISH_KITCHEN_CABINET,
+  isPresetDescription,
+  presetJobDescriptions,
+  priceForPreset,
+} from "./jobCatalog";
 
 /** Exactly the sizes given for invoice line pricing. Blank in the UI allows custom. */
 export const UNIT_SIZE_OPTIONS = [
@@ -12,144 +40,6 @@ export const UNIT_SIZE_OPTIONS = [
 ] as const;
 
 export type UnitSizeOption = (typeof UNIT_SIZE_OPTIONS)[number];
-export type PricedUnitSize = Exclude<UnitSizeOption, "Occupied">;
-
-function prices(
-  single: number,
-  oneOne: number,
-  twoOne: number,
-  twoTwo: number,
-  threeTwo: number,
-  fourTwo: number
-): Record<PricedUnitSize, number> {
-  return {
-    single,
-    "1+1": oneOne,
-    "2+1": twoOne,
-    "2+2": twoTwo,
-    "3+2": threeTwo,
-    "4+2": fourTwo,
-  };
-}
-
-export const INTERIOR_PAINT_WALL_CLOSET =
-  "Interior Painting of Wall/Closet Inside";
-export const COLOR_CHANGE_WALLS_NAVAJO_WHITE =
-  "Color Change of Walls and Closet to Navajo White";
-export const PAINTING_OF_CEILING = "Painting of Ceiling";
-export const COLOR_CHANGE_CEILING_SWISS_COFFEE =
-  "Color Change of Ceiling to Swiss Coffee";
-export const PAINT_BASE_BOARD = "Paint Baseboard";
-export const PLASTIC_COVERING_OF_FLOOR = "Plastic Covering of Floor";
-export const PAINT_ALL_ENAMEL_SURFACES =
-  "Paint All Enamel Surfaces with Hybrid Based Paint";
-export const TWO_TONE_COLORS = "2 Tone Colors: N/W + S/C";
-export const TWO_TONE_HASHED_HUE = "2 Tone Color: Hashed Hue + S/C";
-export const PAINT_KITCHEN_CABINET_INSIDE = "Paint Kitchen Cabinet Inside";
-export const PAINT_KITCHEN_CABINET_OUTSIDE = "Paint Kitchen Cabinet Outside";
-export const PAINT_KITCHEN_CABINET_BOTH =
-  "Paint Kitchen Cabinet Inside+Outside";
-export const VARNISH_KITCHEN_CABINET = "Varnish Kitchen Cabinet";
-export const PAINT_OVER_CABINETS_PRIMER_INSIDE =
-  "Paint Over Kitchen Cabinets Inside with Primer";
-export const PAINT_OVER_CABINETS_PRIMER_OUTSIDE =
-  "Paint Over Kitchen Cabinets Outside with Primer";
-
-const INTERIOR_PAINT_PRICES = prices(220, 245, 280, 295, 450, 545);
-const CEILING_PAINT_PRICES = prices(75, 115, 125, 150, 175, 195);
-const COLOR_CHANGE_FACTOR = 0.8;
-
-function scalePrices(
-  source: Record<PricedUnitSize, number>,
-  factor: number
-): Record<PricedUnitSize, number> {
-  return prices(
-    source.single * factor,
-    source["1+1"] * factor,
-    source["2+1"] * factor,
-    source["2+2"] * factor,
-    source["3+2"] * factor,
-    source["4+2"] * factor
-  );
-}
-
-export const INVOICE_LINE_PRESETS = [
-  {
-    id: "interior-paint-wall-closet",
-    description: INTERIOR_PAINT_WALL_CLOSET,
-    prices: INTERIOR_PAINT_PRICES,
-  },
-  {
-    id: "color-change-walls-navajo-white",
-    description: COLOR_CHANGE_WALLS_NAVAJO_WHITE,
-    prices: scalePrices(INTERIOR_PAINT_PRICES, COLOR_CHANGE_FACTOR),
-  },
-  {
-    id: "painting-of-ceiling",
-    description: PAINTING_OF_CEILING,
-    prices: CEILING_PAINT_PRICES,
-  },
-  {
-    id: "color-change-ceiling-swiss-coffee",
-    description: COLOR_CHANGE_CEILING_SWISS_COFFEE,
-    prices: scalePrices(CEILING_PAINT_PRICES, COLOR_CHANGE_FACTOR),
-  },
-  {
-    id: "paint-base-board",
-    description: PAINT_BASE_BOARD,
-    prices: prices(95, 105, 125, 125, 155, 250),
-  },
-  {
-    id: "plastic-covering-of-floor",
-    description: PLASTIC_COVERING_OF_FLOOR,
-    prices: prices(95, 105, 125, 135, 165, 170),
-  },
-  {
-    id: "paint-all-enamel-surfaces",
-    description: PAINT_ALL_ENAMEL_SURFACES,
-    prices: prices(145, 180, 190, 195, 225, 255),
-  },
-  {
-    id: "two-tone-colors",
-    description: TWO_TONE_COLORS,
-    prices: prices(70, 75, 80, 90, 95, 100),
-  },
-  {
-    id: "two-tone-hashed-hue",
-    description: TWO_TONE_HASHED_HUE,
-    prices: prices(70, 75, 80, 90, 95, 100),
-  },
-  {
-    id: "paint-kitchen-cabinet-inside",
-    description: PAINT_KITCHEN_CABINET_INSIDE,
-    fixed: 130,
-  },
-  {
-    id: "paint-kitchen-cabinet-outside",
-    description: PAINT_KITCHEN_CABINET_OUTSIDE,
-    fixed: 165,
-  },
-  {
-    id: "paint-kitchen-cabinet-both",
-    description: PAINT_KITCHEN_CABINET_BOTH,
-    fixed: 295,
-  },
-  {
-    id: "varnish-kitchen-cabinet",
-    description: VARNISH_KITCHEN_CABINET,
-    fixed: 350,
-  },
-  {
-    id: "paint-over-cabinets-primer-inside",
-    description: PAINT_OVER_CABINETS_PRIMER_INSIDE,
-    fixed: 190,
-  },
-  {
-    id: "paint-over-cabinets-primer-outside",
-    description: PAINT_OVER_CABINETS_PRIMER_OUTSIDE,
-    fixed: 280,
-  },
-] as const;
 
 /** Normalize "1 + 1", "1+1", "Single" → "1+1" / "single". */
 export function normalizeUnitSize(raw: string): string | null {
@@ -167,42 +57,18 @@ export function isListedUnitSize(size: string): boolean {
   return key != null && (UNIT_SIZE_OPTIONS as readonly string[]).includes(key);
 }
 
-export function isPresetDescription(description: string): boolean {
-  return INVOICE_LINE_PRESETS.some((p) => p.description === description);
-}
-
-function fixedPriceOf(
-  preset: (typeof INVOICE_LINE_PRESETS)[number]
-): number | null {
-  return "fixed" in preset ? preset.fixed : null;
-}
-
-/** Price for a preset. Size is used only for size-based items. */
-export function priceForPreset(
-  description: string,
-  size: string
-): number | null {
-  const preset = INVOICE_LINE_PRESETS.find((p) => p.description === description);
-  if (!preset) return null;
-  const fixed = fixedPriceOf(preset);
-  if (fixed != null) return fixed;
-  if (!("prices" in preset)) return null;
-  const table = preset.prices as Record<string, number>;
-  const key = normalizeUnitSize(size);
-  // Occupied is an explicit "no price" size. A blank size is not: the list
-  // pick still has a single-unit price, and the box was staying empty.
-  if (key === "Occupied") return null;
-  if (key && table[key] != null) return table[key];
-  if (!size.trim()) return table.single ?? null;
-  return null;
-}
-
 export function applyPresetPriceToLine(
   line: InvoiceLine,
-  size: string
+  size: string,
+  catalog: readonly JobDescription[] = presetJobDescriptions()
 ): InvoiceLine {
-  if (!isPresetDescription(line.description)) return line;
-  const priced = priceForPreset(line.description, size);
+  if (!isPresetDescription(line.description, catalog)) return line;
+  // A description picked before Size stays blank. The price is filled when
+  // the user chooses a size, and again whenever that size changes.
+  if (!size.trim()) {
+    return { ...line, price: 0, empPrice: 0 };
+  }
+  const priced = priceForPreset(line.description, size, catalog);
   const price = priced ?? 0;
   return {
     ...line,
@@ -213,9 +79,10 @@ export function applyPresetPriceToLine(
 
 export function applyPresetPrices(
   size: string,
-  lines: InvoiceLine[]
+  lines: InvoiceLine[],
+  catalog: readonly JobDescription[] = presetJobDescriptions()
 ): InvoiceLine[] {
-  return lines.map((line) => applyPresetPriceToLine(line, size));
+  return lines.map((line) => applyPresetPriceToLine(line, size, catalog));
 }
 
 export function blankNewInvoiceLine(inv: Invoice, lineNo: number): InvoiceLine {
@@ -235,4 +102,11 @@ export function blankNewInvoiceLine(inv: Invoice, lineNo: number): InvoiceLine {
     commission: 65,
     status: "",
   };
+}
+
+export function catalogDescription(
+  description: string,
+  catalog: readonly JobDescription[]
+): string {
+  return findJobDescription(description, catalog)?.description ?? "";
 }

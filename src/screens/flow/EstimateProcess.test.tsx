@@ -114,7 +114,7 @@ describe("EstimateProcess", () => {
       <EstimateProcess company={company} property={property} onBack={vi.fn()} />
     );
     await screen.findByText(/1 proposals/i);
-    await user.click(screen.getByRole("button", { name: /^Del$/i }));
+    await user.click(screen.getByRole("button", { name: /^Delete$/i }));
     expect(screen.getByText(/Do you want Void/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {

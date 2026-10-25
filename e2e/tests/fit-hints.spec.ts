@@ -394,7 +394,7 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
       for (const issue of issues) failures.push(`${width} ${screen.name}: ${issue}`);
       if (screen.name === "Material transactions") {
         const msg = await page.locator(".dos-messagebar").innerText();
-        if (!/Material Maintenance/.test(msg) || !/Ins=Add/.test(msg) || !/Del=Void/.test(msg)) {
+        if (!/Material Maintenance/.test(msg) || !/Ins=Add/.test(msg) || !/Delete=Void/.test(msg)) {
           failures.push(`${width} material status lost the report title: ${msg}`);
         }
       }

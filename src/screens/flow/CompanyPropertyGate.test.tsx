@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import { act, fireEvent } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import {
@@ -342,6 +343,32 @@ describe("CompanyPropertyGate", () => {
     expect(await screen.findByRole("textbox", { name: "Company NO" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /1000\s+ACME/i })).not.toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it("leaves each Invoice Process screen on one Esc, including under Strict Mode", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    renderApp(
+      <StrictMode>
+        <CompanyPropertyGate process="invoice" onBack={onBack} onReady={vi.fn()} />
+      </StrictMode>
+    );
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+    expect(await screen.findByRole("button", { name: /01\s+Bldg A/i })).toBeInTheDocument();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(await screen.findByRole("button", { name: /1000\s+ACME/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /01\s+Bldg A/i })).not.toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(await screen.findByRole("textbox", { name: "Company NO" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /1000\s+ACME/i })).not.toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("selects property by street address", async () => {

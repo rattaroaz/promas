@@ -35,7 +35,8 @@
   --text-print: 10pt;
   --text-sm: 0.9rem;
   --text-md: 1rem;
-  --text-lg: 1.5rem;
+  /* Property banner above a list: 1.3× the columns and rows under it. */
+  --text-lg: 1.3rem;
   --leading-tight: 1.1;
   --leading-normal: 1.15;
   --leading-loose: 1.35;
@@ -181,6 +182,10 @@ h6 {
 .dos-status-action:hover .hint,
 .dos-status-action:focus .hint {
   color: var(--dos-yellow);
+}
+
+.dos-status-undo {
+  margin-left: auto;
 }
 
 .dos-titlebar {
@@ -834,7 +839,7 @@ h6 {
   display: grid;
   /* Description takes the row. WorkDate uses the shared date width; the digit
      padding below keeps mm/dd/yyyy clear of the calendar glyph. */
-  grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 4ch;
+  grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 10ch;
   /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
   column-gap: 2ch;
   align-items: center;
@@ -847,10 +852,19 @@ h6 {
   text-align: right;
 }
 
-.invoice-line-grid > .invoice-line-end .dos-input,
-.invoice-line-grid > .invoice-line-end .dos-btn {
+/* Column titles sit on the left, the same way Description does. Amounts stay right. */
+.browse-grid-header.invoice-line-grid > div {
+  text-align: left;
+}
+
+.invoice-line-grid > .invoice-line-end .dos-input {
   text-align: right;
   padding-right: 0;
+}
+
+.invoice-line-grid > .invoice-line-end .dos-btn {
+  text-align: center;
+  padding: 0 1ch;
 }
 
 /* Spinners sit in the padding box and pull the digits off the column edge. */
@@ -897,8 +911,9 @@ h6 {
   flex: 0 0 1.7em;
 }
 
-/* Invoice site header: large type. Each value stays on one line; the row wraps between values.
-   White is only this info block; the columns under it stay Promas blue. */
+/* Invoice site header. Each line is 1.3× the list under it and wraps at spaces.
+   A wrapped line is indented 5 spaces. White is only this info block;
+   the columns under it stay Promas blue. */
 .invoice-site-header {
   background: #ffffff;
   color: #161616;
@@ -912,22 +927,31 @@ h6 {
   user-select: text;
 }
 
+.invoice-fact-line,
+.invoice-comments,
+.dos-info-banner {
+  font-size: var(--text-lg);
+  /* First line stays put. A line that wraps at a space starts 5 spaces in. */
+  padding-left: 5ch;
+  text-indent: -5ch;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .invoice-fact-line {
   display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  font-size: var(--text-lg);
 }
 
 .invoice-fact {
   display: inline;
-  white-space: nowrap;
 }
 
 .invoice-comments {
   max-width: 100%;
-  font-size: var(--text-lg);
 }
 
 .invoice-comments .invoice-comment-text {
@@ -988,8 +1012,17 @@ h6 {
   margin-left: -1ch;
   margin-right: -1ch;
   padding-top: 0.4em;
-  padding-left: 1ch;
   padding-right: 1ch;
+}
+
+/* The banner's own 5ch padding is the hanging indent. This 1ch keeps the
+   first line aligned with the list after the bleed margin above. */
+.dos-browse > .dos-info-banner {
+  padding-left: calc(1ch + 5ch);
+}
+
+.dos-browse > .invoice-site-header {
+  padding-left: 1ch;
 }
 
 .dos-browse > .invoice-site-header {
@@ -1373,6 +1406,10 @@ h6 {
 .dos-btn.danger {
   background: var(--dos-red);
   color: var(--dos-white-bright);
+  box-sizing: border-box;
+  padding: 0 1ch;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* ─── Columns helper for fixed-width rows ───────────────── */
@@ -1573,7 +1610,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --workers-active: 7.6ch;
   --workers-name: 13.2ch;
   --workers-id: 9.8ch;
-  --workers-delete: 7.6ch;
+  --workers-delete: 10ch;
   --workers-cols: var(--workers-active) minmax(var(--workers-name), 1fr) var(--workers-id) var(--workers-delete);
   --workers-gap: 16px;
   --workers-scrollbar: 16px;
@@ -1655,9 +1692,10 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .workers-row .dos-btn {
   width: 100%;
-  min-width: 0;
+  min-width: max-content;
   box-sizing: border-box;
-  padding: 0 0.35ch;
+  padding: 0 1ch;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -1690,4 +1728,111 @@ input[type="number"]::-webkit-inner-spin-button {
   background-color: var(--dos-yellow);
   border-color: #000000;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5 6.5 12 13 4' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E");
+}
+
+.job-desc-frame {
+  --job-desc: 28ch;
+  --job-size: 12ch;
+  --job-price: 10ch;
+  --job-delete: 10ch;
+  --job-gap: 16px;
+  --job-scrollbar: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  width: 100%;
+  min-width: calc(
+    var(--job-desc) + var(--job-size) + var(--job-price) + var(--job-delete) +
+      3 * var(--job-gap) + var(--job-scrollbar)
+  );
+  max-width: 100%;
+}
+
+.job-desc-head,
+.job-desc-row {
+  display: grid;
+  grid-template-columns: minmax(var(--job-desc), 1.4fr) var(--job-size) var(--job-price) var(--job-delete);
+  column-gap: var(--job-gap);
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+}
+
+.job-desc-head {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  padding: 0.15em var(--job-scrollbar) 0.2em 0;
+  color: var(--app-highlight);
+  font-weight: bold;
+}
+
+.job-desc-head > div {
+  white-space: nowrap;
+}
+
+.job-desc-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+.job-desc-list {
+  display: flex;
+  flex-direction: column;
+  row-gap: 12px;
+  width: 100%;
+  padding: 4px 0 8px;
+  box-sizing: border-box;
+}
+
+.job-desc-row > .dos-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.job-desc-row > .dos-select,
+.job-desc-row > .dos-input:not(:first-child) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.job-desc-row .dos-btn {
+  width: 100%;
+  min-width: max-content;
+  box-sizing: border-box;
+  padding: 0 1ch;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.job-desc-price {
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-bottom: 1px solid var(--dos-cyan);
+  padding: 0 0.4ch;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.job-desc-price:focus {
+  background: #000000;
+  color: #ffffff;
+  outline: 1px solid var(--dos-cyan-bright);
+}
+
+.job-desc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2ch;
+  flex: 0 0 auto;
+  padding: 0.45em 0 0.15em;
 }

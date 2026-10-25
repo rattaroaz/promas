@@ -12,6 +12,7 @@ import {
   InvoiceLine,
   InvoiceWithLines,
   WorkPerson,
+  JobDescription,
   emptyInvoice,
   emptyInvoiceLine,
 } from "../../api";
@@ -26,12 +27,12 @@ import { DotField } from "../../dos/Field";
 import { MoneyInput } from "../../dos/MoneyInput";
 import { ContentGrid } from "../../dos/contentGrid";
 import { addDays, money, fmtDate, today, naturalCompare } from "../../dos/utils";
+import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 import {
   printInvoiceOnTemplate,
   downloadInvoicePdf,
 } from "../../lib/invoicePrint";
 import {
-  INVOICE_LINE_PRESETS,
   UNIT_SIZE_OPTIONS,
   applyPresetPriceToLine,
   applyPresetPrices,
@@ -286,11 +287,14 @@ export function InvoiceProcess({
   const [originalRows, setOriginalRows] = useState<Invoice[]>([]);
   const [mode, setMode] = useState<Mode>("browse");
   const [editing, setEditing] = useState<InvoiceWithLines | null>(null);
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
   const [isNewInvoice, setIsNewInvoice] = useState(false);
   const [workPersons, setWorkPersons] = useState<WorkPerson[]>([]);
+  const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
   const [msg, setMsg] = useState(
-    "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
+    "Ins=Add  Ctrl-Home=Edit  Delete=Void  Esc=Exit"
   );
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
     "default"
@@ -303,12 +307,16 @@ export function InvoiceProcess({
     useBrowseIndex(rows.length);
 
   const load = useCallback(async () => {
-    const data = await api.listInvoices({
-      companyNo: company.companyNo,
-      proNo: property.proNo,
-      includeVoided: true,
-      limit: 100000,
-    });
+    const [data, jobs] = await Promise.all([
+      api.listInvoices({
+        companyNo: company.companyNo,
+        proNo: property.proNo,
+        includeVoided: true,
+        limit: 100000,
+      }),
+      api.listJobDescriptions().catch(() => [] as JobDescription[]),
+    ]);
+    setJobDescriptions(jobs ?? []);
     const mine = data.filter(
       (i) =>
         i.proNo === property.proNo &&
@@ -320,7 +328,7 @@ export function InvoiceProcess({
     if (focusInvoice != null && mine.length) setIndex(0);
     setMsg(
       mine.length
-        ? `${mine.length} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
+        ? `${mine.length} invoices  Ins=Add  Enter=Edit  Delete=Void  Esc=Back`
         : "No invoices for this property. Press Ins or click New Invoice."
     );
     setMsgKind("default");
@@ -361,7 +369,7 @@ export function InvoiceProcess({
       sortMsg = "Sorted by unit, descending  ";
     }
     
-    setMsg(`${sortMsg}${count} invoices  Ins=Add  Enter=Edit  Del=Void  Esc=Back`);
+    setMsg(`${sortMsg}${count} invoices  Ins=Add  Enter=Edit  Delete=Void  Esc=Back`);
     // Not keyed on the row count: load() announces the count itself, and a
     // save or void then replaces that with its own notice.
   }, [mode, unitSortDirection]);
@@ -532,6 +540,7 @@ export function InvoiceProcess({
             l.empPrice || (l.price * (l.commission || 65)) / 100,
         })),
       });
+      editingRef.current = null;
       setEditing(null);
       setIsNewInvoice(false);
       setConfirmSave(false);
@@ -544,6 +553,69 @@ export function InvoiceProcess({
       setMsg(String(e));
       setMsgKind("error");
     }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (editingRef.current) clearUndoScope("invoice-lines");
+    };
+  }, []);
+
+  function deleteInvoiceLine(idx: number) {
+    const cur = editingRef.current;
+    const line = cur?.lines[idx];
+    if (!cur || !line) return;
+    const at = idx;
+    const key = {
+      companyNo: cur.invoice.companyNo || company.companyNo,
+      proNo: cur.invoice.proNo || property.proNo,
+      salesDate: cur.invoice.salesDate,
+      invoice: cur.invoice.invoice,
+    };
+    const next = { ...cur, lines: cur.lines.filter((_, i) => i !== idx) };
+    editingRef.current = next;
+    setEditing(next);
+    pushUndoDelete(async () => {
+      const open = editingRef.current;
+      if (
+        open &&
+        open.invoice.salesDate === key.salesDate &&
+        open.invoice.invoice === key.invoice
+      ) {
+        const lines = [...open.lines];
+        lines.splice(Math.min(at, lines.length), 0, line);
+        const restored = { ...open, lines };
+        editingRef.current = restored;
+        setEditing(restored);
+        return;
+      }
+      const full = await api.getInvoice(
+        key.companyNo,
+        key.proNo,
+        key.salesDate,
+        key.invoice
+      );
+      if (!full) {
+        setMsg("That delete can no longer be undone.");
+        setMsgKind("error");
+        return;
+      }
+      const lines = [...full.lines];
+      lines.splice(Math.min(at, lines.length), 0, {
+        ...line,
+        companyNo: key.companyNo,
+        proNo: key.proNo,
+        salesDate: key.salesDate,
+        invoice: full.invoice.invoice,
+      });
+      await api.saveInvoice({
+        invoice: full.invoice,
+        lines: lines.map((l, i) => ({ ...l, lineNo: i + 1 })),
+      });
+      await load();
+      setMsg("Delete undone.");
+      setMsgKind("info");
+    }, "invoice-lines");
   }
 
   async function doVoid() {
@@ -637,10 +709,12 @@ export function InvoiceProcess({
       else if (voidAsk) setVoidAsk(false);
       else if (confirmSave) setConfirmSave(false);
       else if (mode === "edit") {
+        clearUndoScope("invoice-lines");
+        editingRef.current = null;
         setEditing(null);
         setIsNewInvoice(false);
         setMode("browse");
-        setMsg("Ins=Add  Enter=Edit  Del=Void  Esc=Back");
+        setMsg("Ins=Add  Enter=Edit  Delete=Void  Esc=Back");
         setMsgKind("default");
       } else onBack();
     },
@@ -711,7 +785,7 @@ export function InvoiceProcess({
               { key: "Esc", label: "Exit" },
               { key: "Ins", label: "Add" },
               { key: "Ctrl-Home", label: "Edit" },
-              { key: "Del", label: "Void" },
+              { key: "Delete", label: "Void" },
               { key: "End", label: "Print Form" },
               { key: "PgUp", label: "Prev" },
               { key: "PgDn", label: "Next" },
@@ -744,7 +818,7 @@ export function InvoiceProcess({
               <div>Total</div>
               <div>Paid</div>
               <div>Balance</div>
-              <div>St</div>
+              <div>Status</div>
             </div>
             {sortedRows.map((inv, i) => (
               <button
@@ -771,7 +845,7 @@ export function InvoiceProcess({
                 <div>{money(inv.salesTotal)}</div>
                 <div>{money(inv.payTotal)}</div>
                 <div>{money(inv.balance)}</div>
-                <div>{inv.voided ? "V" : inv.balance <= 0 ? "*" : " "}</div>
+                <div>{inv.voided ? "Void" : inv.balance <= 0 ? "Paid" : "Open"}</div>
               </button>
             ))}
             {originalRows.length === 0 && (
@@ -927,9 +1001,7 @@ export function InvoiceProcess({
                       const invoice = { ...editing.invoice, salesSize };
                       setEditing({
                         invoice,
-                        lines: isNewInvoice
-                          ? applyPresetPrices(salesSize, editing.lines)
-                          : editing.lines,
+                        lines: applyPresetPrices(salesSize, editing.lines, jobDescriptions),
                       });
                     }}
                   >
@@ -951,9 +1023,7 @@ export function InvoiceProcess({
                       const invoice = { ...editing.invoice, salesSize };
                       setEditing({
                         invoice,
-                        lines: isNewInvoice
-                          ? applyPresetPrices(salesSize, editing.lines)
-                          : editing.lines,
+                        lines: applyPresetPrices(salesSize, editing.lines, jobDescriptions),
                       });
                     }}
                     placeholder="Type size"
@@ -1075,9 +1145,9 @@ export function InvoiceProcess({
 
             <div className="browse-grid browse-grid-header invoice-line-grid" style={{ margin: "0.5em 0 0.2em" }}>
               <div>Description</div>
-              <div className="invoice-line-end">WorkDate</div>
-              <div className="invoice-line-end">Price</div>
-              <div className="invoice-line-end">Del</div>
+              <div>WorkDate</div>
+              <div>Price</div>
+              <div>Delete</div>
             </div>
             {editing.lines.map((line, idx) => (
               <div key={idx} className="browse-grid invoice-line-grid" style={{ marginBottom: "0.12em" }}>
@@ -1086,7 +1156,7 @@ export function InvoiceProcess({
                     className="dos-select dos-choice"
                     aria-label={`Line ${idx + 1} description`}
                     value={
-                      isPresetDescription(line.description)
+                      isPresetDescription(line.description, jobDescriptions)
                         ? line.description
                         : ""
                     }
@@ -1095,14 +1165,14 @@ export function InvoiceProcess({
                       const lines = [...editing.lines];
                       const next = { ...line, description };
                       lines[idx] = description
-                        ? applyPresetPriceToLine(next, editing.invoice.salesSize)
+                        ? applyPresetPriceToLine(next, editing.invoice.salesSize, jobDescriptions)
                         : { ...next, price: 0, empPrice: 0 };
                       setEditing({ ...editing, lines });
                     }}
                   >
                     <option value=""> </option>
-                    {INVOICE_LINE_PRESETS.map((p) => (
-                      <option key={p.id} value={p.description}>
+                    {jobDescriptions.map((p) => (
+                      <option key={p.description} value={p.description}>
                         {p.description}
                       </option>
                     ))}
@@ -1110,7 +1180,7 @@ export function InvoiceProcess({
                   <InvoiceLineDescription
                     idx={idx}
                     description={line.description}
-                    readOnly={isPresetDescription(line.description)}
+                    readOnly={isPresetDescription(line.description, jobDescriptions)}
                     onChange={(description) => {
                       const lines = [...editing.lines];
                       lines[idx] = { ...line, description };
@@ -1149,18 +1219,13 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div className="invoice-line-end" style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div className="invoice-line-end" style={{ minWidth: "max-content", minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
-                    style={{ width: "100%", minHeight: "44px" }}
-                    onClick={() =>
-                      setEditing({
-                        ...editing,
-                        lines: editing.lines.filter((_, i) => i !== idx),
-                      })
-                    }
+                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
+                    onClick={() => deleteInvoiceLine(idx)}
                   >
-                    Del
+                    Delete
                   </button>
                 </div>
               </div>

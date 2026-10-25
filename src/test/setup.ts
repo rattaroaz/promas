@@ -5,6 +5,7 @@ import { resetUpdateUiForTests } from "../stores/uiStore";
 import { resetPrintPreviewForTests } from "../stores/printPreviewStore";
 import { resetObservabilityForTests } from "../lib/observability";
 import { resetPointerHoverMute } from "../dos/hooks";
+import { resetUndoDeletesForTests } from "../lib/undoDelete";
 
 // The whole suite runs files in parallel; one second is too tight for a
 // findBy on a busy machine. A real hang still fails, just later.
@@ -22,6 +23,7 @@ afterEach(() => {
   resetPrintPreviewForTests();
   resetObservabilityForTests();
   resetPointerHoverMute();
+  resetUndoDeletesForTests();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });

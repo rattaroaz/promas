@@ -3,6 +3,7 @@ import { act } from "@testing-library/react";
 import { fireEvent, renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { WorkOrderProcess } from "./WorkOrderProcess";
 import { api, emptyCompany, emptyProperty, emptyWorkOrder } from "../../api";
+import { presetJobDescriptions } from "../../lib/jobCatalog";
 
 vi.mock("../../api", async () => {
   const actual = await vi.importActual<typeof import("../../api")>("../../api");
@@ -16,6 +17,7 @@ vi.mock("../../api", async () => {
       saveWorkOrder: vi.fn(),
       voidWorkOrder: vi.fn(),
       saveWorkType: vi.fn(),
+      listJobDescriptions: vi.fn(),
     },
   };
 });
@@ -38,6 +40,7 @@ describe("WorkOrderProcess", () => {
     vi.clearAllMocks();
     vi.mocked(api.listWorkOrders).mockResolvedValue([order]);
     vi.mocked(api.listWorkTypes).mockResolvedValue([]);
+    vi.mocked(api.listJobDescriptions).mockResolvedValue(presetJobDescriptions());
     vi.mocked(api.getWorkOrder).mockResolvedValue({ order, lines: [] });
     vi.mocked(api.saveWorkOrder).mockResolvedValue(8);
     vi.mocked(api.voidWorkOrder).mockResolvedValue(undefined);
@@ -100,7 +103,7 @@ describe("WorkOrderProcess", () => {
       <WorkOrderProcess company={company} property={property} onBack={vi.fn()} />
     );
     await screen.findByRole("button", { name: /A1\/1\+1/i });
-    await user.click(screen.getByRole("button", { name: /^Del$/i }));
+    await user.click(screen.getByRole("button", { name: /^Delete$/i }));
     expect(screen.getByText(/Do you want Void/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
@@ -187,6 +190,7 @@ describe("WorkOrderProcess editing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.listWorkOrders).mockResolvedValue(orders);
+    vi.mocked(api.listJobDescriptions).mockResolvedValue(presetJobDescriptions());
     vi.mocked(api.listWorkTypes).mockResolvedValue([
       { codeNo: "P1", workType: "C", description: "Interior Paint", price: 220, voided: false },
     ]);
@@ -235,7 +239,7 @@ describe("WorkOrderProcess editing", () => {
     expect(await screen.findByText(/Order No\.+ 8/)).toBeInTheDocument();
     expect(screen.getByText("Order #8 Ctrl-S=Save Esc=Exit")).toBeInTheDocument();
     await user.keyboard("{Escape}");
-    expect(screen.getByText("Ins=Add Enter=Edit Del=Void Esc=Back")).toBeInTheDocument();
+    expect(screen.getByText("Ins=Add Enter=Edit Delete=Void Esc=Back")).toBeInTheDocument();
     await user.keyboard("{ArrowUp}{Control>}{Home}{/Control}");
     expect(await screen.findByText(/Order No\.+ 7/)).toBeInTheDocument();
   });
@@ -313,7 +317,7 @@ describe("WorkOrderProcess editing", () => {
     await user.tab();
     expect(code1).toHaveValue("*");
     fireEvent.change(screen.getByLabelText(/^Service Date/), { target: { value: "" } });
-    await user.click(screen.getAllByRole("button", { name: "Del" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     expect(screen.getByText("Total: 40.00")).toBeInTheDocument();
     await user.keyboard("{Control>}s{/Control}Y");
     await waitFor(() => expect(api.saveWorkOrder).toHaveBeenCalledTimes(1));

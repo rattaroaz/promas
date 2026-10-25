@@ -355,6 +355,25 @@ pub struct WorkPerson {
     pub original_name: String,
 }
 
+/// Invoice job-description catalog. Size prices are all set, or all null
+/// when `fixed` is the one price. `original_description` is the row key on
+/// rename; it is empty when the row is new and is not stored.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobDescription {
+    pub description: String,
+    #[serde(default)]
+    pub original_description: String,
+    pub single: Option<f64>,
+    pub one_plus_one: Option<f64>,
+    pub two_plus_one: Option<f64>,
+    pub two_plus_two: Option<f64>,
+    pub three_plus_two: Option<f64>,
+    pub four_plus_two: Option<f64>,
+    pub occupied: Option<f64>,
+    pub fixed: Option<f64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaintUsageRow {

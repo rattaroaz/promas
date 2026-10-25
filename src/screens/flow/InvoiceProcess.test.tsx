@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import "../../App.css";
 import { act } from "@testing-library/react";
 import { fireEvent, renderApp, screen, userEvent, waitFor, within } from "../../test/render";
 import { InvoiceProcess, descriptionRowCount } from "./InvoiceProcess";
@@ -21,6 +22,7 @@ import {
   TWO_TONE_COLORS,
   TWO_TONE_HASHED_HUE,
   VARNISH_KITCHEN_CABINET,
+  presetJobDescriptions,
 } from "../../lib/invoiceLinePresets";
 
 vi.mock("../../api", async () => {
@@ -34,6 +36,7 @@ vi.mock("../../api", async () => {
       listEmployees: vi.fn(),
       listWorkTypes: vi.fn(),
       listWorkPersons: vi.fn(),
+      listJobDescriptions: vi.fn(),
       saveWorkPerson: vi.fn(),
       deleteWorkPerson: vi.fn(),
       listPaintSupplyCos: vi.fn(),
@@ -88,6 +91,7 @@ describe("InvoiceProcess", () => {
     vi.mocked(api.listWorkPersons).mockResolvedValue([
       { name: "Jose Ramirez", workerNo: "", active: true },
     ]);
+    vi.mocked(api.listJobDescriptions).mockResolvedValue(presetJobDescriptions());
     vi.mocked(api.saveWorkPerson).mockImplementation(async (person) => [person]);
     vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
@@ -258,7 +262,7 @@ describe("InvoiceProcess", () => {
     expect(document.activeElement).toBe(price);
     await user.keyboard("{ArrowDown}");
     expect(document.activeElement).toBe(
-      screen.getAllByRole("button", { name: "Del" })[0]
+      screen.getAllByRole("button", { name: "Delete" })[0]
     );
     expect(screen.getByLabelText("Invoice Date")).not.toHaveFocus();
   });
@@ -367,9 +371,18 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
       INTERIOR_PAINT_WALL_CLOSET
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("220.00");
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
+    await user.selectOptions(
+      screen.getByLabelText("Line 2 description"),
+      PAINTING_OF_CEILING
+    );
+    expect(screen.getByLabelText(/Price 2/i)).toHaveValue("");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("245.00");
+    expect(screen.getByLabelText(/Price 2/i)).toHaveValue("115.00");
+    await user.selectOptions(screen.getByLabelText(/^Size$/i), "2+2");
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("295.00");
+    expect(screen.getByLabelText(/Price 2/i)).toHaveValue("150.00");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "Occupied");
     expect(screen.getByLabelText("Custom size")).toHaveValue("Occupied");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
@@ -395,8 +408,7 @@ describe("InvoiceProcess", () => {
     expect(screen.getByLabelText("Line 1 work date")).toHaveValue(
       invoiceDate.value
     );
-    // No size yet: single-unit price, not a blank box.
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("75.00");
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "1+1");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("115.00");
     expect(screen.getByLabelText("Line 1 custom text")).toHaveValue(
@@ -488,9 +500,38 @@ describe("InvoiceProcess", () => {
     await screen.findByText(/1 invoices/i);
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(screen.getByText("WorkDate")).toBeInTheDocument();
+    const heads = document.querySelector(".browse-grid-header.invoice-line-grid");
+    expect([...((heads?.children ?? []) as HTMLCollection)].map((el) => el.textContent)).toEqual([
+      "Description",
+      "WorkDate",
+      "Price",
+      "Delete",
+    ]);
+    for (const el of heads?.children ?? []) {
+      expect(el).not.toHaveClass("invoice-line-end");
+    }
     expect(screen.getByLabelText("Work Person")).toBeInTheDocument();
     expect(screen.getByLabelText("Line 1 work date")).toBeInTheDocument();
     expect(screen.queryByLabelText("Line 1 work person")).not.toBeInTheDocument();
+  });
+
+  it("puts a deleted invoice line back with F2 Undo Delete", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
+    expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(4);
+    expect(screen.queryByRole("button", { name: "F2 Undo Delete" })).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /^Delete$/ })[0]);
+    await user.click(screen.getAllByRole("button", { name: /^Delete$/ })[0]);
+    expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "F2 Undo Delete" }));
+    expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(3);
+    await user.keyboard("{F2}");
+    expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(4);
+    expect(screen.queryByRole("button", { name: "F2 Undo Delete" })).not.toBeInTheDocument();
   });
 
   it("formats a typed price to cents on blur and Enter", async () => {
@@ -615,7 +656,7 @@ describe("InvoiceProcess", () => {
       await screen.findByLabelText("Line 1 description"),
       PAINT_KITCHEN_CABINET_INSIDE
     );
-    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("130.00");
+    expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "4+2");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("130.00");
     await user.selectOptions(
@@ -641,9 +682,12 @@ describe("InvoiceProcess", () => {
     expect(screen.getByRole("button", { name: /PO-441/i })).toHaveClass(
       "invoice-open"
     );
+    expect(screen.getByRole("button", { name: /PO-441/i })).toHaveTextContent("Open");
     expect(screen.getByRole("button", { name: /PAID-8/i })).toHaveClass(
       "invoice-paid"
     );
+    expect(screen.getByRole("button", { name: /PAID-8/i })).toHaveTextContent("Paid");
+    expect(screen.getByText("Status")).toBeInTheDocument();
   });
 
   it("shows only the focused invoice when opened from invoice-number search", async () => {
@@ -706,7 +750,7 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
     await screen.findByText(/1 invoices/i);
-    await user.click(screen.getByRole("button", { name: /^Del Void$/i }));
+    await user.click(screen.getByRole("button", { name: /^Delete Void$/i }));
     expect(screen.getByText(/Do you want Void/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
@@ -739,7 +783,7 @@ describe("InvoiceProcess", () => {
     );
     expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /OLD-9/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /OLD-9/i })).toHaveTextContent("Void");
     expect(screen.queryByRole("button", { name: /OTHER/i })).not.toBeInTheDocument();
   });
 
@@ -961,6 +1005,30 @@ describe("InvoiceProcess", () => {
     expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
   });
 
+  it("draws the site banner 1.3× the list and wraps a line at spaces with a 5-space indent", async () => {
+    renderApp(
+      <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
+    );
+    await screen.findByText(/1 invoices/i);
+    const line = document.querySelector(".invoice-fact-line") as HTMLElement;
+    const fact = document.querySelector(".invoice-fact") as HTMLElement;
+    const column = document.querySelector(".browse-grid-header") as HTMLElement;
+    const banner = getComputedStyle(line);
+    const bannerPx = parseFloat(banner.fontSize);
+    const columnPx = parseFloat(getComputedStyle(column).fontSize);
+    if (Number.isFinite(bannerPx) && Number.isFinite(columnPx) && columnPx > 0) {
+      expect(bannerPx / columnPx).toBeCloseTo(1.3, 2);
+    } else {
+      expect(banner.fontSize).toMatch(/1\.3rem|var\(--text-lg\)/);
+    }
+    const pad = parseFloat(banner.paddingLeft);
+    expect(pad).toBeGreaterThan(0);
+    expect(parseFloat(banner.textIndent)).toBeCloseTo(-pad);
+    expect(banner.overflowWrap).toBe("normal");
+    expect(banner.wordBreak).toBe("normal");
+    expect(getComputedStyle(fact).whiteSpace).not.toBe("nowrap");
+  });
+
   it("does not throw when company memo and fax are missing", async () => {
     const partial = { ...company } as Partial<typeof company>;
     delete partial.memo;
@@ -1104,6 +1172,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
       lines: [line],
     }));
     vi.mocked(api.listWorkPersons).mockResolvedValue([]);
+    vi.mocked(api.listJobDescriptions).mockResolvedValue(presetJobDescriptions());
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
     vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) =>
       ["Dunn-Edwards", name].sort()
@@ -1429,10 +1498,10 @@ describe("InvoiceProcess keys, printing and failures", () => {
       fireEvent.change(screen.getByLabelText("Custom size"), { target: { value: "Penthouse" } });
       fireEvent.change(screen.getByLabelText(/^Customer P\.O/), { target: { value: "PO-9" } });
       fireEvent.change(screen.getByLabelText("Line 1 work date"), { target: { value: "2026-01-20" } });
-      const deletes = screen.getAllByRole("button", { name: /^Del$/ });
+      const deletes = screen.getAllByRole("button", { name: /^Delete$/ });
       expect(deletes).toHaveLength(4);
       await user.click(deletes[3]);
-      expect(screen.getAllByRole("button", { name: /^Del$/ })).toHaveLength(3);
+      expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(3);
       await user.click(screen.getByRole("button", { name: /^\+ Line$/ }));
 
       key("s", { ctrlKey: true });

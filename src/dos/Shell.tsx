@@ -1,4 +1,10 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useSyncExternalStore } from "react";
+import {
+  mountUndoDeleteKeys,
+  subscribeUndoDeletes,
+  undoDeleteCount,
+  undoLastDelete,
+} from "../lib/undoDelete";
 
 /** Map a status-bar key caption to a keyboard event useDosKeys understands. */
 export function statusKeyEvent(key: string): KeyboardEventInit | null {
@@ -8,6 +14,7 @@ export function statusKeyEvent(key: string): KeyboardEventInit | null {
     case "Ins":
       return { key: "Insert" };
     case "Del":
+    case "Delete":
       return { key: "Delete" };
     case "Enter":
       return { key: "Enter" };
@@ -58,6 +65,7 @@ const STATUS_KEY_RANK: Record<string, number> = {
   Cntr_Home: 3,
   Home: 4,
   Del: 5,
+  Delete: 5,
   PgUp: 6,
   PgDn: 7,
   End: 8,
@@ -134,12 +142,29 @@ export function StatusBar({
 }: {
   keys: { key: string; label: string }[];
 }) {
+  const pendingDeletes = useSyncExternalStore(
+    subscribeUndoDeletes,
+    undoDeleteCount,
+    undoDeleteCount
+  );
+  useEffect(() => mountUndoDeleteKeys(), []);
   const ordered = orderStatusKeys(keys);
   return (
     <div className="dos-statusbar">
       {ordered.map((k, i) => (
         <StatusKey key={k.key + k.label} k={k} pinned={i === 0} />
       ))}
+      {pendingDeletes > 0 && (
+        <button
+          type="button"
+          className="dos-status-action dos-status-undo"
+          aria-label="F2 Undo Delete"
+          onClick={() => void undoLastDelete()}
+        >
+          <span className="key">F2</span>
+          <span className="hint">Undo Delete</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -268,8 +293,9 @@ export function HelpOverlay({ onClose }: { onClose: () => void }) {
         <h3> *** Function Key Description *** </h3>
         <pre>{`
  F1 = Help
+ F2 = Undo Delete
  Ins = Add Data
- Del = Delete or Void Data
+ Delete = Delete or Void Data
  Home= Diplay Company,Property Detail
  End = Print Data
  Cntr_Home = Edit Data
@@ -293,7 +319,7 @@ export const BROWSE_KEYS = [
   { key: "Esc", label: "" },
   { key: "Ins", label: "Add" },
   { key: "Ctrl-Home", label: "" },
-  { key: "Del", label: "" },
+  { key: "Delete", label: "" },
   { key: "Home", label: "" },
   { key: "PgUp", label: "" },
   { key: "PgDn", label: "" },

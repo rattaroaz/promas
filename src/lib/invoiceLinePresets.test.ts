@@ -19,6 +19,7 @@ import {
   applyPresetPriceToLine,
   applyPresetPrices,
   normalizeUnitSize,
+  presetJobDescriptions,
   priceForPreset,
 } from "./invoiceLinePresets";
 
@@ -47,6 +48,11 @@ describe("priceForPreset", () => {
     expect(priceForPreset(d, "4+2")).toBe(545);
     expect(priceForPreset(d, "3+1")).toBeNull();
     expect(priceForPreset("Other work", "1+1")).toBeNull();
+    const custom = presetJobDescriptions().map((job) =>
+      job.description === d ? { ...job, single: 10, onePlusOne: 11 } : job
+    );
+    expect(priceForPreset(d, "single", custom)).toBe(10);
+    expect(priceForPreset(d, "1+1", custom)).toBe(11);
   });
 
   it("prices the additional preset descriptions from unit size", () => {
@@ -86,28 +92,39 @@ describe("priceForPreset", () => {
 });
 
 describe("applyPresetPriceToLine", () => {
-  it("uses the single price when size is empty and leaves non-preset lines alone", () => {
+  it("leaves the price blank until a size is chosen, then reprices every catalog line", () => {
     const inv = emptyInvoice();
     const preset = {
       ...emptyInvoiceLine(inv, 1),
       description: INTERIOR_PAINT_WALL_CLOSET,
       price: 245,
     };
-    const custom = {
+    const ceiling = {
       ...emptyInvoiceLine(inv, 2),
+      description: PAINTING_OF_CEILING,
+      price: 10,
+    };
+    const custom = {
+      ...emptyInvoiceLine(inv, 3),
       description: "Custom",
       price: 99,
     };
-    expect(applyPresetPriceToLine(preset, "").price).toBe(220);
+    expect(applyPresetPriceToLine(preset, "").price).toBe(0);
     expect(applyPresetPriceToLine(preset, "2+1").price).toBe(280);
-    expect(applyPresetPrices("1+1", [preset, custom]).map((l) => l.price)).toEqual(
-      [245, 99]
-    );
+    expect(applyPresetPrices("", [preset, ceiling, custom]).map((l) => l.price)).toEqual([
+      0, 0, 99,
+    ]);
+    expect(applyPresetPrices("1+1", [preset, ceiling, custom]).map((l) => l.price)).toEqual([
+      245, 115, 99,
+    ]);
+    expect(applyPresetPrices("2+2", [preset, ceiling, custom]).map((l) => l.price)).toEqual([
+      295, 150, 99,
+    ]);
     const cabinet = {
-      ...emptyInvoiceLine(inv, 3),
+      ...emptyInvoiceLine(inv, 4),
       description: PAINT_KITCHEN_CABINET_INSIDE,
     };
-    expect(applyPresetPriceToLine(cabinet, "").price).toBe(130);
+    expect(applyPresetPriceToLine(cabinet, "").price).toBe(0);
     expect(applyPresetPriceToLine(cabinet, "3+2").price).toBe(130);
   });
 });

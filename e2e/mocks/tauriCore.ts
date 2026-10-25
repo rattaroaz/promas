@@ -1,9 +1,13 @@
+import { presetJobDescriptions, type JobDescription } from "../../src/lib/jobCatalog";
+
 type E2EWorkPerson = { name: string; workerNo: string; active: boolean };
 
 /** Seeded the way a migrated catalog is: Jose's numeric employees.emp_no is 400. */
 let workPersons: E2EWorkPerson[] = [
   { name: "Jose Ramirez", workerNo: "400", active: true },
 ];
+
+let jobDescriptions: JobDescription[] = presetJobDescriptions();
 
 function listWorkPersons(): E2EWorkPerson[] {
   return [...workPersons].sort((a, b) =>
@@ -620,6 +624,28 @@ export async function invoke<T = unknown>(
   }
   if (cmd === "void_invoice") {
     return undefined as T;
+  }
+  if (cmd === "list_job_descriptions") {
+    return jobDescriptions.map((job) => ({ ...job })) as T;
+  }
+  if (cmd === "save_job_description") {
+    const job = (_args?.job ?? {}) as JobDescription;
+    const description = String(job.description ?? "").trim();
+    if (!description) throw new Error("Job description required");
+    const original = String(job.originalDescription ?? "").trim();
+    const key = (original || description).toLowerCase();
+    const next = { ...job, description, originalDescription: "" };
+    const idx = jobDescriptions.findIndex((row) => row.description.toLowerCase() === key);
+    if (idx >= 0) jobDescriptions[idx] = next;
+    else jobDescriptions.push(next);
+    return jobDescriptions.map((row) => ({ ...row })) as T;
+  }
+  if (cmd === "delete_job_description") {
+    const description = String(_args?.description ?? "").trim().toLowerCase();
+    jobDescriptions = jobDescriptions.filter(
+      (row) => row.description.toLowerCase() !== description
+    );
+    return jobDescriptions.map((row) => ({ ...row })) as T;
   }
   throw new Error(`E2E mock: unhandled invoke "${cmd}"`);
 }

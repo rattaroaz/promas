@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, renderApp, screen, userEvent, waitFor } from "../test/render";
 import { MiscScreen } from "./MiscScreen";
+import { UNSAVED_JOB_CHANGES } from "./JobDescriptionsScreen";
+import { PAINTING_OF_CEILING } from "../lib/jobCatalog";
 import { api } from "../api";
 import { open } from "@tauri-apps/plugin-dialog";
 
@@ -24,6 +26,9 @@ vi.mock("../api", async () => {
       listWorkPersons: vi.fn(),
       saveWorkPerson: vi.fn(),
       deleteWorkPerson: vi.fn(),
+      listJobDescriptions: vi.fn(),
+      saveJobDescription: vi.fn(),
+      deleteJobDescription: vi.fn(),
     },
   };
 });
@@ -86,6 +91,101 @@ describe("MiscScreen", () => {
       screen.queryByRole("button", { name: /5\.\s*Workers/i })
     ).not.toBeInTheDocument();
     expect(api.deleteWorkPerson).not.toHaveBeenCalled();
+  });
+
+  it("lists Job Descriptions as option 6 and can add one", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listJobDescriptions).mockResolvedValue([
+      {
+        description: PAINTING_OF_CEILING,
+        single: 75,
+        onePlusOne: 115,
+        twoPlusOne: 125,
+        twoPlusTwo: 150,
+        threePlusTwo: 175,
+        fourPlusTwo: 195,
+        occupied: null,
+        fixed: null,
+      },
+    ]);
+    vi.mocked(api.saveJobDescription).mockImplementation(async (job) => [job]);
+    renderApp(<MiscScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /6\.\s*Job Descriptions/i }));
+    expect(await screen.findByLabelText("Job description 1")).toHaveValue(
+      PAINTING_OF_CEILING
+    );
+    expect(screen.getByRole("combobox", { name: "Size 1" })).toHaveValue("single");
+    expect(screen.getByLabelText("Price 1")).toHaveValue("75.00");
+    expect(screen.getByLabelText("Price 1")).toHaveClass("job-desc-price");
+    expect(
+      [...(document.querySelector(".job-desc-head")?.children ?? [])].map((el) => el.textContent)
+    ).toEqual(["Description", "Size", "Price", ""]);
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 1" }), "2+2");
+    expect(screen.getByLabelText("Price 1")).toHaveValue("150.00");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 1" }), "Occupied");
+    expect(screen.getByLabelText("Price 1")).toHaveValue("");
+    expect(screen.getByRole("button", { name: `Delete ${PAINTING_OF_CEILING}` })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add Job Description" }));
+    const added = screen.getByLabelText("Job description 2");
+    await user.type(added, "Touch up");
+    const price = screen.getByLabelText("Price 2");
+    expect(screen.getByRole("combobox", { name: "Size 2" })).toHaveValue("single");
+    await user.type(price, "10");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "1+1");
+    expect(screen.getByLabelText("Price 2")).toHaveValue("10.00");
+    await user.clear(screen.getByLabelText("Price 2"));
+    await user.type(screen.getByLabelText("Price 2"), "20");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "2+2");
+    expect(screen.getByLabelText("Price 2")).toHaveValue("10.00");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "single");
+    expect(screen.getByLabelText("Price 2")).toHaveValue("10.00");
+    expect(api.saveJobDescription).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    await waitFor(() => {
+      expect(api.saveJobDescription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: "Touch up",
+          single: 10,
+          onePlusOne: 20,
+          twoPlusOne: 10,
+          twoPlusTwo: 10,
+          threePlusTwo: 10,
+          fourPlusTwo: 10,
+          occupied: 10,
+          fixed: null,
+        })
+      );
+    });
+  });
+
+  it("asks before leaving unsaved job description edits", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listJobDescriptions).mockResolvedValue([
+      {
+        description: PAINTING_OF_CEILING,
+        single: 75,
+        onePlusOne: 115,
+        twoPlusOne: 125,
+        twoPlusTwo: 150,
+        threePlusTwo: 175,
+        fourPlusTwo: 195,
+        occupied: null,
+        fixed: null,
+      },
+    ]);
+    renderApp(<MiscScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /6\.\s*Job Descriptions/i }));
+    const desc = await screen.findByLabelText("Job description 1");
+    await user.type(desc, " extra");
+    await user.keyboard("{Escape}");
+    expect(screen.getByText(UNSAVED_JOB_CHANGES)).toBeInTheDocument();
+    await user.keyboard("n");
+    expect(screen.getByLabelText("Job description 1")).toHaveValue(`${PAINTING_OF_CEILING} extra`);
+    expect(api.saveJobDescription).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    await user.keyboard("y");
+    expect(screen.getByRole("button", { name: /6\.\s*Job Descriptions/i })).toBeInTheDocument();
+    expect(api.saveJobDescription).not.toHaveBeenCalled();
   });
 
   it("lists Import Database as option 4", () => {

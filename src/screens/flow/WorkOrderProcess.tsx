@@ -1,7 +1,7 @@
 /**
  * Work Order Process — browse/edit/void with full line items.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   api,
   Company,
@@ -9,6 +9,7 @@ import {
   WorkOrder,
   WorkOrderWithLines,
   WorkType,
+  JobDescription,
   emptyWorkOrder,
   emptyWorkType,
 } from "../../api";
@@ -24,6 +25,8 @@ import {
 import { DotField } from "../../dos/Field";
 import { MoneyInput } from "../../dos/MoneyInput";
 import { money, fmtDate, today } from "../../dos/utils";
+import { priceForPreset } from "../../lib/jobCatalog";
+import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 
 export function WorkOrderProcess({
   company,
@@ -36,9 +39,12 @@ export function WorkOrderProcess({
 }) {
   const [rows, setRows] = useState<WorkOrder[]>([]);
   const [editing, setEditing] = useState<WorkOrderWithLines | null>(null);
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
+  const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [msg, setMsg] = useState(
-    "Ins=Add  Ctrl-Home=Edit  Del=Void  Esc=Exit"
+    "Ins=Add  Ctrl-Home=Edit  Delete=Void  Esc=Exit"
   );
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
     "default"
@@ -51,12 +57,16 @@ export function WorkOrderProcess({
     useBrowseIndex(rows.length);
 
   const load = useCallback(async () => {
-    const data = await api.listWorkOrders({
-      companyNo: company.companyNo,
-      limit: 500,
-    });
+    const [data, jobs] = await Promise.all([
+      api.listWorkOrders({
+        companyNo: company.companyNo,
+        limit: 500,
+      }),
+      api.listJobDescriptions().catch(() => [] as JobDescription[]),
+    ]);
+    setJobDescriptions(jobs ?? []);
     setRows(data.filter((o) => o.proNo === property.proNo));
-    setMsg("Ins=Add  Enter/Ctrl-Home=Edit  Del=Void  Esc=Back");
+    setMsg("Ins=Add  Enter/Ctrl-Home=Edit  Delete=Void  Esc=Back");
     setMsgKind("default");
   }, [company.companyNo, property.proNo]);
 
@@ -68,6 +78,74 @@ export function WorkOrderProcess({
   useEffect(() => {
     load().catch(showError);
   }, [load]);
+
+  useEffect(() => {
+    return () => {
+      if (editingRef.current) clearUndoScope("workorder-lines");
+    };
+  }, []);
+
+  function deleteWorkOrderLine(idx: number) {
+    const cur = editingRef.current;
+    const line = cur?.lines[idx];
+    if (!cur || !line) return;
+    const at = idx;
+    const key = {
+      companyNo: cur.order.companyNo || company.companyNo,
+      proNo: cur.order.proNo || property.proNo,
+      orderDate: cur.order.orderDate,
+      orderNo: cur.order.orderNo,
+    };
+    const next = { ...cur, lines: cur.lines.filter((_, i) => i !== idx) };
+    editingRef.current = next;
+    setEditing(next);
+    pushUndoDelete(async () => {
+      const open = editingRef.current;
+      if (
+        open &&
+        open.order.orderDate === key.orderDate &&
+        open.order.orderNo === key.orderNo
+      ) {
+        const lines = [...open.lines];
+        lines.splice(Math.min(at, lines.length), 0, line);
+        const restored = { ...open, lines };
+        editingRef.current = restored;
+        setEditing(restored);
+        return;
+      }
+      if (!key.orderNo) {
+        setMsg("That delete can no longer be undone.");
+        setMsgKind("error");
+        return;
+      }
+      const full = await api.getWorkOrder(
+        key.companyNo,
+        key.proNo,
+        key.orderDate,
+        key.orderNo
+      );
+      if (!full) {
+        setMsg("That delete can no longer be undone.");
+        setMsgKind("error");
+        return;
+      }
+      const lines = [...full.lines];
+      lines.splice(Math.min(at, lines.length), 0, {
+        ...line,
+        companyNo: key.companyNo,
+        proNo: key.proNo,
+        orderDate: key.orderDate,
+        orderNo: full.order.orderNo,
+      });
+      await api.saveWorkOrder({
+        order: full.order,
+        lines: lines.map((l, i) => ({ ...l, lineNo: i + 1 })),
+      });
+      await load();
+      setMsg("Delete undone.");
+      setMsgKind("info");
+    }, "workorder-lines");
+  }
 
   const current = rows[index] ?? null;
 
@@ -140,6 +218,7 @@ export function WorkOrderProcess({
           lineNo: i + 1,
         })),
       });
+      editingRef.current = null;
       setEditing(null);
       setConfirmSave(false);
       await load();
@@ -221,8 +300,10 @@ export function WorkOrderProcess({
       else if (confirmSave) setConfirmSave(false);
       else if (addWtAsk) setAddWtAsk(null);
       else if (editing) {
+        clearUndoScope("workorder-lines");
+        editingRef.current = null;
         setEditing(null);
-        setMsg("Ins=Add  Enter=Edit  Del=Void  Esc=Back");
+        setMsg("Ins=Add  Enter=Edit  Delete=Void  Esc=Back");
       } else onBack();
     },
     onF1: () => setHelp(true),
@@ -297,12 +378,7 @@ export function WorkOrderProcess({
     >
       {!editing && (
         <div className="dos-browse">
-          <div
-            className="dos-info-banner"
-            style={{
-              padding: "0.2em 0.5ch",
-            }}
-          >
+          <div className="dos-info-banner">
             {company.name} — {property.name} {property.street}
           </div>
           <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 9ch 15ch 10ch" }}>
@@ -456,15 +532,15 @@ export function WorkOrderProcess({
               />
             </DotField>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "8ch 30ch 8ch 12ch 4ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
               <div>Code#</div>
               <div>Description</div>
               <div>W/T</div>
               <div>Price</div>
-              <div>Del</div>
+              <div>Delete</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "8ch 30ch 8ch 12ch 4ch" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
                 <div style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
@@ -481,10 +557,46 @@ export function WorkOrderProcess({
                   />
                 </div>
                 <div style={{ minWidth: 0 }}>
+                  <select
+                    className="dos-select dos-choice"
+                    style={{ width: "100%", marginBottom: "0.12em" }}
+                    aria-label={`Line ${idx + 1} job description`}
+                    value={
+                      jobDescriptions.some((job) => job.description === line.description)
+                        ? line.description
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const description = e.target.value;
+                      if (!description) return;
+                      const lines = [...editing.lines];
+                      const priced = priceForPreset(
+                        description,
+                        editing.order.orderSize,
+                        jobDescriptions
+                      );
+                      lines[idx] = {
+                        ...line,
+                        description,
+                        price: priced ?? line.price,
+                      };
+                      setEditing({ ...editing, lines });
+                    }}
+                  >
+                    <option value=""> </option>
+                    {jobDescriptions.map((job) => (
+                      <option key={job.description} value={job.description}>
+                        {job.description}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     className="dos-input"
                     style={{ width: "100%" }}
                     aria-label={`Line ${idx + 1} description`}
+                    readOnly={jobDescriptions.some(
+                      (job) => job.description === line.description
+                    )}
                     value={line.description}
                     onChange={(e) => {
                       const lines = [...editing.lines];
@@ -524,23 +636,18 @@ export function WorkOrderProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div style={{ minWidth: "max-content", minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
-                    style={{ width: "100%", minHeight: "44px" }}
-                    onClick={() =>
-                      setEditing({
-                        ...editing,
-                        lines: editing.lines.filter((_, i) => i !== idx),
-                      })
-                    }
+                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
+                    onClick={() => deleteWorkOrderLine(idx)}
                   >
-                    Del
+                    Delete
                   </button>
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 8ch 12ch 4ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
               <div style={{ gridColumn: "1 / 4" }}>
                 <button
                   className="dos-btn"

@@ -146,6 +146,21 @@ export interface WorkPerson {
   originalName?: string;
 }
 
+/** Catalog row for invoice and work-order descriptions. */
+export interface JobDescription {
+  description: string;
+  /** Previous description when renaming. Empty when adding. Not stored on invoices. */
+  originalDescription?: string;
+  single: number | null;
+  onePlusOne: number | null;
+  twoPlusOne: number | null;
+  twoPlusTwo: number | null;
+  threePlusTwo: number | null;
+  fourPlusTwo: number | null;
+  occupied: number | null;
+  fixed: number | null;
+}
+
 export interface WorkType {
   codeNo: string;
   workType: string;
@@ -556,6 +571,11 @@ export const api = {
     invoke<WorkPerson[]>("save_work_person", { person }),
   deleteWorkPerson: (name: string) =>
     invoke<WorkPerson[]>("delete_work_person", { name }),
+  listJobDescriptions: () => invoke<JobDescription[]>("list_job_descriptions"),
+  saveJobDescription: (job: JobDescription) =>
+    invoke<JobDescription[]>("save_job_description", { job }),
+  deleteJobDescription: (description: string) =>
+    invoke<JobDescription[]>("delete_job_description", { description }),
   listPaintSupplyCos: () => invoke<string[]>("list_paint_supply_cos"),
   savePaintSupplyCo: (name: string) =>
     invoke<string[]>("save_paint_supply_co", { name }),

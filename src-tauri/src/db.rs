@@ -384,6 +384,19 @@ fn create_schema(conn: &Connection) -> Result<()> {
             name TEXT PRIMARY KEY COLLATE NOCASE
         );
 
+        CREATE TABLE IF NOT EXISTS job_descriptions (
+            description TEXT PRIMARY KEY COLLATE NOCASE,
+            sort_order INTEGER NOT NULL,
+            price_single REAL,
+            price_11 REAL,
+            price_21 REAL,
+            price_22 REAL,
+            price_32 REAL,
+            price_42 REAL,
+            price_occupied REAL,
+            fixed_price REAL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name);
         CREATE INDEX IF NOT EXISTS idx_properties_name ON properties(name);
         CREATE INDEX IF NOT EXISTS idx_invoices_invoice ON invoices(invoice);
@@ -421,6 +434,8 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "TEXT NOT NULL DEFAULT ''",
     )?;
     seed_paint_supply_cos(conn)?;
+    add_column_if_missing(conn, "job_descriptions", "price_occupied", "REAL")?;
+    seed_job_descriptions(conn)?;
     Ok(())
 }
 
@@ -512,6 +527,90 @@ pub(crate) fn mark_worker_no_backfill_done(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO app_meta (key, value) VALUES (?1, '1')",
         params![WORKER_NO_BACKFILL_KEY],
     )?;
+    Ok(())
+}
+
+/// First launch, and any later open of an empty catalog: copy the built-in
+/// invoice descriptions and prices. A catalog that already has rows is left
+/// alone, including after the user deletes one description.
+pub(crate) fn seed_job_descriptions(conn: &Connection) -> Result<()> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM job_descriptions", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    let sized: &[(&str, [f64; 6])] = &[
+        (
+            "Interior Painting of Wall/Closet Inside",
+            [220.0, 245.0, 280.0, 295.0, 450.0, 545.0],
+        ),
+        (
+            "Color Change of Walls and Closet to Navajo White",
+            [176.0, 196.0, 224.0, 236.0, 360.0, 436.0],
+        ),
+        (
+            "Painting of Ceiling",
+            [75.0, 115.0, 125.0, 150.0, 175.0, 195.0],
+        ),
+        (
+            "Color Change of Ceiling to Swiss Coffee",
+            [60.0, 92.0, 100.0, 120.0, 140.0, 156.0],
+        ),
+        ("Paint Baseboard", [95.0, 105.0, 125.0, 125.0, 155.0, 250.0]),
+        (
+            "Plastic Covering of Floor",
+            [95.0, 105.0, 125.0, 135.0, 165.0, 170.0],
+        ),
+        (
+            "Paint All Enamel Surfaces with Hybrid Based Paint",
+            [145.0, 180.0, 190.0, 195.0, 225.0, 255.0],
+        ),
+        (
+            "2 Tone Colors: N/W + S/C",
+            [70.0, 75.0, 80.0, 90.0, 95.0, 100.0],
+        ),
+        (
+            "2 Tone Color: Hashed Hue + S/C",
+            [70.0, 75.0, 80.0, 90.0, 95.0, 100.0],
+        ),
+    ];
+    let fixed: &[(&str, f64)] = &[
+        ("Paint Kitchen Cabinet Inside", 130.0),
+        ("Paint Kitchen Cabinet Outside", 165.0),
+        ("Paint Kitchen Cabinet Inside+Outside", 295.0),
+        ("Varnish Kitchen Cabinet", 350.0),
+        ("Paint Over Kitchen Cabinets Inside with Primer", 190.0),
+        ("Paint Over Kitchen Cabinets Outside with Primer", 280.0),
+    ];
+    let mut order = 0i64;
+    for (description, prices) in sized {
+        order += 1;
+        conn.execute(
+            "INSERT INTO job_descriptions (
+                description, sort_order,
+                price_single, price_11, price_21, price_22, price_32, price_42, fixed_price
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)",
+            params![
+                description,
+                order,
+                prices[0],
+                prices[1],
+                prices[2],
+                prices[3],
+                prices[4],
+                prices[5],
+            ],
+        )?;
+    }
+    for (description, price) in fixed {
+        order += 1;
+        conn.execute(
+            "INSERT INTO job_descriptions (
+                description, sort_order,
+                price_single, price_11, price_21, price_22, price_32, price_42, fixed_price
+             ) VALUES (?1, ?2, NULL, NULL, NULL, NULL, NULL, NULL, ?3)",
+            params![description, order, price],
+        )?;
+    }
     Ok(())
 }
 

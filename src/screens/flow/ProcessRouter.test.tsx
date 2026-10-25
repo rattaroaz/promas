@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 import { renderApp, screen, userEvent, waitFor } from "../../test/render";
 import { ProcessRouter } from "./ProcessRouter";
 import { api, emptyCompany, emptyInvoice, emptyProperty } from "../../api";
@@ -19,6 +20,7 @@ vi.mock("../../api", async () => {
       getCompany: vi.fn(),
       getSysdata: vi.fn(),
       listWorkPersons: vi.fn(),
+      listJobDescriptions: vi.fn().mockResolvedValue([]),
       listPaintSupplyCos: vi.fn(),
     },
   };
@@ -83,6 +85,51 @@ describe("ProcessRouter observability", () => {
     expect(await screen.findByRole("button", { name: /01\s+Bldg A/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /New Invoice/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Company NO" })).not.toBeInTheDocument();
+  });
+
+  it("returns from the invoice list to the menu with one Esc per screen", async () => {
+    vi.mocked(api.listCompanies).mockResolvedValue([
+      { ...emptyCompany(), companyNo: "1000", name: "ACME" },
+    ]);
+    vi.mocked(api.listProperties).mockResolvedValue([
+      { ...emptyProperty("1000"), proNo: "01", name: "Bldg A" },
+    ]);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockResolvedValue({
+      ...emptyCompany(),
+      companyNo: "1000",
+      name: "ACME",
+    });
+    const onBack = vi.fn();
+    const user = userEvent.setup();
+    renderApp(
+      <StrictMode>
+        <ProcessRouter process="invoice" onBack={onBack} />
+      </StrictMode>
+    );
+
+    await user.type(screen.getByPlaceholderText("? = first"), "?{Enter}");
+    await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
+    await user.click(await screen.findByRole("button", { name: /01\s+Bldg A/i }));
+    expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
+
+    const esc = () =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+    esc();
+    expect(await screen.findByRole("button", { name: /01\s+Bldg A/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /New Invoice/i })).not.toBeInTheDocument();
+
+    esc();
+    expect(await screen.findByRole("button", { name: /1000\s+ACME/i })).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+
+    esc();
+    expect(await screen.findByRole("textbox", { name: "Company NO" })).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+
+    esc();
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("Ins on the invoice list opens a new invoice form", async () => {

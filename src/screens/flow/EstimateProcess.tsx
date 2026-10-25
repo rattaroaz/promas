@@ -1,6 +1,6 @@
 /**
  * Estimate / Proposal Process — original: browse proposals for company,
- * Ins=add, Ctrl-Home=edit, Del=void, fields Proposal#/Date/Form#.
+ * Ins=add, Ctrl-Home=edit, Delete=void, fields Proposal#/Date/Form#.
  */
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -35,7 +35,7 @@ export function EstimateProcess({
   const [editing, setEditing] = useState<Estimate | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [msg, setMsg] = useState(
-    "Ins=Add Proposal  Ctrl-Home=Edit  Del=Void  Esc=Exit"
+    "Ins=Add Proposal  Ctrl-Home=Edit  Delete=Void  Esc=Exit"
   );
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">(
     "default"
@@ -54,7 +54,7 @@ export function EstimateProcess({
       setRows(data);
       setMsg(
         data.length
-          ? `${data.length} proposals  —  Ins=Add  Enter=Edit  Del=Void  Esc=Back`
+          ? `${data.length} proposals  —  Ins=Add  Enter=Edit  Delete=Void  Esc=Back`
           : "No proposals. Press Ins — Enter Proposal Information (Esc=Exit) !"
       );
       setMsgKind("default");
@@ -176,12 +176,7 @@ export function EstimateProcess({
     >
       {!editing && (
         <div className="dos-browse">
-          <div
-            className="dos-info-banner"
-            style={{
-              padding: "0.2em 0.5ch",
-            }}
-          >
+          <div className="dos-info-banner">
             {company.companyNo} {company.name} — {property.proNo}{" "}
             {property.name}
           </div>

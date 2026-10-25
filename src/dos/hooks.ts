@@ -420,6 +420,7 @@ export function useDosKeys(
           h.onInsert?.();
           return;
         case "Del":
+        case "Delete":
           h.onDelete?.();
           return;
         case "Enter":

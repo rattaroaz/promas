@@ -166,4 +166,27 @@ describe("WorkersScreen", () => {
     });
     expect(screen.queryByLabelText("Worker name 1")).not.toBeInTheDocument();
   });
+
+  it("puts a deleted worker back with F2 Undo Delete", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    await user.click(await screen.findByRole("button", { name: "Delete Jose Ramirez" }));
+    await user.keyboard("y");
+    await waitFor(() => {
+      expect(api.deleteWorkPerson).toHaveBeenCalledWith("Jose Ramirez");
+    });
+    expect(screen.queryByLabelText("Worker name 1")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "F2 Undo Delete" }));
+    await waitFor(() => {
+      expect(api.saveWorkPerson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Jose Ramirez",
+          workerNo: "400",
+          active: true,
+        })
+      );
+    });
+    expect(screen.getByLabelText("Worker name 1")).toHaveValue("Jose Ramirez");
+    expect(screen.queryByRole("button", { name: "F2 Undo Delete" })).not.toBeInTheDocument();
+  });
 });
