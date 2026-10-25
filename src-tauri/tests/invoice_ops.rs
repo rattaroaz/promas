@@ -6,11 +6,7 @@ use promas_lib::ops;
 use rusqlite::params;
 
 fn temp_conn(label: &str) -> (std::path::PathBuf, rusqlite::Connection) {
-    let dir = std::env::temp_dir().join(format!(
-        "promas_{}_{}",
-        label,
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("promas_{}_{}", label, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("promas.db");
@@ -94,7 +90,14 @@ fn save_invoice_allocates_number_and_totals() {
         &mut conn,
         InvoiceWithLines {
             invoice: blank_invoice(),
-            lines: vec![line(100.0), InvoiceLine { line_no: 2, price: 50.0, ..line(50.0) }],
+            lines: vec![
+                line(100.0),
+                InvoiceLine {
+                    line_no: 2,
+                    price: 50.0,
+                    ..line(50.0)
+                },
+            ],
         },
     )
     .expect("save");
@@ -123,7 +126,9 @@ fn save_invoice_allocates_number_and_totals() {
     .expect("save preassigned");
     assert_eq!(inv_no2, 2);
     let next2: i64 = conn
-        .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| r.get(0))
+        .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| {
+            r.get(0)
+        })
         .unwrap();
     assert_eq!(next2, 3);
 
@@ -289,11 +294,9 @@ fn report_aging_buckets_by_age() {
     let by_contact =
         ops::report_aging(&conn, Some("2026-02-01".into()), Some("ELAINE".into())).unwrap();
     assert_eq!(by_contact.len(), 1);
-    let by_name =
-        ops::report_aging(&conn, Some("2026-02-01".into()), Some("ACME".into())).unwrap();
+    let by_name = ops::report_aging(&conn, Some("2026-02-01".into()), Some("ACME".into())).unwrap();
     assert_eq!(by_name.len(), 1);
-    let by_no =
-        ops::report_aging(&conn, Some("2026-02-01".into()), Some("1000".into())).unwrap();
+    let by_no = ops::report_aging(&conn, Some("2026-02-01".into()), Some("1000".into())).unwrap();
     assert_eq!(by_no.len(), 1);
     let by_street =
         ops::report_aging(&conn, Some("2026-02-01".into()), Some("MAPLE".into())).unwrap();
@@ -301,11 +304,9 @@ fn report_aging_buckets_by_age() {
     let by_city =
         ops::report_aging(&conn, Some("2026-02-01".into()), Some("NEWPORT".into())).unwrap();
     assert_eq!(by_city.len(), 1);
-    let miss =
-        ops::report_aging(&conn, Some("2026-02-01".into()), Some("NOPE".into())).unwrap();
+    let miss = ops::report_aging(&conn, Some("2026-02-01".into()), Some("NOPE".into())).unwrap();
     assert!(miss.is_empty());
-    let by_qmark =
-        ops::report_aging(&conn, Some("2026-02-01".into()), Some("?".into())).unwrap();
+    let by_qmark = ops::report_aging(&conn, Some("2026-02-01".into()), Some("?".into())).unwrap();
     assert_eq!(by_qmark.len(), 1);
     assert_eq!(by_qmark[0].open_bal, 150.0);
 

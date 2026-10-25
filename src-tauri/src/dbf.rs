@@ -161,10 +161,7 @@ pub fn parse_f64(s: &str) -> f64 {
 }
 
 pub fn parse_i64(s: &str) -> i64 {
-    s.trim()
-        .parse::<f64>()
-        .map(|v| v as i64)
-        .unwrap_or(0)
+    s.trim().parse::<f64>().map(|v| v as i64).unwrap_or(0)
 }
 
 pub fn normalize_date_field(s: &str) -> Option<String> {
@@ -197,10 +194,7 @@ pub mod tests {
 
     #[test]
     fn read_minimal_dbf() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_dbf_test_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_dbf_test_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("SAMPLE.DBF");
@@ -287,14 +281,7 @@ pub mod tests {
                 ("BALANCE", 8),
             ],
             &[&[
-                "1000",
-                "01",
-                "20260115",
-                "1",
-                "250.00",
-                "250.00",
-                "0",
-                "250.00",
+                "1000", "01", "20260115", "1", "250.00", "250.00", "0", "250.00",
             ]],
         )
     }

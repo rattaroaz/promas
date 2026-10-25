@@ -47,8 +47,7 @@ pub fn normalize_db_file_path(path: &str) -> Result<PathBuf, String> {
 pub fn ensure_db_parent(path: &Path) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("create database folder: {e}"))?;
+            std::fs::create_dir_all(parent).map_err(|e| format!("create database folder: {e}"))?;
         }
     }
     Ok(())
@@ -177,10 +176,20 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("CREATE TABLE invoices (invoice INTEGER);")
             .unwrap();
-        add_column_if_missing(&conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")
-            .unwrap();
-        add_column_if_missing(&conn, "invoices", "material_cost", "REAL NOT NULL DEFAULT 0")
-            .unwrap();
+        add_column_if_missing(
+            &conn,
+            "invoices",
+            "material_cost",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        .unwrap();
+        add_column_if_missing(
+            &conn,
+            "invoices",
+            "material_cost",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        .unwrap();
         add_column_if_missing(
             &conn,
             "invoices",
@@ -229,11 +238,8 @@ mod tests {
         let path = dir.join("promas.db");
         let export = dir.join("export.db");
         let conn = open_and_migrate(&path).expect("migrate");
-        conn.execute(
-            "UPDATE sysdata SET company=?1 WHERE id=1",
-            ["Export Co"],
-        )
-        .unwrap();
+        conn.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Export Co"])
+            .unwrap();
         conn.execute("VACUUM INTO ?1", [export.display().to_string()])
             .unwrap();
         assert!(export.exists());
@@ -274,10 +280,7 @@ mod tests {
         assert!(normalize_db_file_path("").is_err());
         assert!(normalize_db_file_path("   ").is_err());
         assert!(normalize_db_file_path(".").is_err());
-        let dir = std::env::temp_dir().join(format!(
-            "promas_norm_dir_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_norm_dir_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         assert!(normalize_db_file_path(dir.to_str().unwrap()).is_err());
@@ -294,10 +297,7 @@ mod tests {
 
     #[test]
     fn persist_and_load_db_location() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_loc_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_loc_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let db = dir.join("custom").join("acct.db");
         persist_db_location(&dir, &db).unwrap();
@@ -308,10 +308,7 @@ mod tests {
 
     #[test]
     fn switching_to_existing_db_preserves_data() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_keep_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_keep_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let current = dir.join("current.db");
@@ -340,10 +337,7 @@ mod tests {
 
     #[test]
     fn open_or_create_via_with_db_closed_creates_new_file() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_switch_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_switch_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let current = dir.join("old.db");
@@ -367,10 +361,7 @@ mod tests {
 
     #[test]
     fn import_replace_database_copies_and_keeps_bak() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_imp_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_imp_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let current = dir.join("live.db");
@@ -635,12 +626,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "worker_no",
         "TEXT NOT NULL DEFAULT ''",
     )?;
-    add_column_if_missing(
-        conn,
-        "work_persons",
-        "active",
-        "INTEGER NOT NULL DEFAULT 1",
-    )?;
+    add_column_if_missing(conn, "work_persons", "active", "INTEGER NOT NULL DEFAULT 1")?;
     ensure_app_meta(conn)?;
     let seeded = seed_work_persons(conn)?;
     // Fill numbers on the first migration, and when this open just copied
@@ -660,12 +646,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-fn add_column_if_missing(
-    conn: &Connection,
-    table: &str,
-    column: &str,
-    decl: &str,
-) -> Result<()> {
+fn add_column_if_missing(conn: &Connection, table: &str, column: &str, decl: &str) -> Result<()> {
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
     let exists = stmt
         .query_map([], |r| r.get::<_, String>(1))?
@@ -685,8 +666,7 @@ fn add_column_if_missing(
 /// numeric employees.emp_no. That is the same set of names the invoice
 /// dropdown already offered.
 pub(crate) fn seed_work_persons(conn: &Connection) -> Result<bool> {
-    let count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
     if count > 0 {
         return Ok(false);
     }
@@ -695,8 +675,7 @@ pub(crate) fn seed_work_persons(conn: &Connection) -> Result<bool> {
            SELECT DISTINCT TRIM(name) FROM employees
            WHERE TRIM(COALESCE(name,'')) != ''"#,
     )?;
-    let after: i64 =
-        conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
+    let after: i64 = conn.query_row("SELECT COUNT(*) FROM work_persons", [], |r| r.get(0))?;
     Ok(after > 0)
 }
 

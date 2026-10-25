@@ -4,10 +4,7 @@ use promas_lib::db::open_and_migrate;
 
 #[test]
 fn companies_and_invoices_round_trip() {
-    let dir = std::env::temp_dir().join(format!(
-        "promas_schema_{}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("promas_schema_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("promas.db");
@@ -32,11 +29,9 @@ fn companies_and_invoices_round_trip() {
     .unwrap();
 
     let bal: f64 = conn
-        .query_row(
-            "SELECT balance FROM invoices WHERE invoice=1",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT balance FROM invoices WHERE invoice=1", [], |r| {
+            r.get(0)
+        })
         .unwrap();
     assert_eq!(bal, 250.0);
 
@@ -69,10 +64,7 @@ fn companies_and_invoices_round_trip() {
 
 #[test]
 fn work_persons_seed_from_employee_names_when_catalog_empty() {
-    let dir = std::env::temp_dir().join(format!(
-        "promas_work_persons_{}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("promas_work_persons_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("promas.db");

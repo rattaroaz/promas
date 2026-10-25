@@ -7,11 +7,7 @@ use promas_lib::ops;
 use rusqlite::params;
 
 fn temp_conn(label: &str) -> (std::path::PathBuf, rusqlite::Connection) {
-    let dir = std::env::temp_dir().join(format!(
-        "promas_crud_{}_{}",
-        label,
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("promas_crud_{}_{}", label, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("promas.db");
@@ -50,11 +46,9 @@ fn company_property_soft_delete_and_list() {
     upsert_property(&conn, "1000", "01", "Bldg A");
 
     let count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM companies WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM companies WHERE voided=0", [], |r| {
+            r.get(0)
+        })
         .unwrap();
     assert_eq!(count, 1);
 
@@ -64,11 +58,9 @@ fn company_property_soft_delete_and_list() {
     )
     .unwrap();
     let active: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM companies WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM companies WHERE voided=0", [], |r| {
+            r.get(0)
+        })
         .unwrap();
     assert_eq!(active, 0);
 
@@ -152,11 +144,9 @@ fn material_and_estimate_round_trip() {
     )
     .unwrap();
     let mat_amt: f64 = conn
-        .query_row(
-            "SELECT amount FROM materials WHERE emp_no='E1'",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT amount FROM materials WHERE emp_no='E1'", [], |r| {
+            r.get(0)
+        })
         .unwrap();
     assert_eq!(mat_amt, 12.5);
 

@@ -64,32 +64,24 @@ pub fn save_sysdata(state: State<DbState>, data: SysData) -> Result<(), String> 
 pub fn get_dashboard(state: State<DbState>) -> Result<DashboardStats, String> {
     let conn = state.0.lock().map_err(map_err)?;
     let company_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM companies WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM companies WHERE voided=0", [], |r| {
+            r.get(0)
+        })
         .map_err(map_err)?;
     let property_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM properties WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM properties WHERE voided=0", [], |r| {
+            r.get(0)
+        })
         .map_err(map_err)?;
     let employee_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM employees WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM employees WHERE voided=0", [], |r| {
+            r.get(0)
+        })
         .map_err(map_err)?;
     let invoice_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM invoices WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM invoices WHERE voided=0", [], |r| {
+            r.get(0)
+        })
         .map_err(map_err)?;
     let open_balance: f64 = conn
         .query_row(
@@ -207,30 +199,27 @@ pub fn list_companies(state: State<DbState>, params: ListParams) -> Result<Vec<C
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(
-            params![include_voided, search, like, limit, offset],
-            |r| {
-                Ok(Company {
-                    company_no: r.get(0)?,
-                    name: r.get(1)?,
-                    class: r.get(2)?,
-                    street: r.get(3)?,
-                    city: r.get(4)?,
-                    state: r.get(5)?,
-                    zip: r.get(6)?,
-                    phone: r.get(7)?,
-                    phone2: r.get(8)?,
-                    phone3: r.get(9)?,
-                    phone4: r.get(10)?,
-                    contact: r.get(11)?,
-                    enter_date: r.get(12)?,
-                    page_map: r.get(13)?,
-                    last_pro_id: r.get(14)?,
-                    memo: r.get(15)?,
-                    voided: r.get::<_, i64>(16)? != 0,
-                })
-            },
-        )
+        .query_map(params![include_voided, search, like, limit, offset], |r| {
+            Ok(Company {
+                company_no: r.get(0)?,
+                name: r.get(1)?,
+                class: r.get(2)?,
+                street: r.get(3)?,
+                city: r.get(4)?,
+                state: r.get(5)?,
+                zip: r.get(6)?,
+                phone: r.get(7)?,
+                phone2: r.get(8)?,
+                phone3: r.get(9)?,
+                phone4: r.get(10)?,
+                contact: r.get(11)?,
+                enter_date: r.get(12)?,
+                page_map: r.get(13)?,
+                last_pro_id: r.get(14)?,
+                memo: r.get(15)?,
+                voided: r.get::<_, i64>(16)? != 0,
+            })
+        })
         .map_err(map_err)?;
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
@@ -616,7 +605,10 @@ pub fn list_work_persons(state: State<DbState>) -> Result<Vec<WorkPerson>, Strin
 }
 
 #[tauri::command]
-pub fn save_work_person(state: State<DbState>, person: WorkPerson) -> Result<Vec<WorkPerson>, String> {
+pub fn save_work_person(
+    state: State<DbState>,
+    person: WorkPerson,
+) -> Result<Vec<WorkPerson>, String> {
     let conn = state.0.lock().map_err(map_err)?;
     write_work_person(&conn, &person)?;
     list_work_person_records(&conn)
@@ -1242,10 +1234,7 @@ pub fn import_database(
 // ─── Estimates ─────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub fn list_estimates(
-    state: State<DbState>,
-    params: ListParams,
-) -> Result<Vec<Estimate>, String> {
+pub fn list_estimates(state: State<DbState>, params: ListParams) -> Result<Vec<Estimate>, String> {
     let conn = state.0.lock().map_err(map_err)?;
     let company_no = params.company_no.unwrap_or_default();
     let include_voided = params.include_voided.unwrap_or(false);
@@ -1282,11 +1271,9 @@ pub fn save_estimate(state: State<DbState>, estimate: Estimate) -> Result<i64, S
     let mut est = estimate;
     if est.est_no == 0 {
         let next: i64 = tx
-            .query_row(
-                "SELECT next_estimate FROM sysdata WHERE id=1",
-                [],
-                |r| r.get(0),
-            )
+            .query_row("SELECT next_estimate FROM sysdata WHERE id=1", [], |r| {
+                r.get(0)
+            })
             .unwrap_or(1);
         est.est_no = next;
         tx.execute(
@@ -1418,10 +1405,7 @@ pub struct BackendDiagnostics {
 #[tauri::command]
 pub fn get_backend_diagnostics(app: tauri::AppHandle) -> Result<BackendDiagnostics, String> {
     let db_path = crate::db::resolve_db_path(&app)?;
-    let log_dir = app
-        .path()
-        .app_log_dir()
-        .map_err(|e| e.to_string())?;
+    let log_dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
     if !log_dir.exists() {
         let _ = std::fs::create_dir_all(&log_dir);
     }
@@ -1466,14 +1450,10 @@ fn compile_target_triple() -> String {
 
 #[tauri::command]
 pub fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
-    let log_dir = app
-        .path()
-        .app_log_dir()
-        .map_err(|e| e.to_string())?;
+    let log_dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&log_dir).map_err(|e| format!("create log dir: {e}"))?;
     log::info!(target: "promas::diag", "open log dir {}", log_dir.display());
-    tauri_plugin_opener::open_path(&log_dir, None::<&str>)
-        .map_err(|e| format!("open log dir: {e}"))
+    tauri_plugin_opener::open_path(&log_dir, None::<&str>).map_err(|e| format!("open log dir: {e}"))
 }
 
 /// Write a UTF-8 text file (used for diagnostics export).
@@ -1499,4 +1479,3 @@ pub fn confirm_quit(app: tauri::AppHandle) -> Result<(), String> {
     app.exit(0);
     Ok(())
 }
-

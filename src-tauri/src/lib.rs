@@ -30,9 +30,8 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            let conn = init_db(app.handle()).map_err(|e| -> Box<dyn std::error::Error> {
-                e.into()
-            })?;
+            let conn =
+                init_db(app.handle()).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
             match crate::db::resolve_db_path(app.handle()) {
                 Ok(path) => {
                     log::info!(

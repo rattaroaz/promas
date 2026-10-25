@@ -78,7 +78,9 @@ pub fn save_invoice(conn: &mut Connection, data: InvoiceWithLines) -> Result<i64
     let mut inv = data.invoice;
 
     let stored_next: i64 = tx
-        .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| r.get(0))
+        .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| {
+            r.get(0)
+        })
         .unwrap_or(1);
     if inv.invoice == 0 {
         inv.invoice = stored_next.max(1);
@@ -271,11 +273,8 @@ pub fn delete_cash_receipt(conn: &mut Connection, id: i64) -> Result<(), String>
         )
         .map_err(map_err)?;
 
-    tx.execute(
-        "UPDATE cash_receipts SET voided=1 WHERE id=?",
-        params![id],
-    )
-    .map_err(map_err)?;
+    tx.execute("UPDATE cash_receipts SET voided=1 WHERE id=?", params![id])
+        .map_err(map_err)?;
 
     let pay_total = sum_receipts_for_invoice(&tx, &company_no, invoice)?;
     apply_pay_total_to_invoices(&tx, &company_no, invoice, pay_total)?;
@@ -440,10 +439,7 @@ pub fn list_materials(conn: &Connection, params: &ListParams) -> Result<Vec<Mate
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-pub fn report_payroll(
-    conn: &Connection,
-    params: &ListParams,
-) -> Result<Vec<PayrollRow>, String> {
+pub fn report_payroll(conn: &Connection, params: &ListParams) -> Result<Vec<PayrollRow>, String> {
     let from_date = params.from_date.clone().unwrap_or_default();
     let to_date = params.to_date.clone().unwrap_or_default();
     let worker = params.search.clone().unwrap_or_default();
@@ -683,7 +679,9 @@ pub fn save_work_order(conn: &mut Connection, data: WorkOrderWithLines) -> Resul
 
     if order.order_no == 0 {
         let next: i64 = tx
-            .query_row("SELECT next_order FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .query_row("SELECT next_order FROM sysdata WHERE id=1", [], |r| {
+                r.get(0)
+            })
             .map_err(map_err)?;
         order.order_no = next;
         tx.execute(
@@ -933,7 +931,11 @@ pub fn report_missing_invoices(
                 order_by: {
                     let by: String = r.get(4)?;
                     let man: String = r.get(5)?;
-                    if by.is_empty() { man } else { by }
+                    if by.is_empty() {
+                        man
+                    } else {
+                        by
+                    }
                 },
                 invoice: inv,
                 inv_date: r.get(13)?,
@@ -942,12 +944,20 @@ pub fn report_missing_invoices(
                 property_address: {
                     let street: String = r.get(10)?;
                     let name: String = r.get(11)?;
-                    if street.is_empty() { name } else { street }
+                    if street.is_empty() {
+                        name
+                    } else {
+                        street
+                    }
                 },
                 unit_size: {
                     let u: String = r.get(6)?;
                     let s: String = r.get(7)?;
-                    if s.is_empty() { u } else { format!("{u}/{s}") }
+                    if s.is_empty() {
+                        u
+                    } else {
+                        format!("{u}/{s}")
+                    }
                 },
             })
         })
@@ -1613,7 +1623,9 @@ mod tests {
         // days from Jan 1 to Mar 15 = 74 → bucket >60 (61-90)
         assert!((r.days_60 - 100.0).abs() < 0.01);
         assert!((r.open_bal - 100.0).abs() < 0.01);
-        assert!((r.current + r.days_30 + r.days_60 + r.days_90 + r.days_120 - r.open_bal).abs() < 0.01);
+        assert!(
+            (r.current + r.days_30 + r.days_60 + r.days_90 + r.days_120 - r.open_bal).abs() < 0.01
+        );
 
         drop(conn);
         let _ = std::fs::remove_file(path);

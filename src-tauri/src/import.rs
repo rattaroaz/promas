@@ -74,12 +74,10 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
         messages: Vec::new(),
     };
 
-    let tx = conn
-        .unchecked_transaction()
-        .map_err(|e| {
-            log::error!(target: "promas::import", "begin tx failed: {e}");
-            format!("begin tx: {e}")
-        })?;
+    let tx = conn.unchecked_transaction().map_err(|e| {
+        log::error!(target: "promas::import", "begin tx failed: {e}");
+        format!("begin tx: {e}")
+    })?;
 
     // Clear existing data for clean import
     tx.execute_batch(
@@ -428,8 +426,7 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
                 inv,
                 rec.get_f64(f, "PAYMENT"),
                 rec.get(f, "PAYREFNO"),
-                normalize_date_field(&rec.get(f, "PAYDATE"))
-                    .unwrap_or_else(|| "1900-01-01".into()),
+                normalize_date_field(&rec.get(f, "PAYDATE")).unwrap_or_else(|| "1900-01-01".into()),
                 0,
             ])
             .map_err(|e| format!("cash: {e}"))?;
@@ -459,8 +456,7 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
             stmt.execute(params![
                 rec.get(f, "EMPNO"),
                 rec.get(f, "MATDESCRIP"),
-                normalize_date_field(&rec.get(f, "MATDATE"))
-                    .unwrap_or_else(|| "1900-01-01".into()),
+                normalize_date_field(&rec.get(f, "MATDATE")).unwrap_or_else(|| "1900-01-01".into()),
                 rec.get_f64(f, "MATAMOUNT"),
                 &status,
                 if rec.deleted || status.eq_ignore_ascii_case("V") {
@@ -613,8 +609,7 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
     // The catalog is filled here, not on the next launch. Startup backfill
     // runs once, so a number cleared after this import stays cleared.
     crate::db::seed_work_persons(conn).map_err(|e| format!("work persons: {e}"))?;
-    crate::db::backfill_numeric_worker_numbers(conn)
-        .map_err(|e| format!("worker numbers: {e}"))?;
+    crate::db::backfill_numeric_worker_numbers(conn).map_err(|e| format!("worker numbers: {e}"))?;
     crate::db::mark_worker_no_backfill_done(conn).map_err(|e| e.to_string())?;
     result.messages.push("Import completed successfully".into());
     log::info!(
@@ -639,10 +634,7 @@ mod tests {
 
     #[test]
     fn import_minimal_company_dbf_fixture() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_import_fix_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_import_fix_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         write_minimal_company_dbf(&dir.join("COMPANY.DBF")).unwrap();
@@ -668,11 +660,9 @@ mod tests {
         crate::db::seed_work_persons(&conn).unwrap();
         crate::db::backfill_numeric_worker_numbers(&conn).unwrap();
         let (worker, worker_no): (String, String) = conn
-            .query_row(
-                "SELECT name, worker_no FROM work_persons",
-                [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
+            .query_row("SELECT name, worker_no FROM work_persons", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
             .unwrap();
         assert_eq!(worker, "Jose Ramirez");
         assert_eq!(worker_no, "400");
@@ -682,10 +672,7 @@ mod tests {
 
     #[test]
     fn import_multi_table_company_property_invoice_fixture() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_import_multi_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_import_multi_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         write_multi_table_fixture(&dir).unwrap();
 
@@ -733,10 +720,8 @@ mod tests {
             "missing checked-in fixture at {}",
             folder.display()
         );
-        let tmp = std::env::temp_dir().join(format!(
-            "promas_fixture_import_{}.db",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("promas_fixture_import_{}.db", std::process::id()));
         let _ = std::fs::remove_file(&tmp);
         let mut conn = open_and_migrate(&tmp).expect("open db");
         let result = import_promas_folder(&mut conn, &folder).expect("import");
@@ -774,10 +759,7 @@ mod tests {
 
     #[test]
     fn resolve_promas_data_dir_finds_nested_compback() {
-        let dir = std::env::temp_dir().join(format!(
-            "promas_resolve_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("promas_resolve_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let data = dir.join("COMPBACK").join("PROMAS");
         std::fs::create_dir_all(&data).unwrap();

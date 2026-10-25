@@ -15,11 +15,7 @@ fn person(name: &str, worker_no: &str, active: bool, original_name: &str) -> Wor
 }
 
 fn temp_conn(label: &str) -> (std::path::PathBuf, rusqlite::Connection) {
-    let dir = std::env::temp_dir().join(format!(
-        "promas_wp_{}_{}",
-        label,
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("promas_wp_{}_{}", label, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("promas.db");
@@ -83,10 +79,7 @@ fn empty_catalog_is_valid() {
 
 #[test]
 fn existing_dropdown_names_migrate_active_with_blank_worker_numbers() {
-    let dir = std::env::temp_dir().join(format!(
-        "promas_wp_migrate_{}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("promas_wp_migrate_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("promas.db");
@@ -199,11 +192,7 @@ fn delete_and_rename_leave_invoice_lines_untouched() {
     )
     .unwrap();
 
-    write_work_person(
-        &conn,
-        &person("Jose R.", "4", true, "Jose Ramirez"),
-    )
-    .unwrap();
+    write_work_person(&conn, &person("Jose R.", "4", true, "Jose Ramirez")).unwrap();
     let emp_after_rename: String = conn
         .query_row("SELECT emp_no FROM invoice_lines", [], |r| r.get(0))
         .unwrap();
@@ -211,11 +200,9 @@ fn delete_and_rename_leave_invoice_lines_untouched() {
 
     remove_work_person(&conn, "Jose R.").unwrap();
     let (emp, price): (String, f64) = conn
-        .query_row(
-            "SELECT emp_no, price FROM invoice_lines",
-            [],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )
+        .query_row("SELECT emp_no, price FROM invoice_lines", [], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
         .unwrap();
     assert_eq!(emp, "Jose Ramirez");
     assert_eq!(price, 220.0);
