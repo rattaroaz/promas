@@ -65,12 +65,14 @@ describe("observability suite", () => {
     const text = formatDiagnosticsText({
       dbPath: "C:\\data\\promas.db",
       logDir: "C:\\logs",
-      rustVersion: "x86_64-windows",
+      rustVersion: "rustc 1.80.0 (051478957 2024-07-21)",
       crateVersion: "2.0.0",
       targetTriple: "x86_64-pc-windows-msvc",
     });
     expect(text).toContain("Diagnostics");
     expect(text).toContain("promas.db");
+    expect(text).toContain("compiler: rustc 1.80.0 (051478957 2024-07-21)");
+    expect(text).toContain("target: x86_64-pc-windows-msvc");
     expect(text).toContain("--- recent logs ---");
     expect(text).toContain("May include local paths");
     const bundle = buildDiagnosticsBundle(null);
@@ -83,7 +85,7 @@ describe("observability suite", () => {
       {
         dbPath: "C:\\Users\\kimri\\data\\promas.db",
         logDir: "C:\\Users\\kimri\\logs",
-        rustVersion: "x86_64-windows",
+        rustVersion: "rustc 1.80.0 (051478957 2024-07-21)",
         crateVersion: "2.4.2",
         targetTriple: "x86_64-pc-windows-msvc",
       },

@@ -79,7 +79,7 @@ export function formatDiagnosticsText(
           `logDir: ${backend.logDir}`,
           `crateVersion: ${backend.crateVersion}`,
           `target: ${backend.targetTriple}`,
-          `host: ${backend.rustVersion}`,
+          `compiler: ${backend.rustVersion}`,
         ].join("\n")
       : "(unavailable)",
     "",

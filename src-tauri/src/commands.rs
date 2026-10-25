@@ -1244,7 +1244,7 @@ pub fn get_backend_diagnostics(app: tauri::AppHandle) -> Result<BackendDiagnosti
     if !log_dir.exists() {
         let _ = std::fs::create_dir_all(&log_dir);
     }
-    let triple = compile_target_triple();
+    let triple = env!("PROMAS_TARGET").to_string();
     log::info!(
         target: "promas::diag",
         "diagnostics snapshot db={} log_dir={} target={}",
@@ -1255,32 +1255,10 @@ pub fn get_backend_diagnostics(app: tauri::AppHandle) -> Result<BackendDiagnosti
     Ok(BackendDiagnostics {
         db_path: db_path.display().to_string(),
         log_dir: log_dir.display().to_string(),
-        rust_version: rustc_version_runtime(),
+        rust_version: env!("PROMAS_RUSTC_VERSION").to_string(),
         crate_version: env!("CARGO_PKG_VERSION").to_string(),
         target_triple: triple,
     })
-}
-
-fn rustc_version_runtime() -> String {
-    format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
-}
-
-fn compile_target_triple() -> String {
-    #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
-    {
-        "x86_64-pc-windows-msvc".into()
-    }
-    #[cfg(all(target_arch = "aarch64", target_os = "windows"))]
-    {
-        "aarch64-pc-windows-msvc".into()
-    }
-    #[cfg(not(any(
-        all(target_arch = "x86_64", target_os = "windows"),
-        all(target_arch = "aarch64", target_os = "windows")
-    )))]
-    {
-        format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
-    }
 }
 
 #[tauri::command]

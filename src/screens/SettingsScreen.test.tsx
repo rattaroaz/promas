@@ -36,7 +36,7 @@ vi.mock("../api", async () => {
       getBackendDiagnostics: vi.fn().mockResolvedValue({
         dbPath: "C:\\mock\\promas.db",
         logDir: "C:\\mock\\logs",
-        rustVersion: "x86_64-windows",
+        rustVersion: "rustc 1.80.0 (051478957 2024-07-21)",
         crateVersion: "2.0.0",
         targetTriple: "x86_64-pc-windows-msvc",
       }),
