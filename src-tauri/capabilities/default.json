@@ -5,11 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default",
     "dialog:default",
     "dialog:allow-ask",
     "dialog:allow-open",
-    "fs:default",
     "updater:default",
     "process:default",
     "log:default"

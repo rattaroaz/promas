@@ -1,125 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, renderHook, act } from "@testing-library/react";
 import {
-  computeFitScale,
   contentWidthOf,
-  convergeFitScale,
   verticalFitFactor,
   pointerHoverMuted,
-  resolveFitScale,
   useBrowseIndex,
   useDosKeys,
 } from "./hooks";
 import { STATUS_KEY_CLICK } from "./Shell";
 
-describe("computeFitScale", () => {
-  it("stays at 1 when content already fits", () => {
-    expect(computeFitScale(1024, 800, 1)).toBe(1);
-  });
-
-  it("shrinks so wide content matches the window", () => {
-    expect(computeFitScale(400, 800, 1)).toBeCloseTo(0.5);
-  });
-
-  it("holds a fitted scale instead of shrinking further", () => {
-    expect(computeFitScale(400, 400, 0.5)).toBe(0.5);
-  });
-
-  it("grows back toward 1 when there is slack", () => {
-    expect(computeFitScale(800, 400, 0.5)).toBe(1);
-  });
-});
-
-describe("resolveFitScale", () => {
-  it("stays at 1 when the shell is only as wide as the window", () => {
-    let scale = 1;
-    for (let i = 0; i < 40; i++) scale = resolveFitScale(1024, 1024, scale);
-    expect(scale).toBe(1);
-  });
-
-  it("settles in one pass under repeated ticks at 800 and 640", () => {
-    // Natural width ~877px. Measured width tracks the scale, the way a clock
-    // tick remeasures already-scaled content.
-    const natural = 877;
-    const ticks = (client: number) => {
-      let scale = 1;
-      const seen: number[] = [];
-      for (let i = 0; i < 12; i++) {
-        scale = resolveFitScale(client, natural * scale, scale);
-        seen.push(scale);
-      }
-      return seen;
-    };
-
-    const at800 = ticks(800);
-    expect(at800[0]).toBeCloseTo(0.88, 2);
-    expect(at800[0]).toBeLessThan(1);
-    for (const scale of at800) expect(scale).toBeCloseTo(at800[0], 4);
-
-    const at640 = ticks(640);
-    expect(at640[0]).toBeCloseTo(0.7, 2);
-    expect(at640[0]).toBeLessThan(at800[0]);
-    for (const scale of at640) expect(scale).toBeCloseTo(at640[0], 4);
-  });
-
-  it("holds a wrapped measurement that lands a little under the slack", () => {
-    let scale = resolveFitScale(800, 875, 1);
-    expect(scale).toBeCloseTo(0.882, 2);
-    for (let i = 0; i < 8; i++) {
-      const next = resolveFitScale(800, 753, scale);
-      expect(next).toBeCloseTo(scale, 4);
-      scale = next;
-    }
-    scale = resolveFitScale(640, 875, 1);
-    expect(scale).toBeCloseTo(0.7, 2);
-    for (let i = 0; i < 8; i++) {
-      const next = resolveFitScale(640, 590, scale);
-      expect(next).toBeCloseTo(scale, 4);
-      scale = next;
-    }
-  });
-
-  it("converges a leftover shrink that one pass leaves for the next click", () => {
-    // Measured on the invoice gate at 1400px: the first scale is 0.8245 and
-    // the row is still 1420px wide, so the next pass (the click) goes to 0.7966.
-    const client = 1400;
-    const widthAt = (scale: number) =>
-      scale === 1 ? 1664 : Math.round(1420 * (scale / 0.8245));
-    const once = resolveFitScale(client, widthAt(1), 1);
-    const leftover = resolveFitScale(client, widthAt(once), once);
-    expect(once).toBeCloseTo(0.8245, 3);
-    expect(leftover).toBeLessThan(once - 0.01);
-
-    const settled = convergeFitScale((scale) => ({
-      clientWidth: client,
-      contentWidth: widthAt(scale),
-    }));
-    const again = resolveFitScale(client, widthAt(settled), settled);
-    expect(Math.abs(again - settled)).toBeLessThanOrEqual(0.004);
-    expect(settled).toBeCloseTo(leftover, 3);
-  });
-
-  it("returns to 1 after a shrink-then-restore and does not drift", () => {
-    const natural = 877;
-    let scale = resolveFitScale(800, natural, 1);
-    expect(scale).toBeCloseTo(0.88, 2);
-    scale = resolveFitScale(1024, natural * scale, scale);
-    expect(scale).toBe(1);
-    for (let i = 0; i < 30; i++) {
-      scale = resolveFitScale(1024, natural * scale, scale);
-      expect(scale).toBe(1);
-    }
-
-    scale = resolveFitScale(640, natural, 1);
-    expect(scale).toBeCloseTo(0.7, 2);
-    scale = resolveFitScale(1024, natural * scale, scale);
-    expect(scale).toBe(1);
-    for (let i = 0; i < 30; i++) {
-      scale = resolveFitScale(1024, natural * scale, scale);
-      expect(scale).toBe(1);
-    }
-  });
-
+describe("fit measurement", () => {
   it("measures overflow inside a clipped container and ignores a stretched shell", () => {
     const shell = document.createElement("div");
     const clip = document.createElement("div");

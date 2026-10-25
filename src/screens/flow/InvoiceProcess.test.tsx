@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "@testing-library/react";
 import { fireEvent, renderApp, screen, userEvent, waitFor, within } from "../../test/render";
-import { InvoiceProcess, descriptionRowCount, siteHeaderLines } from "./InvoiceProcess";
+import { InvoiceProcess, descriptionRowCount } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyInvoiceLine, emptyProperty } from "../../api";
 import { today } from "../../dos/utils";
 import { downloadInvoicePdf, printInvoiceOnTemplate } from "../../lib/invoicePrint";
@@ -38,7 +38,6 @@ vi.mock("../../api", async () => {
       deleteWorkPerson: vi.fn(),
       listPaintSupplyCos: vi.fn(),
       savePaintSupplyCo: vi.fn(),
-      deletePaintSupplyCo: vi.fn(),
       getSysdata: vi.fn(),
       saveInvoice: vi.fn(),
       voidInvoice: vi.fn(),
@@ -67,6 +66,19 @@ const fixture = {
   custPoNo: "PO-441",
 };
 
+async function renderedSiteHeader(
+  siteCompany: typeof company,
+  siteProperty: typeof property
+): Promise<string[]> {
+  renderApp(
+    <InvoiceProcess company={siteCompany} property={siteProperty} onBack={vi.fn()} />
+  );
+  await screen.findByText(/1 invoices/i);
+  return [...(document.querySelector(".invoice-site-header")?.children ?? [])].map(
+    (el) => el.textContent ?? ""
+  );
+}
+
 describe("InvoiceProcess", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -85,7 +97,6 @@ describe("InvoiceProcess", () => {
         ? ["Dunn-Edwards", n].filter((v, i, a) => a.indexOf(v) === i)
         : ["Dunn-Edwards"];
     });
-    vi.mocked(api.deletePaintSupplyCo).mockResolvedValue([]);
     vi.mocked(api.getSysdata).mockResolvedValue({
       company: "Test",
       address1: "",
@@ -306,7 +317,6 @@ describe("InvoiceProcess", () => {
       screen.queryByRole("button", { name: /Remove .* from list/i })
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Remove "Dunn-Edwards"/i)).not.toBeInTheDocument();
-    expect(api.deletePaintSupplyCo).not.toHaveBeenCalled();
   });
 
   it("opens a new invoice form from the New Invoice button", async () => {
@@ -951,13 +961,13 @@ describe("InvoiceProcess", () => {
     expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
   });
 
-  it("does not throw when company memo and fax are missing", () => {
+  it("does not throw when company memo and fax are missing", async () => {
     const partial = { ...company } as Partial<typeof company>;
     delete partial.memo;
     delete partial.phone4;
     delete partial.phone3;
     expect(
-      siteHeaderLines(partial as typeof company, {
+      await renderedSiteHeader(partial as typeof company, {
         ...property,
         state: "",
         phone: "(818) 555-0100",
@@ -965,8 +975,8 @@ describe("InvoiceProcess", () => {
     ).toEqual(["ACME, Bldg A", "Phone: (818) 555-0100"]);
   });
 
-  it("omits blank site-header lines when only some fields are filled", () => {
-    const lines = siteHeaderLines(
+  it("omits blank site-header lines when only some fields are filled", async () => {
+    const lines = await renderedSiteHeader(
       { ...company, name: "ACME", contact: "", phone4: "" },
       {
         ...property,
@@ -1016,8 +1026,8 @@ describe("InvoiceProcess", () => {
     expect(lines.join(" ")).not.toContain("Building entry");
   });
 
-  it("shows the Lock Box field and the gate code, and skips an email page map", () => {
-    const lines = siteHeaderLines(company, {
+  it("shows the Lock Box field and the gate code, and skips an email page map", async () => {
+    const lines = await renderedSiteHeader(company, {
       ...property,
       keyInfo: "*2424",
       paintTime: "5555",
@@ -1030,8 +1040,8 @@ describe("InvoiceProcess", () => {
     expect(lines.join(" ")).not.toContain("Lock box code: 1984");
   });
 
-  it("does not read the gate code as a lock box", () => {
-    const lines = siteHeaderLines(company, {
+  it("does not read the gate code as a lock box", async () => {
+    const lines = await renderedSiteHeader(company, {
       ...property,
       name: "Bldg A",
       street: "1 Main",

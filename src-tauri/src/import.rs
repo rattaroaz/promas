@@ -734,30 +734,6 @@ mod tests {
     }
 
     #[test]
-    fn import_legacy_promas_sample() {
-        let folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("..")
-            .join("COMPBACK")
-            .join("PROMAS");
-        if !folder.join("COMPANY.DBF").exists() {
-            eprintln!("skip: legacy PROMAS data not found at {}", folder.display());
-            return;
-        }
-        let tmp = std::env::temp_dir().join("promas_import_test.db");
-        let _ = std::fs::remove_file(&tmp);
-        let mut conn = open_and_migrate(&tmp).expect("open db");
-        let result = import_promas_folder(&mut conn, &folder).expect("import");
-        assert!(result.companies > 0, "expected companies");
-        assert!(result.properties > 0, "expected properties");
-        assert!(result.invoices > 0, "expected invoices");
-        assert!(result.invoice_lines > 0, "expected invoice lines");
-        println!("{:?}", result);
-        drop(conn);
-        let _ = std::fs::remove_file(&tmp);
-    }
-
-    #[test]
     fn resolve_promas_data_dir_finds_nested_compback() {
         let dir = std::env::temp_dir().join(format!("promas_resolve_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);

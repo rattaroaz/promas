@@ -18,7 +18,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(
@@ -63,7 +62,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_sysdata,
             commands::save_sysdata,
-            commands::get_dashboard,
             commands::list_companies,
             commands::get_company,
             commands::next_company_no,
@@ -71,7 +69,6 @@ pub fn run() {
             commands::delete_company,
             commands::list_properties,
             commands::save_property,
-            commands::delete_property,
             commands::list_employees,
             commands::save_employee,
             commands::delete_employee,
@@ -80,7 +77,6 @@ pub fn run() {
             commands::delete_work_person,
             commands::list_paint_supply_cos,
             commands::save_paint_supply_co,
-            commands::delete_paint_supply_co,
             commands::list_work_types,
             commands::save_work_type,
             commands::delete_work_type,
@@ -95,7 +91,6 @@ pub fn run() {
             commands::save_work_order,
             commands::get_work_order,
             commands::void_work_order,
-            commands::find_work_order,
             commands::list_materials,
             commands::save_material,
             commands::delete_material,

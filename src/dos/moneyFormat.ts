@@ -51,11 +51,3 @@ export function formatMoneyInput(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "";
   return value.toFixed(2);
 }
-
-/** What to show after blur or Enter. Empty drafts stay empty. */
-export function commitMoneyDraft(raw: string): string {
-  if (moneyDraftIsEmpty(raw)) return "";
-  const n = Number(raw.trim());
-  if (!Number.isFinite(n)) return "";
-  return n.toFixed(2);
-}

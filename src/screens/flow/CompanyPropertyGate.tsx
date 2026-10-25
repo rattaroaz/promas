@@ -24,7 +24,7 @@ import {
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { ContentGrid } from "../../dos/contentGrid";
-import { cols, padR, fmtDate, naturalCompare, today } from "../../dos/utils";
+import { fmtDate, naturalCompare, today } from "../../dos/utils";
 
 export type ProcessKind =
   | "invoice"
@@ -131,13 +131,6 @@ function matchesPropertyAddress(p: Property, q: string): boolean {
   );
 }
 
-export function formatPropertyAddress(p: Property): string {
-  return [p.street, p.city, p.state, p.zip]
-    .map((s) => (s ?? "").trim())
-    .filter(Boolean)
-    .join(", ");
-}
-
 /** Street shown in property lists. Falls back to the name only when no address parts exist. */
 export function propertyStreetText(p: Property): string {
   const street = (p.street ?? "").trim();
@@ -145,17 +138,6 @@ export function propertyStreetText(p: Property): string {
   const hasRest = [p.city, p.state, p.zip].some((s) => (s ?? "").trim());
   return hasRest ? "" : (p.name ?? "").trim();
 }
-
-function padMin(s: string, n: number): string {
-  return s.length >= n ? s : s + " ".repeat(n - s.length);
-}
-
-/** Company property browse: ProNO, Name, Street, City, St, Zip, Contact. */
-export const PROPERTY_BROWSE_WITH_NAME = "repeat(7, max-content)";
-/** Global property lookup: CoNO, ProNO, Street, City, St, Zip, Contact. */
-export const PROPERTY_BROWSE_GLOBAL = "repeat(7, max-content)";
-/** Invoice-number hits: Inv#, date, company, property, street. */
-export const INVOICE_SITE_BROWSE = "repeat(5, max-content)";
 
 export type PropertySortKey = "company" | "street";
 export type PropertySortDir = "asc" | "desc";
@@ -220,33 +202,6 @@ export function nextPropertySort(cur: PropertySort, key: PropertySortKey): Prope
 /** Property contact. Legacy PROCONTACT is manager; the property form writes both. */
 export function propertyContactName(p: Property): string {
   return (p.manager || p.contact || "").trim();
-}
-
-export function formatPropertySearchRow(
-  p: Property,
-  includeCompanyNo: boolean
-): string {
-  const contact = propertyContactName(p);
-  const place = [
-    padMin(propertyStreetText(p), 45),
-    padMin((p.city ?? "").trim(), 14),
-    padR((p.state ?? "").trim(), 2),
-    padR((p.zip ?? "").trim(), 10),
-  ];
-  if (includeCompanyNo) {
-    return cols(
-      padR(p.companyNo, 6),
-      padR(p.proNo, 6),
-      ...place,
-      padR(contact, 14)
-    );
-  }
-  return cols(
-    padR(p.proNo, 6),
-    padR(p.name, 16),
-    ...place,
-    padR(contact, 14)
-  );
 }
 
 function PropertyPlaceCells({ p }: { p: Property }) {

@@ -1,24 +1,3 @@
-/** Fixed-width string helpers matching Clipper field layout */
-
-export function padR(s: string | number | null | undefined, n: number): string {
-  const t = String(s ?? "");
-  if (t.length >= n) return t.slice(0, n);
-  return t + " ".repeat(n - t.length);
-}
-
-export function padL(s: string | number | null | undefined, n: number): string {
-  const t = String(s ?? "");
-  if (t.length >= n) return t.slice(0, n);
-  return " ".repeat(n - t.length) + t;
-}
-
-/** Join fixed-width columns with three spaces so values never run together. */
-export function cols(
-  ...parts: Array<string | number | null | undefined>
-): string {
-  return parts.map((p) => String(p ?? "")).join("   ");
-}
-
 export function money(n: number | null | undefined): string {
   const v = n ?? 0;
   const neg = v < 0;
@@ -52,22 +31,6 @@ export function today(): string {
 export function addDays(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   return isoDate(new Date(y, m - 1, d + days));
-}
-
-export function labelDots(label: string, width = 16): string {
-  if (label.length >= width) return label;
-  return label + ".".repeat(width - label.length);
-}
-
-/** Highlight first occurrence of letter for menu accel display */
-export function withAccel(text: string, accel: string): { before: string; accel: string; after: string } {
-  const i = text.toLowerCase().indexOf(accel.toLowerCase());
-  if (i < 0) return { before: text, accel: "", after: "" };
-  return {
-    before: text.slice(0, i),
-    accel: text[i],
-    after: text.slice(i + 1),
-  };
 }
 
 /**

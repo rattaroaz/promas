@@ -19,7 +19,7 @@ import {
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../dos/hooks";
 import { Screen, HelpOverlay } from "../dos/Shell";
 import { InlineField } from "../dos/Field";
-import { cols, padR, padL, money, fmtDate, today } from "../dos/utils";
+import { money, fmtDate, today } from "../dos/utils";
 import { SubMenu, MenuItem } from "./SubMenu";
 import { save } from "@tauri-apps/plugin-dialog";
 import {
@@ -923,18 +923,6 @@ function AgingReport({
   );
 }
 
-export function formatAgingInvoiceRow(inv: Invoice): string {
-  const addr = (inv.propertyStreet || inv.propertyName || "").trim();
-  return cols(
-    padL(inv.invoice, 5),
-    padR(fmtDate(inv.salesDate), 10),
-    padL(money(inv.salesTotal), 11),
-    padR(addr, 40),
-    padR(inv.salesUnit, 8),
-    padR(inv.custPoNo, 12)
-  );
-}
-
 function AgingInvoiceList({
   company,
   invoices,
@@ -1368,22 +1356,6 @@ function CustomerFileReport({ cos, props }: { cos: Company[]; props: { companyNo
     </div>
   );
 }
-
-export function formatPaintUsage(rows: PaintUsageRow[]): string {
-  let t = `*****   Paint Usage Report   *****\n\n`;
-  t +=
-    "Work Person          Mat_Cost  Inv#  Inv_Total  Paint Supply Co.           Work Date\n";
-  t +=
-    "-------------------------------------------------------------------------------------\n";
-  for (const r of rows) {
-    t += `${padR(r.workPerson, 20)} ${padL(money(r.materialCost), 8)} ${padL(r.invoice, 5)} ${padL(money(r.invoiceTotal), 10)}  ${padR(r.paintSupplyCo, 26)} ${padR(fmtDate(r.workDate), 10)}\n`;
-  }
-  t +=
-    "-------------------------------------------------------------------------------------\n";
-  t += `Total Counts: ${rows.length}\n`;
-  return t;
-}
-
 
 function formatLabelsCompany(cos: Company[]): string {
   let t = ` TEST MAILING LABELS \n\n`;

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  commitMoneyDraft,
   formatMoneyInput,
   moneyDraftIsEmpty,
   parseMoneyDraft,
@@ -24,22 +23,6 @@ describe("formatMoneyInput", () => {
 
   it("keeps the sign on negative amounts", () => {
     expect(formatMoneyInput(-12.3)).toBe("-12.30");
-  });
-});
-
-describe("commitMoneyDraft", () => {
-  it("formats a whole number when the field is committed", () => {
-    expect(commitMoneyDraft("100")).toBe("100.00");
-    expect(commitMoneyDraft("432")).toBe("432.00");
-    expect(commitMoneyDraft(" 432.1 ")).toBe("432.10");
-  });
-
-  it("leaves an empty or unfinished draft empty", () => {
-    expect(commitMoneyDraft("")).toBe("");
-    expect(commitMoneyDraft("   ")).toBe("");
-    expect(commitMoneyDraft(".")).toBe("");
-    expect(commitMoneyDraft("-")).toBe("");
-    expect(commitMoneyDraft("-.")).toBe("");
   });
 });
 

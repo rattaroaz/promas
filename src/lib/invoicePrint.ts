@@ -137,58 +137,6 @@ export function wrapDescription(
   return result.length ? result : [""];
 }
 
-/** Wrap the full string onto lines that fit `maxWidth`. Nothing is dropped. */
-export function wrapToWidth(
-  font: PDFFont,
-  text: string,
-  size: number,
-  maxWidth: number
-): string[] {
-  const source = (text ?? "").replace(/\r\n/g, "\n");
-  if (!source) return [""];
-  const lines: string[] = [];
-  const pushFitted = (token: string) => {
-    if (font.widthOfTextAtSize(token, size) <= maxWidth) {
-      lines.push(token);
-      return;
-    }
-    let chunk = "";
-    for (const ch of token) {
-      const trial = chunk + ch;
-      if (chunk && font.widthOfTextAtSize(trial, size) > maxWidth) {
-        lines.push(chunk);
-        chunk = ch;
-      } else {
-        chunk = trial;
-      }
-    }
-    if (chunk) lines.push(chunk);
-  };
-  for (const paragraph of source.split("\n")) {
-    if (!paragraph) {
-      lines.push("");
-      continue;
-    }
-    let current = "";
-    for (const word of paragraph.split(" ")) {
-      const next = current ? `${current} ${word}` : word;
-      if (font.widthOfTextAtSize(next, size) <= maxWidth) {
-        current = next;
-        continue;
-      }
-      if (current) lines.push(current);
-      if (font.widthOfTextAtSize(word, size) <= maxWidth) {
-        current = word;
-      } else {
-        pushFitted(word);
-        current = "";
-      }
-    }
-    if (current) lines.push(current);
-  }
-  return lines.length ? lines : [""];
-}
-
 function moneyPlain(n: number): string {
   return money(n).replace("$", "");
 }

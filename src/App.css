@@ -223,56 +223,6 @@ h6 {
   color: var(--dos-cyan-bright);
 }
 
-/* ─── Double-line box (Clipper style) ───────────────────── */
-
-.dos-box {
-  border: none;
-  position: relative;
-  background: var(--dos-blue);
-  color: var(--app-ink);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.dos-box.cyan-frame {
-  box-shadow:
-    0 0 0 1px var(--app-accent),
-    inset 0 0 0 1px var(--app-accent);
-  margin: 1px;
-}
-
-.dos-box.white-frame {
-  box-shadow:
-    0 0 0 1px var(--dos-white-bright),
-    inset 0 0 0 1px var(--dos-white-bright);
-  margin: 1px;
-}
-
-.dos-box.yellow-frame {
-  box-shadow:
-    0 0 0 1px var(--app-highlight),
-    inset 0 0 0 1px var(--app-highlight);
-  margin: 1px;
-}
-
-/* Unicode double-line box using preformatted border */
-.dos-panel {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  padding: 0.5em 1ch;
-}
-
-.dos-panel-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  min-height: 0;
-}
-
 /* ─── Main menu (centered double box) ───────────────────── */
 
 .dos-main-wrap {
@@ -426,17 +376,6 @@ h6 {
   background: var(--dos-blue);
   padding: 0.4em 1ch 0;
   box-sizing: border-box;
-}
-
-.dos-browse-header {
-  color: var(--app-highlight);
-  white-space: pre;
-  font-weight: bold;
-  border-bottom: 1px solid var(--dos-cyan);
-  padding-bottom: 0;
-  margin-bottom: 0;
-  max-width: 100%;
-  overflow: hidden;
 }
 
 /* Generic browse grid - content-sized columns, 8px gap, left-aligned, baseline.
@@ -837,7 +776,6 @@ h6 {
   max-width: 47ch;
   flex: 0 0 47ch;
 }
-.dos-input.w50 { max-width: min(52ch, 100%); flex: 1 1 52ch; }
 
 /* Select + typed value: picker is a small box, value uses the rest */
 .dos-choice-pair {
@@ -942,23 +880,6 @@ h6 {
      padding-right, so this is the gap in front of the icon. */
   padding: 0 1.3em 0 0;
   margin: 0;
-}
-
-.invoice-line-head {
-  color: var(--app-highlight);
-  margin: 0.5em 0 0.15em;
-  align-items: end;
-}
-
-.invoice-line-head span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
-  min-width: 0;
-}
-
-.invoice-line-head .invoice-col-center {
-  text-align: center;
 }
 
 .invoice-line-grid .dos-input,
@@ -1330,94 +1251,9 @@ h6 {
   font-weight: bold;
 }
 
-.dos-report .aging-row {
-  display: block;
-  white-space: pre;
-}
-
-.dos-report .aging-cono {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--app-accent);
-  font: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.dos-report .aging-cono:hover,
-.dos-report .aging-cono:focus {
-  color: var(--app-highlight);
-}
-
-.aging-invno {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--app-accent);
-  font: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.aging-invno:hover,
-.aging-invno:focus {
-  color: var(--app-highlight);
-}
-
-.dos-report .sales-row {
-  display: block;
-  white-space: pre;
-}
-
-.dos-report .sales-inv {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  white-space: pre;
-}
-
-.dos-report .sales-inv:hover,
-.dos-report .sales-inv:focus {
-  color: var(--app-highlight);
-}
-
 .dos-report .sales-invno {
   color: var(--app-accent);
   text-decoration: underline;
-}
-
-.dos-report .sales-inv:hover .sales-invno,
-.dos-report .sales-inv:focus .sales-invno {
-  color: var(--app-highlight);
-}
-
-.dos-report .sales-sort {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--app-accent);
-  font: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.dos-report .sales-sort:hover,
-.dos-report .sales-sort:focus {
-  color: var(--app-highlight);
 }
 
 .dos-report.payroll-landscape {
@@ -1444,97 +1280,6 @@ h6 {
 
 .dos-searchline.payroll-toolbar > .dos-btn {
   flex: 0 0 auto;
-}
-
-.payroll-grid {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  color: inherit;
-}
-
-.payroll-grid th,
-.payroll-grid td {
-  border-left: 1px solid var(--app-accent);
-  border-right: 1px solid var(--app-accent);
-  border-top: 1px solid var(--app-accent);
-  border-bottom: 1px solid var(--app-accent);
-  padding: 0.12em 0.7ch;
-  vertical-align: middle;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.payroll-grid thead th {
-  color: var(--app-highlight);
-  font-weight: bold;
-  border-top: 1px solid var(--app-accent);
-  border-bottom: 1px solid var(--app-accent);
-}
-
-.payroll-grid tfoot td {
-  color: var(--app-accent);
-  font-weight: bold;
-  border-top: 1px solid var(--app-accent);
-  border-bottom: 1px solid var(--app-accent);
-}
-
-.payroll-grid .num {
-  text-align: right;
-}
-
-.payroll-grid .addr {
-  text-align: left;
-  white-space: normal;
-}
-
-.payroll-grid .payroll-job {
-  color: var(--dos-white);
-  margin-top: 0.1em;
-}
-
-.payroll-col-date { width: 12ch; }
-.payroll-col-inv { width: 7ch; }
-.payroll-col-addr { width: auto; }
-.payroll-col-unit { width: 9ch; }
-.payroll-col-amt { width: 12ch; }
-.payroll-col-blank { width: 14ch; }
-.paint-col-person { width: 18ch; }
-.paint-col-amt { width: 11ch; }
-.paint-col-inv { width: 7ch; }
-.paint-col-supply { width: auto; }
-.paint-col-date { width: 12ch; }
-
-.payroll-grid .paint-co {
-  text-align: left;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
-}
-
-.payroll-grid .blank {
-  background: transparent;
-}
-
-.payroll-grid tbody tr.payroll-row:hover td {
-  color: var(--app-highlight);
-}
-
-.payroll-grid .sales-invno {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--app-accent);
-  font: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.payroll-grid tbody tr.payroll-row:hover .sales-invno {
-  color: var(--app-highlight);
 }
 
 @media print {
@@ -1566,17 +1311,7 @@ h6 {
   .dos-report,
   .dos-report .hdr,
   .dos-report .total,
-  .dos-report .aging-cono,
-  .dos-report .sales-inv,
   .dos-report .sales-invno,
-  .dos-report .sales-sort,
-  .payroll-grid,
-  .payroll-grid th,
-  .payroll-grid td,
-  .payroll-grid tfoot td,
-  .payroll-grid .payroll-job,
-  .payroll-grid .sales-invno,
-  .aging-invno,
   .dos-total {
     color: #000 !important;
     font-weight: normal;
@@ -1584,23 +1319,12 @@ h6 {
 
   .dos-report .hdr,
   .dos-report .total,
-  .dos-total,
-  .payroll-grid thead th,
-  .payroll-grid tfoot td {
+  .dos-total {
     font-weight: bold;
   }
 
   .dos-report.payroll-landscape {
     overflow: visible;
-  }
-
-  .payroll-grid th,
-  .payroll-grid td {
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    border-top: 1px solid #000;
-    border-bottom: 1px solid #000;
-    background: #fff !important;
   }
 }
 

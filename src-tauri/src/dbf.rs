@@ -7,11 +7,7 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct DbfField {
     pub name: String,
-    #[allow(dead_code)]
-    pub field_type: char,
     pub length: u8,
-    #[allow(dead_code)]
-    pub decimal: u8,
 }
 
 #[derive(Debug)]
@@ -76,18 +72,11 @@ pub fn read_dbf(path: &Path) -> Result<DbfTable, String> {
         if name.is_empty() {
             break;
         }
-        let field_type = desc[11] as char;
         let length = desc[16];
-        let decimal = desc[17];
         if length == 0 {
             break;
         }
-        fields.push(DbfField {
-            name,
-            field_type,
-            length,
-            decimal,
-        });
+        fields.push(DbfField { name, length });
         offset += 32;
     }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ColonField, DotField, InlineField } from "./Field";
+import { DotField, InlineField } from "./Field";
 import { DateInput } from "./DateInput";
 import { MoneyInput } from "./MoneyInput";
 
@@ -72,26 +72,6 @@ describe("DotField", () => {
     expect(screen.getByText("Unit/Size").closest("label")).not.toHaveAttribute("for");
     expect(screen.getByText("Total").closest("label")).not.toHaveAttribute("for");
     expect(screen.queryByRole("textbox", { name: "Unit/Size" })).not.toBeInTheDocument();
-  });
-});
-
-describe("ColonField", () => {
-  it("pads a short label with spaces before the colon", () => {
-    render(
-      <ColonField label="Name" width={10}>
-        <input aria-label="name" />
-      </ColonField>
-    );
-    expect(screen.getByText("Name").closest("label")).toHaveTextContent(/^Name\s+:$/);
-  });
-
-  it("names its control with the label, without the padding or colon", () => {
-    render(
-      <ColonField label="Name" width={10}>
-        <input />
-      </ColonField>
-    );
-    expect(screen.getByRole("textbox", { name: "Name" })).toBeInTheDocument();
   });
 });
 

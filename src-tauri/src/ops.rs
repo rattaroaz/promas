@@ -853,41 +853,6 @@ pub fn get_work_order(
     Ok(Some(WorkOrderWithLines { order, lines }))
 }
 
-pub fn find_work_order(
-    conn: &Connection,
-    company_no: &str,
-    pro_no: &str,
-    order_no: i64,
-) -> Result<Option<WorkOrderWithLines>, String> {
-    use rusqlite::OptionalExtension;
-    let key: Option<(String, String, String, i64)> = conn
-        .query_row(
-            r#"SELECT company_no,pro_no,order_date,order_no FROM work_orders
-               WHERE company_no=? AND pro_no=? AND order_no=?
-               ORDER BY order_date DESC LIMIT 1"#,
-            params![company_no, pro_no, order_no],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-        )
-        .optional()
-        .map_err(map_err)?
-        .or_else(|| {
-            conn.query_row(
-                r#"SELECT company_no,pro_no,order_date,order_no FROM work_orders
-                   WHERE company_no=? AND order_no=?
-                   ORDER BY order_date DESC LIMIT 1"#,
-                params![company_no, order_no],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-            )
-            .optional()
-            .ok()
-            .flatten()
-        });
-    match key {
-        Some((c, p, d, n)) => get_work_order(conn, &c, &p, &d, n),
-        None => Ok(None),
-    }
-}
-
 /// Check Missing Invoice: every work order in the date range, labeled void,
 /// not built (no live invoice carries its order number), or built.
 pub fn report_missing_invoices(
@@ -1489,12 +1454,6 @@ mod tests {
         assert_eq!(full.lines.len(), 2);
         assert_eq!(full.lines[0].price, 100.0);
         assert_eq!(full.order.order_by, "Bob");
-
-        let found = find_work_order(&conn, "1000", "100", 1)
-            .unwrap()
-            .expect("find");
-        assert_eq!(found.order.order_no, 1);
-        assert_eq!(found.lines.len(), 2);
 
         void_work_order(&conn, "1000", "100", "2020-02-01", 1).unwrap();
         let voided = get_work_order(&conn, "1000", "100", "2020-02-01", 1)

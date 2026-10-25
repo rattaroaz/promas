@@ -414,9 +414,6 @@ export async function invoke<T = unknown>(
     const name = String(_args?.name ?? "").trim();
     return (name ? [name] : []) as T;
   }
-  if (cmd === "delete_paint_supply_co") {
-    return [] as T;
-  }
   if (cmd === "report_paint_usage") {
     return [] as T;
   }

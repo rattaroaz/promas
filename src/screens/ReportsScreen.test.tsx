@@ -3,8 +3,6 @@ import { act, fireEvent, renderApp, screen, userEvent, waitFor, within } from ".
 import {
   ReportsScreen,
   agingSearchQuery,
-  formatAgingInvoiceRow,
-  formatPaintUsage,
   sortSalesRows,
 } from "./ReportsScreen";
 import {
@@ -250,13 +248,23 @@ describe("ReportsScreen aging", () => {
     });
   });
 
-  it("formats outstanding invoice rows with address, unit, and PO", () => {
-    const row = formatAgingInvoiceRow(openInv);
-    expect(row).toContain("01/15/2026");
-    expect(row).toContain("250.00");
-    expect(row).toContain("1105 MAPLE ST.");
-    expect(row).toContain("A1");
-    expect(row).toContain("PO-77");
+  it("shows each outstanding invoice with its amount, address, unit, and PO", async () => {
+    const user = userEvent.setup();
+    renderApp(<ReportsScreen onBack={vi.fn()} />);
+    await user.click(
+      screen.getByRole("button", { name: /Open Receivables Aging/i })
+    );
+    await user.click(screen.getByRole("button", { name: /^Run$/i }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Company 1000 outstanding invoices/i,
+      })
+    );
+    const row = await screen.findByRole("button", { name: /01\/15\/2026/ });
+    expect(row).toHaveTextContent("250.00");
+    expect(row).toHaveTextContent("1105 MAPLE ST.");
+    expect(row).toHaveTextContent("A1");
+    expect(row).toHaveTextContent("PO-77");
   });
 
   it("saves the aging list on the summary page to Excel", async () => {
@@ -636,25 +644,6 @@ describe("ReportsScreen paint usage", () => {
     expect(screen.getByText("Mat_Cost")).toBeInTheDocument();
     expect(screen.getByText("Inv_Total")).toBeInTheDocument();
     expect(screen.getByText("Work Date")).toBeInTheDocument();
-  });
-
-  it("formats paint usage columns", () => {
-    const text = formatPaintUsage([
-      {
-        workPerson: "Jose Ramirez",
-        materialCost: 40,
-        invoice: 12,
-        invoiceTotal: 250,
-        paintSupplyCo: "Dunn-Edwards",
-        workDate: "2026-01-20",
-      },
-    ]);
-    expect(text).toContain("Jose Ramirez");
-    expect(text).toContain("40.00");
-    expect(text).toContain("12");
-    expect(text).toContain("250.00");
-    expect(text).toContain("Dunn-Edwards");
-    expect(text).toContain("01/20/2026");
   });
 });
 

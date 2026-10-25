@@ -8,11 +8,7 @@ import {
   noteUpdateOutcome,
   startSpan,
 } from "../lib/observability";
-import {
-  closeUpdateDialog,
-  openUpdateDialog,
-  setUpdateDialog,
-} from "../stores/uiStore";
+import { openUpdateDialog, setUpdateDialog } from "../stores/uiStore";
 
 const UPDATE_FEED_UNAVAILABLE_MESSAGE =
   `No update feed is published yet for ${APP_NAME}.\n\n` +
@@ -154,5 +150,3 @@ export async function checkForUpdatesAndApply(): Promise<void> {
     }
   }
 }
-
-export { closeUpdateDialog };

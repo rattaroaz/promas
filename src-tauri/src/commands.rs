@@ -60,82 +60,6 @@ pub fn save_sysdata(state: State<DbState>, data: SysData) -> Result<(), String> 
     Ok(())
 }
 
-#[tauri::command]
-pub fn get_dashboard(state: State<DbState>) -> Result<DashboardStats, String> {
-    let conn = state.0.lock().map_err(map_err)?;
-    let company_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM companies WHERE voided=0", [], |r| {
-            r.get(0)
-        })
-        .map_err(map_err)?;
-    let property_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM properties WHERE voided=0", [], |r| {
-            r.get(0)
-        })
-        .map_err(map_err)?;
-    let employee_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM employees WHERE voided=0", [], |r| {
-            r.get(0)
-        })
-        .map_err(map_err)?;
-    let invoice_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM invoices WHERE voided=0", [], |r| {
-            r.get(0)
-        })
-        .map_err(map_err)?;
-    let open_balance: f64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(balance),0) FROM invoices WHERE voided=0 AND balance>0",
-            [],
-            |r| r.get(0),
-        )
-        .map_err(map_err)?;
-    let total_sales: f64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(sales_total),0) FROM invoices WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
-        .map_err(map_err)?;
-    let total_payments: f64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(payment),0) FROM cash_receipts WHERE voided=0",
-            [],
-            |r| r.get(0),
-        )
-        .map_err(map_err)?;
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT i.company_no,i.pro_no,i.sales_date,i.invoice,i.order_no,i.order_date,i.order_man,
-               i.sales_unit,i.sales_size,i.sales_total,i.sales_pay,i.sales_bal,i.pay_total,i.balance,
-               i.sales_term,i.sales_due,i.cust_po_no,i.discount_on,i.discount,i.deposit_ref,
-               i.remark1,i.remark2,i.status,i.voided,i.material_cost,i.paint_supply_co,c.name,p.name,p.street
-               FROM invoices i
-               LEFT JOIN companies c ON c.company_no=i.company_no
-               LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
-               WHERE i.voided=0
-               ORDER BY i.sales_date DESC, i.invoice DESC LIMIT 10"#,
-        )
-        .map_err(map_err)?;
-    let recent_invoices = stmt
-        .query_map([], map_invoice)
-        .map_err(map_err)?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(DashboardStats {
-        company_count,
-        property_count,
-        employee_count,
-        invoice_count,
-        open_balance,
-        total_sales,
-        total_payments,
-        recent_invoices,
-    })
-}
-
 fn map_invoice(r: &rusqlite::Row<'_>) -> rusqlite::Result<Invoice> {
     Ok(Invoice {
         company_no: r.get(0)?,
@@ -427,21 +351,6 @@ pub fn save_property(state: State<DbState>, property: Property) -> Result<(), St
     Ok(())
 }
 
-#[tauri::command]
-pub fn delete_property(
-    state: State<DbState>,
-    company_no: String,
-    pro_no: String,
-) -> Result<(), String> {
-    let conn = state.0.lock().map_err(map_err)?;
-    conn.execute(
-        "UPDATE properties SET voided=1 WHERE company_no=? AND pro_no=?",
-        params![company_no, pro_no],
-    )
-    .map_err(map_err)?;
-    Ok(())
-}
-
 // ─── Employees ────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -657,18 +566,6 @@ pub fn save_paint_supply_co(state: State<DbState>, name: String) -> Result<Vec<S
     let conn = state.0.lock().map_err(map_err)?;
     conn.execute(
         "INSERT OR IGNORE INTO paint_supply_cos (name) VALUES (?1)",
-        params![name],
-    )
-    .map_err(map_err)?;
-    list_paint_supply_names(&conn)
-}
-
-#[tauri::command]
-pub fn delete_paint_supply_co(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
-    let name = name.trim().to_string();
-    let conn = state.0.lock().map_err(map_err)?;
-    conn.execute(
-        "DELETE FROM paint_supply_cos WHERE name = ?1 COLLATE NOCASE",
         params![name],
     )
     .map_err(map_err)?;
@@ -997,18 +894,6 @@ pub fn void_work_order(
 ) -> Result<(), String> {
     let conn = state.0.lock().map_err(map_err)?;
     crate::ops::void_work_order(&conn, &company_no, &pro_no, &order_date, order_no)
-}
-
-/// Find work order by order number within company (for invoice build).
-#[tauri::command]
-pub fn find_work_order(
-    state: State<DbState>,
-    company_no: String,
-    pro_no: String,
-    order_no: i64,
-) -> Result<Option<WorkOrderWithLines>, String> {
-    let conn = state.0.lock().map_err(map_err)?;
-    crate::ops::find_work_order(&conn, &company_no, &pro_no, order_no)
 }
 
 // ─── Materials ────────────────────────────────────────────────────────

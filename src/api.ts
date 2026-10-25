@@ -269,17 +269,6 @@ export interface Material {
   empName?: string | null;
 }
 
-export interface DashboardStats {
-  companyCount: number;
-  propertyCount: number;
-  employeeCount: number;
-  invoiceCount: number;
-  openBalance: number;
-  totalSales: number;
-  totalPayments: number;
-  recentInvoices: Invoice[];
-}
-
 export interface AgingRow {
   companyNo: string;
   companyName: string;
@@ -547,7 +536,6 @@ export const emptyWorkOrder = (): WorkOrder => ({
 export const api = {
   getSysdata: () => invoke<SysData>("get_sysdata"),
   saveSysdata: (data: SysData) => invoke("save_sysdata", { data }),
-  getDashboard: () => invoke<DashboardStats>("get_dashboard"),
   listCompanies: (params: ListParams = {}) =>
     invoke<Company[]>("list_companies", { params }),
   getCompany: (companyNo: string) =>
@@ -559,8 +547,6 @@ export const api = {
   listProperties: (params: ListParams = {}) =>
     invoke<Property[]>("list_properties", { params }),
   saveProperty: (property: Property) => invoke("save_property", { property }),
-  deleteProperty: (companyNo: string, proNo: string) =>
-    invoke("delete_property", { companyNo, proNo }),
   listEmployees: (params: ListParams = {}) =>
     invoke<Employee[]>("list_employees", { params }),
   saveEmployee: (employee: Employee) => invoke("save_employee", { employee }),
@@ -573,8 +559,6 @@ export const api = {
   listPaintSupplyCos: () => invoke<string[]>("list_paint_supply_cos"),
   savePaintSupplyCo: (name: string) =>
     invoke<string[]>("save_paint_supply_co", { name }),
-  deletePaintSupplyCo: (name: string) =>
-    invoke<string[]>("delete_paint_supply_co", { name }),
   listWorkTypes: (params: ListParams = {}) =>
     invoke<WorkType[]>("list_work_types", { params }),
   saveWorkType: (workType: WorkType) =>
@@ -632,12 +616,6 @@ export const api = {
       companyNo,
       proNo,
       orderDate,
-      orderNo,
-    }),
-  findWorkOrder: (companyNo: string, proNo: string, orderNo: number) =>
-    invoke<WorkOrderWithLines | null>("find_work_order", {
-      companyNo,
-      proNo,
       orderNo,
     }),
   saveWorkOrder: (data: WorkOrderWithLines) =>

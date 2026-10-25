@@ -12,13 +12,7 @@ import type { BackendDiagnostics, DiagnosticsBundle } from "./types";
 
 export { log } from "./logger";
 export { metrics } from "./metrics";
-export {
-  startSpan,
-  getRecentSpans,
-  getActiveSpanCount,
-  clearSpans,
-  formatRecentSpans,
-} from "./tracing";
+export { startSpan, clearSpans } from "./tracing";
 export {
   setCurrentScreen,
   noteApiError,

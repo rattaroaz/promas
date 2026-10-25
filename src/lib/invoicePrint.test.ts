@@ -8,7 +8,6 @@ import {
   downloadInvoicePdf,
   printInvoiceOnTemplate,
   wrapDescription,
-  wrapToWidth,
   descriptionWrapWidth,
   PRINT_DESC_INDENT,
   PRINT_DESC_SIZE,
@@ -330,12 +329,6 @@ describe("buildInvoicePdf", () => {
     expect(asText).toContain("before noon");
     expect(asText).not.toContain("before noon…");
     expect(asText).not.toContain(description.slice(0, 57) + "…");
-    const { StandardFonts, PDFDocument: Pdf } = await import("pdf-lib");
-    const doc = await Pdf.create();
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const wrapped = wrapToWidth(font, description, 8, 278);
-    expect(wrapped.length).toBeGreaterThan(1);
-    expect(wrapped.join(" ")).toBe(description);
   });
 
   it("indents only the wrapped continuation of a long description", async () => {
@@ -661,12 +654,10 @@ describe("wrapping text to a width", () => {
   });
 
   it("returns one empty line for no text", () => {
-    expect(wrapToWidth(font, "", 9, 100)).toEqual([""]);
     expect(wrapDescription(font, "", 9, 100)).toEqual([""]);
   });
 
   it("keeps blank lines between paragraphs and treats CRLF like LF", () => {
-    expect(wrapToWidth(font, "first\r\n\r\nsecond", 9, 200)).toEqual(["first", "", "second"]);
     expect(wrapDescription(font, "first\r\n\r\nsecond", 9, 200)).toEqual([
       "first",
       "",
@@ -677,13 +668,12 @@ describe("wrapping text to a width", () => {
   it("splits a word wider than the line into pieces that each fit", () => {
     const word = "Supercalifragilisticexpialidocious";
     const width = font.widthOfTextAtSize("Supercali", 9);
-    const lines = wrapToWidth(font, `a ${word} b`, 9, width);
+    const lines = wrapDescription(font, `a ${word} b`, 9, width);
     expect(lines[0]).toBe("a");
-    expect(lines[lines.length - 1]).toBe("b");
-    const pieces = lines.slice(1, -1);
-    expect(pieces.join("")).toBe(word);
-    for (const piece of pieces) {
-      expect(font.widthOfTextAtSize(piece, 9)).toBeLessThanOrEqual(width);
+    expect(lines.length).toBeGreaterThan(3);
+    expect(lines.join("").replace(/\s+/g, "")).toBe(`a${word}b`);
+    for (const line of lines) {
+      expect(font.widthOfTextAtSize(line, 9)).toBeLessThanOrEqual(width + 0.001);
     }
   });
 });

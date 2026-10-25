@@ -112,7 +112,7 @@ fn work_order_save_find_and_void() {
     .unwrap();
     assert!(no > 0);
 
-    let found = ops::find_work_order(&conn, "1000", "01", no)
+    let found = ops::get_work_order(&conn, "1000", "01", "2026-02-01", no)
         .unwrap()
         .expect("found");
     assert_eq!(found.order.order_unit, "A1");

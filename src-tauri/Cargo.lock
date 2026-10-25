@@ -2777,12 +2777,10 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
- "tauri-plugin-fs",
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-updater",
- "thiserror 2.0.19",
 ]
 
 [[package]]

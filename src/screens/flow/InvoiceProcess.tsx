@@ -119,13 +119,6 @@ function firstEmail(...parts: Array<string | null | undefined>): string {
   return "";
 }
 
-function joinFacts(parts: string[]): string {
-  return parts
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(", ");
-}
-
 function contactName(company: Company, property: Property): string {
   const site = str(property.manager) || str(property.contact);
   if (site) return site;
@@ -188,13 +181,6 @@ function siteHeaderRows(company: Company, property: Property): HeaderRow[] {
     { wrap: "words", parts: comments ? [`Comments: ${comments}`] : [] },
   ];
   return rows.filter((row) => row.parts.length > 0);
-}
-
-/** Company / property block. Empty fields are omitted, so lines never end with a comma or a blank. */
-export function siteHeaderLines(company: Company, property: Property): string[] {
-  return siteHeaderRows(company, property).map((row) =>
-    row.wrap === "words" ? row.parts[0] : joinFacts(row.parts)
-  );
 }
 
 function InvoiceLineDescription({

@@ -1,33 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  addDays,
-  cols,
-  fmtDate,
-  labelDots,
-  money,
-  naturalCompare,
-  padL,
-  padR,
-  today,
-  withAccel,
-} from "./utils";
-
-describe("padR / padL", () => {
-  it("pads and truncates", () => {
-    expect(padR("ab", 4)).toBe("ab  ");
-    expect(padR("abcdef", 4)).toBe("abcd");
-    expect(padL("ab", 4)).toBe("  ab");
-    expect(padL(null, 3)).toBe("   ");
-  });
-});
-
-describe("cols", () => {
-  it("puts three spaces between columns even when a value fills its width", () => {
-    expect(cols(padR("(555)555-1212", 13), padR("ELAINE", 18))).toBe(
-      "(555)555-1212   ELAINE            "
-    );
-  });
-});
+import { addDays, fmtDate, money, naturalCompare, today } from "./utils";
 
 describe("money", () => {
   it("formats with commas and two decimals", () => {
@@ -49,25 +21,6 @@ describe("fmtDate", () => {
   it("returns placeholder for empty and passes through other strings", () => {
     expect(fmtDate(null)).toBe("  /  /    ");
     expect(fmtDate("08/05/26")).toBe("08/05/26");
-  });
-});
-
-describe("labelDots / withAccel", () => {
-  it("pads labels with dots", () => {
-    expect(labelDots("Name", 8)).toBe("Name....");
-  });
-
-  it("splits accel letter from label", () => {
-    expect(withAccel("Settings", "T")).toEqual({
-      before: "Se",
-      accel: "t",
-      after: "tings",
-    });
-    expect(withAccel("Settings", "Z")).toEqual({
-      before: "Settings",
-      accel: "",
-      after: "",
-    });
   });
 });
 

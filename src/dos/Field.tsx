@@ -6,7 +6,6 @@ import {
   useId,
   type ReactNode,
 } from "react";
-import { labelDots } from "./utils";
 
 const NATIVE_CONTROLS = new Set(["input", "select", "textarea"]);
 
@@ -49,29 +48,6 @@ export function DotField({
   );
 }
 
-/** Clipper GET form: Company NO  : [input] */
-export function ColonField({
-  label,
-  width = 13,
-  children,
-}: {
-  label: string;
-  width?: number;
-  children: ReactNode;
-}) {
-  const { htmlFor, control } = useLabelledControl(children);
-  const pad = label.length >= width - 1 ? "" : " ".repeat(width - 1 - label.length);
-  return (
-    <div className="dos-field">
-      <label htmlFor={htmlFor} style={{ minWidth: `min(${width}ch, 100%)`, whiteSpace: "pre" }}>
-        {label}
-        <span aria-hidden="true">{pad}:</span>
-      </label>
-      {control}
-    </div>
-  );
-}
-
 /** Search line: Search: [input]. The colon stays out of the control's name. */
 export function InlineField({ label, children }: { label: string; children: ReactNode }) {
   const { htmlFor, control } = useLabelledControl(children);
@@ -86,5 +62,3 @@ export function InlineField({ label, children }: { label: string; children: Reac
     </>
   );
 }
-
-export { labelDots };

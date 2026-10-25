@@ -249,19 +249,6 @@ pub struct FormRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DashboardStats {
-    pub company_count: i64,
-    pub property_count: i64,
-    pub employee_count: i64,
-    pub invoice_count: i64,
-    pub open_balance: f64,
-    pub total_sales: f64,
-    pub total_payments: f64,
-    pub recent_invoices: Vec<Invoice>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct AgingRow {
     pub company_no: String,
     pub company_name: String,
