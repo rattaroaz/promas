@@ -330,3 +330,40 @@ fn company_and_property_search_match_contact() {
     drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_row_that_cannot_be_read_fails_the_query_instead_of_disappearing() {
+    let (dir, conn) = temp_conn("bad_row");
+    upsert_company(&conn, "1000", "ACME");
+    upsert_property(&conn, "1000", "01", "Bldg A");
+
+    // A BLOB in a TEXT column cannot be read as a String.
+    conn.execute(
+        r#"INSERT INTO cash_receipts (company_no,sales_date,invoice,payment,pay_ref_no,pay_date)
+           VALUES ('1000','2026-01-15',1,50,'CHK 1','2026-01-20'),
+                  ('1000','2026-01-15',2,25,X'FF','2026-01-21')"#,
+        [],
+    )
+    .unwrap();
+    let err = ops::list_cash_receipts(&conn, &ListParams::default()).unwrap_err();
+    assert!(err.contains("pay_ref_no"), "{err}");
+
+    conn.execute(
+        r#"INSERT INTO work_orders (company_no,pro_no,order_date,order_no)
+           VALUES ('1000','01','2026-02-01',7)"#,
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        r#"INSERT INTO work_order_lines (company_no,pro_no,order_date,order_no,line_no,description)
+           VALUES ('1000','01','2026-02-01',7,1,'Prep'),
+                  ('1000','01','2026-02-01',7,2,X'FF')"#,
+        [],
+    )
+    .unwrap();
+    let err = ops::get_work_order(&conn, "1000", "01", "2026-02-01", 7).unwrap_err();
+    assert!(err.contains("description"), "{err}");
+
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}

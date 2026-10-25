@@ -145,7 +145,7 @@ pub fn list_companies(state: State<DbState>, params: ListParams) -> Result<Vec<C
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -307,7 +307,7 @@ pub fn list_properties(state: State<DbState>, params: ListParams) -> Result<Vec<
             },
         )
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -388,7 +388,7 @@ pub fn list_employees(state: State<DbState>, params: ListParams) -> Result<Vec<E
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -548,7 +548,7 @@ fn list_paint_supply_names(conn: &rusqlite::Connection) -> Result<Vec<String>, S
     let rows = stmt
         .query_map([], |r| r.get::<_, String>(0))
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -599,7 +599,7 @@ pub fn list_work_types(state: State<DbState>, params: ListParams) -> Result<Vec<
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -687,7 +687,7 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
             map_invoice,
         )
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -757,8 +757,8 @@ pub fn get_invoice(
             },
         )
         .map_err(map_err)?
-        .filter_map(|r| r.ok())
-        .collect();
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(map_err)?;
 
     Ok(Some(InvoiceWithLines {
         invoice: invoice_row,
@@ -863,7 +863,7 @@ pub fn list_work_orders(
             },
         )
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -1146,7 +1146,7 @@ pub fn list_estimates(state: State<DbState>, params: ListParams) -> Result<Vec<E
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]
@@ -1232,7 +1232,7 @@ pub fn list_forms(state: State<DbState>) -> Result<Vec<FormRecord>, String> {
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[tauri::command]

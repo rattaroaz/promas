@@ -336,7 +336,7 @@ pub fn list_cash_receipts(
             },
         )
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 pub fn report_sales_analysis(
@@ -378,7 +378,7 @@ pub fn report_sales_analysis(
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 pub fn list_materials(conn: &Connection, params: &ListParams) -> Result<Vec<Material>, String> {
@@ -436,7 +436,7 @@ pub fn list_materials(conn: &Connection, params: &ListParams) -> Result<Vec<Mate
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 pub fn report_payroll(conn: &Connection, params: &ListParams) -> Result<Vec<PayrollRow>, String> {
@@ -517,7 +517,7 @@ pub fn report_payroll(conn: &Connection, params: &ListParams) -> Result<Vec<Payr
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 pub fn report_paint_usage(
@@ -620,7 +620,7 @@ pub fn report_paint_usage(
             },
         )
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 pub fn report_worker_wages(
@@ -668,7 +668,7 @@ pub fn report_worker_wages(
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 // ─── Work orders ───────────────────────────────────────────────────────
@@ -847,8 +847,8 @@ pub fn get_work_order(
             },
         )
         .map_err(map_err)?
-        .filter_map(|r| r.ok())
-        .collect();
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(map_err)?;
 
     Ok(Some(WorkOrderWithLines { order, lines }))
 }
@@ -986,7 +986,7 @@ pub fn report_aging(
             })
         })
         .map_err(map_err)?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
 }
 
 #[cfg(test)]

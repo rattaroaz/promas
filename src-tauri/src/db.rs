@@ -650,7 +650,8 @@ fn add_column_if_missing(conn: &Connection, table: &str, column: &str, decl: &st
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
     let exists = stmt
         .query_map([], |r| r.get::<_, String>(1))?
-        .filter_map(|r| r.ok())
+        .collect::<Result<Vec<_>>>()?
+        .iter()
         .any(|name| name == column);
     if !exists {
         conn.execute(
