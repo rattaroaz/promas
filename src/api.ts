@@ -728,19 +728,3 @@ export interface BackendDiagnostics {
   crateVersion: string;
   targetTriple: string;
 }
-
-export function money(n: number | null | undefined): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(n ?? 0);
-}
-
-export function fmtDate(d: string | null | undefined): string {
-  if (!d) return "";
-  if (d.length === 10 && d.includes("-")) {
-    const [y, m, day] = d.split("-");
-    return `${m}/${day}/${y}`;
-  }
-  return d;
-}

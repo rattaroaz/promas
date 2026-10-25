@@ -10,25 +10,7 @@ import {
   emptyProperty,
   emptyWorkOrder,
   emptyWorkType,
-  fmtDate,
-  money,
 } from "./api";
-
-describe("api format helpers", () => {
-  it("formats money as USD currency", () => {
-    expect(money(12.5)).toMatch(/\$12\.50/);
-    expect(money(undefined)).toMatch(/\$0\.00/);
-    expect(money(0)).toMatch(/\$0\.00/);
-    expect(money(null)).toMatch(/\$0\.00/);
-  });
-
-  it("formats ISO dates", () => {
-    expect(fmtDate("2026-01-15")).toBe("01/15/2026");
-    expect(fmtDate("")).toBe("");
-    expect(fmtDate(null)).toBe("");
-    expect(fmtDate(undefined)).toBe("");
-  });
-});
 
 describe("empty* factories", () => {
   it("builds a company with defaults", () => {

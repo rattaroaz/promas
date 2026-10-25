@@ -11,7 +11,6 @@
  */
 import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont } from "pdf-lib";
 import type { Company, Property, Invoice, InvoiceLine } from "../api";
-import { fmtDate, money } from "../api";
 
 export interface InvoicePrintPayload {
   company: Company;
@@ -138,8 +137,24 @@ export function wrapDescription(
   return result.length ? result : [""];
 }
 
-function moneyPlain(n: number): string {
-  return money(n).replace("$", "");
+const AMOUNT_FORMAT = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Amounts on the form have no currency sign: 1,234.50 and -5.00. */
+function invoiceAmount(n: number): string {
+  return AMOUNT_FORMAT.format(n);
+}
+
+/** Dates on the form are MM/DD/YYYY; a missing date prints blank. */
+function invoiceDate(d: string | null | undefined): string {
+  if (!d) return "";
+  if (d.length === 10 && d.includes("-")) {
+    const [y, m, day] = d.split("-");
+    return `${m}/${day}/${y}`;
+  }
+  return d;
 }
 
 function draw(
@@ -366,11 +381,11 @@ export async function buildInvoicePdf(
       9,
       { maxWidth: 90, align: "center" }
     );
-    draw(page, font, fmtDate(invoice.salesDate), 385, 102, 10, {
+    draw(page, font, invoiceDate(invoice.salesDate), 385, 102, 10, {
       maxWidth: 90,
       align: "center",
     });
-    draw(page, font, fmtDate(invoice.salesDue), 492, 102, 10, {
+    draw(page, font, invoiceDate(invoice.salesDue), 492, 102, 10, {
       maxWidth: 90,
       align: "center",
     });
@@ -488,7 +503,7 @@ export async function buildInvoicePdf(
     const top = firstRowTop + index * rowH + 2;
     draw(page, font, row.text, PRINT_DESC_X, top, PRINT_DESC_SIZE);
     if (row.price) {
-      draw(page, font, moneyPlain(row.price), colAmt.x + 4, top, 9, {
+      draw(page, font, invoiceAmount(row.price), colAmt.x + 4, top, 9, {
         maxWidth: colAmt.w - 10,
         align: "right",
       });
@@ -561,15 +576,15 @@ export async function buildInvoicePdf(
       (invoice.orderNo > 0 ? String(invoice.orderNo) : "");
     const valTop = valueTop + 5;
 
-    draw(page, font, moneyPlain(subtotal), footCols[0].x + 4, valTop, 9, {
+    draw(page, font, invoiceAmount(subtotal), footCols[0].x + 4, valTop, 9, {
       maxWidth: footCols[0].w - 8,
       align: "right",
     });
-    draw(page, font, moneyPlain(tax), footCols[1].x + 4, valTop, 9, {
+    draw(page, font, invoiceAmount(tax), footCols[1].x + 4, valTop, 9, {
       maxWidth: footCols[1].w - 8,
       align: "right",
     });
-    draw(page, font, moneyPlain(total), footCols[2].x + 4, valTop, 9, {
+    draw(page, font, invoiceAmount(total), footCols[2].x + 4, valTop, 9, {
       maxWidth: footCols[2].w - 8,
       align: "right",
     });
@@ -577,11 +592,11 @@ export async function buildInvoicePdf(
       maxWidth: footCols[3].w - 8,
       align: "center",
     });
-    draw(page, font, moneyPlain(amountPaid), footCols[4].x + 4, valTop, 9, {
+    draw(page, font, invoiceAmount(amountPaid), footCols[4].x + 4, valTop, 9, {
       maxWidth: footCols[4].w - 8,
       align: "right",
     });
-    draw(page, font, moneyPlain(netToPay), footCols[5].x + 4, valTop, 9, {
+    draw(page, font, invoiceAmount(netToPay), footCols[5].x + 4, valTop, 9, {
       maxWidth: footCols[5].w - 8,
       align: "right",
     });

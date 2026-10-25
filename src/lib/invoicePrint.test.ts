@@ -599,6 +599,19 @@ describe("invoice form contents", () => {
     expect(texts(positions)).toContain("5.00");
   });
 
+  it("prints MM/DD/YYYY dates, grouped amounts without a dollar sign, and leaves a missing due date blank", async () => {
+    const all = texts(
+      await drawn({
+        invoice: { ...base.invoice, salesTotal: 1234.5, salesPay: 0, payTotal: 0, balance: -5, salesDue: null },
+        lines: [{ ...base.lines[0], price: 1234.5 }],
+      })
+    );
+    expect(all.filter((t) => /\d\d\/\d\d\/\d{4}/.test(t))).toEqual(["01/15/2020"]);
+    expect(all.filter((t) => t === "1,234.50")).toHaveLength(3);
+    expect(all).toContain("-5.00");
+    expect(all.some((t) => t.includes("$") || t.includes("/  /"))).toBe(false);
+  });
+
   it("skips lines with neither a description nor a price", async () => {
     const alone = await drawn({ lines: [base.lines[1]] });
     const withBlank = await drawn({
