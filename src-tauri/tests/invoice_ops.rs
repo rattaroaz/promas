@@ -146,6 +146,34 @@ fn save_invoice_allocates_number_and_totals() {
 }
 
 #[test]
+fn save_invoice_fails_instead_of_reusing_number_one_when_the_counter_is_unreadable() {
+    let (dir, mut conn) = temp_conn("inv_counter");
+    seed_company(&conn);
+    let first = InvoiceWithLines {
+        invoice: blank_invoice(),
+        lines: vec![line(100.0)],
+    };
+    assert_eq!(ops::save_invoice(&mut conn, first).expect("first save"), 1);
+    conn.execute("DELETE FROM sysdata", []).unwrap();
+
+    let second = InvoiceWithLines {
+        invoice: blank_invoice(),
+        lines: vec![line(5.0)],
+    };
+    let err = ops::save_invoice(&mut conn, second).unwrap_err();
+    assert!(err.contains("next invoice number"), "{err}");
+    let (count, total): (i64, f64) = conn
+        .query_row("SELECT COUNT(*), SUM(sales_total) FROM invoices", [], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
+        .unwrap();
+    assert_eq!((count, total), (1, 100.0));
+
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn save_invoice_stores_material_cost_and_paint_supply() {
     let (dir, mut conn) = temp_conn("mat_cost");
     seed_company(&conn);

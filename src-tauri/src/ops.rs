@@ -81,7 +81,7 @@ pub fn save_invoice(conn: &mut Connection, data: InvoiceWithLines) -> Result<i64
         .query_row("SELECT next_invoice FROM sysdata WHERE id=1", [], |r| {
             r.get(0)
         })
-        .unwrap_or(1);
+        .map_err(|e| format!("Cannot read the next invoice number: {e}"))?;
     if inv.invoice == 0 {
         inv.invoice = stored_next.max(1);
     }
@@ -851,6 +851,59 @@ pub fn get_work_order(
         .map_err(map_err)?;
 
     Ok(Some(WorkOrderWithLines { order, lines }))
+}
+
+/// Insert or update an estimate. A new estimate (est_no 0) takes the next proposal number.
+pub fn save_estimate(conn: &mut Connection, estimate: Estimate) -> Result<i64, String> {
+    let tx = conn.transaction().map_err(map_err)?;
+    let mut est = estimate;
+    if est.est_no == 0 {
+        let next: i64 = tx
+            .query_row("SELECT next_estimate FROM sysdata WHERE id=1", [], |r| {
+                r.get(0)
+            })
+            .map_err(|e| format!("Cannot read the next estimate number: {e}"))?;
+        est.est_no = next;
+        tx.execute(
+            "UPDATE sysdata SET next_estimate=? WHERE id=1",
+            params![next + 1],
+        )
+        .map_err(map_err)?;
+    }
+    if let Some(id) = est.id {
+        tx.execute(
+            r#"UPDATE estimates SET company_no=?,est_date=?,est_no=?,form_no=?,memo=?,status=?,voided=?
+               WHERE id=?"#,
+            params![
+                est.company_no,
+                est.est_date,
+                est.est_no,
+                est.form_no,
+                est.memo,
+                est.status,
+                if est.voided { 1 } else { 0 },
+                id
+            ],
+        )
+        .map_err(map_err)?;
+    } else {
+        tx.execute(
+            r#"INSERT INTO estimates (company_no,est_date,est_no,form_no,memo,status,voided)
+               VALUES (?,?,?,?,?,?,?)"#,
+            params![
+                est.company_no,
+                est.est_date,
+                est.est_no,
+                est.form_no,
+                est.memo,
+                est.status,
+                if est.voided { 1 } else { 0 },
+            ],
+        )
+        .map_err(map_err)?;
+    }
+    tx.commit().map_err(map_err)?;
+    Ok(est.est_no)
 }
 
 /// Check Missing Invoice: every work order in the date range, labeled void,

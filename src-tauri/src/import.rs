@@ -595,7 +595,7 @@ pub fn import_promas_folder(conn: &mut Connection, folder: &Path) -> Result<Impo
         .query_row("SELECT COALESCE(MAX(invoice),0)+1 FROM invoices", [], |r| {
             r.get(0)
         })
-        .unwrap_or(1);
+        .map_err(|e| format!("next invoice: {e}"))?;
     tx.execute(
         "UPDATE sysdata SET next_invoice=? WHERE id=1",
         params![max_inv],

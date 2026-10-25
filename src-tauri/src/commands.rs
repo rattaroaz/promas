@@ -1152,57 +1152,7 @@ pub fn list_estimates(state: State<DbState>, params: ListParams) -> Result<Vec<E
 #[tauri::command]
 pub fn save_estimate(state: State<DbState>, estimate: Estimate) -> Result<i64, String> {
     let mut conn = state.0.lock().map_err(map_err)?;
-    let tx = conn.transaction().map_err(map_err)?;
-    let mut est = estimate;
-    if est.est_no == 0 {
-        let next: i64 = tx
-            .query_row("SELECT next_estimate FROM sysdata WHERE id=1", [], |r| {
-                r.get(0)
-            })
-            .unwrap_or(1);
-        est.est_no = next;
-        tx.execute(
-            "UPDATE sysdata SET next_estimate=? WHERE id=1",
-            params![next + 1],
-        )
-        .map_err(map_err)?;
-    }
-    if let Some(id) = est.id {
-        tx.execute(
-            r#"UPDATE estimates SET company_no=?,est_date=?,est_no=?,form_no=?,memo=?,status=?,voided=?
-               WHERE id=?"#,
-            params![
-                est.company_no,
-                est.est_date,
-                est.est_no,
-                est.form_no,
-                est.memo,
-                est.status,
-                if est.voided { 1 } else { 0 },
-                id
-            ],
-        )
-        .map_err(map_err)?;
-        tx.commit().map_err(map_err)?;
-        Ok(est.est_no)
-    } else {
-        tx.execute(
-            r#"INSERT INTO estimates (company_no,est_date,est_no,form_no,memo,status,voided)
-               VALUES (?,?,?,?,?,?,?)"#,
-            params![
-                est.company_no,
-                est.est_date,
-                est.est_no,
-                est.form_no,
-                est.memo,
-                est.status,
-                if est.voided { 1 } else { 0 },
-            ],
-        )
-        .map_err(map_err)?;
-        tx.commit().map_err(map_err)?;
-        Ok(est.est_no)
-    }
+    crate::ops::save_estimate(&mut conn, estimate)
 }
 
 #[tauri::command]

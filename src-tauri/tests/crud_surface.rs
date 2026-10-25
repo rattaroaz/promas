@@ -179,6 +179,39 @@ fn material_and_estimate_round_trip() {
 }
 
 #[test]
+fn new_estimates_count_up_and_fail_when_the_counter_is_unreadable() {
+    let (dir, mut conn) = temp_conn("est_counter");
+    upsert_company(&conn, "1000", "ACME");
+    let new = |memo: &str| Estimate {
+        id: None,
+        company_no: "1000".into(),
+        est_date: Some("2026-03-02".into()),
+        est_no: 0,
+        form_no: String::new(),
+        memo: memo.into(),
+        status: String::new(),
+        voided: false,
+    };
+    assert_eq!(ops::save_estimate(&mut conn, new("first")).unwrap(), 1);
+    assert_eq!(ops::save_estimate(&mut conn, new("second")).unwrap(), 2);
+
+    conn.execute("DELETE FROM sysdata", []).unwrap();
+    let err = ops::save_estimate(&mut conn, new("third")).unwrap_err();
+    assert!(err.contains("next estimate number"), "{err}");
+    let numbers: Vec<i64> = conn
+        .prepare("SELECT est_no FROM estimates ORDER BY id")
+        .unwrap()
+        .query_map([], |r| r.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(numbers, vec![1, 2]);
+
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn aging_report_after_open_invoice() {
     let (dir, mut conn) = temp_conn("aging");
     upsert_company(&conn, "1000", "ACME");
