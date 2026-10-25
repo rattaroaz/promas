@@ -14,12 +14,7 @@ import {
   type Company,
   type Property,
 } from "../api";
-import { save } from "@tauri-apps/plugin-dialog";
 import { downloadInvoicePdf, printInvoiceOnTemplate } from "../lib/invoicePrint";
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  save: vi.fn(),
-}));
 
 vi.mock("../lib/invoicePrint", () => ({
   printInvoiceOnTemplate: vi.fn(),
@@ -111,8 +106,7 @@ describe("ReportsScreen aging", () => {
       },
     ]);
     vi.mocked(printInvoiceOnTemplate).mockResolvedValue(undefined);
-    vi.mocked(api.saveTextFile).mockResolvedValue(undefined);
-    vi.mocked(save).mockResolvedValue("C:\\temp\\aging.xls");
+    vi.mocked(api.saveTextFile).mockResolvedValue("C:\\temp\\aging.xls");
     vi.mocked(api.reportAging).mockResolvedValue([
       {
         companyNo: "1000",
@@ -280,12 +274,14 @@ describe("ReportsScreen aging", () => {
     await user.click(screen.getByRole("button", { name: /^Excel$/i }));
 
     await waitFor(() => {
-      expect(save).toHaveBeenCalledWith(
+      expect(api.saveTextFile).toHaveBeenCalledWith(
         expect.objectContaining({
-          defaultPath: expect.stringMatching(/OpenReceivableAging-.*\.xls$/),
-        })
+          title: "Save to Excel",
+          fileName: expect.stringMatching(/OpenReceivableAging-.*\.xls$/),
+          extensions: ["xls"],
+        }),
+        expect.any(String)
       );
-      expect(api.saveTextFile).toHaveBeenCalled();
     });
     expect(api.listInvoices).not.toHaveBeenCalled();
     const body = vi.mocked(api.saveTextFile).mock.calls[0][1];
@@ -311,14 +307,12 @@ describe("ReportsScreen aging", () => {
     await user.click(screen.getByRole("button", { name: /^Excel$/i }));
 
     await waitFor(() => {
-      expect(save).toHaveBeenCalledWith(
+      expect(api.saveTextFile).toHaveBeenCalledWith(
         expect.objectContaining({
-          defaultPath: expect.stringMatching(
-            /OutstandingInvoices-1000-.*\.xls$/
-          ),
-        })
+          fileName: expect.stringMatching(/OutstandingInvoices-1000-.*\.xls$/),
+        }),
+        expect.any(String)
       );
-      expect(api.saveTextFile).toHaveBeenCalled();
     });
     const body = vi.mocked(api.saveTextFile).mock.calls[0][1];
     expect(body).toContain("1105 MAPLE ST.");
@@ -884,8 +878,7 @@ describe("ReportsScreen keys, other reports and failures", () => {
     ]);
     vi.mocked(printInvoiceOnTemplate).mockResolvedValue(undefined);
     vi.mocked(downloadInvoicePdf).mockResolvedValue(undefined);
-    vi.mocked(save).mockResolvedValue("C:\\temp\\aging.xls");
-    vi.mocked(api.saveTextFile).mockResolvedValue(undefined);
+    vi.mocked(api.saveTextFile).mockResolvedValue("C:\\temp\\aging.xls");
   });
 
   const AGING_LIST = "Click a company number for outstanding invoice items Esc=Exit End=Print (X)cel";
@@ -1119,21 +1112,22 @@ describe("ReportsScreen keys, other reports and failures", () => {
     });
 
     it("cancelling the Excel save keeps the list and the key guide", async () => {
-      vi.mocked(save).mockResolvedValue(null);
+      vi.mocked(api.saveTextFile).mockResolvedValue(null);
       const { user } = renderReports();
       await user.click(screen.getByRole("button", { name: /Open Receivables Aging/i }));
       await user.click(screen.getByRole("button", { name: /^Run$/i }));
       await screen.findByRole("button", { name: /Company 1000 outstanding invoices/ });
       await user.click(screen.getByRole("button", { name: /^Excel$/ }));
-      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(api.saveTextFile).toHaveBeenCalledTimes(1));
+      await act(async () => {});
       expect(messageBar()).toHaveTextContent(AGING_LIST);
 
       await user.click(screen.getByRole("button", { name: /Company 1000 outstanding invoices/ }));
       await screen.findByText(/Outstanding Invoices/);
       key("X");
-      await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(api.saveTextFile).toHaveBeenCalledTimes(2));
       await waitFor(() => expect(messageBar()).toHaveTextContent("Esc=Back to aging (X)cel"));
-      expect(api.saveTextFile).not.toHaveBeenCalled();
+      expect(messageBar()).not.toHaveTextContent("Excel saved");
     });
 
     it("a failed Excel save is reported", async () => {

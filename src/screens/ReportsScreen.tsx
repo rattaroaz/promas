@@ -21,7 +21,6 @@ import { Screen, HelpOverlay } from "../dos/Shell";
 import { InlineField } from "../dos/Field";
 import { money, fmtDate, today } from "../dos/utils";
 import { SubMenu, MenuItem } from "./SubMenu";
-import { save } from "@tauri-apps/plugin-dialog";
 import {
   agingExcelFileName,
   buildAgingSummaryWorkbook,
@@ -441,23 +440,24 @@ export function ReportsScreen({ onBack }: { onBack: () => void }) {
         setAgingRows(rows);
         setText("");
       }
-      const dest = await save({
-        title: "Save to Excel",
-        defaultPath: detail
-          ? outstandingExcelFileName(detail.company.companyNo)
-          : agingExcelFileName(),
-        filters: [{ name: "Excel Workbook", extensions: ["xls"] }],
-      });
+      const body = detail
+        ? buildOutstandingInvoicesWorkbook(detail.company, detail.invoices)
+        : buildAgingSummaryWorkbook(rows ?? []);
+      const dest = await api.saveTextFile(
+        {
+          title: "Save to Excel",
+          fileName: detail
+            ? outstandingExcelFileName(detail.company.companyNo)
+            : agingExcelFileName(),
+          filterName: "Excel Workbook",
+          extensions: ["xls"],
+        },
+        body
+      );
       if (!dest) {
         setMsg(detail ? "Esc=Back to aging  (X)cel" : AGING_LIST_MSG);
         return;
       }
-      setRunning(true);
-      setMsg("Saving Excel workbook...");
-      const body = detail
-        ? buildOutstandingInvoicesWorkbook(detail.company, detail.invoices)
-        : buildAgingSummaryWorkbook(rows ?? []);
-      await api.saveTextFile(dest, body);
       setMsg(`Excel saved to: ${dest}`);
     } catch (e) {
       setMsg(String(e));

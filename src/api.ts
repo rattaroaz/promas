@@ -717,9 +717,17 @@ export const api = {
   getBackendDiagnostics: () =>
     invoke<BackendDiagnostics>("get_backend_diagnostics"),
   openLogDir: () => invoke("open_log_dir"),
-  saveTextFile: (path: string, contents: string) =>
-    invoke("save_text_file", { path, contents }),
+  /** Asks where to save, then writes the file. Resolves to the chosen path, or null if cancelled. */
+  saveTextFile: (dialog: SaveDialog, contents: string) =>
+    invoke<string | null>("save_text_file", { dialog, contents }),
 };
+
+export interface SaveDialog {
+  title: string;
+  fileName: string;
+  filterName: string;
+  extensions: string[];
+}
 
 export interface BackendDiagnostics {
   dbPath: string;

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { save } from "@tauri-apps/plugin-dialog";
 import { api, BackendDiagnostics } from "../api";
 import {
   clearSpans,
@@ -103,14 +102,17 @@ export function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
 
   async function saveBundle() {
     try {
-      const dest = await save({
-        title: "Save Diagnostics Bundle",
-        defaultPath: `promas-diagnostics-${todayStamp()}.txt`,
-        filters: [{ name: "Text", extensions: ["txt"] }],
-      });
-      if (!dest) return;
       const body = formatDiagnosticsText(backend, { sanitize: true });
-      await api.saveTextFile(dest, body);
+      const dest = await api.saveTextFile(
+        {
+          title: "Save Diagnostics Bundle",
+          fileName: `promas-diagnostics-${todayStamp()}.txt`,
+          filterName: "Text",
+          extensions: ["txt"],
+        },
+        body
+      );
+      if (!dest) return;
       setMsg(`Diagnostics saved (paths redacted): ${dest}`);
       setMsgKind("info");
       log.info("app", "diagnostics saved to file");

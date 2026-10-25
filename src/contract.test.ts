@@ -186,7 +186,7 @@ const CALLS: { [K in keyof typeof api]: Parameters<(typeof api)[K]> } = {
   importDatabase: ["D:\\old\\promas.db"],
   getBackendDiagnostics: [],
   openLogDir: [],
-  saveTextFile: ["D:\\out\\bundle.txt", "contents"],
+  saveTextFile: [{ title: "Save", fileName: "bundle.txt", filterName: "Text", extensions: ["txt"] }, "contents"],
 };
 
 async function callEach() {
@@ -256,7 +256,7 @@ describe("frontend and backend contract", () => {
     const ts = tsInterfaces();
     const shared = [...ts.keys()].filter((name) => rust.has(name));
     expect(shared).toEqual(
-      expect.arrayContaining(["Company", "Property", "Invoice", "InvoiceLine", "CashReceipt", "WorkOrder", "ListParams", "WorkPerson", "BackendDiagnostics"])
+      expect.arrayContaining(["Company", "Property", "Invoice", "InvoiceLine", "CashReceipt", "WorkOrder", "ListParams", "WorkPerson", "BackendDiagnostics", "SaveDialog"])
     );
     const problems: string[] = [];
     for (const name of shared) {

@@ -238,7 +238,7 @@ export async function invoke<T = unknown>(
     return undefined as T;
   }
   if (cmd === "save_text_file") {
-    return undefined as T;
+    return null as T;
   }
   if (cmd === "confirm_quit") {
     return undefined as T;

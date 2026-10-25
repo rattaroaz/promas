@@ -2,13 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderApp, screen, userEvent, waitFor } from "../test/render";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { api } from "../api";
-import { save } from "@tauri-apps/plugin-dialog";
 import { getAppState, log, metrics } from "../lib/observability";
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: vi.fn(),
-  save: vi.fn(),
-}));
 
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
@@ -47,7 +41,7 @@ describe("DiagnosticsPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.getBackendDiagnostics).mockResolvedValue({ ...backend });
-    vi.mocked(api.saveTextFile).mockResolvedValue(undefined);
+    vi.mocked(api.saveTextFile).mockResolvedValue("D:\\share\\diag.txt");
     vi.mocked(api.openLogDir).mockResolvedValue(undefined);
   });
 
@@ -77,27 +71,26 @@ describe("DiagnosticsPanel", () => {
     expect(await screen.findByText(/clipboard denied/)).toBeInTheDocument();
   });
 
-  it("saves the redacted bundle to the chosen file", async () => {
-    vi.mocked(save).mockResolvedValue("D:\\share\\diag.txt");
+  it("saves the redacted bundle where the user chooses", async () => {
     const { user } = await openPanel();
     await user.keyboard("s");
     await waitFor(() => expect(api.saveTextFile).toHaveBeenCalledTimes(1));
-    const [dest, body] = vi.mocked(api.saveTextFile).mock.calls[0];
-    expect(dest).toBe("D:\\share\\diag.txt");
+    const [dialog, body] = vi.mocked(api.saveTextFile).mock.calls[0];
+    expect(dialog).toMatchObject({ title: "Save Diagnostics Bundle", filterName: "Text", extensions: ["txt"] });
+    expect(dialog.fileName).toMatch(/^promas-diagnostics-\d{8}\.txt$/);
     expect(body).toContain("dbPath: <redacted-path>");
     expect(body).not.toContain("kim");
-    expect(vi.mocked(save).mock.calls[0][0]?.defaultPath).toMatch(/^promas-diagnostics-\d{8}\.txt$/);
     expect(await screen.findByText("Diagnostics saved (paths redacted): D:\\share\\diag.txt")).toBeInTheDocument();
   });
 
-  it("saves nothing when the file dialog is cancelled, and shows a failed write", async () => {
-    vi.mocked(save).mockResolvedValue(null);
+  it("reports nothing saved when the save is cancelled, and shows a failed write", async () => {
+    vi.mocked(api.saveTextFile).mockResolvedValue(null);
     const { user } = await openPanel();
     await user.click(screen.getByRole("button", { name: "Save to file (S)" }));
-    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    expect(api.saveTextFile).not.toHaveBeenCalled();
+    await waitFor(() => expect(api.saveTextFile).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(screen.queryByText(/Diagnostics saved/)).not.toBeInTheDocument();
 
-    vi.mocked(save).mockResolvedValue("D:\\share\\diag.txt");
     vi.mocked(api.saveTextFile).mockRejectedValue(new Error("disk full"));
     await user.keyboard("S");
     expect(await screen.findByText(/disk full/)).toBeInTheDocument();

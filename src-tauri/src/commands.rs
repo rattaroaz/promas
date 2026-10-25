@@ -1269,17 +1269,45 @@ pub fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
     tauri_plugin_opener::open_path(&log_dir, None::<&str>).map_err(|e| format!("open log dir: {e}"))
 }
 
-/// Write a UTF-8 text file (used for diagnostics export).
+/// What the save dialog shows: its title, the suggested file name, and the file type filter.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveDialog {
+    pub title: String,
+    pub file_name: String,
+    pub filter_name: String,
+    pub extensions: Vec<String>,
+}
+
+/// Asks where to save, then writes `contents` there as UTF-8 (diagnostics and
+/// Excel exports). Returns the chosen path, or None if the user cancels.
+/// The dialog opens here, not in the page, so the page can't choose the path.
 #[tauri::command]
-pub fn save_text_file(path: String, contents: String) -> Result<(), String> {
-    if let Some(parent) = std::path::Path::new(&path).parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent).map_err(|e| format!("create dir: {e}"))?;
-        }
+pub async fn save_text_file(
+    window: tauri::Window,
+    dialog: SaveDialog,
+    contents: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let extensions: Vec<&str> = dialog.extensions.iter().map(String::as_str).collect();
+    let mut picker = window
+        .dialog()
+        .file()
+        .set_title(dialog.title)
+        .set_file_name(dialog.file_name)
+        .add_filter(dialog.filter_name, &extensions);
+    #[cfg(desktop)]
+    {
+        picker = picker.set_parent(&window);
     }
-    std::fs::write(&path, contents.as_bytes()).map_err(|e| format!("write {path}: {e}"))?;
-    log::info!(target: "promas::diag", "saved text file → {path}");
-    Ok(())
+    let Some(chosen) = picker.blocking_save_file() else {
+        return Ok(None);
+    };
+    let path = chosen.simplified().into_path().map_err(|e| e.to_string())?;
+    std::fs::write(&path, contents.as_bytes())
+        .map_err(|e| format!("write {}: {e}", path.display()))?;
+    log::info!(target: "promas::diag", "saved text file → {}", path.display());
+    Ok(Some(path.display().to_string()))
 }
 
 /// User confirmed quit — tear down the window and exit the process.
