@@ -6,7 +6,8 @@
  *  - No JOB #
  *  - COMPANY INFORMATION / SERVICE ADDRESS
  *  - Description table extended nearly to the bottom
- *  - Subtotal bar at the bottom of the letter page
+ *  - Subtotal bar at the bottom of the last page. Lines that do not fit
+ *    continue on another page with the same header.
  */
 import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont } from "pdf-lib";
 import type { Company, Property, Invoice, InvoiceLine } from "../api";
@@ -224,6 +225,35 @@ function fillRect(
   });
 }
 
+/** One row of the description table. */
+type BodyRow =
+  | { kind: "line"; text: string; price: number }
+  | { kind: "remark"; text: string };
+
+/**
+ * Fill pages of `perPage` rows in order. A group (one item's wrapped lines)
+ * that does not fit in the rest of a page starts the next page. A group longer
+ * than a whole page continues across pages.
+ */
+export function paginateRows<T>(groups: T[][], perPage: number): T[][] {
+  const pages: T[][] = [[]];
+  for (const group of groups) {
+    let page = pages[pages.length - 1];
+    if (page.length > 0 && page.length + group.length > perPage && group.length <= perPage) {
+      page = [];
+      pages.push(page);
+    }
+    for (const row of group) {
+      if (page.length >= perPage) {
+        page = [];
+        pages.push(page);
+      }
+      page.push(row);
+    }
+  }
+  return pages;
+}
+
 export async function buildInvoicePdf(
   data: InvoicePrintPayload
 ): Promise<Uint8Array> {
@@ -235,53 +265,13 @@ export async function buildInvoicePdf(
   }
   const templateBytes = await res.arrayBuffer();
 
-  // Letter-size document; stamp original template at the top
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
   const src = await PDFDocument.load(templateBytes);
   const [tplEmbedded] = await pdfDoc.embedPdf(src, [0]);
-  page.drawPage(tplEmbedded, {
-    x: 0,
-    y: PAGE_H - TPL_H, // pin template to top of letter page
-    width: PAGE_W,
-    height: TPL_H,
-  });
-
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const { company, property, invoice, lines } = data;
 
-  // ── Cover template regions we replace ─────────────────────────────
-  // Left: JOB # + bill-to rules (do not touch invoice header boxes on right)
-  whiteOut(page, 14, 100, 290, 108);
-  // Right: job-site / service rules only (below DATE/DUE DATE boxes)
-  whiteOut(page, 300, 122, 280, 86);
-  // Everything from description header through bottom of letter page
-  whiteOut(page, 14, 208, PAGE_W - 28, PAGE_H - 208 - 4);
-
-  // ── Header box values (on template cells at top) ──────────────────
-  draw(page, font, String(invoice.invoice || ""), 385, 68, 11, {
-    maxWidth: 90,
-    align: "center",
-  });
-  draw(
-    page,
-    font,
-    clip(invoice.salesTerm || "Net  7 Days", 18),
-    492,
-    68,
-    9,
-    { maxWidth: 90, align: "center" }
-  );
-  draw(page, font, fmtDate(invoice.salesDate), 385, 102, 10, {
-    maxWidth: 90,
-    align: "center",
-  });
-  draw(page, font, fmtDate(invoice.salesDue), 492, 102, 10, {
-    maxWidth: 90,
-    align: "center",
-  });
-
-  // ── Company / service address — above description lines ───────────
+  // ── Company / service address block ───────────────────────────────
   // Redraw the whole block (template rules were misaligned with text).
   // Layout: label, then 5 rows of text each sitting just above its rule.
   const left = 18;
@@ -294,19 +284,6 @@ export async function buildInvoicePdf(
     { label: "COMPANY INFORMATION", x: 25, textX: 28, ruleX: 25, ruleW: 250 },
     { label: "SERVICE ADDRESS", x: 310, textX: 314, ruleX: 310, ruleW: 250 },
   ] as const;
-
-  for (const col of ADDR_COLS) {
-    draw(page, font, col.label, col.x, ADDR_LABEL_TOP, 8);
-    for (let i = 0; i < ADDR_RULE_COUNT; i++) {
-      const ruleTop = ADDR_FIRST_RULE + i * ADDR_LINE_H;
-      page.drawLine({
-        start: { x: col.ruleX, y: PAGE_H - ruleTop },
-        end: { x: col.ruleX + col.ruleW, y: PAGE_H - ruleTop },
-        thickness: 0.6,
-        color: rgb(0, 0, 0),
-      });
-    }
-  }
 
   const companyLines = [
     company.name,
@@ -328,17 +305,6 @@ export async function buildInvoicePdf(
   // Text baseline ~2pt above each rule (top-origin: ruleTop − font ≈ text top)
   const addrTextTop = (ruleIndex: number, size = 9) =>
     ADDR_FIRST_RULE + ruleIndex * ADDR_LINE_H - size - 1;
-
-  companyLines.forEach((line, i) => {
-    if (i >= ADDR_RULE_COUNT) return;
-    draw(page, font, clip(line, 42), 28, addrTextTop(i), 9, { maxWidth: 210 });
-  });
-  serviceLines.forEach((line, i) => {
-    if (i >= ADDR_RULE_COUNT) return;
-    draw(page, font, clip(line, 42), 314, addrTextTop(i), 9, {
-      maxWidth: 210,
-    });
-  });
 
   // ═══════════════════════════════════════════════════════════════════
   // Description table fills letter page; totals at true bottom
@@ -368,203 +334,288 @@ export async function buildInvoicePdf(
   const availableForRows = tableBottom - firstRowTop;
   const maxRows = Math.max(12, Math.floor(availableForRows / rowH));
 
-  // Table header
-  fillRect(page, left, tableHeaderTop, tableW, tableHeaderH, rgb(0.15, 0.15, 0.15));
-  const drawHdr = (
-    text: string,
-    x: number,
-    w: number,
-    size: number,
-    align: "left" | "center" = "left"
-  ) => {
-    let dx = x + 4;
-    const tw = font.widthOfTextAtSize(text, size);
-    if (align === "center") dx = x + (w - tw) / 2;
-    page.drawText(text, {
-      x: dx,
-      y: yTop(tableHeaderTop + Math.max(3, (tableHeaderH - size) / 2), size),
-      size,
+  /** Template, header boxes, addresses, and the empty table. Every page has them. */
+  const drawFrame = (page: PDFPage) => {
+    // Letter-size page; stamp original template at the top
+    page.drawPage(tplEmbedded, {
+      x: 0,
+      y: PAGE_H - TPL_H, // pin template to top of letter page
+      width: PAGE_W,
+      height: TPL_H,
+    });
+
+    // ── Cover template regions we replace ───────────────────────────
+    // Left: JOB # + bill-to rules (do not touch invoice header boxes on right)
+    whiteOut(page, 14, 100, 290, 108);
+    // Right: job-site / service rules only (below DATE/DUE DATE boxes)
+    whiteOut(page, 300, 122, 280, 86);
+    // Everything from description header through bottom of letter page
+    whiteOut(page, 14, 208, PAGE_W - 28, PAGE_H - 208 - 4);
+
+    // ── Header box values (on template cells at top) ────────────────
+    draw(page, font, String(invoice.invoice || ""), 385, 68, 11, {
+      maxWidth: 90,
+      align: "center",
+    });
+    draw(
+      page,
       font,
-      color: rgb(1, 1, 1),
+      clip(invoice.salesTerm || "Net  7 Days", 18),
+      492,
+      68,
+      9,
+      { maxWidth: 90, align: "center" }
+    );
+    draw(page, font, fmtDate(invoice.salesDate), 385, 102, 10, {
+      maxWidth: 90,
+      align: "center",
     });
-  };
-  drawHdr("DESCRIPTION", colDesc.x, colDesc.w, PRINT_DESC_SIZE);
-  drawHdr("AMOUNT", colAmt.x, colAmt.w, 8, "center");
-
-  const tableHeight = tableHeaderH + maxRows * rowH;
-  strokeRect(page, left, tableHeaderTop, tableW, tableHeight, 1);
-
-  page.drawLine({
-    start: { x: colAmt.x, y: PAGE_H - tableHeaderTop - tableHeight },
-    end: { x: colAmt.x, y: PAGE_H - tableHeaderTop },
-    thickness: 0.6,
-    color: rgb(0, 0, 0),
-  });
-  for (let i = 1; i <= maxRows; i++) {
-    const y = PAGE_H - (firstRowTop + i * rowH);
-    page.drawLine({
-      start: { x: left, y },
-      end: { x: right, y },
-      thickness: 0.5,
-      color: rgb(0.4, 0.4, 0.4),
+    draw(page, font, fmtDate(invoice.salesDue), 492, 102, 10, {
+      maxWidth: 90,
+      align: "center",
     });
-  }
-  {
-    const y = PAGE_H - firstRowTop;
+
+    for (const col of ADDR_COLS) {
+      draw(page, font, col.label, col.x, ADDR_LABEL_TOP, 8);
+      for (let i = 0; i < ADDR_RULE_COUNT; i++) {
+        const ruleTop = ADDR_FIRST_RULE + i * ADDR_LINE_H;
+        page.drawLine({
+          start: { x: col.ruleX, y: PAGE_H - ruleTop },
+          end: { x: col.ruleX + col.ruleW, y: PAGE_H - ruleTop },
+          thickness: 0.6,
+          color: rgb(0, 0, 0),
+        });
+      }
+    }
+    companyLines.forEach((line, i) => {
+      if (i >= ADDR_RULE_COUNT) return;
+      draw(page, font, clip(line, 42), 28, addrTextTop(i), 9, { maxWidth: 210 });
+    });
+    serviceLines.forEach((line, i) => {
+      if (i >= ADDR_RULE_COUNT) return;
+      draw(page, font, clip(line, 42), 314, addrTextTop(i), 9, {
+        maxWidth: 210,
+      });
+    });
+
+    // Table header
+    fillRect(page, left, tableHeaderTop, tableW, tableHeaderH, rgb(0.15, 0.15, 0.15));
+    const drawHdr = (
+      text: string,
+      x: number,
+      w: number,
+      size: number,
+      align: "left" | "center" = "left"
+    ) => {
+      let dx = x + 4;
+      const tw = font.widthOfTextAtSize(text, size);
+      if (align === "center") dx = x + (w - tw) / 2;
+      page.drawText(text, {
+        x: dx,
+        y: yTop(tableHeaderTop + Math.max(3, (tableHeaderH - size) / 2), size),
+        size,
+        font,
+        color: rgb(1, 1, 1),
+      });
+    };
+    drawHdr("DESCRIPTION", colDesc.x, colDesc.w, PRINT_DESC_SIZE);
+    drawHdr("AMOUNT", colAmt.x, colAmt.w, 8, "center");
+
+    const tableHeight = tableHeaderH + maxRows * rowH;
+    strokeRect(page, left, tableHeaderTop, tableW, tableHeight, 1);
+
     page.drawLine({
-      start: { x: left, y },
-      end: { x: right, y },
-      thickness: 0.8,
+      start: { x: colAmt.x, y: PAGE_H - tableHeaderTop - tableHeight },
+      end: { x: colAmt.x, y: PAGE_H - tableHeaderTop },
+      thickness: 0.6,
       color: rgb(0, 0, 0),
     });
-  }
+    for (let i = 1; i <= maxRows; i++) {
+      const y = PAGE_H - (firstRowTop + i * rowH);
+      page.drawLine({
+        start: { x: left, y },
+        end: { x: right, y },
+        thickness: 0.5,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+    }
+    {
+      const y = PAGE_H - firstRowTop;
+      page.drawLine({
+        start: { x: left, y },
+        end: { x: right, y },
+        thickness: 0.8,
+        color: rgb(0, 0, 0),
+      });
+    }
 
-  // Apt/Unit and Size sit on the row directly under DESCRIPTION.
-  // One blank spacer row follows, then the description lines.
-  const unitRow = PRINT_UNIT_ROW;
-  const row0Top = firstRowTop + unitRow * rowH + 3;
-  draw(page, font, "APT UNIT # :", PRINT_DESC_X, row0Top, 8);
-  draw(page, font, clip(invoice.salesUnit || "", 12), 78, row0Top, 9, {
-    maxWidth: 50,
-  });
-  draw(page, font, "SIZE :", 140, row0Top, 8);
-  draw(page, font, clip(invoice.salesSize || "", 14), 170, row0Top, 9, {
-    maxWidth: 80,
-  });
+    // Apt/Unit and Size sit on the row directly under DESCRIPTION.
+    // One blank spacer row follows, then the description lines.
+    const row0Top = firstRowTop + PRINT_UNIT_ROW * rowH + 3;
+    draw(page, font, "APT UNIT # :", PRINT_DESC_X, row0Top, 8);
+    draw(page, font, clip(invoice.salesUnit || "", 12), 78, row0Top, 9, {
+      maxWidth: 50,
+    });
+    draw(page, font, "SIZE :", 140, row0Top, 8);
+    draw(page, font, clip(invoice.salesSize || "", 14), 170, row0Top, 9, {
+      maxWidth: 80,
+    });
+
+    if (invoice.voided) {
+      page.drawText("*** V O I D  I N V O I C E ***", {
+        x: 160,
+        y: yTop(tableHeaderTop - 18, 14),
+        size: 14,
+        font,
+        color: rgb(0.7, 0, 0),
+      });
+    }
+  };
+
+  const drawRow = (page: PDFPage, row: BodyRow, index: number) => {
+    if (row.kind === "remark") {
+      draw(
+        page,
+        font,
+        clip(row.text, 58),
+        PRINT_DESC_X,
+        firstRowTop + index * rowH + 3,
+        8,
+        { maxWidth: colDesc.w - 12 }
+      );
+      return;
+    }
+    const top = firstRowTop + index * rowH + 2;
+    draw(page, font, row.text, PRINT_DESC_X, top, PRINT_DESC_SIZE);
+    if (row.price) {
+      draw(page, font, moneyPlain(row.price), colAmt.x + 4, top, 9, {
+        maxWidth: colAmt.w - 10,
+        align: "right",
+      });
+    }
+  };
 
   const itemLines = lines.filter(
     (l) => (l.description || "").trim() || l.price
   );
+
+  // ── Totals at bottom of the last page ─────────────────────────────
+  const drawTotals = (page: PDFPage) => {
+    const footCols = [
+      { label: "SUBTOTAL", x: left, w: 85 },
+      { label: "SALES TAX", x: left + 85, w: 70 },
+      { label: "TOTAL", x: left + 155, w: 80 },
+      { label: "PO#/WO#", x: left + 235, w: 100 },
+      { label: "AMOUNT PAID", x: left + 335, w: 85 },
+      { label: "NET TO PAY", x: left + 420, w: tableW - 420 },
+    ];
+
+    fillRect(page, left, totalsTop, tableW, totalsHeaderH, rgb(0.15, 0.15, 0.15));
+    for (const c of footCols) {
+      const size = 7;
+      const tw = font.widthOfTextAtSize(c.label, size);
+      page.drawText(c.label, {
+        x: c.x + (c.w - tw) / 2,
+        y: yTop(totalsTop + 4, size),
+        size,
+        font,
+        color: rgb(1, 1, 1),
+      });
+    }
+
+    const valueTop = totalsTop + totalsHeaderH;
+    strokeRect(page, left, totalsTop, tableW, totalsBlockH, 1);
+    for (const c of footCols.slice(1)) {
+      page.drawLine({
+        start: { x: c.x, y: PAGE_H - totalsTop - totalsBlockH },
+        end: { x: c.x, y: PAGE_H - totalsTop },
+        thickness: 0.6,
+        color: rgb(0, 0, 0),
+      });
+    }
+    {
+      const y = PAGE_H - valueTop;
+      page.drawLine({
+        start: { x: left, y },
+        end: { x: right, y },
+        thickness: 0.6,
+        color: rgb(0, 0, 0),
+      });
+    }
+
+    // Match DB model: total = Σ lines; paid = deposit + cash; net = balance
+    const subtotal =
+      invoice.salesTotal ||
+      itemLines.reduce((s, l) => s + (l.price || 0), 0);
+    const tax = 0;
+    const total = subtotal + tax;
+    const deposit = invoice.salesPay || 0;
+    const cashPaid = invoice.payTotal || 0;
+    const amountPaid = deposit + cashPaid;
+    const netToPay =
+      invoice.balance != null
+        ? invoice.balance
+        : Math.round((total - amountPaid) * 100) / 100;
+    const payRef =
+      (invoice.custPoNo || "").trim() ||
+      (invoice.orderNo > 0 ? String(invoice.orderNo) : "");
+    const valTop = valueTop + 5;
+
+    draw(page, font, moneyPlain(subtotal), footCols[0].x + 4, valTop, 9, {
+      maxWidth: footCols[0].w - 8,
+      align: "right",
+    });
+    draw(page, font, moneyPlain(tax), footCols[1].x + 4, valTop, 9, {
+      maxWidth: footCols[1].w - 8,
+      align: "right",
+    });
+    draw(page, font, moneyPlain(total), footCols[2].x + 4, valTop, 9, {
+      maxWidth: footCols[2].w - 8,
+      align: "right",
+    });
+    draw(page, font, clip(payRef, 16), footCols[3].x + 4, valTop, 8, {
+      maxWidth: footCols[3].w - 8,
+      align: "center",
+    });
+    draw(page, font, moneyPlain(amountPaid), footCols[4].x + 4, valTop, 9, {
+      maxWidth: footCols[4].w - 8,
+      align: "right",
+    });
+    draw(page, font, moneyPlain(netToPay), footCols[5].x + 4, valTop, 9, {
+      maxWidth: footCols[5].w - 8,
+      align: "right",
+    });
+  };
+
   const descWidth = descriptionWrapWidth(font, PRINT_DESC_SIZE);
-  let row = PRINT_DESC_START_ROW;
-  for (const line of itemLines) {
-    if (row >= maxRows) break;
-    const wrapped = wrapDescription(
-      font,
-      line.description || "",
-      PRINT_DESC_SIZE,
-      descWidth
-    );
-    wrapped.forEach((part, i) => {
-      if (row >= maxRows) return;
-      const top = firstRowTop + row * rowH + 2;
-      draw(page, font, part, PRINT_DESC_X, top, PRINT_DESC_SIZE);
-      if (i === 0 && line.price) {
-        draw(page, font, moneyPlain(line.price), colAmt.x + 4, top, 9, {
-          maxWidth: colAmt.w - 10,
-          align: "right",
-        });
-      }
-      row++;
-    });
-  }
-  if (invoice.remark1 && row < maxRows) {
-    draw(
-      page,
-      font,
-      clip(invoice.remark1, 58),
-      PRINT_DESC_X,
-      firstRowTop + row * rowH + 3,
-      8,
-      { maxWidth: colDesc.w - 12 }
-    );
-  }
+  const groups: BodyRow[][] = itemLines.map((line) =>
+    wrapDescription(font, line.description || "", PRINT_DESC_SIZE, descWidth).map(
+      (text, i): BodyRow => ({ kind: "line", text, price: i === 0 ? line.price || 0 : 0 })
+    )
+  );
+  if (invoice.remark1) groups.push([{ kind: "remark", text: invoice.remark1 }]);
+  const pages = paginateRows(groups, maxRows - PRINT_DESC_START_ROW);
 
-  // ── Totals at bottom of 11" letter page ───────────────────────────
-  const footCols = [
-    { label: "SUBTOTAL", x: left, w: 85 },
-    { label: "SALES TAX", x: left + 85, w: 70 },
-    { label: "TOTAL", x: left + 155, w: 80 },
-    { label: "PO#/WO#", x: left + 235, w: 100 },
-    { label: "AMOUNT PAID", x: left + 335, w: 85 },
-    { label: "NET TO PAY", x: left + 420, w: tableW - 420 },
-  ];
-
-  fillRect(page, left, totalsTop, tableW, totalsHeaderH, rgb(0.15, 0.15, 0.15));
-  for (const c of footCols) {
-    const size = 7;
-    const tw = font.widthOfTextAtSize(c.label, size);
-    page.drawText(c.label, {
-      x: c.x + (c.w - tw) / 2,
-      y: yTop(totalsTop + 4, size),
-      size,
-      font,
-      color: rgb(1, 1, 1),
-    });
-  }
-
-  const valueTop = totalsTop + totalsHeaderH;
-  strokeRect(page, left, totalsTop, tableW, totalsBlockH, 1);
-  for (const c of footCols.slice(1)) {
-    page.drawLine({
-      start: { x: c.x, y: PAGE_H - totalsTop - totalsBlockH },
-      end: { x: c.x, y: PAGE_H - totalsTop },
-      thickness: 0.6,
-      color: rgb(0, 0, 0),
-    });
-  }
-  {
-    const y = PAGE_H - valueTop;
-    page.drawLine({
-      start: { x: left, y },
-      end: { x: right, y },
-      thickness: 0.6,
-      color: rgb(0, 0, 0),
-    });
-  }
-
-  // Match DB model: total = Σ lines; paid = deposit + cash; net = balance
-  const subtotal =
-    invoice.salesTotal ||
-    itemLines.reduce((s, l) => s + (l.price || 0), 0);
-  const tax = 0;
-  const total = subtotal + tax;
-  const deposit = invoice.salesPay || 0;
-  const cashPaid = invoice.payTotal || 0;
-  const amountPaid = deposit + cashPaid;
-  const netToPay =
-    invoice.balance != null
-      ? invoice.balance
-      : Math.round((total - amountPaid) * 100) / 100;
-  const payRef =
-    (invoice.custPoNo || "").trim() ||
-    (invoice.orderNo > 0 ? String(invoice.orderNo) : "");
-  const valTop = valueTop + 5;
-
-  draw(page, font, moneyPlain(subtotal), footCols[0].x + 4, valTop, 9, {
-    maxWidth: footCols[0].w - 8,
-    align: "right",
+  pages.forEach((rows, index) => {
+    const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    drawFrame(page);
+    rows.forEach((row, i) => drawRow(page, row, PRINT_DESC_START_ROW + i));
+    if (index === pages.length - 1) {
+      drawTotals(page);
+    } else {
+      draw(page, font, "CONTINUED ON NEXT PAGE", left, totalsTop + 12, 9, {
+        maxWidth: tableW,
+        align: "center",
+      });
+    }
+    if (pages.length > 1) {
+      const label = `Page ${index + 1} of ${pages.length}`;
+      draw(page, font, label, left, totalsTop + totalsBlockH + 6, 8, {
+        maxWidth: tableW,
+        align: "center",
+      });
+    }
   });
-  draw(page, font, moneyPlain(tax), footCols[1].x + 4, valTop, 9, {
-    maxWidth: footCols[1].w - 8,
-    align: "right",
-  });
-  draw(page, font, moneyPlain(total), footCols[2].x + 4, valTop, 9, {
-    maxWidth: footCols[2].w - 8,
-    align: "right",
-  });
-  draw(page, font, clip(payRef, 16), footCols[3].x + 4, valTop, 8, {
-    maxWidth: footCols[3].w - 8,
-    align: "center",
-  });
-  draw(page, font, moneyPlain(amountPaid), footCols[4].x + 4, valTop, 9, {
-    maxWidth: footCols[4].w - 8,
-    align: "right",
-  });
-  draw(page, font, moneyPlain(netToPay), footCols[5].x + 4, valTop, 9, {
-    maxWidth: footCols[5].w - 8,
-    align: "right",
-  });
-
-  if (invoice.voided) {
-    page.drawText("*** V O I D  I N V O I C E ***", {
-      x: 160,
-      y: yTop(tableHeaderTop - 18, 14),
-      size: 14,
-      font,
-      color: rgb(0.7, 0, 0),
-    });
-  }
 
   return pdfDoc.save();
 }

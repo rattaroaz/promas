@@ -6,6 +6,7 @@ import { PDFDict, PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 import {
   buildInvoicePdf,
   downloadInvoicePdf,
+  paginateRows,
   printInvoiceOnTemplate,
   wrapDescription,
   descriptionWrapWidth,
@@ -37,53 +38,17 @@ function decodePdfHexStrings(s: string): string {
   });
 }
 
-/** pdf-lib compresses content streams and hex-encodes drawText; recover plain text. */
-function pdfReadableText(bytes: Uint8Array): string {
-  const raw = Buffer.from(bytes);
-  const latin = raw.toString("latin1");
-  const parts: string[] = [latin];
-  // PDF streams: optional \r\n after "stream", payload until "endstream"
+/**
+ * Inflate every compressed stream. Only the one end-of-line before `endstream`
+ * is dropped: a compressed payload can itself end in a space or newline byte.
+ */
+function inflatedStreams(bytes: Uint8Array): string[] {
+  const latin = Buffer.from(bytes).toString("latin1");
+  const streams: string[] = [];
   const re = /stream\r?\n([\s\S]*?)endstream/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(latin))) {
-    let payload = Buffer.from(m[1], "latin1");
-    // Drop trailing whitespace/newlines that some writers put before endstream
-    while (
-      payload.length > 0 &&
-      (payload[payload.length - 1] === 0x0a ||
-        payload[payload.length - 1] === 0x0d ||
-        payload[payload.length - 1] === 0x20)
-    ) {
-      payload = payload.subarray(0, payload.length - 1);
-    }
-    for (const inflate of [inflateSync, inflateRawSync]) {
-      try {
-        parts.push(inflate(payload).toString("latin1"));
-        break;
-      } catch {
-        /* try next */
-      }
-    }
-  }
-  return decodePdfHexStrings(parts.join("\n"));
-}
-
-/** Text draws with their PDF baseline (larger y is higher on the page). */
-function textPositions(bytes: Uint8Array): { text: string; x: number; y: number }[] {
-  const latin = Buffer.from(bytes).toString("latin1");
-  const streams: string[] = [];
-  const streamRe = /stream\r?\n([\s\S]*?)endstream/g;
-  let sm: RegExpExecArray | null;
-  while ((sm = streamRe.exec(latin))) {
-    let payload = Buffer.from(sm[1], "latin1");
-    while (
-      payload.length > 0 &&
-      (payload[payload.length - 1] === 0x0a ||
-        payload[payload.length - 1] === 0x0d ||
-        payload[payload.length - 1] === 0x20)
-    ) {
-      payload = payload.subarray(0, payload.length - 1);
-    }
+    const payload = Buffer.from(m[1].replace(/\r?\n$|\r$/, ""), "latin1");
     for (const inflate of [inflateSync, inflateRawSync]) {
       try {
         streams.push(inflate(payload).toString("latin1"));
@@ -93,6 +58,18 @@ function textPositions(bytes: Uint8Array): { text: string; x: number; y: number 
       }
     }
   }
+  return streams;
+}
+
+/** pdf-lib compresses content streams and hex-encodes drawText; recover plain text. */
+function pdfReadableText(bytes: Uint8Array): string {
+  const latin = Buffer.from(bytes).toString("latin1");
+  return decodePdfHexStrings([latin, ...inflatedStreams(bytes)].join("\n"));
+}
+
+/** Text draws with their PDF baseline (larger y is higher on the page). */
+function textPositions(bytes: Uint8Array): { text: string; x: number; y: number }[] {
+  const streams = inflatedStreams(bytes);
   const out: { text: string; x: number; y: number }[] = [];
   const re =
     /1 0 0 1 ([0-9.]+) ([0-9.]+) Tm\s*(?:\(((?:\\.|[^)\\])*)\)|<([0-9A-Fa-f]+)>)\s*Tj/g;
@@ -219,6 +196,28 @@ function payload(overrides?: Partial<InvoicePrintPayload>): InvoicePrintPayload 
     lines,
     ...overrides,
   };
+}
+
+function numberedLines(count: number): InvoiceLine[] {
+  return Array.from({ length: count }, (_, i) => ({
+    ...payload().lines[0],
+    lineNo: i + 1,
+    description: `LINE ITEM ${i + 1}`,
+    price: 10,
+  }));
+}
+
+/** Texts drawn on each page, in drawing order. */
+async function pageTexts(bytes: Uint8Array): Promise<string[][]> {
+  const doc = await PDFDocument.load(bytes);
+  const pages: string[][] = [];
+  for (let i = 0; i < doc.getPageCount(); i++) {
+    const single = await PDFDocument.create();
+    const [copy] = await single.copyPages(doc, [i]);
+    single.addPage(copy);
+    pages.push(textPositions(await single.save()).map((p) => p.text));
+  }
+  return pages;
 }
 
 function stubTemplateFetch() {
@@ -460,22 +459,96 @@ describe("buildInvoicePdf", () => {
     }
   });
 
-  it("fills many description rows on letter height without shrinking page", async () => {
-    const many = Array.from({ length: 30 }, (_, i) => ({
-      ...payload().lines[0],
-      lineNo: i + 1,
-      description: `LINE ITEM ${i + 1}`,
-      price: 10,
-    }));
-    const bytes = await buildInvoicePdf(payload({ lines: many }));
+  it("continues lines that do not fit onto a second letter page", async () => {
+    const bytes = await buildInvoicePdf(payload({ lines: numberedLines(30) }));
     const doc = await PDFDocument.load(bytes);
-    const { width, height } = doc.getPages()[0].getSize();
-    expect(width).toBeCloseTo(612, 0);
-    expect(height).toBeCloseTo(792, 0);
-    const asText = pdfReadableText(bytes);
-    expect(asText).toContain("LINE ITEM 1");
-    // Not all 30 fit; at least first few rows are drawn
-    expect(asText).toContain("LINE ITEM 2");
+    expect(doc.getPageCount()).toBe(2);
+    for (const page of doc.getPages()) {
+      const { width, height } = page.getSize();
+      expect(width).toBeCloseTo(612, 0);
+      expect(height).toBeCloseTo(792, 0);
+    }
+
+    // The template itself prints the totals labels on every page; PO#/WO#
+    // is drawn only with the totals.
+    const [first, second] = await pageTexts(bytes);
+    const items = (texts: string[]) => texts.filter((t) => t.startsWith("LINE ITEM "));
+    expect(items(first)).toEqual(numberedLines(27).map((l) => l.description));
+    expect(items(second)).toEqual(["LINE ITEM 28", "LINE ITEM 29", "LINE ITEM 30"]);
+    for (const texts of [first, second]) {
+      expect(texts).toContain("52629");
+      expect(texts).toContain("COMPANY INFORMATION");
+      expect(texts).toContain("APT UNIT # :");
+    }
+    expect(first).toContain("CONTINUED ON NEXT PAGE");
+    expect(first).toContain("Page 1 of 2");
+    expect(first).not.toContain("PO#/WO#");
+    expect(first).not.toContain("300.00");
+    expect(second).not.toContain("CONTINUED ON NEXT PAGE");
+    expect(second).toContain("Page 2 of 2");
+    expect(second).toContain("PO#/WO#");
+    expect(second).toContain("300.00");
+  });
+
+  it("keeps every page in regular Helvetica and marks every page of a void invoice", async () => {
+    const bytes = await buildInvoicePdf(
+      payload({
+        lines: numberedLines(30),
+        invoice: { ...payload().invoice, voided: true },
+      })
+    );
+    const doc = await PDFDocument.load(bytes);
+    for (const page of doc.getPages()) {
+      const fonts = page.node.Resources()!.lookup(PDFName.of("Font"), PDFDict);
+      const faces = fonts
+        .keys()
+        .map((key) => String(fonts.lookup(key, PDFDict).get(PDFName.of("BaseFont"))));
+      expect(new Set(faces)).toEqual(new Set(["/Helvetica"]));
+    }
+    for (const texts of await pageTexts(bytes)) {
+      expect(texts).toContain("*** V O I D  I N V O I C E ***");
+    }
+  });
+
+  it("moves remark 1 to the next page when the table is full", async () => {
+    const bytes = await buildInvoicePdf(
+      payload({
+        lines: numberedLines(27),
+        invoice: { ...payload().invoice, remark1: "Thank you" },
+      })
+    );
+    const [first, second] = await pageTexts(bytes);
+    expect(first.filter((t) => t.startsWith("LINE ITEM "))).toHaveLength(27);
+    expect(first).not.toContain("Thank you");
+    expect(second).toContain("Thank you");
+    expect(second).toContain("PO#/WO#");
+  });
+
+  it("prints one page with no page number or continuation when everything fits", async () => {
+    const bytes = await buildInvoicePdf(payload({ lines: numberedLines(27) }));
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+    const [only] = await pageTexts(bytes);
+    expect(only.filter((t) => t.startsWith("LINE ITEM "))).toHaveLength(27);
+    expect(only).not.toContain("CONTINUED ON NEXT PAGE");
+    expect(only.some((t) => t.startsWith("Page "))).toBe(false);
+    expect(only).toContain("PO#/WO#");
+  });
+});
+
+describe("paginateRows", () => {
+  it("keeps an item's lines together when they fit on one page", () => {
+    expect(paginateRows([["a"], ["b1", "b2"], ["c"]], 2)).toEqual([["a"], ["b1", "b2"], ["c"]]);
+  });
+
+  it("splits an item longer than a page across pages", () => {
+    expect(paginateRows([["a"], ["b1", "b2", "b3"]], 2)).toEqual([
+      ["a", "b1"],
+      ["b2", "b3"],
+    ]);
+  });
+
+  it("returns one empty page when there is nothing to print", () => {
+    expect(paginateRows([], 27)).toEqual([[]]);
   });
 });
 
