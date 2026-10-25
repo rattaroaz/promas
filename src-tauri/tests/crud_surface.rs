@@ -118,7 +118,7 @@ fn work_order_save_find_and_void() {
     assert_eq!(found.order.order_unit, "A1");
     assert_eq!(found.lines.len(), 1);
 
-    ops::void_work_order(&mut conn, "1000", "01", "2026-02-01", no).unwrap();
+    ops::void_work_order(&conn, "1000", "01", "2026-02-01", no).unwrap();
     let voided: i64 = conn
         .query_row(
             "SELECT voided FROM work_orders WHERE order_no=?",

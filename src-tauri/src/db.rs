@@ -166,228 +166,6 @@ pub fn open_and_migrate(path: &Path) -> Result<Connection, String> {
     Ok(conn)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::Mutex;
-
-    #[test]
-    fn add_column_if_missing_is_idempotent() {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch("CREATE TABLE invoices (invoice INTEGER);")
-            .unwrap();
-        add_column_if_missing(
-            &conn,
-            "invoices",
-            "material_cost",
-            "REAL NOT NULL DEFAULT 0",
-        )
-        .unwrap();
-        add_column_if_missing(
-            &conn,
-            "invoices",
-            "material_cost",
-            "REAL NOT NULL DEFAULT 0",
-        )
-        .unwrap();
-        add_column_if_missing(
-            &conn,
-            "invoices",
-            "paint_supply_co",
-            "TEXT NOT NULL DEFAULT ''",
-        )
-        .unwrap();
-        let mut stmt = conn.prepare("PRAGMA table_info(invoices)").unwrap();
-        let cols: Vec<String> = stmt
-            .query_map([], |r| r.get::<_, String>(1))
-            .unwrap()
-            .filter_map(|r| r.ok())
-            .collect();
-        assert!(cols.iter().any(|c| c == "material_cost"));
-        assert!(cols.iter().any(|c| c == "paint_supply_co"));
-    }
-
-    #[test]
-    fn open_and_migrate_creates_schema_and_sysdata() {
-        let dir = std::env::temp_dir().join(format!("promas_db_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("promas.db");
-        let conn = open_and_migrate(&path).expect("migrate");
-        let company: String = conn
-            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .unwrap();
-        assert!(!company.is_empty());
-        let tables: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='companies'",
-                [],
-                |r| r.get(0),
-            )
-            .unwrap();
-        assert_eq!(tables, 1);
-        drop(conn);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn vacuum_into_exports_copy() {
-        let dir = std::env::temp_dir().join(format!("promas_vac_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("promas.db");
-        let export = dir.join("export.db");
-        let conn = open_and_migrate(&path).expect("migrate");
-        conn.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Export Co"])
-            .unwrap();
-        conn.execute("VACUUM INTO ?1", [export.display().to_string()])
-            .unwrap();
-        assert!(export.exists());
-        let exported = Connection::open(&export).unwrap();
-        let company: String = exported
-            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .unwrap();
-        assert_eq!(company, "Export Co");
-        drop(conn);
-        drop(exported);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn with_db_closed_reopens_on_success() {
-        let dir = std::env::temp_dir().join(format!("promas_closed_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("promas.db");
-        let conn = open_and_migrate(&path).unwrap();
-        let state = DbState(Mutex::new(conn));
-        with_db_closed(&state, &path, &path, || {
-            assert!(path.exists());
-            Ok::<_, String>(())
-        })
-        .unwrap();
-        let guard = state.0.lock().unwrap();
-        let _: String = guard
-            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .unwrap();
-        drop(guard);
-        drop(state);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn normalize_db_file_path_rejects_empty_and_folders() {
-        assert!(normalize_db_file_path("").is_err());
-        assert!(normalize_db_file_path("   ").is_err());
-        assert!(normalize_db_file_path(".").is_err());
-        let dir = std::env::temp_dir().join(format!("promas_norm_dir_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        assert!(normalize_db_file_path(dir.to_str().unwrap()).is_err());
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn normalize_db_file_path_adds_db_extension() {
-        let p = normalize_db_file_path(r"C:\data\mydata").unwrap();
-        assert_eq!(p.extension().and_then(|e| e.to_str()), Some("db"));
-        let p2 = normalize_db_file_path(r"C:\data\keep.sqlite").unwrap();
-        assert_eq!(p2.extension().and_then(|e| e.to_str()), Some("sqlite"));
-    }
-
-    #[test]
-    fn persist_and_load_db_location() {
-        let dir = std::env::temp_dir().join(format!("promas_loc_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let db = dir.join("custom").join("acct.db");
-        persist_db_location(&dir, &db).unwrap();
-        let loaded = load_persisted_db_location(&dir).unwrap();
-        assert_eq!(loaded, db);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn switching_to_existing_db_preserves_data() {
-        let dir = std::env::temp_dir().join(format!("promas_keep_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let current = dir.join("current.db");
-        let existing = dir.join("existing.db");
-
-        let keep = open_and_migrate(&existing).unwrap();
-        keep.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Keep Me"])
-            .unwrap();
-        drop(keep);
-
-        let conn = open_and_migrate(&current).unwrap();
-        let state = DbState(Mutex::new(conn));
-        // Switch to existing — must not wipe "Keep Me"
-        with_db_closed(&state, &existing, &current, || Ok::<_, String>(())).unwrap();
-
-        let company: String = state
-            .0
-            .lock()
-            .unwrap()
-            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .unwrap();
-        assert_eq!(company, "Keep Me");
-        drop(state);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn open_or_create_via_with_db_closed_creates_new_file() {
-        let dir = std::env::temp_dir().join(format!("promas_switch_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let current = dir.join("old.db");
-        let new_path = dir.join("nested").join("new.db");
-        let conn = open_and_migrate(&current).unwrap();
-        let state = DbState(Mutex::new(conn));
-        assert!(!new_path.exists());
-        ensure_db_parent(&new_path).unwrap();
-        with_db_closed(&state, &new_path, &current, || Ok::<_, String>(())).unwrap();
-        assert!(new_path.exists());
-        let company: String = state
-            .0
-            .lock()
-            .unwrap()
-            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .unwrap();
-        assert!(!company.is_empty());
-        drop(state);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn import_replace_database_copies_and_keeps_bak() {
-        let dir = std::env::temp_dir().join(format!("promas_imp_{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let current = dir.join("live.db");
-        let source = dir.join("incoming.db");
-        let c1 = open_and_migrate(&current).unwrap();
-        c1.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Old Co"])
-            .unwrap();
-        drop(c1);
-        let c2 = open_and_migrate(&source).unwrap();
-        c2.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["New Co"])
-            .unwrap();
-        drop(c2);
-
-        import_replace_database(&current, &source).unwrap();
-        assert!(current.with_extension("db.bak").exists());
-        let opened = Connection::open(&current).unwrap();
-        let company: String = opened
-            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
-            .unwrap();
-        assert_eq!(company, "New Co");
-        assert!(import_replace_database(&current, &current).is_err());
-        drop(opened);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-}
-
 fn create_schema(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"
@@ -745,4 +523,226 @@ fn seed_paint_supply_cos(conn: &Connection) -> Result<()> {
            WHERE TRIM(COALESCE(paint_supply_co,'')) != ''"#,
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    #[test]
+    fn add_column_if_missing_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE invoices (invoice INTEGER);")
+            .unwrap();
+        add_column_if_missing(
+            &conn,
+            "invoices",
+            "material_cost",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        .unwrap();
+        add_column_if_missing(
+            &conn,
+            "invoices",
+            "material_cost",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        .unwrap();
+        add_column_if_missing(
+            &conn,
+            "invoices",
+            "paint_supply_co",
+            "TEXT NOT NULL DEFAULT ''",
+        )
+        .unwrap();
+        let mut stmt = conn.prepare("PRAGMA table_info(invoices)").unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(1))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+        assert!(cols.iter().any(|c| c == "material_cost"));
+        assert!(cols.iter().any(|c| c == "paint_supply_co"));
+    }
+
+    #[test]
+    fn open_and_migrate_creates_schema_and_sysdata() {
+        let dir = std::env::temp_dir().join(format!("promas_db_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("promas.db");
+        let conn = open_and_migrate(&path).expect("migrate");
+        let company: String = conn
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert!(!company.is_empty());
+        let tables: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='companies'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(tables, 1);
+        drop(conn);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn vacuum_into_exports_copy() {
+        let dir = std::env::temp_dir().join(format!("promas_vac_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("promas.db");
+        let export = dir.join("export.db");
+        let conn = open_and_migrate(&path).expect("migrate");
+        conn.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Export Co"])
+            .unwrap();
+        conn.execute("VACUUM INTO ?1", [export.display().to_string()])
+            .unwrap();
+        assert!(export.exists());
+        let exported = Connection::open(&export).unwrap();
+        let company: String = exported
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(company, "Export Co");
+        drop(conn);
+        drop(exported);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn with_db_closed_reopens_on_success() {
+        let dir = std::env::temp_dir().join(format!("promas_closed_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("promas.db");
+        let conn = open_and_migrate(&path).unwrap();
+        let state = DbState(Mutex::new(conn));
+        with_db_closed(&state, &path, &path, || {
+            assert!(path.exists());
+            Ok::<_, String>(())
+        })
+        .unwrap();
+        let guard = state.0.lock().unwrap();
+        let _: String = guard
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        drop(guard);
+        drop(state);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn normalize_db_file_path_rejects_empty_and_folders() {
+        assert!(normalize_db_file_path("").is_err());
+        assert!(normalize_db_file_path("   ").is_err());
+        assert!(normalize_db_file_path(".").is_err());
+        let dir = std::env::temp_dir().join(format!("promas_norm_dir_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(normalize_db_file_path(dir.to_str().unwrap()).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn normalize_db_file_path_adds_db_extension() {
+        let p = normalize_db_file_path(r"C:\data\mydata").unwrap();
+        assert_eq!(p.extension().and_then(|e| e.to_str()), Some("db"));
+        let p2 = normalize_db_file_path(r"C:\data\keep.sqlite").unwrap();
+        assert_eq!(p2.extension().and_then(|e| e.to_str()), Some("sqlite"));
+    }
+
+    #[test]
+    fn persist_and_load_db_location() {
+        let dir = std::env::temp_dir().join(format!("promas_loc_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let db = dir.join("custom").join("acct.db");
+        persist_db_location(&dir, &db).unwrap();
+        let loaded = load_persisted_db_location(&dir).unwrap();
+        assert_eq!(loaded, db);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn switching_to_existing_db_preserves_data() {
+        let dir = std::env::temp_dir().join(format!("promas_keep_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let current = dir.join("current.db");
+        let existing = dir.join("existing.db");
+
+        let keep = open_and_migrate(&existing).unwrap();
+        keep.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Keep Me"])
+            .unwrap();
+        drop(keep);
+
+        let conn = open_and_migrate(&current).unwrap();
+        let state = DbState(Mutex::new(conn));
+        // Switch to existing — must not wipe "Keep Me"
+        with_db_closed(&state, &existing, &current, || Ok::<_, String>(())).unwrap();
+
+        let company: String = state
+            .0
+            .lock()
+            .unwrap()
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(company, "Keep Me");
+        drop(state);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn open_or_create_via_with_db_closed_creates_new_file() {
+        let dir = std::env::temp_dir().join(format!("promas_switch_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let current = dir.join("old.db");
+        let new_path = dir.join("nested").join("new.db");
+        let conn = open_and_migrate(&current).unwrap();
+        let state = DbState(Mutex::new(conn));
+        assert!(!new_path.exists());
+        ensure_db_parent(&new_path).unwrap();
+        with_db_closed(&state, &new_path, &current, || Ok::<_, String>(())).unwrap();
+        assert!(new_path.exists());
+        let company: String = state
+            .0
+            .lock()
+            .unwrap()
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert!(!company.is_empty());
+        drop(state);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn import_replace_database_copies_and_keeps_bak() {
+        let dir = std::env::temp_dir().join(format!("promas_imp_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let current = dir.join("live.db");
+        let source = dir.join("incoming.db");
+        let c1 = open_and_migrate(&current).unwrap();
+        c1.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["Old Co"])
+            .unwrap();
+        drop(c1);
+        let c2 = open_and_migrate(&source).unwrap();
+        c2.execute("UPDATE sysdata SET company=?1 WHERE id=1", ["New Co"])
+            .unwrap();
+        drop(c2);
+
+        import_replace_database(&current, &source).unwrap();
+        assert!(current.with_extension("db.bak").exists());
+        let opened = Connection::open(&current).unwrap();
+        let company: String = opened
+            .query_row("SELECT company FROM sysdata WHERE id=1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(company, "New Co");
+        assert!(import_replace_database(&current, &current).is_err());
+        drop(opened);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
