@@ -5,6 +5,10 @@ const listen = vi.fn();
 const onCloseRequested = vi.fn();
 const close = vi.fn();
 const exit = vi.fn();
+const getCurrentWindow = vi.fn(() => ({
+  close: (...args: unknown[]) => close(...args),
+  onCloseRequested: (...args: unknown[]) => onCloseRequested(...args),
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invoke(...args),
@@ -19,10 +23,7 @@ vi.mock("@tauri-apps/plugin-process", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({
-    close: (...args: unknown[]) => close(...args),
-    onCloseRequested: (...args: unknown[]) => onCloseRequested(...args),
-  }),
+  getCurrentWindow: () => getCurrentWindow(),
 }));
 
 describe("windowClose", () => {
@@ -32,6 +33,11 @@ describe("windowClose", () => {
     onCloseRequested.mockReset();
     close.mockReset();
     exit.mockReset();
+    getCurrentWindow.mockReset();
+    getCurrentWindow.mockImplementation(() => ({
+      close: (...args: unknown[]) => close(...args),
+      onCloseRequested: (...args: unknown[]) => onCloseRequested(...args),
+    }));
     listen.mockResolvedValue(() => {});
     onCloseRequested.mockResolvedValue(() => {});
     const { resetWindowCloseForTests } = await import("./windowClose");
@@ -82,5 +88,15 @@ describe("windowClose", () => {
     handler!({ preventDefault });
     expect(preventDefault).not.toHaveBeenCalled();
     expect(onAsk).not.toHaveBeenCalled();
+  });
+
+  it("subscribeQuitRequested ignores a browser with no Tauri window", async () => {
+    getCurrentWindow.mockImplementation(() => {
+      throw new TypeError(
+        "Cannot read properties of undefined (reading 'metadata')"
+      );
+    });
+    const { subscribeQuitRequested } = await import("./windowClose");
+    expect(() => subscribeQuitRequested(() => {})).not.toThrow();
   });
 });

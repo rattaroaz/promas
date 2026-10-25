@@ -54,19 +54,26 @@ export function subscribeQuitRequested(onAsk: () => void): () => void {
       /* not running under Tauri */
     });
 
-  void getCurrentWindow()
-    .onCloseRequested((event) => {
-      if (allowClose) return;
-      event.preventDefault();
-      if (!cancelled) onAsk();
-    })
-    .then((fn) => {
-      if (cancelled) fn();
-      else unsubs.push(fn);
-    })
-    .catch(() => {
-      /* not running under Tauri */
-    });
+  // getCurrentWindow throws immediately in a plain browser, where
+  // window.__TAURI_INTERNALS__ is missing. The .catch below only covers
+  // the promise from onCloseRequested.
+  try {
+    void getCurrentWindow()
+      .onCloseRequested((event) => {
+        if (allowClose) return;
+        event.preventDefault();
+        if (!cancelled) onAsk();
+      })
+      .then((fn) => {
+        if (cancelled) fn();
+        else unsubs.push(fn);
+      })
+      .catch(() => {
+        /* not running under Tauri */
+      });
+  } catch {
+    /* not running under Tauri */
+  }
 
   return () => {
     cancelled = true;
