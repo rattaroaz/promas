@@ -28,6 +28,9 @@ scripts/tauri-signing.key
 scripts/sign-test.txt
 scripts/sign-test.txt.sig
 
+# Legacy PROMAS data (real customer records; never commit)
+/COMPBACK/
+
 # Test artifacts
 coverage
 test-results
