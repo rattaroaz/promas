@@ -57,16 +57,28 @@ export function WorkOrderProcess({
     });
     setRows(data.filter((o) => o.proNo === property.proNo));
     setMsg("Ins=Add  Enter/Ctrl-Home=Edit  Del=Void  Esc=Back");
+    setMsgKind("default");
   }, [company.companyNo, property.proNo]);
 
+  function showError(e: unknown) {
+    setMsg(String(e));
+    setMsgKind("error");
+  }
+
   useEffect(() => {
-    load();
+    load().catch(showError);
   }, [load]);
 
   const current = rows[index] ?? null;
 
   async function openNew() {
-    const wts = await api.listWorkTypes({});
+    let wts: WorkType[];
+    try {
+      wts = await api.listWorkTypes({});
+    } catch (e) {
+      showError(e);
+      return;
+    }
     setWorkTypes(wts);
     const order = emptyWorkOrder();
     order.companyNo = company.companyNo;
@@ -92,18 +104,22 @@ export function WorkOrderProcess({
   }
 
   async function openEdit(w: WorkOrder) {
-    const [full, wts] = await Promise.all([
-      api.getWorkOrder(w.companyNo, w.proNo, w.orderDate, w.orderNo),
-      api.listWorkTypes({}),
-    ]);
-    setWorkTypes(wts);
-    if (full) {
-      setEditing(full);
-      setMsg(
-        full.order.voided
-          ? "***  V O I D  W O R K  O R D E R ***"
-          : `Order #${full.order.orderNo}  Ctrl-S=Save  Esc=Exit`
-      );
+    try {
+      const [full, wts] = await Promise.all([
+        api.getWorkOrder(w.companyNo, w.proNo, w.orderDate, w.orderNo),
+        api.listWorkTypes({}),
+      ]);
+      setWorkTypes(wts);
+      if (full) {
+        setEditing(full);
+        setMsg(
+          full.order.voided
+            ? "***  V O I D  W O R K  O R D E R ***"
+            : `Order #${full.order.orderNo}  Ctrl-S=Save  Esc=Exit`
+        );
+      }
+    } catch (e) {
+      showError(e);
     }
   }
 
@@ -130,22 +146,25 @@ export function WorkOrderProcess({
       setMsg(`Work Order #${no} saved.`);
       setMsgKind("info");
     } catch (e) {
-      setMsg(String(e));
-      setMsgKind("error");
+      showError(e);
     }
   }
 
   async function doVoid() {
     if (!current) return;
-    await api.voidWorkOrder(
-      current.companyNo,
-      current.proNo,
-      current.orderDate,
-      current.orderNo
-    );
     setVoidAsk(false);
-    await load();
-    setMsg(" Void Work Order ");
+    try {
+      await api.voidWorkOrder(
+        current.companyNo,
+        current.proNo,
+        current.orderDate,
+        current.orderNo
+      );
+      await load();
+      setMsg(" Void Work Order ");
+    } catch (e) {
+      showError(e);
+    }
   }
 
   async function applyCode(idx: number, code: string) {
@@ -183,11 +202,15 @@ export function WorkOrderProcess({
     wt.codeNo = code;
     wt.workType = "P";
     wt.description = "";
-    await api.saveWorkType(wt);
-    setWorkTypes(await api.listWorkTypes({}));
     setAddWtAsk(null);
-    setMsgKind("default");
-    setMsg("Worktype added — enter description on line");
+    try {
+      await api.saveWorkType(wt);
+      setWorkTypes(await api.listWorkTypes({}));
+      setMsgKind("default");
+      setMsg("Worktype added — enter description on line");
+    } catch (e) {
+      showError(e);
+    }
   }
 
   useDosKeys({

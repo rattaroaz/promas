@@ -168,9 +168,14 @@ export function MaterialBrowse({
 
   async function doVoid() {
     if (!current?.id) return;
-    await api.deleteMaterial(current.id);
     setVoidAsk(false);
-    await load();
+    try {
+      await api.deleteMaterial(current.id);
+      await load();
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
   }
 
   const headerCells =

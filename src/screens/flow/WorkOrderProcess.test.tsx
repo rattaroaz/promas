@@ -364,6 +364,37 @@ describe("WorkOrderProcess editing", () => {
     expect(api.listWorkTypes).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps the form and shows a failed work-type add", async () => {
+    vi.mocked(api.saveWorkType).mockRejectedValue(new Error("code ZZ already exists"));
+    const { user } = await openList();
+    const code = await openNew(user);
+    await user.clear(code);
+    await user.type(code, "zz");
+    await user.tab();
+    await user.keyboard("y");
+    expect(await screen.findByText(/code ZZ already exists/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /does not exist/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Line 1 code" })).toBeInTheDocument();
+  });
+
+  it("shows a failed load", async () => {
+    vi.mocked(api.listWorkOrders).mockRejectedValue(new Error("database is locked"));
+    renderApp(<WorkOrderProcess company={company} property={property} onBack={vi.fn()} />);
+    expect(await screen.findByText(/database is locked/)).toBeInTheDocument();
+  });
+
+  it("stays on the list and shows the error when an order or a new form cannot open", async () => {
+    const { user } = await openList();
+    vi.mocked(api.getWorkOrder).mockRejectedValueOnce(new Error("order 7 cannot be read"));
+    await user.keyboard("{Enter}");
+    expect(await screen.findByText(/order 7 cannot be read/)).toBeInTheDocument();
+    expect(screen.queryByText(/Order No\.+ 7/)).not.toBeInTheDocument();
+    vi.mocked(api.listWorkTypes).mockRejectedValueOnce(new Error("work types cannot be read"));
+    await user.keyboard("{Insert}");
+    expect(await screen.findByText(/work types cannot be read/)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Line 1 code" })).not.toBeInTheDocument();
+  });
+
   it("shows a voided order as void and will not void it again", async () => {
     const voided = { ...order, voided: true };
     vi.mocked(api.listWorkOrders).mockResolvedValue([voided]);
@@ -388,6 +419,14 @@ describe("WorkOrderProcess editing", () => {
     await user.keyboard("{Delete}y");
     await waitFor(() => expect(api.voidWorkOrder).toHaveBeenCalledWith("1000", "01", "2026-02-01", 7));
     expect(await screen.findByText("Void Work Order")).toBeInTheDocument();
+  });
+
+  it("closes the void question and shows a failed void", async () => {
+    vi.mocked(api.voidWorkOrder).mockRejectedValue(new Error("order 7 is locked"));
+    const { user } = await openList();
+    await user.keyboard("{Delete}y");
+    expect(await screen.findByText(/order 7 is locked/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Do you want Void/ })).not.toBeInTheDocument();
   });
 
   it("closes help, then the save question, then the form, then leaves on Esc", async () => {

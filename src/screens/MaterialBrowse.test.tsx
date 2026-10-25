@@ -156,6 +156,15 @@ describe("MaterialBrowse", () => {
     await waitFor(() => expect(api.deleteMaterial).toHaveBeenCalledWith(4));
   });
 
+  it("closes the void question and shows a failed void", async () => {
+    vi.mocked(api.deleteMaterial).mockRejectedValue(new Error("material 4 is locked"));
+    const { user } = await openList();
+    await user.keyboard("{ArrowDown}{Delete}Y");
+    expect(await screen.findByText(/material 4 is locked/)).toBeInTheDocument();
+    expect(screen.queryByText("Do you want Void (Y/N) ?")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tape/ })).toBeInTheDocument();
+  });
+
   it("prints on End, pages with the page keys, and steps back with Esc", async () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
     const { user, onBack } = await openList();
