@@ -412,6 +412,36 @@ h6 {
   text-align: left;
 }
 
+/* Work-order description column. The caret and the text share one row that
+   fits the cell. The rule above is nowrap and overflow:hidden, so an
+   inline-block 1.7em caret beside a width:100% input made the cell's
+   scroll width the caret wider than its box. Focusing the text scrolled
+   that hidden overflow and both controls jumped left by the caret. */
+.browse-grid > .work-order-line-desc {
+  display: flex;
+  align-items: center;
+  gap: 0.3ch;
+  min-width: 0;
+  overflow: clip;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.work-order-line-desc > .dos-choice {
+  flex: 0 0 1.7em;
+  width: 1.7em;
+  min-width: 1.7em;
+  max-width: 1.7em;
+  margin: 0;
+}
+
+.work-order-line-desc > .dos-input {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* Sort button in grid cell */
 .browse-grid .sort-btn {
   background: none;
