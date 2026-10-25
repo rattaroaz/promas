@@ -556,10 +556,9 @@ export function WorkOrderProcess({
                     onBlur={(e) => applyCode(idx, e.target.value.trim())}
                   />
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="work-order-line-desc">
                   <select
                     className="dos-select dos-choice"
-                    style={{ width: "100%", marginBottom: "0.12em" }}
                     aria-label={`Line ${idx + 1} job description`}
                     value={
                       jobDescriptions.some((job) => job.description === line.description)
@@ -592,7 +591,6 @@ export function WorkOrderProcess({
                   </select>
                   <input
                     className="dos-input"
-                    style={{ width: "100%" }}
                     aria-label={`Line ${idx + 1} description`}
                     readOnly={jobDescriptions.some(
                       (job) => job.description === line.description
