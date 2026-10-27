@@ -123,14 +123,71 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     expect(named.fitScale, `${tag} 33-char name`).toBe(initial.fitScale);
     expect(named.scrollWidth, tag).toBeLessThanOrEqual(named.clientWidth + 1);
     expect(named.nameRight, tag).toBeLessThanOrEqual(named.vw + 1);
+    for (const ordinary of ["Maria Gonzalez", "Christopher Johnson", "Alexander Montgomery-Smith"]) {
+      await page.getByLabel("Worker name 1").fill(ordinary);
+      await waitForFit(page);
+      const fitted = await page.evaluate((value) => {
+        const name = document.querySelector("input[aria-label='Worker name 1']") as HTMLInputElement;
+        const probe = document.createElement("span");
+        probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:${getComputedStyle(name).font};`;
+        probe.textContent = value;
+        document.body.appendChild(probe);
+        const text = probe.getBoundingClientRect().width;
+        probe.remove();
+        return {
+          text,
+          field: name.getBoundingClientRect().width,
+          scroll: name.scrollWidth,
+          client: name.clientWidth,
+        };
+      }, ordinary);
+      expect(fitted.field, `${tag} ${ordinary}`).toBeGreaterThanOrEqual(fitted.text - 1);
+      expect(fitted.scroll, `${tag} ${ordinary}`).toBeLessThanOrEqual(fitted.client + 1);
+    }
     await page.getByLabel("Worker name 1").fill("X".repeat(48));
     await waitForFit(page);
-    const longName = await page.evaluate(readName);
+    const longName = await page.evaluate(() => {
+      const scroll = document.querySelector(".workers-scroll") as HTMLElement;
+      const head = document.querySelector(".workers-head") as HTMLElement;
+      const row = document.querySelector(".workers-row") as HTMLElement;
+      const name = document.querySelector("input[aria-label='Worker name 1']") as HTMLElement;
+      const del = row.querySelector("button") as HTMLElement;
+      const active = head.children[0] as HTMLElement;
+      const idHead = head.children[2] as HTMLElement;
+      const nameBox = name.getBoundingClientRect();
+      const delBox = del.getBoundingClientRect();
+      const activeBox = active.getBoundingClientRect();
+      const idBox = idHead.getBoundingClientRect();
+      const doc = document.documentElement;
+      return {
+        fitScale: getComputedStyle(document.documentElement).getPropertyValue("--fit-scale").trim(),
+        overflowX: getComputedStyle(scroll).overflowX,
+        scrollWidth: scroll.scrollWidth,
+        clientWidth: scroll.clientWidth,
+        nameLeft: nameBox.left,
+        nameRight: nameBox.right,
+        activeLeft: activeBox.left,
+        activeRight: activeBox.right,
+        idRight: idBox.right,
+        deleteLeft: delBox.left,
+        deleteRight: delBox.right,
+        docScroll: doc.scrollWidth,
+        vw: window.innerWidth,
+      };
+    });
     expect(longName.fitScale, `${tag} 48-char name`).toBe(initial.fitScale);
-    expect(longName.scrollWidth, tag).toBeLessThanOrEqual(longName.clientWidth + 1);
-    expect(longName.nameLeft, tag).toBeGreaterThanOrEqual(-1);
-    expect(longName.nameRight, tag).toBeLessThanOrEqual(longName.vw + 1);
-    expect(longName.scrollWidth, tag).toBe(initial.scrollWidth);
+    expect(longName.overflowX, `${tag} 48-char name`).toBe("hidden");
+    expect(longName.scrollWidth, `${tag} 48-char name`).toBeLessThanOrEqual(longName.clientWidth + 1);
+    expect(longName.docScroll, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
+    expect(longName.nameLeft, `${tag} 48-char name`).toBeGreaterThanOrEqual(-1);
+    expect(longName.nameRight, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
+    expect(longName.activeLeft, `${tag} 48-char name`).toBeGreaterThanOrEqual(-1);
+    expect(longName.activeRight, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
+    expect(longName.idRight, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
+    expect(longName.deleteLeft, `${tag} 48-char name`).toBeGreaterThanOrEqual(-1);
+    expect(longName.deleteRight, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
+    await page.getByLabel("Worker name 1").blur();
+    await expect(page.getByLabel("Worker name 1")).toHaveCSS("text-overflow", "ellipsis");
     await shot(page, `${tag}-workers-longname`);
     await page.getByLabel("Worker name 1").fill("Jose Ramirez");
     await waitForFit(page);

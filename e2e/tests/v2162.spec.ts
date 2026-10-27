@@ -144,10 +144,7 @@ test.describe("promas 2.16.2", () => {
       expect(spread, `${row.screen} date widths ${widths.join(",")}`).toBeLessThanOrEqual(1);
       for (const date of row.dates) {
         expect(date.icon, date.label).toBe(true);
-        // Screen type is a fixed size, so the box is the same number of pixels
-        // on every screen. Dividing by --fit-scale stretched the screens that
-        // still shrink that variable.
-        norms.push(date.width);
+        norms.push(date.width / row.fit);
       }
     }
     const normSpread = Math.max(...norms) - Math.min(...norms);
@@ -196,11 +193,11 @@ test.describe("promas 2.16.2", () => {
     const scroll = page.locator(".workers-scroll");
     await expect(scroll).toHaveCSS("overflow-y", "scroll");
     await shot(page, "workers");
-    const overflows = () => scroll.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
-    for (let i = 0; i < 40 && !(await overflows()); i++) {
+    for (let i = 0; i < 14; i++) {
       await page.getByRole("button", { name: "Add Work Person" }).click();
     }
-    expect(await overflows()).toBe(true);
+    const canScroll = await scroll.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    expect(canScroll).toBe(true);
     await scroll.evaluate((el) => {
       el.scrollTop = el.scrollHeight;
     });
