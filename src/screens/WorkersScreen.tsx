@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, WorkPerson } from "../api";
 import { Screen } from "../dos/Shell";
 import { pushUndoDelete } from "../lib/undoDelete";
@@ -10,6 +10,32 @@ type Row = {
   workerNo: string;
   active: boolean;
 };
+
+/** Width of `text` in the worker field's font, before the input's padding. */
+function textWidth(text: string, font: string): number {
+  const probe = document.createElement("span");
+  probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:${font};`;
+  probe.textContent = text;
+  document.body.appendChild(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
+}
+
+/**
+ * Name column for the catalog. It is the longest saved or typed name, at
+ * least the "Work Person" header, and never wider than 30ch or the space
+ * that leaves Active?, the ID, and Delete inside the scrollport.
+ */
+export function workerNameTrack(
+  namePx: number,
+  headerPx: number,
+  capPx: number
+): number {
+  const needed = Math.max(namePx, headerPx);
+  const cap = Math.max(headerPx, capPx);
+  return Math.ceil(Math.min(needed, cap));
+}
 
 function rowFromPerson(person: WorkPerson, key: string): Row {
   return {
@@ -31,8 +57,10 @@ export function WorkersScreen() {
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
   const rowsRef = useRef<Row[]>([]);
+  const frameRef = useRef<HTMLDivElement>(null);
   const keySeq = useRef(0);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const [nameTrack, setNameTrack] = useState<number | null>(null);
 
   function nextKey() {
     keySeq.current += 1;
@@ -96,6 +124,44 @@ export function WorkersScreen() {
     };
     saveQueue.current = saveQueue.current.then(run, run);
   }
+
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const input = frame.querySelector(
+      "input[aria-label^='Worker name']"
+    ) as HTMLInputElement | null;
+    const header = frame.querySelector(
+      ".workers-head > div:nth-child(2)"
+    ) as HTMLElement | null;
+    const scroll = frame.querySelector(".workers-scroll") as HTMLElement | null;
+    const font = getComputedStyle(input ?? header ?? frame).font;
+    const headerFont = getComputedStyle(header ?? input ?? frame).font;
+    const pad = input
+      ? parseFloat(getComputedStyle(input).paddingLeft) +
+        parseFloat(getComputedStyle(input).paddingRight)
+      : 0;
+    const ch = textWidth("0", font) || 9;
+    // Saved names set the track. The text currently in the field counts too,
+    // so an ordinary name is fully visible as it is typed. Past the cap, the
+    // track stops and the unfocused field ellipsizes.
+    const names = rows
+      .flatMap((row) => [row.originalName, row.name])
+      .map((name) => name.trim())
+      .filter(Boolean);
+    const longest = names.reduce((max, name) => Math.max(max, textWidth(name, font)), 0);
+    const headerPx = textWidth("Work Person", headerFont) + 1;
+    const active = 7.6 * ch;
+    const id = 9.8 * ch;
+    const del = 10 * ch;
+    const gaps = 16 * 3;
+    const bar = 16;
+    const port = scroll?.clientWidth || frame.clientWidth || 1024;
+    const room = port - active - id - del - gaps - bar;
+    const cap = Math.min(30 * ch, Math.max(room, 0));
+    const next = workerNameTrack(longest + pad + 1, headerPx, cap);
+    setNameTrack((prev) => (prev === next ? prev : next));
+  }, [rows]);
 
   useEffect(() => {
     if (!pendingDelete) return;
@@ -166,7 +232,11 @@ export function WorkersScreen() {
       messageKind={msgKind}
     >
       <div className="dos-main-wrap">
-        <div className="workers-frame">
+        <div
+          className="workers-frame"
+          ref={frameRef}
+          style={nameTrack ? { ["--workers-name" as string]: `${nameTrack}px` } : undefined}
+        >
           <div className="workers-head">
             <div>Active?</div>
             <div>Work Person</div>

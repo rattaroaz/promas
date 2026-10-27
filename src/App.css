@@ -892,8 +892,8 @@ h6 {
   /* Description takes the row. WorkDate uses the shared date width; the digit
      padding below keeps mm/dd/yyyy clear of the calendar glyph. */
   grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 10ch;
-  /* Line columns keep a 2ch gap. Property lists use the 8px grid instead. */
-  column-gap: 2ch;
+  /* Same 8px gap as the property tables. */
+  column-gap: 8px;
   align-items: center;
   width: 100%;
   max-width: 100%;
@@ -1678,10 +1678,10 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-content: flex-start;
 }
 
-/* Header and rows share one track list. Every column is the width of its
-   label, including Work Person. A flexible name track stretched a short
-   name to the leftover space (hundreds of pixels). A longer name stays
-   inside that field instead of widening the row. */
+/* Header and rows share one track list. Work Person is the longest saved
+   name (set on the frame), at least this header width, and at most 30ch so
+   Active? and Delete stay on screen at 1024. A name past that cap ellipsizes
+   until the field is focused. The track does not grow with the window. */
 .workers-frame {
   --workers-active: 7.6ch;
   --workers-name: 13.2ch;
@@ -1768,6 +1768,18 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+}
+
+/* A saved name past the column cap is cut with an ellipsis. Focus shows the
+   caret and scrolls inside the field instead of widening the list. */
+.workers-row input[aria-label^="Worker name"] {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.workers-row input[aria-label^="Worker name"]:focus {
+  text-overflow: clip;
 }
 
 .workers-row .dos-btn {
