@@ -638,6 +638,24 @@ function visibleBottom(el: HTMLElement): number | null {
 }
 
 /**
+ * How tall a dialog is allowed to be before the type has to shrink.
+ * The stylesheet's max-height is that cap: 90% for a normal dialog, 100% for
+ * the invoice, which is meant to fill the content area and scroll inside.
+ * A hardcoded 90% treated that full-height invoice as overflow on every open.
+ * Shrinking then did nothing to a percentage height, so --fit-scale fell to
+ * its floor and date boxes no longer shared one design width.
+ */
+function allowedDialogHeight(node: HTMLElement, vh: number): number {
+  const parentH = node.parentElement?.clientHeight ?? vh;
+  const maxH = getComputedStyle(node).maxHeight.trim();
+  const pct = /^([\d.]+)%$/.exec(maxH);
+  if (pct) return (parentH * Number(pct[1])) / 100;
+  const px = /^([\d.]+)px$/.exec(maxH);
+  if (px) return Number(px[1]);
+  return parentH * 0.9;
+}
+
+/**
  * Multiplier for the current scale so dialogs, menu frames, and the
  * diagnostics note fit the window. 1 means the height already fits.
  * Browse lists and hint bars are not part of this height.
@@ -659,7 +677,7 @@ export function verticalFitFactor(root: HTMLElement): number {
       });
       extra = Math.max(0, extra);
     }
-    const avail = (node.parentElement?.clientHeight ?? vh) * 0.9;
+    const avail = allowedDialogHeight(node, vh);
     factor = tighten(factor, node.offsetHeight + extra, avail);
     const foot = node.querySelector(":scope > .dlg-foot");
     if (foot instanceof HTMLElement) {

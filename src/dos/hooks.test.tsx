@@ -162,6 +162,34 @@ describe("fit measurement", () => {
     document.body.removeChild(shell);
   });
 
+  it("does not shrink a dialog that is allowed to fill its parent", () => {
+    const shell = document.createElement("div");
+    const overlay = document.createElement("div");
+    overlay.className = "dos-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "dos-dialog";
+    dialog.style.maxHeight = "100%";
+    const body = document.createElement("div");
+    body.className = "dlg-body";
+    overlay.appendChild(dialog);
+    dialog.appendChild(body);
+    shell.appendChild(overlay);
+    document.body.appendChild(shell);
+    const size = (el: HTMLElement, client: number, scroll: number, offset = client) => {
+      Object.defineProperty(el, "clientHeight", { value: client, configurable: true });
+      Object.defineProperty(el, "scrollHeight", { value: scroll, configurable: true });
+      Object.defineProperty(el, "offsetHeight", { value: offset, configurable: true });
+    };
+    size(overlay, 743, 743);
+    size(dialog, 735, 735, 735);
+    size(body, 547, 547, 547);
+    expect(verticalFitFactor(shell)).toBe(1);
+
+    size(body, 400, 900, 400);
+    expect(verticalFitFactor(shell)).toBeLessThan(1);
+    document.body.removeChild(shell);
+  });
+
   it("shrinks when a dialog hint paints below the window", () => {
     const shell = document.createElement("div");
     const dialog = document.createElement("div");

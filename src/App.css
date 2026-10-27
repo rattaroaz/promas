@@ -27,15 +27,18 @@
   --dos-gray: #555555;
   /* Type scale. One face; every font-size and line-height in the app is one
      of these steps (src/typography.test.ts fails on anything else). Screen
-     text is 18px. Property banners are 22px. The control keys at the top are
-     14px. Printed forms keep the previous face and the paper sizes. */
+     text is 18px Times New Roman. Property banners are 22px. The control keys
+     at the top are 14px. --fit-scale is 1 when that size fits the window, and
+     shrinks a screen that would not (a wide property table, a tall dialog).
+     Printed forms keep the previous face and the paper sizes, and do not use
+     --fit-scale. */
   --font-dos: "Times New Roman", Times, serif;
   --font-print: "Consolas", "Lucida Console", "Courier New", monospace;
-  --text-root: 18px;
+  --text-root: calc(18px * var(--fit-scale, 1));
   --text-print: 10pt;
-  --text-sm: 14px;
+  --text-sm: calc(14px * var(--fit-scale, 1));
   --text-md: 1rem;
-  --text-lg: 22px;
+  --text-lg: calc(22px * var(--fit-scale, 1));
   /* What those smaller and larger steps were on paper, before the screen
      sizes were fixed. Print rules still use them. */
   --text-print-sm: 0.9rem;
@@ -440,6 +443,24 @@ h6 {
   width: auto;
   min-width: 0;
   max-width: 100%;
+}
+
+/* Code, work type, and price sit in a ch column. The browser's default input
+   width is wider than that column, so the cell clipped it. Focusing the field
+   scrolled that hidden overflow and the field jumped left. Fill the column,
+   and clip so a leftover pixel cannot scroll. The description cell is a flex
+   row with its own caret and is excluded. */
+.browse-grid > div:not(.work-order-line-desc):has(> .dos-input),
+.browse-grid > div:not(.work-order-line-desc):has(> .dos-select) {
+  overflow: clip;
+}
+
+.browse-grid > div:not(.work-order-line-desc) > .dos-input,
+.browse-grid > div:not(.work-order-line-desc) > .dos-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Sort button in grid cell */
@@ -1724,6 +1745,10 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .workers-row {
   align-items: center;
+  /* Other lists keep a 44px row (.browse-grid). Workers used to get that
+     height from the old viewport-sized type. At 18px the text alone is about
+     22px, so a page of people fit in the pane and the list never scrolled. */
+  min-height: 44px;
 }
 
 .workers-row .dos-input {
