@@ -449,7 +449,8 @@ h6 {
    width is wider than that column, so the cell clipped it. Focusing the field
    scrolled that hidden overflow and the field jumped left. Fill the column,
    and clip so a leftover pixel cannot scroll. A class, not :has(), so styling
-   the invoice description does not walk every grid cell. */
+   the invoice description does not walk every grid cell. v2.16.9 matched every
+   browse-grid input, including the invoice description. */
 .browse-grid > .work-order-line-field {
   overflow: clip;
 }
