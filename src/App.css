@@ -448,15 +448,15 @@ h6 {
 /* Code, work type, and price sit in a ch column. The browser's default input
    width is wider than that column, so the cell clipped it. Focusing the field
    scrolled that hidden overflow and the field jumped left. Fill the column,
-   and clip so a leftover pixel cannot scroll. The description cell is a flex
-   row with its own caret and is excluded. */
-.browse-grid > div:not(.work-order-line-desc):has(> .dos-input),
-.browse-grid > div:not(.work-order-line-desc):has(> .dos-select) {
+   and clip so a leftover pixel cannot scroll. The description cell and the
+   invoice line cells size themselves. */
+.browse-grid > div:not(.work-order-line-desc):not(.invoice-line-type):not(.invoice-line-end):has(> .dos-input),
+.browse-grid > div:not(.work-order-line-desc):not(.invoice-line-type):not(.invoice-line-end):has(> .dos-select) {
   overflow: clip;
 }
 
-.browse-grid > div:not(.work-order-line-desc) > .dos-input,
-.browse-grid > div:not(.work-order-line-desc) > .dos-select {
+.browse-grid > div:not(.work-order-line-desc):not(.invoice-line-type):not(.invoice-line-end) > .dos-input,
+.browse-grid > div:not(.work-order-line-desc):not(.invoice-line-type):not(.invoice-line-end) > .dos-select {
   width: 100%;
   min-width: 0;
   max-width: 100%;
