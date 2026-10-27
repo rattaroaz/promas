@@ -541,7 +541,7 @@ export function WorkOrderProcess({
             </div>
             {editing.lines.map((line, idx) => (
               <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
-                <div style={{ minWidth: 0 }}>
+                <div className="work-order-line-field" style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
                     style={{ width: "100%" }}
@@ -603,7 +603,7 @@ export function WorkOrderProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="work-order-line-field" style={{ minWidth: 0 }}>
                   <select
                     className="dos-select"
                     style={{ width: "100%" }}
@@ -622,7 +622,7 @@ export function WorkOrderProcess({
                     <option value="S">S</option>
                   </select>
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="work-order-line-field" style={{ minWidth: 0 }}>
                   <MoneyInput
                     className="dos-input"
                     aria-label={`Price ${idx + 1}`}
