@@ -5,7 +5,8 @@ import { companyList, home, openMain, propertyList, waitForFit } from "../suppor
  * Every screen must fit the window, and every status line and key hint must
  * be fully visible. The fit scale is a fixed value per screen, taken from
  * static content. A clipped status line must not be what makes the type fit,
- * and it must not be cut off either.
+ * and it must not be cut off either. A table may be wider than the window
+ * when its own horizontal scroller stays inside the window.
  *
  * Widths are 1280 and 1024. Height 800 is the size where the Workers message
  * at scale 1 is 1991px in a 1280px bar. The main menu is also checked full
@@ -79,11 +80,29 @@ async function clipReport(page: Page): Promise<string[]> {
     const rows = document.querySelectorAll(
       ".browse-grid-header, .dos-row, .workers-head > div, .workers-row > *, .dos-browse-header, .aging-grid"
     );
+    const scrollport = (el: Element) => {
+      let node = el.parentElement;
+      while (node && node !== document.body) {
+        const overflow = getComputedStyle(node).overflowX;
+        if (overflow === "auto" || overflow === "scroll") return node;
+        node = node.parentElement;
+      }
+      return null;
+    };
     for (const el of rows) {
       if (el.closest(".print-preview-overlay")) continue;
       const box = el.getBoundingClientRect();
       if (box.width < 2 || box.height < 2) continue;
       if (box.right > vw + 1 || box.left < -1) {
+        const port = scrollport(el);
+        const portBox = port?.getBoundingClientRect();
+        const scrolls =
+          port != null &&
+          portBox != null &&
+          portBox.left >= -1 &&
+          portBox.right <= vw + 1 &&
+          port.scrollWidth > port.clientWidth + 1;
+        if (scrolls) continue;
         issues.push(
           `table overflows viewport "${textOf(el).slice(0, 70)}" right ${Math.round(box.right)} left ${Math.round(box.left)} vw ${vw}`
         );

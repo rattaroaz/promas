@@ -442,6 +442,15 @@ h6 {
   max-width: 100%;
 }
 
+/* A field wider than its cell is clipped, then a click scrolls it and the box
+   jumps. Fill the cell. The description row and date boxes keep their own widths. */
+.browse-grid > div:not(.work-order-line-desc) > .dos-input:not([type="date"]),
+.browse-grid > div:not(.work-order-line-desc) > .dos-select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* Sort button in grid cell */
 .browse-grid .sort-btn {
   background: none;
