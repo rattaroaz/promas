@@ -493,10 +493,13 @@ h6 {
   white-space: nowrap;
 }
 
-/* Content-sized lists: each column is the widest value or header, one gap. */
+/* Content-sized lists: each column is the widest value or header.
+   The gap is 8px, the same step as .browse-grid, so it stays on the
+   8px grid when --fit-scale shrinks the type. A 2ch gap was 18px at
+   18px type and 15.2px at the 1024 scale. */
 .content-grid.dos-browse-body {
   display: grid;
-  column-gap: 2ch;
+  column-gap: 8px;
   row-gap: 0;
   width: 100%;
   max-width: 100%;
@@ -515,7 +518,7 @@ h6 {
   width: auto;
   max-width: none;
   min-width: min-content;
-  column-gap: 2ch;
+  column-gap: 8px;
 }
 
 .content-grid > .browse-grid > *,
@@ -889,7 +892,7 @@ h6 {
   /* Description takes the row. WorkDate uses the shared date width; the digit
      padding below keeps mm/dd/yyyy clear of the calendar glyph. */
   grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 10ch;
-  /* Same 2ch gap as the other lists (~18px at the 1024 type size). */
+  /* Line columns keep a 2ch gap. Property lists use the 8px grid instead. */
   column-gap: 2ch;
   align-items: center;
   width: 100%;
@@ -909,6 +912,12 @@ h6 {
 .invoice-line-grid > .invoice-line-end .dos-input {
   text-align: right;
   padding-right: 0;
+}
+
+/* WorkDate reads from the left, the same way Invoice Date and Due Date do.
+   Price stays on the right. */
+.invoice-line-grid > .invoice-line-end input[type="date"].dos-input {
+  text-align: start;
 }
 
 .invoice-line-grid > .invoice-line-end .dos-btn {
@@ -938,7 +947,7 @@ h6 {
 }
 
 .invoice-line-grid > .invoice-line-end input[type="date"]::-webkit-datetime-edit {
-  text-align: right;
+  text-align: start;
   /* Clears the calendar glyph. The line-end rule zeros the input's own
      padding-right, so this is the gap in front of the icon. */
   padding: 0 1.3em 0 0;
@@ -1167,11 +1176,14 @@ h6 {
   min-width: 0;
 }
 
-/* Terms and Order Date share a column, so their inputs start on the same left edge. */
+/* Terms and Order Date share a column, so their inputs start on the same left edge.
+   The first label is 15ch, the same box as a width-14 field (Invoice Date,
+   Material Costs), and the gap is the field's own 0.5ch. A max-content label
+   plus a 2ch gap started Due Date and Invoice Number 4px to the right. */
 .invoice-terms-order {
   display: grid;
-  grid-template-columns: max-content max-content max-content max-content;
-  column-gap: 2ch;
+  grid-template-columns: 15ch max-content max-content max-content;
+  column-gap: 0.5ch;
   row-gap: 0.15em;
   align-items: baseline;
   justify-items: start;
@@ -1666,16 +1678,16 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-content: flex-start;
 }
 
-/* Header and rows share one track list. The name column is the only flexible
-   track, so a long name stays inside the field instead of widening the row.
-   Active, ID, and Delete are fixed to their labels so every row has the
-   same gaps and the header lines up with the fields. */
+/* Header and rows share one track list. Every column is the width of its
+   label, including Work Person. A flexible name track stretched a short
+   name to the leftover space (hundreds of pixels). A longer name stays
+   inside that field instead of widening the row. */
 .workers-frame {
   --workers-active: 7.6ch;
   --workers-name: 13.2ch;
   --workers-id: 9.8ch;
   --workers-delete: 10ch;
-  --workers-cols: var(--workers-active) minmax(var(--workers-name), 1fr) var(--workers-id) var(--workers-delete);
+  --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-delete);
   --workers-gap: 16px;
   --workers-scrollbar: 16px;
   display: flex;
