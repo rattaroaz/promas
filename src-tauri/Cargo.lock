@@ -2767,7 +2767,7 @@ dependencies = [
 
 [[package]]
 name = "promas"
-version = "2.16.9"
+version = "2.16.10"
 dependencies = [
  "chrono",
  "log",
