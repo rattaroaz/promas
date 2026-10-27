@@ -394,6 +394,8 @@ test("printed reports use the print size, whatever the window and fit scale", as
     }
     await page.emulateMedia({ media: "screen" });
   }
-  expect(screen[0], "the window sets the screen size").not.toBeCloseTo(screen[1], 0);
+  expect(screen[0], "screen type stays 18px in every window").toBeCloseTo(18, 0);
+  expect(screen[1], "screen type stays 18px in every window").toBeCloseTo(18, 0);
   for (const size of printed) expect(size, `printed sizes ${printed.join(", ")}`).toBeCloseTo(printed[0], 2);
+  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(18, 0);
 });

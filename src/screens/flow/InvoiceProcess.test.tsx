@@ -1005,7 +1005,7 @@ describe("InvoiceProcess", () => {
     expect(header?.querySelector(".invoice-fact")).toHaveClass("invoice-fact");
   });
 
-  it("draws the site banner 1.3× the list and wraps a line at spaces with a 5-space indent", async () => {
+  it("draws the site banner at banner size and wraps a line at spaces with a 5-space indent", async () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
@@ -1017,9 +1017,9 @@ describe("InvoiceProcess", () => {
     const bannerPx = parseFloat(banner.fontSize);
     const columnPx = parseFloat(getComputedStyle(column).fontSize);
     if (Number.isFinite(bannerPx) && Number.isFinite(columnPx) && columnPx > 0) {
-      expect(bannerPx / columnPx).toBeCloseTo(1.3, 2);
+      expect(bannerPx / columnPx).toBeCloseTo(22 / 18, 2);
     } else {
-      expect(banner.fontSize).toMatch(/1\.3rem|var\(--text-lg\)/);
+      expect(banner.fontSize).toMatch(/22px|var\(--text-lg\)/);
     }
     const pad = parseFloat(banner.paddingLeft);
     expect(pad).toBeGreaterThan(0);

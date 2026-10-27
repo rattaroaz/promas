@@ -34,7 +34,10 @@ const PAGE: Record<string, Record<string, string>> = {
     "font-size": "var(--text-root)",
     "line-height": "var(--leading-normal)",
   },
-  "@media print > html": { "font-size": "var(--text-print)" },
+  "@media print > html": {
+    "font-family": "var(--font-print)",
+    "font-size": "var(--text-print)",
+  },
 };
 
 /** Comments and url() bodies keep their newlines but cannot read as syntax. */
