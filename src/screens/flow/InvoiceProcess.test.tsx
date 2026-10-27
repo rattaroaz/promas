@@ -1146,7 +1146,8 @@ describe("InvoiceProcess", () => {
     expect(descriptionRowCount(wide, wide.length)).toBe(1);
     expect(descriptionRowCount("x".repeat(63), 62)).toBe(2);
 
-    await user.type(custom, wide);
+    await user.click(custom);
+    await user.paste(wide);
     expect(custom).toHaveValue(wide);
     expect(
       screen.queryByRole("button", { name: /Remove .* from list/i })
