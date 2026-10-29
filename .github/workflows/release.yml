@@ -48,6 +48,12 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
+      # npm ci sometimes omits Rollup's optional native binding (npm/cli#4828).
+      - name: Ensure Rollup Windows native binding
+        env:
+          ROLLUP_NATIVE_PACKAGE: "@rollup/rollup-win32-x64-msvc"
+        run: node scripts/ensure-rollup-native.mjs
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -140,6 +146,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # npm ci sometimes omits Rollup's optional native binding (npm/cli#4828).
+      - name: Ensure Rollup Windows native binding
+        env:
+          ROLLUP_NATIVE_PACKAGE: "@rollup/rollup-win32-arm64-msvc"
+        run: node scripts/ensure-rollup-native.mjs
 
       - uses: dtolnay/rust-toolchain@stable
         with:
