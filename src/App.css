@@ -510,6 +510,9 @@ h6 {
   overflow-x: scroll;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  /* At 1024 the fitted property table was 7px past the scroller's client
+     edge, under the vertical bar. This keeps the last column in view. */
+  padding-right: 8px;
 }
 
 .content-grid > .browse-grid {
@@ -529,6 +532,17 @@ h6 {
   text-overflow: clip;
   max-width: none;
   min-width: min-content;
+  white-space: nowrap;
+}
+
+/* Street is the column that forced property tables under 22px (0.7356 at
+   1024, 0.9247 at 1280). Cap it so the row fits the scroller at fit-scale 1.
+   The full address stays on the title, which the browser shows on hover. */
+.content-grid .property-street {
+  max-width: 16ch;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -825,6 +839,7 @@ h6 {
 .dos-input.w10 { max-width: min(12ch, 100%); flex: 1 1 12ch; }
 .dos-input.w12 { max-width: min(14ch, 100%); flex: 1 1 14ch; }
 .dos-input.w15 { max-width: min(17ch, 100%); flex: 1 1 17ch; }
+.dos-input.w16 { max-width: min(18ch, 100%); flex: 1 1 18ch; }
 .dos-input.w20 { max-width: min(22ch, 100%); flex: 1 1 22ch; }
 .dos-input.w30 { max-width: min(32ch, 100%); flex: 1 1 32ch; }
 .dos-input.w40 { max-width: min(42ch, 100%); flex: 1 1 42ch; }
@@ -1362,15 +1377,29 @@ h6 {
   min-width: 110ch;
 }
 
-/* Payroll sizes the window from the one-line toolbar. The report must not
-   ask for a second, smaller scale when Run fills the rows. */
+/* Payroll sizes the window from the toolbar. The report must not ask for a
+   second, smaller scale when Run fills the rows. Cells may shrink; the
+   address column takes the room that is left. */
 .payroll-wrap.payroll-fit {
   min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 
+.payroll-fit .browse-grid > * {
+  min-width: 0;
+}
+
+.payroll-fit .desc-truncate {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* The one-line toolbar was wider than 1024 and the fitter answered with
+   --fit-scale 0.8535. Wrap instead, the same as the other search lines,
+   so 22px type stays at fit-scale 1. */
 .dos-searchline.payroll-toolbar {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .dos-searchline.payroll-toolbar > .dos-btn {
@@ -1689,7 +1718,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --workers-id: 9.8ch;
   --workers-delete: 10ch;
   --workers-edit: 8ch;
-  --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-delete) var(--workers-edit);
+  --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-edit) var(--workers-delete);
   --workers-gap: 16px;
   --workers-scrollbar: 16px;
   display: flex;
@@ -1772,9 +1801,28 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
+/* A capped name stays one line in the row. Hover or focus paints the full
+   name over the cells to its right. The title carries the same text. */
+.workers-name:hover,
+.workers-name:focus {
+  overflow: visible;
+  text-overflow: clip;
+  position: relative;
+  z-index: 4;
+  background: var(--dos-blue);
+  outline: 1px solid var(--dos-cyan-bright);
+}
+
+.dos-main-wrap:has(.work-person-form) {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
 .work-person-form {
   align-self: flex-start;
-  margin: 0.6em 1ch;
+  min-width: 46ch;
+  max-width: 100%;
+  margin: 0 1ch 0.4em;
 }
 
 .workers-row .dos-btn {

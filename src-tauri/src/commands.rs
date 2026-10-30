@@ -487,18 +487,32 @@ pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), S
     }
 
     // A blank ID is allowed more than once. A filled-in ID belongs to one person.
+    // Someone who already has this ID in the database may keep it: a catalog
+    // that was duplicated before the rule existed can still be edited and saved.
     if !worker_no.is_empty() {
-        let id_clash: i64 = conn
+        let current: Option<String> = conn
             .query_row(
-                "SELECT COUNT(*) FROM work_persons
-                 WHERE TRIM(worker_no) = ?1 COLLATE NOCASE
-                   AND name != ?2 COLLATE NOCASE",
-                params![worker_no, key],
+                "SELECT TRIM(COALESCE(worker_no, '')) FROM work_persons WHERE name = ?1 COLLATE NOCASE",
+                params![key],
                 |r| r.get(0),
             )
-            .map_err(map_err)?;
-        if id_clash > 0 {
-            return Err("Worker ID must be unique".into());
+            .ok();
+        let keeping = current
+            .as_deref()
+            .is_some_and(|existing| existing.eq_ignore_ascii_case(worker_no));
+        if !keeping {
+            let id_clash: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM work_persons
+                     WHERE TRIM(worker_no) = ?1 COLLATE NOCASE
+                       AND name != ?2 COLLATE NOCASE",
+                    params![worker_no, key],
+                    |r| r.get(0),
+                )
+                .map_err(map_err)?;
+            if id_clash > 0 {
+                return Err("Worker ID must be unique".into());
+            }
         }
     }
 

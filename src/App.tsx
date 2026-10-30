@@ -23,6 +23,8 @@ import {
   setCurrentScreen,
 } from "./lib/observability";
 import { APP_NAME, APP_VERSION } from "./lib/constants";
+import { duplicateWorkerWarning } from "./lib/workerIds";
+import { api } from "./api";
 import "./App.css";
 
 /**
@@ -55,6 +57,7 @@ type Screen =
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "main" });
   const [quitAsk, setQuitAsk] = useState(false);
+  const [workerWarning, setWorkerWarning] = useState("");
   const quitAskRef = useRef(quitAsk);
   quitAskRef.current = quitAsk;
   const appRef = useRef<HTMLDivElement>(null);
@@ -67,6 +70,24 @@ export default function App() {
     });
     metrics.inc("app.session_start");
   }, []);
+
+  // Existing databases can already contain a shared Worker ID. The uniqueness
+  // rule would otherwise refuse every save of those people. Detect that at
+  // startup and again whenever the user comes back to the menu.
+  useEffect(() => {
+    let cancel = false;
+    api
+      .listWorkPersons()
+      .then((list) => {
+        if (!cancel) setWorkerWarning(duplicateWorkerWarning(list ?? []));
+      })
+      .catch(() => {
+        /* The menu still opens when the catalog cannot be read. */
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [screen.name]);
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
@@ -171,7 +192,9 @@ export default function App() {
     <div className="dos-app" ref={appRef}>
       <UpdateDialog />
       <PrintPreviewOverlay />
-      {screen.name === "main" && <MainMenu onSelect={handleMain} />}
+      {screen.name === "main" && (
+        <MainMenu onSelect={handleMain} alert={workerWarning} />
+      )}
 
       {screen.name === "estimate" && (
         <ProcessRouter process="estimate" onBack={goMain} />

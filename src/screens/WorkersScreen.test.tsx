@@ -38,8 +38,11 @@ describe("WorkersScreen", () => {
       const original = (person.originalName ?? "").trim();
       const key = (original || name).toLowerCase();
       const id = person.workerNo.trim().toLowerCase();
+      const self = catalog.find((row) => row.name.toLowerCase() === key);
+      const keeping = !!self && (self.workerNo ?? "").trim().toLowerCase() === id;
       if (
         id &&
+        !keeping &&
         catalog.some(
           (row) =>
             row.name.toLowerCase() !== key &&
@@ -83,7 +86,11 @@ describe("WorkersScreen", () => {
     const buttons = [...(row?.querySelectorAll("button") ?? [])].map(
       (button) => button.textContent
     );
-    expect(buttons).toEqual(["Delete", "Edit"]);
+    expect(buttons).toEqual(["Edit", "Delete"]);
+    expect(screen.getByLabelText("Worker name 1")).toHaveAttribute(
+      "title",
+      "Jose Ramirez"
+    );
     expect(screen.getByRole("button", { name: "Ins Add" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add Work Person" })).not.toBeInTheDocument();
   });
@@ -139,6 +146,52 @@ describe("WorkersScreen", () => {
     expect(await screen.findByText("Worker ID must be unique")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Pat Lee");
     expect(screen.queryByLabelText("Worker name 2")).not.toBeInTheDocument();
+  });
+
+  it("warns when a Worker ID is already duplicated and still saves that person", async () => {
+    catalog = [
+      { ...jose },
+      {
+        name: "Ana Cruz",
+        workerNo: "400",
+        address: "9 Pine Ave",
+        phone: "555-0199",
+        active: true,
+      },
+    ];
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    expect(await screen.findByText(/Worker ID already duplicated: 400/)).toHaveTextContent(
+      "Jose Ramirez"
+    );
+    expect(screen.getByText(/Worker ID already duplicated: 400/)).toHaveTextContent("Ana Cruz");
+    expect(screen.getByText(/still edit and save/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit Jose Ramirez" }));
+    expect(screen.getByLabelText("Phone")).toHaveClass("dos-input", "w16");
+    expect(screen.getByText(/already shared/i)).toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Address"));
+    await user.type(screen.getByLabelText("Address"), "44 Elm St");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent("Ana Cruz");
+    expect(screen.getByText(/Worker ID already duplicated: 400/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.saveWorkPerson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Jose Ramirez",
+          workerNo: "400",
+          address: "44 Elm St",
+          originalName: "Jose Ramirez",
+        })
+      );
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit Ana Cruz" }));
+    await user.clear(screen.getByLabelText("Worker ID"));
+    await user.type(screen.getByLabelText("Worker ID"), "15");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByLabelText("Worker number 1")).toHaveTextContent("15");
+    expect(screen.queryByText(/already duplicated/i)).not.toBeInTheDocument();
   });
 
   it("closes the Work Person window on Esc without saving", async () => {

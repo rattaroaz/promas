@@ -4,6 +4,11 @@ import { useDosKeys } from "../dos/hooks";
 import { DotField } from "../dos/Field";
 import { Screen } from "../dos/Shell";
 import { pushUndoDelete } from "../lib/undoDelete";
+import {
+  duplicateWorkerWarning,
+  workerIdAlreadyShared,
+  workerIdBlocksSave,
+} from "../lib/workerIds";
 
 type Row = {
   key: string;
@@ -181,15 +186,16 @@ export function WorkersScreen() {
     saveQueue.current = saveQueue.current.then(run, run);
   }
 
+  function idRows() {
+    return rowsRef.current.map((row) => ({
+      name: row.name,
+      workerNo: row.workerNo,
+      originalName: row.originalName,
+    }));
+  }
+
   function idTaken(workerNo: string, originalName: string): boolean {
-    const id = workerNo.trim();
-    if (!id) return false;
-    const keep = originalName.trim().toLowerCase();
-    return rowsRef.current.some(
-      (row) =>
-        row.originalName.toLowerCase() !== keep &&
-        row.workerNo.trim().toLowerCase() === id.toLowerCase()
-    );
+    return workerIdBlocksSave(idRows(), workerNo, originalName);
   }
 
   async function saveDraft() {
@@ -330,6 +336,10 @@ export function WorkersScreen() {
   }, [pendingDelete]);
 
   if (draft) {
+    const shared = workerIdAlreadyShared(idRows(), draft.workerNo, draft.originalName);
+    const formMessage = shared
+      ? "This Worker ID is already shared. You can still save, or enter a new ID to resolve it."
+      : "Worker ID is unique.";
     return (
       <Screen
         statusKeys={[
@@ -337,8 +347,8 @@ export function WorkersScreen() {
           { key: "Ctrl-S", label: "Save" },
         ]}
         title=" Work Person "
-        message={msg || "Worker ID is unique."}
-        messageKind={msgKind}
+        message={msg || formMessage}
+        messageKind={msg ? msgKind : shared ? "error" : "default"}
       >
         <div className="dos-main-wrap">
           <div className="dos-form work-person-form">
@@ -381,6 +391,7 @@ export function WorkersScreen() {
     );
   }
 
+  const duplicateWarning = duplicateWorkerWarning(rows);
   return (
     <Screen
       statusKeys={[
@@ -391,9 +402,10 @@ export function WorkersScreen() {
       title=" Workers "
       message={
         msg ||
+        duplicateWarning ||
         "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
       }
-      messageKind={msgKind}
+      messageKind={msg ? msgKind : duplicateWarning ? "error" : "default"}
     >
       <div className="dos-main-wrap">
         <div
@@ -424,20 +436,17 @@ export function WorkersScreen() {
                     queueActive(row.key);
                   }}
                 />
-                <div className="workers-name" aria-label={`Worker name ${n}`}>
+                <div
+                  className="workers-name"
+                  aria-label={`Worker name ${n}`}
+                  title={row.name}
+                  tabIndex={0}
+                >
                   {row.name}
                 </div>
                 <div className="workers-id" aria-label={`Worker number ${n}`}>
                   {row.workerNo}
                 </div>
-                <button
-                  type="button"
-                  className="dos-btn danger"
-                  aria-label={`Delete ${who}`}
-                  onClick={() => setPendingDelete(row)}
-                >
-                  Delete
-                </button>
                 <button
                   type="button"
                   className="dos-btn"
@@ -449,6 +458,14 @@ export function WorkersScreen() {
                   }}
                 >
                   Edit
+                </button>
+                <button
+                  type="button"
+                  className="dos-btn danger"
+                  aria-label={`Delete ${who}`}
+                  onClick={() => setPendingDelete(row)}
+                >
+                  Delete
                 </button>
               </div>
             );

@@ -540,6 +540,21 @@ function horizontallyClipped(el: HTMLElement): boolean {
   return overflowX === "hidden" || overflowX === "clip" || el instanceof HTMLInputElement;
 }
 
+/**
+ * Pixels a property table may extend past its scroller without counting as a
+ * wider screen. At 1024 that overhang is about 7px, the vertical bar covering
+ * the end of the row. Trailing padding on the scroller covers it. A street
+ * that is still far past the scroller is real content and still counts.
+ */
+const TABLE_SCROLLER_SLACK_PX = 8;
+
+function tableScrollerSlack(el: HTMLElement): number {
+  if (!el.classList.contains("content-grid")) return 0;
+  const overflowX = getComputedStyle(el).overflowX;
+  if (overflowX !== "scroll" && overflowX !== "auto") return 0;
+  return TABLE_SCROLLER_SLACK_PX;
+}
+
 export function contentWidthOf(root: HTMLElement): number {
   let max = 0;
   const visit = (el: HTMLElement) => {
@@ -553,7 +568,11 @@ export function contentWidthOf(root: HTMLElement): number {
     // width made the scale oscillate. A child that still paints past the edge
     // counts below.
     const clipsX = horizontallyClipped(el);
-    if (!stretched && sw > 0 && !clipsX) max = Math.max(max, sw);
+    const slack = tableScrollerSlack(el);
+    // Measure the scroller's own width when the row is only the slack past
+    // it. Counting scrollWidth here shrunk the whole screen for 7px.
+    const counted = slack > 0 && sw <= cw + slack ? Math.min(sw, cw) : sw;
+    if (!stretched && counted > 0 && !clipsX) max = Math.max(max, counted);
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
       if (ignoredByFit(node)) continue;
@@ -561,7 +580,7 @@ export function contentWidthOf(root: HTMLElement): number {
         ? node.offsetWidth
         : Math.max(node.scrollWidth, node.offsetWidth);
       const right = node.offsetLeft + childWidth;
-      if (right > cw + 1) max = Math.max(max, right);
+      if (right > cw + slack + 1) max = Math.max(max, right);
       visit(node);
     }
   };

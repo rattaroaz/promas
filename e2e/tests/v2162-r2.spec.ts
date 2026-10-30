@@ -20,7 +20,9 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       const scroll = document.querySelector(".workers-scroll") as HTMLElement;
       const head = document.querySelector(".workers-head") as HTMLElement;
       const row = document.querySelector(".workers-row") as HTMLElement;
-      const del = row.querySelector("button") as HTMLElement;
+      const del = [...row.querySelectorAll("button")].find(
+        (button) => (button.textContent || "").trim() === "Delete"
+      ) as HTMLElement;
       const name = row.querySelector("[aria-label^='Worker name']") as HTMLElement;
       const id = row.querySelector("[aria-label^='Worker number']") as HTMLElement;
       const box = del.getBoundingClientRect();
@@ -154,7 +156,9 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       const head = document.querySelector(".workers-head") as HTMLElement;
       const row = document.querySelector(".workers-row") as HTMLElement;
       const name = document.querySelector("[aria-label='Worker name 1']") as HTMLElement;
-      const del = row.querySelector("button") as HTMLElement;
+      const del = [...row.querySelectorAll("button")].find(
+        (button) => (button.textContent || "").trim() === "Delete"
+      ) as HTMLElement;
       const active = head.children[0] as HTMLElement;
       const idHead = head.children[2] as HTMLElement;
       const nameBox = name.getBoundingClientRect();
@@ -255,16 +259,30 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     await page.getByRole("button", { name: /1\.\s*Payroll Report/i }).click();
     const measureToolbar = () => {
       const bar = document.querySelector(".payroll-toolbar") as HTMLElement;
+      const root = document.documentElement;
       const fit =
-        parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fit-scale")) || 1;
+        parseFloat(getComputedStyle(root).getPropertyValue("--fit-scale")) || 1;
       const bits = [...bar.querySelectorAll("label, input, select, button")].map((el) => {
         const box = (el as HTMLElement).getBoundingClientRect();
-        return { top: Math.round(box.top), text: (el.textContent || "").trim() };
+        return {
+          top: Math.round(box.top),
+          right: Math.round(box.right),
+          text: ((el as HTMLElement).getAttribute("aria-label") || el.textContent || "").trim(),
+        };
       });
       const tops = bits.map((b) => b.top);
       const min = Math.min(...tops);
       const rows = new Set(tops.map((t) => Math.round((t - min) / 8))).size;
-      return { fit, rows, height: bar.getBoundingClientRect().height, bits };
+      return {
+        fit,
+        fitScale: getComputedStyle(root).getPropertyValue("--fit-scale").trim() || "1",
+        rows,
+        height: bar.getBoundingClientRect().height,
+        scrollWidth: bar.scrollWidth,
+        clientWidth: bar.clientWidth,
+        bits,
+        vw: window.innerWidth,
+      };
     };
     await expect(page.getByLabel("Work person search").locator("option")).toHaveText([
       "All",
@@ -278,9 +296,16 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     await waitForFit(page);
     const after = await page.evaluate(measureToolbar);
     await shot(page, `${tag}-payroll-after`);
-    expect(before.rows, `${tag} before`).toBe(1);
-    expect(after.rows, `${tag} after`).toBe(1);
-    expect(Math.abs(before.fit - after.fit), `${tag} fit ${before.fit} -> ${after.fit}`).toBeLessThanOrEqual(0.01);
+    // Dividing a measured width by fit-scale hid 0.8535 at 1024. The scale itself is 1.
+    expect(before.fit, `${tag} payroll --fit-scale`).toBe(1);
+    expect(before.fitScale, `${tag} payroll --fit-scale`).toBe("1");
+    expect(after.fit, `${tag} payroll --fit-scale after Run`).toBe(1);
+    expect(after.fitScale, `${tag} payroll --fit-scale after Run`).toBe("1");
+    expect(before.scrollWidth, `${tag} payroll toolbar`).toBeLessThanOrEqual(before.clientWidth + 1);
+    expect(after.scrollWidth, `${tag} payroll toolbar after Run`).toBeLessThanOrEqual(after.clientWidth + 1);
+    for (const bit of [...before.bits, ...after.bits]) {
+      expect(bit.right, `${tag} ${bit.text}`).toBeLessThanOrEqual(viewport.width + 1);
+    }
 
     report.push({
       viewport: tag,

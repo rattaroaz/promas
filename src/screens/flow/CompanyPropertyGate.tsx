@@ -206,9 +206,12 @@ export function propertyContactName(p: Property): string {
 }
 
 function PropertyPlaceCells({ p }: { p: Property }) {
+  const street = propertyStreetText(p);
   return (
     <>
-      <div className="property-street">{propertyStreetText(p)}</div>
+      <div className="property-street" title={street}>
+        {street}
+      </div>
       <div>{(p.city ?? "").trim()}</div>
       <div>{(p.state ?? "").trim()}</div>
       <div>{(p.zip ?? "").trim()}</div>
@@ -1319,7 +1322,12 @@ export function CompanyPropertyGate({
                 <div>{fmtDate(inv.salesDate)}</div>
                 <div>{inv.companyNo}</div>
                 <div>{inv.proNo}</div>
-                <div className="property-street">{(inv.propertyStreet || inv.propertyName || "").trim()}</div>
+                <div
+                  className="property-street"
+                  title={(inv.propertyStreet || inv.propertyName || "").trim()}
+                >
+                  {(inv.propertyStreet || inv.propertyName || "").trim()}
+                </div>
               </button>
             ))}
           </ContentGrid>
