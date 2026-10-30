@@ -95,6 +95,7 @@ export function WorkersScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState("");
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
+  const [revealedName, setRevealedName] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const rowsRef = useRef<Row[]>([]);
@@ -222,6 +223,7 @@ export function WorkersScreen() {
       });
       applyList(list ?? []);
       setDraft(null);
+      setRevealedName(null);
       setMsg("");
       setMsgKind("default");
     } catch (e) {
@@ -234,6 +236,7 @@ export function WorkersScreen() {
     onEscape: () => {
       if (draft) {
         setDraft(null);
+        setRevealedName(null);
         setMsg("");
         setMsgKind("default");
       }
@@ -242,6 +245,7 @@ export function WorkersScreen() {
       if (draft || pendingDelete) return;
       setMsg("");
       setMsgKind("default");
+      setRevealedName(null);
       setDraft(EMPTY_DRAFT);
     },
     onCtrlS: () => {
@@ -402,10 +406,13 @@ export function WorkersScreen() {
       title=" Workers "
       message={
         msg ||
+        revealedName ||
         duplicateWarning ||
         "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
       }
-      messageKind={msg ? msgKind : duplicateWarning ? "error" : "default"}
+      messageKind={
+        msg ? msgKind : revealedName ? "info" : duplicateWarning ? "error" : "default"
+      }
     >
       <div className="dos-main-wrap">
         <div
@@ -426,7 +433,29 @@ export function WorkersScreen() {
             const n = index + 1;
             const who = row.name.trim() || "worker";
             return (
-              <div className="workers-row" key={row.key}>
+              <div
+                className="workers-row"
+                key={row.key}
+                onMouseEnter={() => setRevealedName(row.name)}
+                onMouseLeave={(e) => {
+                  const next = e.relatedTarget;
+                  const inside = next instanceof Node && e.currentTarget.contains(next);
+                  const focused =
+                    document.activeElement instanceof Node &&
+                    e.currentTarget.contains(document.activeElement);
+                  if (!inside && !focused) {
+                    setRevealedName((cur) => (cur === row.name ? null : cur));
+                  }
+                }}
+                onFocus={() => setRevealedName(row.name)}
+                onBlur={(e) => {
+                  const next = e.relatedTarget;
+                  const staying = next instanceof Node && e.currentTarget.contains(next);
+                  if (!staying && !e.currentTarget.matches(":hover")) {
+                    setRevealedName((cur) => (cur === row.name ? null : cur));
+                  }
+                }}
+              >
                 <input
                   type="checkbox"
                   aria-label={`Active ${who}`}
@@ -454,6 +483,7 @@ export function WorkersScreen() {
                   onClick={() => {
                     setMsg("");
                     setMsgKind("default");
+                    setRevealedName(null);
                     setDraft(draftFromRow(row));
                   }}
                 >
@@ -481,7 +511,10 @@ export function WorkersScreen() {
             role="dialog"
             aria-label="Are you sure? Y/N"
           >
-            <div className="q">Are you sure? Y/N</div>
+            <div className="q">
+              <div className="workers-delete-who">{pendingDelete.name.trim() || "worker"}</div>
+              Are you sure? Y/N
+            </div>
           </div>
         </div>
       )}

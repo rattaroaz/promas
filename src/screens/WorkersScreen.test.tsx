@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../test/render";
 import { WorkersScreen } from "./WorkersScreen";
 import { api, WorkPerson } from "../api";
@@ -192,6 +193,22 @@ describe("WorkersScreen", () => {
     await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
     expect(await screen.findByLabelText("Worker number 1")).toHaveTextContent("15");
     expect(screen.queryByText(/Duplicate Worker ID/i)).not.toBeInTheDocument();
+  });
+
+  it("puts a focused or hovered name in the message bar", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    const name = await screen.findByLabelText("Worker name 1");
+    const bar = () => document.querySelector(".dos-messagebar") as HTMLElement;
+    await user.hover(name);
+    expect(bar()).toHaveTextContent("Jose Ramirez");
+    await user.unhover(name);
+    expect(bar()).toHaveTextContent(/Active workers appear on new invoices/);
+    const row = name.closest(".workers-row") as HTMLElement;
+    fireEvent.focus(row);
+    expect(bar()).toHaveTextContent("Jose Ramirez");
+    fireEvent.blur(row);
+    expect(bar()).toHaveTextContent(/Active workers appear on new invoices/);
   });
 
   it("closes the Work Person window on Esc without saving", async () => {

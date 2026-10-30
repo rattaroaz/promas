@@ -53,10 +53,8 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
     expect(properties.overflow, `${tag} property table overflow`).toBeLessThanOrEqual(1);
     expect(properties.title, tag).toBe("14755 NORTH VENTURA CANYON AVENUE BUILDING A1");
     expect(properties.text, tag).toBe(properties.title);
-    if (viewport.width === 1024) {
-      expect(properties.ellipsis, tag).toBe("ellipsis");
-      expect(properties.streetClient, `${tag} street truncates`).toBeLessThan(properties.streetScroll);
-    }
+    expect(properties.ellipsis, `${tag} street ellipsis`).toBe("ellipsis");
+    expect(properties.streetClient, `${tag} street truncates`).toBeLessThan(properties.streetScroll);
 
     await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
@@ -64,34 +62,7 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
     const row = page.locator(".workers-row").first();
     await expect(row.locator("button")).toHaveText(["Edit", "Delete"]);
 
-    const long = "A".repeat(70);
-    await saveWorkPerson(page, { name: long }, "Jose Ramirez");
-    const name = page.getByLabel("Worker name 1");
-    await expect(name).toHaveAttribute("title", long);
-    await expect(name).toHaveCSS("text-overflow", "ellipsis");
-    await expect(name).toHaveCSS("overflow-x", "hidden");
-    const nameEdges = () =>
-      name.evaluate((el) => {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const text = range.getBoundingClientRect();
-        const cell = el.getBoundingClientRect();
-        return { textRight: text.right, cellRight: cell.right };
-      });
-    await name.hover();
-    const hovered = await nameEdges();
-    expect(hovered.textRight, `${tag} hovered name stays in the cell`).toBeLessThanOrEqual(
-      hovered.cellRight + 1
-    );
-    await name.focus();
-    const focused = await nameEdges();
-    expect(focused.textRight, `${tag} focused name stays in the cell`).toBeLessThanOrEqual(
-      focused.cellRight + 1
-    );
-    // Blur before Edit. Focus wraps the row, and the click target moves when it collapses.
-    await name.blur();
-
-    await page.getByRole("button", { name: `Edit ${long}` }).click();
+    await page.getByRole("button", { name: "Edit Jose Ramirez" }).click();
     await expect(page.getByLabel("Phone")).toBeVisible();
     await waitForFit(page);
     const form = await page.evaluate(() => {
@@ -135,6 +106,99 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
     expect(form.phone.focused, `${tag} phone focus font`).toBe(form.phone.blurred);
     expect(parseFloat(form.address.focused), `${tag} address font`).toBeCloseTo(22, 0);
     expect(parseFloat(form.phone.focused), `${tag} phone font`).toBeCloseTo(22, 0);
+  }
+});
+
+const nameViewports = [
+  { width: 1024, height: 768 },
+  { width: 1280, height: 800 },
+  { width: 1400, height: 900 },
+] as const;
+
+test("a focused long worker name still opens Edit and Delete", async ({ page }) => {
+  test.setTimeout(120_000);
+  const long = "A".repeat(70);
+  for (const viewport of nameViewports) {
+    const tag = `${viewport.width}x${viewport.height}`;
+    await page.setViewportSize(viewport);
+    await openMain(page, /7\.\s*Miscellaneous/i);
+    await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
+    await saveWorkPerson(page, { name: long }, "Jose Ramirez");
+
+    const row = page.locator(".workers-row").first();
+    const name = page.getByLabel("Worker name 1");
+    const edit = page.getByRole("button", { name: `Edit ${long}` });
+    const del = page.getByRole("button", { name: `Delete ${long}` });
+    await expect(name).toHaveAttribute("title", long);
+
+    const measure = () =>
+      row.evaluate((rowEl) => {
+        const cell = rowEl.querySelector(".workers-name") as HTMLElement;
+        const buttons = [...rowEl.querySelectorAll("button")];
+        const range = document.createRange();
+        range.selectNodeContents(cell);
+        const text = range.getBoundingClientRect();
+        const cellBox = cell.getBoundingClientRect();
+        const style = getComputedStyle(cell);
+        const rect = (el: Element) => {
+          const box = el.getBoundingClientRect();
+          return { x: box.x, y: box.y, width: box.width, height: box.height };
+        };
+        // overflow hidden clips the ink at the cell. The range still reports
+        // the unclipped text, which is not what a click can hit.
+        const nameRight =
+          style.overflowX === "hidden" || style.overflowX === "clip"
+            ? Math.min(text.right, cellBox.right)
+            : text.right;
+        return {
+          rowH: rowEl.getBoundingClientRect().height,
+          edit: rect(buttons[0]),
+          del: rect(buttons[1]),
+          nameRight,
+          cellRight: cellBox.right,
+          overflowX: style.overflowX,
+          whiteSpace: style.whiteSpace,
+          ellipsis: style.textOverflow,
+        };
+      });
+    const same = (label: string, before: Awaited<ReturnType<typeof measure>>, after: Awaited<ReturnType<typeof measure>>) => {
+      expect(Math.abs(after.rowH - before.rowH), `${tag} ${label} row height`).toBeLessThanOrEqual(0.5);
+      for (const key of ["edit", "del"] as const) {
+        for (const part of ["x", "y", "width", "height"] as const) {
+          expect(Math.abs(after[key][part] - before[key][part]), `${tag} ${label} ${key} ${part}`).toBeLessThanOrEqual(0.5);
+        }
+      }
+      expect(after.whiteSpace, tag).toBe("nowrap");
+      expect(after.ellipsis, tag).toBe("ellipsis");
+      expect(after.overflowX, tag).toBe("hidden");
+      expect(after.nameRight, `${tag} ${label} name edge`).toBeLessThanOrEqual(after.cellRight + 1);
+    };
+
+    const resting = await measure();
+    await name.hover();
+    await expect(page.locator(".dos-messagebar")).toHaveText(long);
+    same("hover", resting, await measure());
+
+    await name.focus();
+    await expect(page.locator(".dos-messagebar")).toHaveText(long);
+    same("focus", resting, await measure());
+
+    const editBox = await edit.boundingBox();
+    if (!editBox) throw new Error("Edit has no box");
+    await page.mouse.click(editBox.x + editBox.width / 2, editBox.y + editBox.height / 2);
+    await expect(page.getByLabel("Name")).toHaveValue(long);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
+
+    await page.getByLabel("Worker name 1").focus();
+    const delBox = await del.boundingBox();
+    if (!delBox) throw new Error("Delete has no box");
+    await page.mouse.click(delBox.x + delBox.width / 2, delBox.y + delBox.height / 2);
+    const dialog = page.getByRole("dialog", { name: "Are you sure? Y/N" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(long);
+    await page.keyboard.press("n");
+    await expect(dialog).toHaveCount(0);
   }
 });
 

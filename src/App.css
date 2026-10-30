@@ -1835,16 +1835,14 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
-/* Hover and focus wrap inside the cell. The title still has the full name.
-   The text must not paint over Edit or Delete. */
-.workers-name:hover,
-.workers-name:focus {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
+/* A long name stays one line. Hover and focus put the full name in the
+   message bar, so the row and the Edit and Delete buttons do not move. */
 .workers-name:focus {
   outline: 1px solid var(--dos-cyan-bright);
+}
+
+.workers-delete-who {
+  overflow-wrap: anywhere;
 }
 
 .dos-main-wrap:has(.work-person-form) {
