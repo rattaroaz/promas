@@ -349,6 +349,10 @@ pub struct WorkPerson {
     pub name: String,
     #[serde(default)]
     pub worker_no: String,
+    #[serde(default)]
+    pub address: String,
+    #[serde(default)]
+    pub phone: String,
     #[serde(default = "default_active")]
     pub active: bool,
     #[serde(default)]

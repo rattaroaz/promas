@@ -62,8 +62,8 @@ describe("MiscScreen", () => {
       screen.getByRole("button", { name: /5\.\s*Workers/i })
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /5\.\s*Workers/i }));
-    expect(await screen.findByRole("button", { name: "Add Work Person" })).toBeInTheDocument();
-    expect(await screen.findByLabelText("Worker name 1")).toHaveValue(
+    expect(await screen.findByRole("button", { name: "Ins Add" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent(
       "Jose Ramirez"
     );
   });
@@ -85,12 +85,30 @@ describe("MiscScreen", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Add Work Person" })
+      screen.getByRole("button", { name: "Ins Add" })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /5\.\s*Workers/i })
     ).not.toBeInTheDocument();
     expect(api.deleteWorkPerson).not.toHaveBeenCalled();
+  });
+
+  it("closes the Work Person window on Esc without leaving Workers", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.listWorkPersons).mockResolvedValue([
+      { name: "Jose Ramirez", workerNo: "", active: true },
+    ]);
+    renderApp(<MiscScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /5\.\s*Workers/i }));
+    await user.click(await screen.findByRole("button", { name: "Ins Add" }));
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ins Add" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /5\.\s*Workers/i })
+    ).not.toBeInTheDocument();
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
   });
 
   it("lists Job Descriptions as option 6 and can add one", async () => {

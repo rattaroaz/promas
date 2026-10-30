@@ -171,7 +171,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await openMain(page, /7\.\s*Miscellaneous/i);
       await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-      await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
     },
   },
   { name: "Settings", open: (page) => openMain(page, /8\.\s*Settings/i) },

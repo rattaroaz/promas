@@ -104,6 +104,25 @@ export async function shot(page: Page, name: string) {
   });
 }
 
+/** Opens the Work Person window, fills it, and saves back to the list. */
+export async function saveWorkPerson(
+  page: Page,
+  fields: { name: string; address?: string; phone?: string; workerId?: string },
+  editName?: string
+) {
+  if (editName) {
+    await page.getByRole("button", { name: `Edit ${editName}` }).click();
+  } else {
+    await page.getByRole("button", { name: "Ins Add" }).click();
+  }
+  await page.getByLabel("Name").fill(fields.name);
+  if (fields.address != null) await page.getByLabel("Address").fill(fields.address);
+  if (fields.phone != null) await page.getByLabel("Phone").fill(fields.phone);
+  if (fields.workerId != null) await page.getByLabel("Worker ID").fill(fields.workerId);
+  await page.getByRole("button", { name: "Ctrl-S Save" }).click();
+  await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
+}
+
 /** Attaches measurements to the test report. */
 export async function attachJson(name: string, data: unknown) {
   await test.info().attach(name, {

@@ -442,15 +442,17 @@ pub fn delete_employee(state: State<DbState>, emp_no: String) -> Result<(), Stri
 pub fn list_work_person_records(conn: &Connection) -> Result<Vec<WorkPerson>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT name, COALESCE(worker_no, ''), COALESCE(active, 1) FROM work_persons ORDER BY name COLLATE NOCASE",
+            "SELECT name, COALESCE(worker_no, ''), COALESCE(address, ''), COALESCE(phone, ''), COALESCE(active, 1) FROM work_persons ORDER BY name COLLATE NOCASE",
         )
         .map_err(map_err)?;
     let rows = stmt
         .query_map([], |r| {
-            let active: i64 = r.get(2)?;
+            let active: i64 = r.get(4)?;
             Ok(WorkPerson {
                 name: r.get(0)?,
                 worker_no: r.get(1)?,
+                address: r.get(2)?,
+                phone: r.get(3)?,
                 active: active != 0,
                 original_name: String::new(),
             })
@@ -465,6 +467,8 @@ pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), S
         return Err("Work person name required".into());
     }
     let worker_no = person.worker_no.trim();
+    let address = person.address.trim();
+    let phone = person.phone.trim();
     let active: i64 = if person.active { 1 } else { 0 };
     let original = person.original_name.trim();
     let key = if original.is_empty() { name } else { original };
@@ -482,16 +486,32 @@ pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), S
         }
     }
 
+    // A blank ID is allowed more than once. A filled-in ID belongs to one person.
+    if !worker_no.is_empty() {
+        let id_clash: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM work_persons
+                 WHERE TRIM(worker_no) = ?1 COLLATE NOCASE
+                   AND name != ?2 COLLATE NOCASE",
+                params![worker_no, key],
+                |r| r.get(0),
+            )
+            .map_err(map_err)?;
+        if id_clash > 0 {
+            return Err("Worker ID must be unique".into());
+        }
+    }
+
     let updated = conn
         .execute(
-            "UPDATE work_persons SET name = ?1, worker_no = ?2, active = ?3 WHERE name = ?4 COLLATE NOCASE",
-            params![name, worker_no, active, key],
+            "UPDATE work_persons SET name = ?1, worker_no = ?2, address = ?3, phone = ?4, active = ?5 WHERE name = ?6 COLLATE NOCASE",
+            params![name, worker_no, address, phone, active, key],
         )
         .map_err(map_err)?;
     if updated == 0 {
         conn.execute(
-            "INSERT INTO work_persons (name, worker_no, active) VALUES (?1, ?2, ?3)",
-            params![name, worker_no, active],
+            "INSERT INTO work_persons (name, worker_no, address, phone, active) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![name, worker_no, address, phone, active],
         )
         .map_err(map_err)?;
     }

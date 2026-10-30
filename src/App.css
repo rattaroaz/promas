@@ -27,18 +27,18 @@
   --dos-gray: #555555;
   /* Type scale. One face; every font-size and line-height in the app is one
      of these steps (src/typography.test.ts fails on anything else). Screen
-     text is 18px Times New Roman. Property banners are 22px. The control keys
-     at the top are 14px. --fit-scale is 1 when that size fits the window, and
+     text is 22px Times New Roman. Property banners are 26px. The control keys
+     at the top are 18px. --fit-scale is 1 when that size fits the window, and
      shrinks a screen that would not (a wide property table, a tall dialog).
      Printed forms keep the previous face and the paper sizes, and do not use
      --fit-scale. */
   --font-dos: "Times New Roman", Times, serif;
   --font-print: "Consolas", "Lucida Console", "Courier New", monospace;
-  --text-root: calc(18px * var(--fit-scale, 1));
+  --text-root: calc(22px * var(--fit-scale, 1));
   --text-print: 10pt;
-  --text-sm: calc(14px * var(--fit-scale, 1));
+  --text-sm: calc(18px * var(--fit-scale, 1));
   --text-md: 1rem;
-  --text-lg: calc(22px * var(--fit-scale, 1));
+  --text-lg: calc(26px * var(--fit-scale, 1));
   /* What those smaller and larger steps were on paper, before the screen
      sizes were fixed. Print rules still use them. */
   --text-print-sm: 0.9rem;
@@ -1681,14 +1681,15 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* Header and rows share one track list. Work Person is the longest saved
    name (set on the frame), at least this header width, and at most 30ch so
-   Active? and Delete stay on screen at 1024. A name past that cap ellipsizes
-   until the field is focused. The track does not grow with the window. */
+   Active?, Delete, and Edit stay on screen at 1024. A name past that cap
+   ellipsizes. The track does not grow with the window. */
 .workers-frame {
   --workers-active: 7.6ch;
   --workers-name: 13.2ch;
   --workers-id: 9.8ch;
   --workers-delete: 10ch;
-  --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-delete);
+  --workers-edit: 8ch;
+  --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-delete) var(--workers-edit);
   --workers-gap: 16px;
   --workers-scrollbar: 16px;
   display: flex;
@@ -1701,7 +1702,7 @@ input[type="number"]::-webkit-inner-spin-button {
      bar so the tracks fit the rows instead of slipping under the clip. */
   min-width: calc(
     var(--workers-active) + var(--workers-name) + var(--workers-id) + var(--workers-delete) +
-      3 * var(--workers-gap) + var(--workers-scrollbar)
+      var(--workers-edit) + 4 * var(--workers-gap) + var(--workers-scrollbar)
   );
   max-width: 100%;
 }
@@ -1758,29 +1759,22 @@ input[type="number"]::-webkit-inner-spin-button {
 .workers-row {
   align-items: center;
   /* Other lists keep a 44px row (.browse-grid). Workers used to get that
-     height from the old viewport-sized type. At 18px the text alone is about
-     22px, so a page of people fit in the pane and the list never scrolled. */
+     height from the old viewport-sized type. At 22px the text alone is about
+     25px, so a page of people fit in the pane and the list never scrolled. */
   min-height: 44px;
 }
 
-.workers-row .dos-input {
-  flex: none;
-  box-sizing: border-box;
-  width: 100%;
+.workers-name,
+.workers-id {
   min-width: 0;
-  max-width: 100%;
-}
-
-/* A saved name past the column cap is cut with an ellipsis. Focus shows the
-   caret and scrolls inside the field instead of widening the list. */
-.workers-row input[aria-label^="Worker name"] {
-  text-overflow: ellipsis;
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.workers-row input[aria-label^="Worker name"]:focus {
-  text-overflow: clip;
+.work-person-form {
+  align-self: flex-start;
+  margin: 0.6em 1ch;
 }
 
 .workers-row .dos-btn {

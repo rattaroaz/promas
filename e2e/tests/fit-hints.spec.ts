@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { companyList, home, openMain, propertyList, waitForFit } from "../support/app";
+import { companyList, home, openMain, propertyList, saveWorkPerson, waitForFit } from "../support/app";
 
 /**
  * Every screen must fit the window, and every status line and key hint must
@@ -370,7 +370,7 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
       open: async () => {
         await openMain(page, /7\.\s*Miscellaneous/i);
         await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-        await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
       },
     },
     { name: "Settings", open: () => openMain(page, /8\.\s*Settings/i) },
@@ -421,8 +421,9 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     await page.setViewportSize({ width, height: 800 });
     await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-    await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
-    const name = page.getByRole("textbox", { name: /Worker name/i }).first();
+    await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
+    await page.getByRole("button", { name: "Edit Jose Ramirez" }).click();
+    const name = page.getByLabel("Name");
     await waitForFit(page);
     const beforeFit = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
@@ -435,6 +436,7 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     expect(duringFit, `${width} typing a long name changed fit-scale`).toBe(beforeFit);
     const typed = await clipReport(page);
     expect(typed, typed.join("\n")).toEqual([]);
+    await page.getByRole("button", { name: "Ctrl-S Save" }).click();
     const del = page.getByRole("button", { name: new RegExp(`Delete ${long}`) });
     await del.click();
     await expect(page.getByLabel("Are you sure? Y/N")).toBeVisible();
@@ -452,7 +454,7 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
       document.documentElement.style.getPropertyValue("--fit-scale")
     );
     expect(closed, `${width} dismissing Delete changed fit-scale`).toBe(beforeFit);
-    await name.fill("Jose Ramirez");
+    await saveWorkPerson(page, { name: "Jose Ramirez" }, long);
     await waitForFit(page);
     const restored = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")

@@ -95,6 +95,10 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
           // handler is registered first and runs before those listeners.
           return;
         }
+        else if (document.documentElement.dataset.workPersonForm === "yes") {
+          // The Work Person form owns Escape. Leaving here would exit Workers.
+          return;
+        }
         else if (
           screen === "jobs" &&
           document.documentElement.dataset.unsavedJobChanges === "yes"

@@ -1,10 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-import { backToMain, INVOICE_PROCESS, openMain, openNewInvoice, propertyList } from "../support/app";
+import { backToMain, INVOICE_PROCESS, openMain, openNewInvoice, propertyList, saveWorkPerson } from "../support/app";
 
 async function openWorkers(page: Page) {
   await openMain(page, /7\.\s*Miscellaneous/i);
   await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-  await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
 }
 
 test.describe("workers", () => {
@@ -12,26 +12,28 @@ test.describe("workers", () => {
     page,
   }) => {
     await openWorkers(page);
-    await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
-    await expect(page.getByLabel("Worker number 1")).toHaveValue("400");
+    await expect(page.getByLabel("Worker name 1")).toHaveText("Jose Ramirez");
+    await expect(page.getByLabel("Worker number 1")).toHaveText("400");
     await expect(page.getByRole("checkbox", { name: "Active Jose Ramirez" })).toBeChecked();
     await expect(page.locator(".workers-head")).toHaveText("Active?Work PersonID number");
+    await expect(page.getByRole("textbox", { name: /Worker name/i })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Add Work Person" }).click();
-    await page.getByLabel("Worker name 2").fill("Ana Cruz");
-    await page.getByLabel("Worker number 2").fill("15");
-    await page.getByLabel("Worker number 2").press("Tab");
-    await expect(page.getByLabel("Worker name 2")).toHaveValue("Ana Cruz");
+    await saveWorkPerson(page, {
+      name: "Ana Cruz",
+      address: "9 Pine Ave",
+      phone: "555-0199",
+      workerId: "15",
+    });
+    await expect(page.getByLabel("Worker name 1")).toHaveText("Ana Cruz");
 
-    await page.getByLabel("Worker name 2").fill("Ana C. Cruz");
-    await page.getByLabel("Worker number 2").fill("16");
-    await page.getByLabel("Worker number 2").press("Tab");
+    await saveWorkPerson(
+      page,
+      { name: "Ana C. Cruz", workerId: "16" },
+      "Ana Cruz"
+    );
     await expect(page.getByRole("checkbox", { name: "Active Ana C. Cruz" })).toBeChecked();
 
-    await page.getByRole("button", { name: "Add Work Person" }).click();
-    const ianName = page.getByLabel("Worker name 3");
-    await ianName.fill("Inactive Ian");
-    await ianName.press("Tab");
+    await saveWorkPerson(page, { name: "Inactive Ian", workerId: "9" });
     await page.getByRole("checkbox", { name: "Active Inactive Ian" }).uncheck();
     await expect(
       page.getByRole("checkbox", { name: "Active Inactive Ian" })
@@ -61,11 +63,11 @@ test.describe("workers", () => {
     await deleteJose.click();
     await page.keyboard.press("Escape");
     await expect(sure).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
     await expect(page.getByRole("button", { name: /5\.\s*Workers/i })).toHaveCount(0);
     await deleteJose.click();
     await page.keyboard.press("Y");
-    await expect(page.getByLabel("Worker name 1")).not.toHaveValue("Jose Ramirez");
+    await expect(page.getByLabel("Worker name 1")).not.toHaveText("Jose Ramirez");
 
     await propertyList(page, INVOICE_PROCESS, { keepData: true });
     await page.getByRole("button", { name: /01\s+Bldg A/i }).click();

@@ -288,7 +288,7 @@ test("every screen draws text from the one type scale", async ({ page }) => {
       open: async () => {
         await openMain(page, /7\.\s*Miscellaneous/i);
         await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-        await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
       },
     },
     {
@@ -359,7 +359,7 @@ test("the main menu and Workers draw text at the same size in every window", asy
     const main = await rootSize();
     await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-    await expect(page.getByRole("button", { name: /Add Work Person/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
     expect(await rootSize(), `Workers at ${width}×${height}, main menu ${main}px`).toBeCloseTo(main, 1);
   }
 });
@@ -394,8 +394,8 @@ test("printed reports use the print size, whatever the window and fit scale", as
     }
     await page.emulateMedia({ media: "screen" });
   }
-  expect(screen[0], "screen type stays 18px in every window").toBeCloseTo(18, 0);
-  expect(screen[1], "screen type stays 18px in every window").toBeCloseTo(18, 0);
+  expect(screen[0], "screen type stays 22px in every window").toBeCloseTo(22, 0);
+  expect(screen[1], "screen type stays 22px in every window").toBeCloseTo(22, 0);
   for (const size of printed) expect(size, `printed sizes ${printed.join(", ")}`).toBeCloseTo(printed[0], 2);
-  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(18, 0);
+  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(22, 0);
 });

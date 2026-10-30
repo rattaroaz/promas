@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { attachJson, backToMain, openMain, shot, waitForFit } from "../support/app";
+import { attachJson, backToMain, openMain, saveWorkPerson, shot, waitForFit } from "../support/app";
 
 test("round 2 gate at 1280 and 1024", async ({ page }) => {
   test.setTimeout(180_000);
@@ -13,7 +13,7 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     await page.setViewportSize(viewport);
     await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-    await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
+    await expect(page.getByLabel("Worker name 1")).toHaveText("Jose Ramirez");
     await waitForFit(page);
 
     const initial = await page.evaluate(() => {
@@ -21,8 +21,8 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       const head = document.querySelector(".workers-head") as HTMLElement;
       const row = document.querySelector(".workers-row") as HTMLElement;
       const del = row.querySelector("button") as HTMLElement;
-      const name = row.querySelector("input[aria-label^='Worker name']") as HTMLElement;
-      const id = row.querySelector("input[aria-label^='Worker number']") as HTMLElement;
+      const name = row.querySelector("[aria-label^='Worker name']") as HTMLElement;
+      const id = row.querySelector("[aria-label^='Worker number']") as HTMLElement;
       const box = del.getBoundingClientRect();
       const headBoxes = [...head.children].map((el) => {
         const r = (el as HTMLElement).getBoundingClientRect();
@@ -103,11 +103,11 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
 
     const readName = () => {
       const scroll = document.querySelector(".workers-scroll") as HTMLElement;
-      const name = document.querySelector("input[aria-label='Worker name 1']") as HTMLElement;
+      const name = document.querySelector("[aria-label='Worker name 1']") as HTMLElement;
       const box = name.getBoundingClientRect();
       return {
         fitScale: getComputedStyle(document.documentElement).getPropertyValue("--fit-scale").trim(),
-        value: (name as HTMLInputElement).value,
+        value: (name.textContent || "").trim(),
         scrollWidth: scroll.scrollWidth,
         clientWidth: scroll.clientWidth,
         nameLeft: box.left,
@@ -117,17 +117,19 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
         vw: window.innerWidth,
       };
     };
-    await page.getByLabel("Worker name 1").fill("Bartholomew Montgomery-Fitzgerald");
+    await saveWorkPerson(page, { name: "Bartholomew Montgomery-Fitzgerald" }, "Jose Ramirez");
     await waitForFit(page);
     const named = await page.evaluate(readName);
     expect(named.fitScale, `${tag} 33-char name`).toBe(initial.fitScale);
     expect(named.scrollWidth, tag).toBeLessThanOrEqual(named.clientWidth + 1);
     expect(named.nameRight, tag).toBeLessThanOrEqual(named.vw + 1);
+    let current = "Bartholomew Montgomery-Fitzgerald";
     for (const ordinary of ["Maria Gonzalez", "Christopher Johnson", "Alexander Montgomery-Smith"]) {
-      await page.getByLabel("Worker name 1").fill(ordinary);
+      await saveWorkPerson(page, { name: ordinary }, current);
+      current = ordinary;
       await waitForFit(page);
       const fitted = await page.evaluate((value) => {
-        const name = document.querySelector("input[aria-label='Worker name 1']") as HTMLInputElement;
+        const name = document.querySelector("[aria-label='Worker name 1']") as HTMLElement;
         const probe = document.createElement("span");
         probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:${getComputedStyle(name).font};`;
         probe.textContent = value;
@@ -144,13 +146,14 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       expect(fitted.field, `${tag} ${ordinary}`).toBeGreaterThanOrEqual(fitted.text - 1);
       expect(fitted.scroll, `${tag} ${ordinary}`).toBeLessThanOrEqual(fitted.client + 1);
     }
-    await page.getByLabel("Worker name 1").fill("X".repeat(48));
+    const long = "X".repeat(48);
+    await saveWorkPerson(page, { name: long }, current);
     await waitForFit(page);
     const longName = await page.evaluate(() => {
       const scroll = document.querySelector(".workers-scroll") as HTMLElement;
       const head = document.querySelector(".workers-head") as HTMLElement;
       const row = document.querySelector(".workers-row") as HTMLElement;
-      const name = document.querySelector("input[aria-label='Worker name 1']") as HTMLElement;
+      const name = document.querySelector("[aria-label='Worker name 1']") as HTMLElement;
       const del = row.querySelector("button") as HTMLElement;
       const active = head.children[0] as HTMLElement;
       const idHead = head.children[2] as HTMLElement;
@@ -186,19 +189,18 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
     expect(longName.idRight, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
     expect(longName.deleteLeft, `${tag} 48-char name`).toBeGreaterThanOrEqual(-1);
     expect(longName.deleteRight, `${tag} 48-char name`).toBeLessThanOrEqual(longName.vw + 1);
-    await page.getByLabel("Worker name 1").blur();
     await expect(page.getByLabel("Worker name 1")).toHaveCSS("text-overflow", "ellipsis");
     await shot(page, `${tag}-workers-longname`);
-    await page.getByLabel("Worker name 1").fill("Jose Ramirez");
+    await saveWorkPerson(page, { name: "Jose Ramirez" }, long);
     await waitForFit(page);
     const restored = await page.evaluate(readName);
     expect(restored.fitScale, `${tag} restored name`).toBe(initial.fitScale);
     expect(restored.value, tag).toBe("Jose Ramirez");
 
     for (let i = 0; i < 8; i++) {
-      await page.getByRole("button", { name: "Add Work Person" }).click();
+      await saveWorkPerson(page, { name: `Added Worker ${i}`, workerId: String(1000 + i) });
     }
-    const names = page.locator("input[aria-label^='Worker name']");
+    const names = page.locator("[aria-label^='Worker name']");
     const widthSpread = await names.evaluateAll((els) => {
       const widths = els.map((el) => Math.round(el.getBoundingClientRect().width * 100) / 100);
       return Math.max(...widths) - Math.min(...widths);
@@ -248,8 +250,8 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
       await expect(page.getByRole("button", { name: /1\.\s*Material Transaction/i })).toBeVisible();
     }
 
-    await backToMain(page);
-    await page.getByRole("button", { name: /6\.\s*Reports Menu/i }).click();
+    // Reload so the workers added for the scroll check are not in this list.
+    await openMain(page, /6\.\s*Reports Menu/i);
     await page.getByRole("button", { name: /1\.\s*Payroll Report/i }).click();
     const measureToolbar = () => {
       const bar = document.querySelector(".payroll-toolbar") as HTMLElement;

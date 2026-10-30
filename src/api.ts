@@ -141,6 +141,8 @@ export interface Employee {
 export interface WorkPerson {
   name: string;
   workerNo: string;
+  address?: string;
+  phone?: string;
   active: boolean;
   /** Previous name when renaming. Empty when adding. Not stored on invoices. */
   originalName?: string;

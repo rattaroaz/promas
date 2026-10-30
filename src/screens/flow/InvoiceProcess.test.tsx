@@ -1017,9 +1017,9 @@ describe("InvoiceProcess", () => {
     const bannerPx = parseFloat(banner.fontSize);
     const columnPx = parseFloat(getComputedStyle(column).fontSize);
     if (Number.isFinite(bannerPx) && Number.isFinite(columnPx) && columnPx > 0) {
-      expect(bannerPx / columnPx).toBeCloseTo(22 / 18, 2);
+      expect(bannerPx / columnPx).toBeCloseTo(26 / 22, 2);
     } else {
-      expect(banner.fontSize).toMatch(/22px|var\(--text-lg\)/);
+      expect(banner.fontSize).toMatch(/26px|var\(--text-lg\)/);
     }
     const pad = parseFloat(banner.paddingLeft);
     expect(pad).toBeGreaterThan(0);

@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, WorkPerson } from "../api";
+import { useDosKeys } from "../dos/hooks";
+import { DotField } from "../dos/Field";
 import { Screen } from "../dos/Shell";
 import { pushUndoDelete } from "../lib/undoDelete";
 
@@ -8,6 +10,17 @@ type Row = {
   originalName: string;
   name: string;
   workerNo: string;
+  address: string;
+  phone: string;
+  active: boolean;
+};
+
+type Draft = {
+  originalName: string;
+  name: string;
+  workerNo: string;
+  address: string;
+  phone: string;
   active: boolean;
 };
 
@@ -23,9 +36,9 @@ function textWidth(text: string, font: string): number {
 }
 
 /**
- * Name column for the catalog. It is the longest saved or typed name, at
- * least the "Work Person" header, and never wider than 30ch or the space
- * that leaves Active?, the ID, and Delete inside the scrollport.
+ * Name column for the catalog. It is the longest saved name, at least the
+ * "Work Person" header, and never wider than 30ch or the space that leaves
+ * Active?, the ID, Delete, and Edit inside the scrollport.
  */
 export function workerNameTrack(
   namePx: number,
@@ -43,9 +56,31 @@ function rowFromPerson(person: WorkPerson, key: string): Row {
     originalName: person.name,
     name: person.name,
     workerNo: person.workerNo ?? "",
+    address: person.address ?? "",
+    phone: person.phone ?? "",
     active: person.active !== false,
   };
 }
+
+function draftFromRow(row: Row): Draft {
+  return {
+    originalName: row.originalName,
+    name: row.name,
+    workerNo: row.workerNo,
+    address: row.address,
+    phone: row.phone,
+    active: row.active,
+  };
+}
+
+const EMPTY_DRAFT: Draft = {
+  originalName: "",
+  name: "",
+  workerNo: "",
+  address: "",
+  phone: "",
+  active: true,
+};
 
 /**
  * Work-person catalog. Names stored on invoices are independent of this list:
@@ -56,6 +91,7 @@ export function WorkersScreen() {
   const [msg, setMsg] = useState("");
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const rowsRef = useRef<Row[]>([]);
   const frameRef = useRef<HTMLDivElement>(null);
   const keySeq = useRef(0);
@@ -70,6 +106,22 @@ export function WorkersScreen() {
   function replaceRows(next: Row[]) {
     rowsRef.current = next;
     setRows(next);
+  }
+
+  function applyList(list: WorkPerson[]) {
+    const prev = rowsRef.current;
+    const used = new Set<string>();
+    replaceRows(
+      list.map((person) => {
+        const existing = prev.find(
+          (row) =>
+            !used.has(row.key) &&
+            row.name.toLowerCase() === person.name.toLowerCase()
+        );
+        if (existing) used.add(existing.key);
+        return rowFromPerson(person, existing?.key ?? nextKey());
+      })
+    );
   }
 
   useEffect(() => {
@@ -91,6 +143,14 @@ export function WorkersScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    if (draft) document.documentElement.dataset.workPersonForm = "yes";
+    else delete document.documentElement.dataset.workPersonForm;
+    return () => {
+      delete document.documentElement.dataset.workPersonForm;
+    };
+  }, [draft]);
+
   function patchRow(key: string, patch: Partial<Row>) {
     const next = rowsRef.current.map((row) =>
       row.key === key ? { ...row, ...patch } : row
@@ -98,23 +158,19 @@ export function WorkersScreen() {
     replaceRows(next);
   }
 
-  function queueSave(key: string) {
+  function queueActive(key: string) {
     const run = async () => {
       const row = rowsRef.current.find((r) => r.key === key);
-      if (!row) return;
-      const name = row.name.trim();
-      if (!name) return;
+      if (!row || !row.originalName) return;
       try {
         await api.saveWorkPerson({
-          name,
+          name: row.name.trim(),
           workerNo: row.workerNo.trim(),
+          address: row.address,
+          phone: row.phone,
           active: row.active,
           originalName: row.originalName,
         });
-        const current = rowsRef.current.map((r) =>
-          r.key === key ? { ...r, originalName: name } : r
-        );
-        replaceRows(current);
         setMsg("");
         setMsgKind("default");
       } catch (e) {
@@ -125,43 +181,96 @@ export function WorkersScreen() {
     saveQueue.current = saveQueue.current.then(run, run);
   }
 
+  function idTaken(workerNo: string, originalName: string): boolean {
+    const id = workerNo.trim();
+    if (!id) return false;
+    const keep = originalName.trim().toLowerCase();
+    return rowsRef.current.some(
+      (row) =>
+        row.originalName.toLowerCase() !== keep &&
+        row.workerNo.trim().toLowerCase() === id.toLowerCase()
+    );
+  }
+
+  async function saveDraft() {
+    if (!draft) return;
+    const name = draft.name.trim();
+    if (!name) {
+      setMsg("Work person name required");
+      setMsgKind("error");
+      return;
+    }
+    if (idTaken(draft.workerNo, draft.originalName)) {
+      setMsg("Worker ID must be unique");
+      setMsgKind("error");
+      return;
+    }
+    try {
+      const list = await api.saveWorkPerson({
+        name,
+        workerNo: draft.workerNo.trim(),
+        address: draft.address.trim(),
+        phone: draft.phone.trim(),
+        active: draft.active,
+        originalName: draft.originalName,
+      });
+      applyList(list ?? []);
+      setDraft(null);
+      setMsg("");
+      setMsgKind("default");
+    } catch (e) {
+      setMsg(String(e));
+      setMsgKind("error");
+    }
+  }
+
+  useDosKeys({
+    onEscape: () => {
+      if (draft) {
+        setDraft(null);
+        setMsg("");
+        setMsgKind("default");
+      }
+    },
+    onInsert: () => {
+      if (draft || pendingDelete) return;
+      setMsg("");
+      setMsgKind("default");
+      setDraft(EMPTY_DRAFT);
+    },
+    onCtrlS: () => {
+      if (draft) void saveDraft();
+    },
+  });
+
   useLayoutEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    const input = frame.querySelector(
-      "input[aria-label^='Worker name']"
-    ) as HTMLInputElement | null;
+    const nameCell = frame.querySelector(
+      "[aria-label^='Worker name']"
+    ) as HTMLElement | null;
     const header = frame.querySelector(
       ".workers-head > div:nth-child(2)"
     ) as HTMLElement | null;
     const scroll = frame.querySelector(".workers-scroll") as HTMLElement | null;
-    const font = getComputedStyle(input ?? header ?? frame).font;
-    const headerFont = getComputedStyle(header ?? input ?? frame).font;
-    const pad = input
-      ? parseFloat(getComputedStyle(input).paddingLeft) +
-        parseFloat(getComputedStyle(input).paddingRight)
-      : 0;
+    const font = getComputedStyle(nameCell ?? header ?? frame).font;
+    const headerFont = getComputedStyle(header ?? nameCell ?? frame).font;
     const ch = textWidth("0", font) || 9;
-    // Saved names set the track. The text currently in the field counts too,
-    // so an ordinary name is fully visible as it is typed. Past the cap, the
-    // track stops and the unfocused field ellipsizes.
-    const names = rows
-      .flatMap((row) => [row.originalName, row.name])
-      .map((name) => name.trim())
-      .filter(Boolean);
+    const names = rows.map((row) => row.name.trim()).filter(Boolean);
     const longest = names.reduce((max, name) => Math.max(max, textWidth(name, font)), 0);
     const headerPx = textWidth("Work Person", headerFont) + 1;
     const active = 7.6 * ch;
     const id = 9.8 * ch;
     const del = 10 * ch;
-    const gaps = 16 * 3;
+    const edit = 8 * ch;
+    const gaps = 16 * 4;
     const bar = 16;
     const port = scroll?.clientWidth || frame.clientWidth || 1024;
-    const room = port - active - id - del - gaps - bar;
+    const room = port - active - id - del - edit - gaps - bar;
     const cap = Math.min(30 * ch, Math.max(room, 0));
-    const next = workerNameTrack(longest + pad + 1, headerPx, cap);
+    const next = workerNameTrack(longest + 2, headerPx, cap);
     setNameTrack((prev) => (prev === next ? prev : next));
-  }, [rows]);
+  }, [rows, draft]);
 
   useEffect(() => {
     if (!pendingDelete) return;
@@ -195,6 +304,8 @@ export function WorkersScreen() {
               await api.saveWorkPerson({
                 name,
                 workerNo: row.workerNo.trim(),
+                address: row.address,
+                phone: row.phone,
                 active: row.active,
                 originalName: "",
               });
@@ -218,10 +329,63 @@ export function WorkersScreen() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [pendingDelete]);
 
+  if (draft) {
+    return (
+      <Screen
+        statusKeys={[
+          { key: "Esc", label: "Exit" },
+          { key: "Ctrl-S", label: "Save" },
+        ]}
+        title=" Work Person "
+        message={msg || "Worker ID is unique."}
+        messageKind={msgKind}
+      >
+        <div className="dos-main-wrap">
+          <div className="dos-form work-person-form">
+            <DotField label="Name" width={12}>
+              <input
+                className="dos-input w30"
+                aria-label="Name"
+                value={draft.name}
+                autoFocus
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              />
+            </DotField>
+            <DotField label="Address" width={12}>
+              <input
+                className="dos-input w30"
+                aria-label="Address"
+                value={draft.address}
+                onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+              />
+            </DotField>
+            <DotField label="Phone" width={12}>
+              <input
+                className="dos-input w16"
+                aria-label="Phone"
+                value={draft.phone}
+                onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+              />
+            </DotField>
+            <DotField label="Worker ID" width={12}>
+              <input
+                className="dos-input w12"
+                aria-label="Worker ID"
+                value={draft.workerNo}
+                onChange={(e) => setDraft({ ...draft, workerNo: e.target.value })}
+              />
+            </DotField>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
+
   return (
     <Screen
       statusKeys={[
         { key: "Esc", label: "Exit" },
+        { key: "Ins", label: "Add" },
         { key: "F1", label: "Help" },
       ]}
       title=" Workers "
@@ -242,12 +406,13 @@ export function WorkersScreen() {
             <div>Work Person</div>
             <div>ID number</div>
             <div></div>
+            <div></div>
           </div>
           <div className="workers-scroll">
         <div className="workers-list">
           {rows.map((row, index) => {
             const n = index + 1;
-            const who = row.name.trim() || "new worker";
+            const who = row.name.trim() || "worker";
             return (
               <div className="workers-row" key={row.key}>
                 <input
@@ -256,25 +421,15 @@ export function WorkersScreen() {
                   checked={row.active}
                   onChange={(e) => {
                     patchRow(row.key, { active: e.target.checked });
-                    queueSave(row.key);
+                    queueActive(row.key);
                   }}
                 />
-                <input
-                  className="dos-input"
-                  aria-label={`Worker name ${n}`}
-                  value={row.name}
-                  onChange={(e) => patchRow(row.key, { name: e.target.value })}
-                  onBlur={() => queueSave(row.key)}
-                />
-                <input
-                  className="dos-input"
-                  aria-label={`Worker number ${n}`}
-                  value={row.workerNo}
-                  onChange={(e) =>
-                    patchRow(row.key, { workerNo: e.target.value })
-                  }
-                  onBlur={() => queueSave(row.key)}
-                />
+                <div className="workers-name" aria-label={`Worker name ${n}`}>
+                  {row.name}
+                </div>
+                <div className="workers-id" aria-label={`Worker number ${n}`}>
+                  {row.workerNo}
+                </div>
                 <button
                   type="button"
                   className="dos-btn danger"
@@ -283,27 +438,21 @@ export function WorkersScreen() {
                 >
                   Delete
                 </button>
+                <button
+                  type="button"
+                  className="dos-btn"
+                  aria-label={`Edit ${who}`}
+                  onClick={() => {
+                    setMsg("");
+                    setMsgKind("default");
+                    setDraft(draftFromRow(row));
+                  }}
+                >
+                  Edit
+                </button>
               </div>
             );
           })}
-          <div className="workers-add">
-            <button
-              type="button"
-              className="dos-btn"
-              onClick={() => {
-                const row: Row = {
-                  key: nextKey(),
-                  originalName: "",
-                  name: "",
-                  workerNo: "",
-                  active: true,
-                };
-                replaceRows([...rowsRef.current, row]);
-              }}
-            >
-              Add Work Person
-            </button>
-          </div>
         </div>
           </div>
         </div>

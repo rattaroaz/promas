@@ -1,6 +1,12 @@
 import { presetJobDescriptions, type JobDescription } from "../../src/lib/jobCatalog";
 
-type E2EWorkPerson = { name: string; workerNo: string; active: boolean };
+type E2EWorkPerson = {
+  name: string;
+  workerNo: string;
+  address?: string;
+  phone?: string;
+  active: boolean;
+};
 
 /** Seeded the way a migrated catalog is: Jose's numeric employees.emp_no is 400. */
 let workPersons: E2EWorkPerson[] = [
@@ -389,6 +395,8 @@ export async function invoke<T = unknown>(
     const person = (_args?.person ?? {}) as {
       name?: string;
       workerNo?: string;
+      address?: string;
+      phone?: string;
       active?: boolean;
       originalName?: string;
     };
@@ -396,9 +404,22 @@ export async function invoke<T = unknown>(
     if (!name) throw new Error("Work person name required");
     const original = String(person.originalName ?? "").trim();
     const key = (original || name).toLowerCase();
+    const workerNo = String(person.workerNo ?? "").trim();
+    if (
+      workerNo &&
+      workPersons.some(
+        (p) =>
+          p.name.toLowerCase() !== key &&
+          p.workerNo.trim().toLowerCase() === workerNo.toLowerCase()
+      )
+    ) {
+      throw new Error("Worker ID must be unique");
+    }
     const next = {
       name,
-      workerNo: String(person.workerNo ?? ""),
+      workerNo,
+      address: String(person.address ?? ""),
+      phone: String(person.phone ?? ""),
       active: person.active !== false,
     };
     const idx = workPersons.findIndex((p) => p.name.toLowerCase() === key);

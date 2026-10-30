@@ -377,6 +377,8 @@ fn create_schema(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS work_persons (
             name TEXT PRIMARY KEY COLLATE NOCASE,
             worker_no TEXT NOT NULL DEFAULT '',
+            address TEXT NOT NULL DEFAULT '',
+            phone TEXT NOT NULL DEFAULT '',
             active INTEGER NOT NULL DEFAULT 1
         );
 
@@ -418,6 +420,13 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "TEXT NOT NULL DEFAULT ''",
     )?;
     add_column_if_missing(conn, "work_persons", "active", "INTEGER NOT NULL DEFAULT 1")?;
+    add_column_if_missing(
+        conn,
+        "work_persons",
+        "address",
+        "TEXT NOT NULL DEFAULT ''",
+    )?;
+    add_column_if_missing(conn, "work_persons", "phone", "TEXT NOT NULL DEFAULT ''")?;
     ensure_app_meta(conn)?;
     let seeded = seed_work_persons(conn)?;
     // Fill numbers on the first migration, and when this open just copied

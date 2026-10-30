@@ -9,6 +9,8 @@ fn person(name: &str, worker_no: &str, active: bool, original_name: &str) -> Wor
     WorkPerson {
         name: name.to_string(),
         worker_no: worker_no.to_string(),
+        address: String::new(),
+        phone: String::new(),
         active,
         original_name: original_name.to_string(),
     }
@@ -239,6 +241,36 @@ fn cleared_worker_number_stays_cleared_across_restart() {
         .query_row("SELECT worker_no FROM work_persons", [], |r| r.get(0))
         .unwrap();
     assert_eq!(worker_no, "");
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn worker_id_is_unique_and_address_is_stored() {
+    let (dir, conn) = temp_conn("unique-id");
+    let mut jose = person("Jose Ramirez", "400", true, "");
+    jose.address = "12 Oak St".into();
+    jose.phone = "555-0100".into();
+    write_work_person(&conn, &jose).unwrap();
+    let (address, phone): (String, String) = conn
+        .query_row(
+            "SELECT address, phone FROM work_persons WHERE name = 'Jose Ramirez'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(address, "12 Oak St");
+    assert_eq!(phone, "555-0100");
+
+    let err = write_work_person(&conn, &person("Ana Cruz", "400", true, "")).unwrap_err();
+    assert_eq!(err, "Worker ID must be unique");
+    let err = write_work_person(&conn, &person("Ana Cruz", " 400 ", true, "")).unwrap_err();
+    assert_eq!(err, "Worker ID must be unique");
+
+    write_work_person(&conn, &person("Ana Cruz", "15", true, "")).unwrap();
+    write_work_person(&conn, &person("Jose Ramirez", "400", true, "Jose Ramirez")).unwrap();
+    write_work_person(&conn, &person("Pat Lee", "", true, "")).unwrap();
+    write_work_person(&conn, &person("Sam Lee", "", true, "")).unwrap();
     drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -19,76 +19,137 @@ vi.mock("../api", async () => {
 const jose: WorkPerson = {
   name: "Jose Ramirez",
   workerNo: "400",
+  address: "12 Oak St",
+  phone: "555-0100",
   active: true,
 };
+
+let catalog: WorkPerson[] = [];
 
 describe("WorkersScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api.listWorkPersons).mockResolvedValue([jose]);
-    vi.mocked(api.saveWorkPerson).mockImplementation(async (person) => [
-      { name: person.name, workerNo: person.workerNo, active: person.active },
-    ]);
-    vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
+    catalog = [{ ...jose }];
+    vi.mocked(api.listWorkPersons).mockImplementation(async () =>
+      catalog.map((person) => ({ ...person }))
+    );
+    vi.mocked(api.saveWorkPerson).mockImplementation(async (person) => {
+      const name = person.name.trim();
+      const original = (person.originalName ?? "").trim();
+      const key = (original || name).toLowerCase();
+      const id = person.workerNo.trim().toLowerCase();
+      if (
+        id &&
+        catalog.some(
+          (row) =>
+            row.name.toLowerCase() !== key &&
+            (row.workerNo ?? "").trim().toLowerCase() === id
+        )
+      ) {
+        throw new Error("Worker ID must be unique");
+      }
+      const next: WorkPerson = {
+        name,
+        workerNo: person.workerNo.trim(),
+        address: person.address ?? "",
+        phone: person.phone ?? "",
+        active: person.active,
+      };
+      const idx = catalog.findIndex((row) => row.name.toLowerCase() === key);
+      if (idx >= 0) catalog[idx] = next;
+      else catalog.push(next);
+      catalog.sort((a, b) => a.name.localeCompare(b.name));
+      return catalog.map((row) => ({ ...row }));
+    });
+    vi.mocked(api.deleteWorkPerson).mockImplementation(async (name) => {
+      catalog = catalog.filter((row) => row.name.toLowerCase() !== name.toLowerCase());
+      return catalog.map((row) => ({ ...row }));
+    });
   });
 
-  it("shows seeded workers as active with the numeric ID number", async () => {
+  it("shows the name and ID as text, with Edit beside Delete and Ins Add at the top", async () => {
     renderApp(<WorkersScreen />);
-    expect(await screen.findByLabelText("Worker name 1")).toHaveValue(
+    expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent(
       "Jose Ramirez"
     );
-    expect(screen.getByLabelText("Worker number 1")).toHaveValue("400");
+    expect(screen.getByLabelText("Worker number 1")).toHaveTextContent("400");
+    expect(screen.queryByRole("textbox", { name: /Worker name/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /Worker number/i })).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Active Jose Ramirez" })).toBeChecked();
     expect(document.querySelector(".workers-head")?.textContent).toBe(
       "Active?Work PersonID number"
     );
-    expect(document.querySelector(".workers-head")?.textContent).not.toContain(
-      "Delete"
+    const row = document.querySelector(".workers-row");
+    const buttons = [...(row?.querySelectorAll("button") ?? [])].map(
+      (button) => button.textContent
     );
-    expect(
-      screen.getByRole("button", { name: "Add Work Person" })
-    ).toBeInTheDocument();
+    expect(buttons).toEqual(["Delete", "Edit"]);
+    expect(screen.getByRole("button", { name: "Ins Add" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add Work Person" })).not.toBeInTheDocument();
   });
 
-  it("adds a worker and edits the name and worker number", async () => {
+  it("opens a Work Person window from Ins Add and saves its fields", async () => {
     const user = userEvent.setup();
     renderApp(<WorkersScreen />);
     await screen.findByLabelText("Worker name 1");
-    await user.click(screen.getByRole("button", { name: "Add Work Person" }));
-    await user.type(screen.getByLabelText("Worker name 2"), "Ana Cruz");
-    await user.type(screen.getByLabelText("Worker number 2"), "15");
-    await user.tab();
+    await user.click(screen.getByRole("button", { name: "Ins Add" }));
+    expect(screen.getByRole("button", { name: "Esc Exit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ctrl-S Save" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Name"), "Ana Cruz");
+    await user.type(screen.getByLabelText("Address"), "9 Pine Ave");
+    await user.type(screen.getByLabelText("Phone"), "555-0199");
+    await user.type(screen.getByLabelText("Worker ID"), "15");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent("Ana Cruz");
+    expect(screen.getByLabelText("Worker number 2")).toHaveTextContent("400");
     await waitFor(() => {
       expect(api.saveWorkPerson).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Ana Cruz",
+          address: "9 Pine Ave",
+          phone: "555-0199",
+          workerNo: "15",
           originalName: "",
           active: true,
         })
       );
-      expect(api.saveWorkPerson).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "Ana Cruz",
-          workerNo: "15",
-          active: true,
-        })
-      );
     });
+  });
 
-    await user.clear(screen.getByLabelText("Worker name 2"));
-    await user.type(screen.getByLabelText("Worker name 2"), "Ana C. Cruz");
-    await user.clear(screen.getByLabelText("Worker number 2"));
-    await user.type(screen.getByLabelText("Worker number 2"), "16");
-    await user.tab();
-    await waitFor(() => {
-      expect(api.saveWorkPerson).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          name: "Ana C. Cruz",
-          workerNo: "16",
-          active: true,
-        })
-      );
-    });
+  it("edits a person from the Edit button and keeps the ID unique", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    await user.click(await screen.findByRole("button", { name: "Edit Jose Ramirez" }));
+    expect(screen.getByLabelText("Name")).toHaveValue("Jose Ramirez");
+    expect(screen.getByLabelText("Address")).toHaveValue("12 Oak St");
+    expect(screen.getByLabelText("Phone")).toHaveValue("555-0100");
+    expect(screen.getByLabelText("Worker ID")).toHaveValue("400");
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Ana C. Cruz");
+    await user.clear(screen.getByLabelText("Worker ID"));
+    await user.type(screen.getByLabelText("Worker ID"), "16");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent("Ana C. Cruz");
+    expect(screen.getByLabelText("Worker number 1")).toHaveTextContent("16");
+
+    await user.click(screen.getByRole("button", { name: "Ins Add" }));
+    await user.type(screen.getByLabelText("Name"), "Pat Lee");
+    await user.type(screen.getByLabelText("Worker ID"), "16");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByText("Worker ID must be unique")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Pat Lee");
+    expect(screen.queryByLabelText("Worker name 2")).not.toBeInTheDocument();
+  });
+
+  it("closes the Work Person window on Esc without saving", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    await user.click(await screen.findByRole("button", { name: "Ins Add" }));
+    await user.type(screen.getByLabelText("Name"), "Ana Cruz");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ins Add" })).toBeInTheDocument();
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
   });
 
   it("deactivates a worker without removing the row", async () => {
@@ -108,7 +169,7 @@ describe("WorkersScreen", () => {
         })
       );
     });
-    expect(screen.getByLabelText("Worker name 1")).toHaveValue("Jose Ramirez");
+    expect(screen.getByLabelText("Worker name 1")).toHaveTextContent("Jose Ramirez");
   });
 
   it("deletes only for Y or y, and n, N, Esc, or any other key leave the row", async () => {
@@ -132,7 +193,7 @@ describe("WorkersScreen", () => {
 
     await user.keyboard("n");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Worker name 1")).toHaveValue("Jose Ramirez");
+    expect(screen.getByLabelText("Worker name 1")).toHaveTextContent("Jose Ramirez");
 
     await openDelete();
     await user.keyboard("N");
@@ -142,7 +203,7 @@ describe("WorkersScreen", () => {
     await openDelete();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Worker name 1")).toHaveValue("Jose Ramirez");
+    expect(screen.getByLabelText("Worker name 1")).toHaveTextContent("Jose Ramirez");
     expect(api.deleteWorkPerson).not.toHaveBeenCalled();
 
     await openDelete();
@@ -182,11 +243,13 @@ describe("WorkersScreen", () => {
         expect.objectContaining({
           name: "Jose Ramirez",
           workerNo: "400",
+          address: "12 Oak St",
+          phone: "555-0100",
           active: true,
         })
       );
     });
-    expect(screen.getByLabelText("Worker name 1")).toHaveValue("Jose Ramirez");
+    expect(screen.getByLabelText("Worker name 1")).toHaveTextContent("Jose Ramirez");
     expect(screen.queryByRole("button", { name: "F2 Undo Delete" })).not.toBeInTheDocument();
   });
 });

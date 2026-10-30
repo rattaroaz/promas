@@ -8,6 +8,7 @@ import {
   openNewInvoice,
   plusDays,
   propertyList,
+  saveWorkPerson,
   shot,
   waitForFit,
 } from "../support/app";
@@ -168,10 +169,10 @@ test.describe("promas 2.16.2", () => {
     const mainFont = await menuItem.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     await menuItem.click();
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-    await expect(page.getByLabel("Worker name 1")).toHaveValue("Jose Ramirez");
-    await expect(page.getByLabel("Worker number 1")).toHaveValue("400");
+    await expect(page.getByLabel("Worker name 1")).toHaveText("Jose Ramirez");
+    await expect(page.getByLabel("Worker number 1")).toHaveText("400");
     await expect(page.locator(".workers-head")).toHaveText("Active?Work PersonID number");
-    await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
     await expect(page.locator(".dos-messagebar")).toContainText(
       "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
     );
@@ -184,24 +185,18 @@ test.describe("promas 2.16.2", () => {
     });
     expect(font.size).toBeCloseTo(font.root, 1);
     expect(font.size, "Workers text matches the main menu at 1280x800").toBeCloseTo(mainFont, 1);
-    await page.getByLabel("Worker name 1").focus();
-    const focused = await page.getByLabel("Worker name 1").evaluate((el) =>
-      parseFloat(getComputedStyle(el).fontSize)
-    );
-    expect(focused).toBeCloseTo(font.size, 1);
-
     const scroll = page.locator(".workers-scroll");
     await expect(scroll).toHaveCSS("overflow-y", "scroll");
     await shot(page, "workers");
     for (let i = 0; i < 14; i++) {
-      await page.getByRole("button", { name: "Add Work Person" }).click();
+      await saveWorkPerson(page, { name: `Added Worker ${i}`, workerId: String(1000 + i) });
     }
     const canScroll = await scroll.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
     expect(canScroll).toBe(true);
     await scroll.evaluate((el) => {
       el.scrollTop = el.scrollHeight;
     });
-    await expect(page.getByRole("button", { name: "Add Work Person" })).toBeVisible();
+    await expect(page.getByLabel("Worker name 15")).toBeVisible();
     await shot(page, "workers-scrolled");
   });
 
@@ -210,10 +205,7 @@ test.describe("promas 2.16.2", () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-    await page.getByRole("button", { name: "Add Work Person" }).click();
-    const ian = page.getByLabel("Worker name 2");
-    await ian.fill("Inactive Ian");
-    await ian.press("Tab");
+    await saveWorkPerson(page, { name: "Inactive Ian", workerId: "9" });
     await page.getByRole("checkbox", { name: "Active Inactive Ian" }).uncheck();
     await expect(
       page.getByRole("checkbox", { name: "Active Inactive Ian" })
