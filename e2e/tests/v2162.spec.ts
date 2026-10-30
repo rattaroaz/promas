@@ -138,6 +138,16 @@ test.describe("promas 2.16.2", () => {
       await shot(page, opener.name);
     }
 
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openMain(page, /6\.\s*Reports Menu/i);
+    await page.getByRole("button", { name: /1\.\s*Payroll Report/i }).click();
+    await expect(page.getByLabel("Work person search")).toBeVisible();
+    await waitForFit(page);
+    const payroll1024 = await measureDates(page, "payroll-1024");
+    expect(payroll1024.fit, "payroll --fit-scale at 1024").toBe(1);
+    report.push(payroll1024);
+    await shot(page, "payroll-1024");
+
     const norms: number[] = [];
     for (const row of report) {
       const widths = row.dates.map((d) => d.width);
@@ -145,7 +155,14 @@ test.describe("promas 2.16.2", () => {
       expect(spread, `${row.screen} date widths ${widths.join(",")}`).toBeLessThanOrEqual(1);
       for (const date of row.dates) {
         expect(date.icon, date.label).toBe(true);
-        norms.push(date.width / row.fit);
+        // Widths used to be divided by fit-scale, so a payroll page at 0.8535
+        // still looked the same. Payroll must actually be scale 1.
+        if (row.screen === "payroll" || row.screen === "payroll-1024") {
+          expect(row.fit, `${row.screen} --fit-scale`).toBe(1);
+          norms.push(date.width);
+        } else {
+          norms.push(date.width / row.fit);
+        }
       }
     }
     const normSpread = Math.max(...norms) - Math.min(...norms);

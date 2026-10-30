@@ -206,9 +206,12 @@ export function propertyContactName(p: Property): string {
 }
 
 function PropertyPlaceCells({ p }: { p: Property }) {
+  const street = propertyStreetText(p);
   return (
     <>
-      <div className="property-street">{propertyStreetText(p)}</div>
+      <div className="property-street" title={street}>
+        {street}
+      </div>
       <div>{(p.city ?? "").trim()}</div>
       <div>{(p.state ?? "").trim()}</div>
       <div>{(p.zip ?? "").trim()}</div>
@@ -1297,7 +1300,7 @@ export function CompanyPropertyGate({
       {/* ── Invoice number browse ──────────────────────── */}
       {phase === "inv-browse" && (
         <div className="dos-browse">
-          <ContentGrid columns={5}>
+          <ContentGrid columns={5} shrinkColumn={4}>
             <div className="browse-grid browse-grid-header">
               <div>Inv#</div>
               <div>Inv_Date</div>
@@ -1319,7 +1322,12 @@ export function CompanyPropertyGate({
                 <div>{fmtDate(inv.salesDate)}</div>
                 <div>{inv.companyNo}</div>
                 <div>{inv.proNo}</div>
-                <div className="property-street">{(inv.propertyStreet || inv.propertyName || "").trim()}</div>
+                <div
+                  className="property-street"
+                  title={(inv.propertyStreet || inv.propertyName || "").trim()}
+                >
+                  {(inv.propertyStreet || inv.propertyName || "").trim()}
+                </div>
               </button>
             ))}
           </ContentGrid>
@@ -1427,7 +1435,7 @@ export function CompanyPropertyGate({
       {phase === "pr-browse" && (
         <div className="dos-browse">
           {company ? (
-            <ContentGrid columns={7}>
+            <ContentGrid columns={7} shrinkColumn={2}>
               <div className="browse-grid browse-grid-header">
                 <div>ProNO</div>
                 <div>Name</div>
@@ -1459,7 +1467,7 @@ export function CompanyPropertyGate({
               ))}
             </ContentGrid>
           ) : (
-            <ContentGrid columns={7}>
+            <ContentGrid columns={7} shrinkColumn={2}>
               <div className="browse-grid browse-grid-header">
                 <button
                   type="button"

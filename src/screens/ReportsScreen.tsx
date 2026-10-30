@@ -1102,6 +1102,10 @@ function SalesReport({
   );
 }
 
+/** Tracks shrink so Run does not drop 22px type below fit-scale 1 at 1024. */
+const PAYROLL_COLS =
+  "12ch 7ch minmax(10ch, 1fr) 9ch 12ch 12ch minmax(0, 4ch) minmax(0, 4ch)";
+
 function PayrollReport({
   rows,
   onInvoice,
@@ -1119,7 +1123,7 @@ function PayrollReport({
     <div className="payroll-wrap payroll-fit">
       <div className="hdr">*****   Payroll Report   *****</div>
       <div className="dos-browse">
-        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
+        <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: PAYROLL_COLS }}>
           <div>Inv_Date</div>
           <div>Inv#</div>
           <div>Address</div>
@@ -1134,7 +1138,7 @@ function PayrollReport({
             <div
               key={`${r.companyNo}-${r.proNo}-${r.salesDate}-${r.invoice}`}
               className="dos-row browse-grid"
-              style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}
+              style={{ gridTemplateColumns: PAYROLL_COLS }}
             >
               <div>{fmtDate(r.salesDate)}</div>
               <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
@@ -1162,7 +1166,7 @@ function PayrollReport({
             </div>
           ))}
         </div>
-        <div className="browse-grid dos-total" style={{ gridTemplateColumns: "12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch" }}>
+        <div className="browse-grid dos-total" style={{ gridTemplateColumns: PAYROLL_COLS }}>
           <div style={{ gridColumn: "1 / 5" }}>{`Total Counts: ${rows.length}`}</div>
           <div>{money(tot)}</div>
           <div>{money(mat)}</div>

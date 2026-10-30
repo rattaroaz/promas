@@ -274,3 +274,57 @@ fn worker_id_is_unique_and_address_is_stored() {
     drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn already_duplicated_worker_ids_can_be_saved_and_resolved() {
+    let (dir, conn) = temp_conn("existing-dup");
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, address, phone, active) VALUES ('Jose Ramirez', '400', '1 A St', '555', 1)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, address, phone, active) VALUES ('Ana Cruz', '400', '2 B St', '556', 1)",
+        [],
+    )
+    .unwrap();
+
+    let mut jose = person("Jose Ramirez", "400", true, "Jose Ramirez");
+    jose.address = "9 New St".into();
+    jose.phone = "555-2222".into();
+    write_work_person(&conn, &jose).unwrap();
+    let (address, phone, worker_no): (String, String, String) = conn
+        .query_row(
+            "SELECT address, phone, worker_no FROM work_persons WHERE name = 'Jose Ramirez'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(address, "9 New St");
+    assert_eq!(phone, "555-2222");
+    assert_eq!(worker_no, "400");
+
+    let mut ana = person("Ana Cruz", " 400 ", true, "Ana Cruz");
+    ana.address = "2 B St".into();
+    write_work_person(&conn, &ana).unwrap();
+
+    let err = write_work_person(&conn, &person("Pat Lee", "400", true, "")).unwrap_err();
+    assert_eq!(err, "Worker ID must be unique");
+
+    write_work_person(&conn, &person("Ana Cruz", "15", true, "Ana Cruz")).unwrap();
+    let ana_no: String = conn
+        .query_row(
+            "SELECT worker_no FROM work_persons WHERE name = 'Ana Cruz'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(ana_no, "15");
+
+    write_work_person(&conn, &person("Jose Ramirez", "400", true, "Jose Ramirez")).unwrap();
+    let err = write_work_person(&conn, &person("Jose Ramirez", "15", true, "Jose Ramirez")).unwrap_err();
+    assert_eq!(err, "Worker ID must be unique");
+
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -4,6 +4,11 @@ import { useDosKeys } from "../dos/hooks";
 import { DotField } from "../dos/Field";
 import { Screen } from "../dos/Shell";
 import { pushUndoDelete } from "../lib/undoDelete";
+import {
+  duplicateWorkerWarning,
+  workerIdAlreadyShared,
+  workerIdBlocksSave,
+} from "../lib/workerIds";
 
 type Row = {
   key: string;
@@ -90,6 +95,7 @@ export function WorkersScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState("");
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
+  const [revealedName, setRevealedName] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const rowsRef = useRef<Row[]>([]);
@@ -181,15 +187,16 @@ export function WorkersScreen() {
     saveQueue.current = saveQueue.current.then(run, run);
   }
 
+  function idRows() {
+    return rowsRef.current.map((row) => ({
+      name: row.name,
+      workerNo: row.workerNo,
+      originalName: row.originalName,
+    }));
+  }
+
   function idTaken(workerNo: string, originalName: string): boolean {
-    const id = workerNo.trim();
-    if (!id) return false;
-    const keep = originalName.trim().toLowerCase();
-    return rowsRef.current.some(
-      (row) =>
-        row.originalName.toLowerCase() !== keep &&
-        row.workerNo.trim().toLowerCase() === id.toLowerCase()
-    );
+    return workerIdBlocksSave(idRows(), workerNo, originalName);
   }
 
   async function saveDraft() {
@@ -216,6 +223,7 @@ export function WorkersScreen() {
       });
       applyList(list ?? []);
       setDraft(null);
+      setRevealedName(null);
       setMsg("");
       setMsgKind("default");
     } catch (e) {
@@ -228,6 +236,7 @@ export function WorkersScreen() {
     onEscape: () => {
       if (draft) {
         setDraft(null);
+        setRevealedName(null);
         setMsg("");
         setMsgKind("default");
       }
@@ -236,6 +245,7 @@ export function WorkersScreen() {
       if (draft || pendingDelete) return;
       setMsg("");
       setMsgKind("default");
+      setRevealedName(null);
       setDraft(EMPTY_DRAFT);
     },
     onCtrlS: () => {
@@ -330,6 +340,10 @@ export function WorkersScreen() {
   }, [pendingDelete]);
 
   if (draft) {
+    const shared = workerIdAlreadyShared(idRows(), draft.workerNo, draft.originalName);
+    const formMessage = shared
+      ? "This Worker ID is already shared. You can still save, or enter a new ID to resolve it."
+      : "Worker ID is unique.";
     return (
       <Screen
         statusKeys={[
@@ -337,8 +351,8 @@ export function WorkersScreen() {
           { key: "Ctrl-S", label: "Save" },
         ]}
         title=" Work Person "
-        message={msg || "Worker ID is unique."}
-        messageKind={msgKind}
+        message={msg || formMessage}
+        messageKind={msg ? msgKind : shared ? "error" : "default"}
       >
         <div className="dos-main-wrap">
           <div className="dos-form work-person-form">
@@ -381,6 +395,7 @@ export function WorkersScreen() {
     );
   }
 
+  const duplicateWarning = duplicateWorkerWarning(rows);
   return (
     <Screen
       statusKeys={[
@@ -391,9 +406,13 @@ export function WorkersScreen() {
       title=" Workers "
       message={
         msg ||
+        revealedName ||
+        duplicateWarning ||
         "Active workers appear on new invoices. Deleting one leaves past invoices unchanged."
       }
-      messageKind={msgKind}
+      messageKind={
+        msg ? msgKind : revealedName ? "info" : duplicateWarning ? "error" : "default"
+      }
     >
       <div className="dos-main-wrap">
         <div
@@ -414,7 +433,29 @@ export function WorkersScreen() {
             const n = index + 1;
             const who = row.name.trim() || "worker";
             return (
-              <div className="workers-row" key={row.key}>
+              <div
+                className="workers-row"
+                key={row.key}
+                onMouseEnter={() => setRevealedName(row.name)}
+                onMouseLeave={(e) => {
+                  const next = e.relatedTarget;
+                  const inside = next instanceof Node && e.currentTarget.contains(next);
+                  const focused =
+                    document.activeElement instanceof Node &&
+                    e.currentTarget.contains(document.activeElement);
+                  if (!inside && !focused) {
+                    setRevealedName((cur) => (cur === row.name ? null : cur));
+                  }
+                }}
+                onFocus={() => setRevealedName(row.name)}
+                onBlur={(e) => {
+                  const next = e.relatedTarget;
+                  const staying = next instanceof Node && e.currentTarget.contains(next);
+                  if (!staying && !e.currentTarget.matches(":hover")) {
+                    setRevealedName((cur) => (cur === row.name ? null : cur));
+                  }
+                }}
+              >
                 <input
                   type="checkbox"
                   aria-label={`Active ${who}`}
@@ -424,7 +465,12 @@ export function WorkersScreen() {
                     queueActive(row.key);
                   }}
                 />
-                <div className="workers-name" aria-label={`Worker name ${n}`}>
+                <div
+                  className="workers-name"
+                  aria-label={`Worker name ${n}`}
+                  title={row.name}
+                  tabIndex={0}
+                >
                   {row.name}
                 </div>
                 <div className="workers-id" aria-label={`Worker number ${n}`}>
@@ -432,23 +478,24 @@ export function WorkersScreen() {
                 </div>
                 <button
                   type="button"
-                  className="dos-btn danger"
-                  aria-label={`Delete ${who}`}
-                  onClick={() => setPendingDelete(row)}
-                >
-                  Delete
-                </button>
-                <button
-                  type="button"
                   className="dos-btn"
                   aria-label={`Edit ${who}`}
                   onClick={() => {
                     setMsg("");
                     setMsgKind("default");
+                    setRevealedName(null);
                     setDraft(draftFromRow(row));
                   }}
                 >
                   Edit
+                </button>
+                <button
+                  type="button"
+                  className="dos-btn danger"
+                  aria-label={`Delete ${who}`}
+                  onClick={() => setPendingDelete(row)}
+                >
+                  Delete
                 </button>
               </div>
             );
@@ -464,7 +511,10 @@ export function WorkersScreen() {
             role="dialog"
             aria-label="Are you sure? Y/N"
           >
-            <div className="q">Are you sure? Y/N</div>
+            <div className="q">
+              <div className="workers-delete-who">{pendingDelete.name.trim() || "worker"}</div>
+              Are you sure? Y/N
+            </div>
           </div>
         </div>
       )}

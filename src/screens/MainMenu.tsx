@@ -26,7 +26,14 @@ const ITEMS: { id: MainAction; num: string; label: string; accel: string }[] = [
   { id: "settings", num: "8", label: "Settings             ", accel: "T" },
 ];
 
-export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
+export function MainMenu({
+  onSelect,
+  alert = "",
+}: {
+  onSelect: (a: MainAction) => void;
+  /** Shown at startup when the database already has a shared Worker ID. */
+  alert?: string;
+}) {
   const [hot, setHot] = useState(0);
   const [help, setHelp] = useState(false);
   const [quitAsk, setQuitAsk] = useState(false);
@@ -107,7 +114,8 @@ export function MainMenu({ onSelect }: { onSelect: (a: MainAction) => void }) {
       title={`Promas(P) Version ${APP_VERSION}`}
       left={dateStr}
       right={timeStr}
-      message={quitAsk ? "Do you want quit (Y/N) ?" : ""}
+      message={quitAsk ? "Do you want quit (Y/N) ?" : alert}
+      messageKind={!quitAsk && alert ? "error" : "default"}
     >
       <div className="dos-main-wrap">
         <div className="dos-menu-frame">

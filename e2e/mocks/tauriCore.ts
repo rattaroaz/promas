@@ -9,9 +9,29 @@ type E2EWorkPerson = {
 };
 
 /** Seeded the way a migrated catalog is: Jose's numeric employees.emp_no is 400. */
-let workPersons: E2EWorkPerson[] = [
-  { name: "Jose Ramirez", workerNo: "400", active: true },
-];
+function seedWorkPersons(): E2EWorkPerson[] {
+  const rows: E2EWorkPerson[] = [
+    { name: "Jose Ramirez", workerNo: "400", active: true },
+  ];
+  // A page can start from a catalog that already shares an ID. The app has to
+  // warn and still save those rows. Tests opt in before the document loads.
+  try {
+    if (sessionStorage.getItem("e2e-duplicate-workers") === "1") {
+      rows.push({
+        name: "Ana Cruz",
+        workerNo: "400",
+        address: "9 Pine Ave",
+        phone: "555-0199",
+        active: true,
+      });
+    }
+  } catch {
+    /* sessionStorage is missing when this module is read outside a document. */
+  }
+  return rows;
+}
+
+let workPersons: E2EWorkPerson[] = seedWorkPersons();
 
 let jobDescriptions: JobDescription[] = presetJobDescriptions();
 
@@ -405,8 +425,12 @@ export async function invoke<T = unknown>(
     const original = String(person.originalName ?? "").trim();
     const key = (original || name).toLowerCase();
     const workerNo = String(person.workerNo ?? "").trim();
+    const existing = workPersons.find((p) => p.name.toLowerCase() === key);
+    const keeping =
+      !!existing && existing.workerNo.trim().toLowerCase() === workerNo.toLowerCase();
     if (
       workerNo &&
+      !keeping &&
       workPersons.some(
         (p) =>
           p.name.toLowerCase() !== key &&

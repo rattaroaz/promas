@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { renderApp, screen, userEvent, waitFor } from "../test/render";
 import { WorkersScreen } from "./WorkersScreen";
 import { api, WorkPerson } from "../api";
@@ -38,8 +39,11 @@ describe("WorkersScreen", () => {
       const original = (person.originalName ?? "").trim();
       const key = (original || name).toLowerCase();
       const id = person.workerNo.trim().toLowerCase();
+      const self = catalog.find((row) => row.name.toLowerCase() === key);
+      const keeping = !!self && (self.workerNo ?? "").trim().toLowerCase() === id;
       if (
         id &&
+        !keeping &&
         catalog.some(
           (row) =>
             row.name.toLowerCase() !== key &&
@@ -83,7 +87,11 @@ describe("WorkersScreen", () => {
     const buttons = [...(row?.querySelectorAll("button") ?? [])].map(
       (button) => button.textContent
     );
-    expect(buttons).toEqual(["Delete", "Edit"]);
+    expect(buttons).toEqual(["Edit", "Delete"]);
+    expect(screen.getByLabelText("Worker name 1")).toHaveAttribute(
+      "title",
+      "Jose Ramirez"
+    );
     expect(screen.getByRole("button", { name: "Ins Add" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add Work Person" })).not.toBeInTheDocument();
   });
@@ -139,6 +147,68 @@ describe("WorkersScreen", () => {
     expect(await screen.findByText("Worker ID must be unique")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Pat Lee");
     expect(screen.queryByLabelText("Worker name 2")).not.toBeInTheDocument();
+  });
+
+  it("warns when a Worker ID is already duplicated and still saves that person", async () => {
+    catalog = [
+      { ...jose },
+      {
+        name: "Ana Cruz",
+        workerNo: "400",
+        address: "9 Pine Ave",
+        phone: "555-0199",
+        active: true,
+      },
+    ];
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    expect(await screen.findByText(/Duplicate Worker ID 400/)).toHaveTextContent(
+      "Jose Ramirez"
+    );
+    expect(screen.getByText(/Duplicate Worker ID 400/)).toHaveTextContent("Ana Cruz");
+    expect(screen.getByText(/You can still save/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit Jose Ramirez" }));
+    expect(screen.getByLabelText("Phone")).toHaveClass("dos-input", "w16");
+    expect(screen.getByText(/already shared/i)).toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Address"));
+    await user.type(screen.getByLabelText("Address"), "44 Elm St");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent("Ana Cruz");
+    expect(screen.getByText(/Duplicate Worker ID 400/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.saveWorkPerson).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Jose Ramirez",
+          workerNo: "400",
+          address: "44 Elm St",
+          originalName: "Jose Ramirez",
+        })
+      );
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit Ana Cruz" }));
+    await user.clear(screen.getByLabelText("Worker ID"));
+    await user.type(screen.getByLabelText("Worker ID"), "15");
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(await screen.findByLabelText("Worker number 1")).toHaveTextContent("15");
+    expect(screen.queryByText(/Duplicate Worker ID/i)).not.toBeInTheDocument();
+  });
+
+  it("puts a focused or hovered name in the message bar", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    const name = await screen.findByLabelText("Worker name 1");
+    const bar = () => document.querySelector(".dos-messagebar") as HTMLElement;
+    await user.hover(name);
+    expect(bar()).toHaveTextContent("Jose Ramirez");
+    await user.unhover(name);
+    expect(bar()).toHaveTextContent(/Active workers appear on new invoices/);
+    const row = name.closest(".workers-row") as HTMLElement;
+    fireEvent.focus(row);
+    expect(bar()).toHaveTextContent("Jose Ramirez");
+    fireEvent.blur(row);
+    expect(bar()).toHaveTextContent(/Active workers appear on new invoices/);
   });
 
   it("closes the Work Person window on Esc without saving", async () => {

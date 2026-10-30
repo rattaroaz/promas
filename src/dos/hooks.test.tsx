@@ -49,6 +49,38 @@ describe("fit measurement", () => {
     document.body.removeChild(host);
   });
 
+  it("measures a property scroller's width when the row is only 7px past it", () => {
+    const shell = document.createElement("div");
+    const grid = document.createElement("div");
+    grid.className = "content-grid dos-browse-body";
+    grid.style.overflowX = "scroll";
+    const row = document.createElement("div");
+    shell.appendChild(grid);
+    grid.appendChild(row);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    box(shell, 1024, 0);
+    box(grid, 993, 1000);
+    box(row, 1000, 1000, 1000, 0);
+    expect(contentWidthOf(shell)).toBeLessThanOrEqual(993);
+
+    box(grid, 993, 1200);
+    box(row, 1200, 1200, 1200, 0);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1200);
+    document.body.removeChild(shell);
+  });
+
   it("ignores a clipped message bar and still counts a static row", () => {
     const shell = document.createElement("div");
     const bar = document.createElement("div");
