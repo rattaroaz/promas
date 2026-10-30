@@ -53,8 +53,10 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
     expect(properties.overflow, `${tag} property table overflow`).toBeLessThanOrEqual(1);
     expect(properties.title, tag).toBe("14755 NORTH VENTURA CANYON AVENUE BUILDING A1");
     expect(properties.text, tag).toBe(properties.title);
-    expect(properties.ellipsis, tag).toBe("ellipsis");
-    expect(properties.streetClient, `${tag} street is capped`).toBeLessThan(properties.streetScroll);
+    if (viewport.width === 1024) {
+      expect(properties.ellipsis, tag).toBe("ellipsis");
+      expect(properties.streetClient, `${tag} street truncates`).toBeLessThan(properties.streetScroll);
+    }
 
     await openMain(page, /7\.\s*Miscellaneous/i);
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
@@ -62,15 +64,32 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
     const row = page.locator(".workers-row").first();
     await expect(row.locator("button")).toHaveText(["Edit", "Delete"]);
 
-    const long = "Bartholomew Montgomery-Fitzgerald";
+    const long = "A".repeat(70);
     await saveWorkPerson(page, { name: long }, "Jose Ramirez");
     const name = page.getByLabel("Worker name 1");
     await expect(name).toHaveAttribute("title", long);
     await expect(name).toHaveCSS("text-overflow", "ellipsis");
+    await expect(name).toHaveCSS("overflow-x", "hidden");
+    const nameEdges = () =>
+      name.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const text = range.getBoundingClientRect();
+        const cell = el.getBoundingClientRect();
+        return { textRight: text.right, cellRight: cell.right };
+      });
     await name.hover();
-    await expect(name).toHaveCSS("overflow-x", "visible");
+    const hovered = await nameEdges();
+    expect(hovered.textRight, `${tag} hovered name stays in the cell`).toBeLessThanOrEqual(
+      hovered.cellRight + 1
+    );
     await name.focus();
-    await expect(name).toHaveCSS("overflow-x", "visible");
+    const focused = await nameEdges();
+    expect(focused.textRight, `${tag} focused name stays in the cell`).toBeLessThanOrEqual(
+      focused.cellRight + 1
+    );
+    // Blur before Edit. Focus wraps the row, and the click target moves when it collapses.
+    await name.blur();
 
     await page.getByRole("button", { name: `Edit ${long}` }).click();
     await expect(page.getByLabel("Phone")).toBeVisible();
@@ -127,20 +146,26 @@ test("startup warns about worker IDs that are already duplicated and still saves
   });
   await page.setViewportSize({ width: 1024, height: 768 });
   await home(page);
-  await expect(page.locator(".dos-messagebar")).toContainText(/Worker ID already duplicated: 400/);
-  await expect(page.locator(".dos-messagebar")).toContainText("Jose Ramirez");
-  await expect(page.locator(".dos-messagebar")).toContainText("Ana Cruz");
-  await expect(page.locator(".dos-messagebar")).toContainText(/still edit and save/i);
+  const bar = page.locator(".dos-messagebar");
+  await expect(bar).toContainText(/Duplicate Worker ID 400/);
+  await expect(bar).toContainText("Jose Ramirez");
+  await expect(bar).toContainText("Ana Cruz");
+  await expect(bar).toContainText(/You can still save/i);
+  const messageLines = await bar.evaluate((el) => {
+    const line = parseFloat(getComputedStyle(el).lineHeight);
+    return el.scrollHeight / line;
+  });
+  expect(messageLines, "duplicate warning is one line at 1024").toBeLessThanOrEqual(1.05);
 
   await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
   await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
-  await expect(page.locator(".dos-messagebar")).toContainText(/still edit and save/i);
+  await expect(page.locator(".dos-messagebar")).toContainText(/You can still save/i);
   await page.getByRole("button", { name: "Edit Jose Ramirez" }).click();
   await expect(page.locator(".dos-messagebar")).toContainText(/already shared/i);
   await page.getByLabel("Address").fill("44 Elm St");
   await page.getByRole("button", { name: "Ctrl-S Save" }).click();
   await expect(page.getByRole("button", { name: "Ins Add" })).toBeVisible();
-  await expect(page.locator(".dos-messagebar")).toContainText(/already duplicated/i);
+  await expect(page.locator(".dos-messagebar")).toContainText(/Duplicate Worker ID/i);
 
   await page.getByRole("checkbox", { name: "Active Jose Ramirez" }).uncheck();
   await expect(page.getByRole("checkbox", { name: "Active Jose Ramirez" })).not.toBeChecked();
@@ -150,12 +175,58 @@ test("startup warns about worker IDs that are already duplicated and still saves
     { name: "Ana Cruz", workerId: "15", address: "9 Pine Ave", phone: "555-0199" },
     "Ana Cruz"
   );
-  await expect(page.locator(".dos-messagebar")).not.toContainText(/already duplicated/i);
+  await expect(page.locator(".dos-messagebar")).not.toContainText(/Duplicate Worker ID/i);
   await page.getByRole("button", { name: "Edit Jose Ramirez" }).click();
   await expect(page.getByLabel("Address")).toHaveValue("44 Elm St");
   await page.getByLabel("Worker ID").fill("15");
   await page.getByRole("button", { name: "Ctrl-S Save" }).click();
   await expect(page.getByText("Worker ID must be unique")).toBeVisible();
+});
+
+test("payroll headers share left edges with their columns", async ({ page }) => {
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await openMain(page, /6\.\s*Reports Menu/i);
+    await page.getByRole("button", { name: /1\.\s*Payroll Report/i }).click();
+    await page.getByRole("button", { name: "Run", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Invoice 12" })).toBeVisible();
+    await waitForFit(page);
+    const deltas = await page.evaluate(() => {
+      const header = document.querySelector(".browse-grid-header") as HTMLElement;
+      const row = document.querySelector(".dos-browse-body .browse-grid") as HTMLElement;
+      const heads = [...header.children];
+      const cells = [...row.children];
+      return heads.map((head, i) =>
+        Math.abs(head.getBoundingClientRect().left - cells[i].getBoundingClientRect().left)
+      );
+    });
+    expect(deltas.length, `${viewport.width} payroll columns`).toBeGreaterThan(0);
+    for (const [index, delta] of deltas.entries()) {
+      expect(delta, `${viewport.width} column ${index}`).toBeLessThanOrEqual(1);
+    }
+  }
+});
+
+test("a wide window shows the full property street", async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await propertyList(page, /3\.\s*Invoice Process/i);
+  await waitForFit(page);
+  const street = await page.evaluate(() => {
+    const root = document.documentElement;
+    const grid = document.querySelector(".content-grid") as HTMLElement;
+    const cell = document.querySelector(".property-street") as HTMLElement;
+    return {
+      fit: getComputedStyle(root).getPropertyValue("--fit-scale").trim() || "1",
+      overflow: grid.scrollWidth - grid.clientWidth,
+      client: cell.clientWidth,
+      scroll: cell.scrollWidth,
+      text: (cell.textContent || "").trim(),
+    };
+  });
+  expect(street.fit, "1400 property --fit-scale").toBe("1");
+  expect(street.overflow, "1400 property overflow").toBeLessThanOrEqual(1);
+  expect(street.text).toBe("14755 NORTH VENTURA CANYON AVENUE BUILDING A1");
+  expect(street.client, "1400 street is not truncated").toBeGreaterThanOrEqual(street.scroll - 1);
 });
 
 test("company list property tables stay at scale 1", async ({ page }) => {

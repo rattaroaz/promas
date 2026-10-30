@@ -161,11 +161,11 @@ describe("WorkersScreen", () => {
     ];
     const user = userEvent.setup();
     renderApp(<WorkersScreen />);
-    expect(await screen.findByText(/Worker ID already duplicated: 400/)).toHaveTextContent(
+    expect(await screen.findByText(/Duplicate Worker ID 400/)).toHaveTextContent(
       "Jose Ramirez"
     );
-    expect(screen.getByText(/Worker ID already duplicated: 400/)).toHaveTextContent("Ana Cruz");
-    expect(screen.getByText(/still edit and save/i)).toBeInTheDocument();
+    expect(screen.getByText(/Duplicate Worker ID 400/)).toHaveTextContent("Ana Cruz");
+    expect(screen.getByText(/You can still save/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit Jose Ramirez" }));
     expect(screen.getByLabelText("Phone")).toHaveClass("dos-input", "w16");
@@ -174,7 +174,7 @@ describe("WorkersScreen", () => {
     await user.type(screen.getByLabelText("Address"), "44 Elm St");
     await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
     expect(await screen.findByLabelText("Worker name 1")).toHaveTextContent("Ana Cruz");
-    expect(screen.getByText(/Worker ID already duplicated: 400/)).toBeInTheDocument();
+    expect(screen.getByText(/Duplicate Worker ID 400/)).toBeInTheDocument();
     await waitFor(() => {
       expect(api.saveWorkPerson).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -191,7 +191,7 @@ describe("WorkersScreen", () => {
     await user.type(screen.getByLabelText("Worker ID"), "15");
     await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
     expect(await screen.findByLabelText("Worker number 1")).toHaveTextContent("15");
-    expect(screen.queryByText(/already duplicated/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Duplicate Worker ID/i)).not.toBeInTheDocument();
   });
 
   it("closes the Work Person window on Esc without saving", async () => {

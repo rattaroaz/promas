@@ -195,7 +195,8 @@ describe("CompanyPropertyGate", () => {
     expect(row).toHaveTextContent("91403");
     expect(row).toHaveTextContent("MARIA GONZALEZ");
     expect(row.closest(".content-grid")).toHaveStyle({
-      gridTemplateColumns: "repeat(7, max-content)",
+      gridTemplateColumns:
+        "max-content max-content minmax(16ch, max-content) max-content max-content max-content max-content",
     });
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
@@ -520,7 +521,8 @@ describe("CompanyPropertyGate", () => {
     expect(screen.getByText("Contact")).toBeInTheDocument();
     expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
     expect(maria.closest(".content-grid")).toHaveStyle({
-      gridTemplateColumns: "repeat(7, max-content)",
+      gridTemplateColumns:
+        "max-content max-content minmax(16ch, max-content) max-content max-content max-content max-content",
     });
   });
 
@@ -839,7 +841,8 @@ describe("CompanyPropertyGate", () => {
     const quail = await screen.findByRole("button", { name: /1105 MAPLE ST/i });
     expect(quail.querySelector(".property-street")).toHaveTextContent("1105 MAPLE ST.");
     expect(quail.closest(".content-grid")).toHaveStyle({
-      gridTemplateColumns: "repeat(5, max-content)",
+      gridTemplateColumns:
+        "max-content max-content max-content max-content minmax(16ch, max-content)",
     });
     expect(screen.getByRole("button", { name: /88 MAIN ST/i })).toBeInTheDocument();
     expect(onReady).not.toHaveBeenCalled();

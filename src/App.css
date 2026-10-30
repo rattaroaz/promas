@@ -525,6 +525,11 @@ h6 {
   column-gap: 8px;
 }
 
+/* A street track may shrink. The row must not demand the unwrapped address. */
+.content-grid:has(.property-street) > .browse-grid {
+  min-width: 0;
+}
+
 .content-grid > .browse-grid > *,
 .content-grid .desc-truncate,
 .content-grid .property-street {
@@ -535,11 +540,11 @@ h6 {
   white-space: nowrap;
 }
 
-/* Street is the column that forced property tables under 22px (0.7356 at
-   1024, 0.9247 at 1280). Cap it so the row fits the scroller at fit-scale 1.
-   The full address stays on the title, which the browser shows on hover. */
+/* Street is minmax(16ch, max-content) on the grid. It keeps the full address
+   when the row fits (1400) and ellipsizes only when the track has to shrink
+   (1024). The title still has the full value. */
 .content-grid .property-street {
-  max-width: 16ch;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1395,6 +1400,14 @@ h6 {
   min-width: 0;
 }
 
+/* Header and total sit outside the scroller. Without the same stable gutter
+   the flexible Address column is 15px wider and Unit onward shifts right. */
+.payroll-fit .browse-grid-header,
+.payroll-fit .dos-total {
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
 /* The one-line toolbar was wider than 1024 and the fitter answered with
    --fit-scale 0.8535. Wrap instead, the same as the other search lines,
    so 22px type stays at fit-scale 1. */
@@ -1464,6 +1477,27 @@ h6 {
 
   .dos-report.payroll-landscape {
     overflow: visible;
+  }
+
+  /* Screen columns flex so 1024 stays at fit-scale 1. Print keeps the
+     previous fixed tracks, including the 30ch address. */
+  .payroll-wrap.payroll-fit {
+    min-width: 110ch;
+    width: auto;
+    max-width: none;
+  }
+
+  .payroll-fit .browse-grid {
+    grid-template-columns: 12ch 7ch 30ch 9ch 12ch 12ch 8ch 8ch !important;
+  }
+
+  .payroll-fit .browse-grid > * {
+    min-width: auto;
+  }
+
+  .payroll-fit .desc-truncate {
+    max-width: 30ch;
+    min-width: auto;
   }
 }
 
@@ -1801,15 +1835,15 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
-/* A capped name stays one line in the row. Hover or focus paints the full
-   name over the cells to its right. The title carries the same text. */
+/* Hover and focus wrap inside the cell. The title still has the full name.
+   The text must not paint over Edit or Delete. */
 .workers-name:hover,
 .workers-name:focus {
-  overflow: visible;
-  text-overflow: clip;
-  position: relative;
-  z-index: 4;
-  background: var(--dos-blue);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workers-name:focus {
   outline: 1px solid var(--dos-cyan-bright);
 }
 

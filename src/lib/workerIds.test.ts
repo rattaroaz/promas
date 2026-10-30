@@ -20,7 +20,8 @@ describe("duplicate worker IDs", () => {
     expect(duplicateWorkerWarning(shared)).toContain("400");
     expect(duplicateWorkerWarning(shared)).toContain("Jose Ramirez");
     expect(duplicateWorkerWarning(shared)).toContain("Ana Cruz");
-    expect(duplicateWorkerWarning(shared)).toMatch(/still edit and save/i);
+    expect(duplicateWorkerWarning(shared)).toMatch(/You can still save/i);
+    expect(duplicateWorkerWarning(shared)).toMatch(/Change one ID/);
     expect(duplicateWorkerWarning([{ name: "Jose", workerNo: "400" }])).toBe("");
   });
 

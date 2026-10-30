@@ -33,7 +33,7 @@ export function duplicateWorkerWarning(rows: WorkerIdRow[]): string {
   const groups = duplicateWorkerGroups(rows);
   if (groups.length === 0) return "";
   const parts = groups.map((group) => `${group.id} (${group.names.join(", ")})`);
-  return `Worker ID already duplicated: ${parts.join("; ")}. You can still edit and save these workers. Give one of them a new ID to resolve it.`;
+  return `Duplicate Worker ID ${parts.join("; ")}. You can still save. Change one ID.`;
 }
 
 function storedName(row: WorkerIdRow): string {
