@@ -434,7 +434,7 @@ export function WorkOrderProcess({
           red={editing.order.voided}
           foot="Esc=Cancel, Ctrl-S=Save & Exit"
         >
-          <div className="dos-form">
+          <div className="dos-form work-order-edit">
             <DotField label="Order Date" width={16}>
               <input
                 className="dos-input w12"

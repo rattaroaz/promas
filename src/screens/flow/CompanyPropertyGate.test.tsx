@@ -196,7 +196,7 @@ describe("CompanyPropertyGate", () => {
     expect(row).toHaveTextContent("MARIA GONZALEZ");
     expect(row.closest(".content-grid")).toHaveStyle({
       gridTemplateColumns:
-        "max-content minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) max-content max-content minmax(0, 1.15fr)",
+        "min-content max-content minmax(0, 1fr) min-content max-content max-content min-content",
     });
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
@@ -561,7 +561,7 @@ describe("CompanyPropertyGate", () => {
     expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
     expect(maria.closest(".content-grid")).toHaveStyle({
       gridTemplateColumns:
-        "max-content minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) max-content max-content minmax(0, 1.15fr)",
+        "min-content max-content minmax(0, 1fr) min-content max-content max-content min-content",
     });
   });
 

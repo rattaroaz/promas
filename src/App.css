@@ -282,6 +282,28 @@ h6 {
   padding: 0.3em 0;
 }
 
+/* Search forms sit in the window. A 47ch street must shrink instead of
+   pulling the process entry below fit 1. */
+.dos-menu-frame .dos-form {
+  width: 100%;
+  min-width: 0;
+}
+
+.dos-menu-frame .dos-field {
+  max-width: 100%;
+}
+
+.dos-menu-frame .dos-input.w45,
+.dos-menu-frame .dos-input.w40,
+.dos-menu-frame .dos-input.w30,
+.dos-menu-frame .dos-input.w20,
+.dos-menu-frame .dos-input.w15 {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 8ch;
+}
+
 /* Diagnostics fills the content area. The log scrolls inside the frame, so
    the title cannot slide under the status bar and the note stays reachable. */
 .dos-main-wrap > .diagnostics-frame {
@@ -315,6 +337,13 @@ h6 {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.diagnostics-frame .menu-body > div:first-child {
+  gap: 8px;
+  margin-bottom: 0.3em;
 }
 
 .dos-menu-item {
@@ -571,12 +600,20 @@ h6 {
 
 /* Invoice and property lists fill the window and scroll down. Tracks use
    fr, so a long cell ellipsizes or wraps instead of widening the screen. */
+.dos-browse:has(> .content-grid.fit-grid) {
+  padding-inline: 0;
+}
+
 .content-grid.fit-grid {
   overflow-x: hidden;
+  column-gap: 4px;
+  scrollbar-gutter: auto;
+  padding-right: 0;
 }
 .content-grid.fit-grid > .browse-grid {
   min-width: 0;
   width: 100%;
+  column-gap: 4px;
 }
 .content-grid.fit-grid > .browse-grid > * {
   min-width: 0;
@@ -590,9 +627,27 @@ h6 {
 .content-grid.fit-grid > .browse-grid > .property-city,
 .content-grid.fit-grid > .browse-grid > .property-contact {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
   text-overflow: clip;
   overflow: visible;
+}
+.content-grid.fit-grid > .browse-grid > .property-city,
+.content-grid.fit-grid > .browse-grid > .property-contact {
+  min-width: min-content;
+}
+.content-grid.fit-grid > .browse-grid > .property-name {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  min-width: max-content;
+}
+.content-grid.fit-grid > .browse-grid > .invoice-inv-date {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  min-width: max-content;
 }
 
 .content-grid > .browse-grid-header {
@@ -930,6 +985,25 @@ h6 {
   text-overflow: clip;
 }
 
+.material-ledger .browse-grid {
+  width: 100%;
+  min-width: 0;
+}
+
+.material-ledger .browse-grid > div,
+.material-ledger .browse-grid > button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.material-ledger .browse-grid-header > .material-amount {
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
 /* Select + typed value: picker is a small box, value uses the rest */
 .dos-choice-pair {
   display: flex;
@@ -1093,6 +1167,14 @@ h6 {
   word-break: normal;
 }
 
+.invoice-site-header,
+.invoice-site-header .invoice-fact-line,
+.invoice-site-header .invoice-comments,
+.invoice-site-header .invoice-comment-text {
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
 .invoice-fact-line {
   display: block;
   width: 100%;
@@ -1109,20 +1191,98 @@ h6 {
 }
 
 .invoice-comments .invoice-comment-text {
+  display: block;
+  text-indent: 0;
   white-space: normal;
   overflow-wrap: normal;
   word-break: normal;
 }
 
-.dos-overlay:has(.invoice-edit) {
-  align-items: stretch;
-  padding: 0.4ch;
+.invoice-comments .invoice-comment-text.is-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
-.dos-dialog:has(.invoice-edit) {
+.invoice-header-more {
+  font-size: var(--text-sm);
+  margin-top: 0.1em;
+  padding: 0 0.6ch;
+}
+
+.dos-overlay:has(.invoice-edit),
+.dos-overlay:has(.work-order-edit),
+.dos-overlay:has(.property-edit) {
+  align-items: stretch;
+  padding: 0.25ch;
+}
+
+.dos-dialog:has(.invoice-edit),
+.dos-dialog:has(.work-order-edit),
+.dos-dialog:has(.property-edit) {
   height: 100%;
   max-height: 100%;
   min-height: 0;
+}
+
+.dos-dialog:has(.work-order-edit) .dlg-body,
+.dos-dialog:has(.property-edit) .dlg-body,
+.dos-dialog:has(.invoice-edit) .dlg-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.2em 1ch;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dos-dialog:has(.invoice-edit) .dlg-body {
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-top: 0.05em;
+  padding-bottom: 0.05em;
+}
+
+.invoice-edit {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 0;
+}
+
+.invoice-fields {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.invoice-lines {
+  flex: 1 1 0;
+  min-height: 3.4em;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dos-dialog .invoice-fields label,
+.dos-dialog .invoice-fields .dos-input,
+.dos-dialog .invoice-fields .dos-select,
+.dos-dialog .invoice-fields .dos-choice {
+  margin-top: -0.14em;
+  margin-bottom: -0.14em;
+}
+
+.invoice-summary {
+  flex: 0 0 auto;
+  background: var(--dos-blue);
+}
+
+.invoice-summary .dos-total,
+.invoice-summary .dos-note {
+  margin-top: 0;
 }
 
 .dlg-body:has(.invoice-edit) {
@@ -1147,7 +1307,7 @@ h6 {
 .invoice-edit {
   min-width: 0;
   max-width: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* The banner stays fully visible. The list below it scrolls.
@@ -1220,12 +1380,13 @@ h6 {
   max-width: none;
   flex: 1 1 0;
   padding: 0;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  resize: none;
+  white-space: nowrap;
   overflow: hidden;
-  height: auto;
+  text-overflow: ellipsis;
+  resize: none;
+  height: 1.2em;
+  max-height: 1.2em;
+  line-height: var(--leading-tight);
   box-sizing: border-box;
 }
 
@@ -1280,29 +1441,97 @@ h6 {
   min-width: 0;
 }
 
-/* Terms and Order Date share a column, so their inputs start on the same left edge.
-   The first label is 15ch, the same box as a width-14 field (Invoice Date,
-   Material Costs), and the gap is the field's own 0.5ch. A max-content label
-   plus a 2ch gap started Due Date and Invoice Number 4px to the right. */
-.invoice-terms-order {
-  /* One label column and one control column. Two dates on one row are wider
-     than the dialog at the viewport font, and the type was shrinking to make
-     them fit. Stacked controls still share a left edge. */
+/* Every invoice label and value shares one grid, so Unit, Size, and P.O.
+   each sit on their own row and every input starts on the same left edge. */
+.invoice-fields {
   display: grid;
-  grid-template-columns: max-content minmax(0, max-content);
+  grid-template-columns: max-content minmax(0, 1fr);
   column-gap: 0.5ch;
-  row-gap: 0.15em;
-  align-items: baseline;
+  row-gap: 0;
+  align-items: center;
   justify-items: start;
-  width: max-content;
-  max-width: 100%;
+  width: 100%;
   min-width: 0;
+  line-height: var(--leading-tight);
 }
 
-.invoice-terms-order .dos-input:not([type="date"]) {
-  width: 17ch;
-  min-width: 0;
-  max-width: min(17ch, 100%);
+.dos-dialog:has(.invoice-edit) .dlg-title,
+.dos-dialog:has(.invoice-edit) .dlg-foot {
+  line-height: var(--leading-tight);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.invoice-edit .browse-grid {
+  min-height: 0;
+}
+
+.invoice-edit .invoice-line-grid {
+  margin-top: 0.1em;
+  margin-bottom: 0;
+}
+
+.invoice-edit .dos-btn {
+  min-height: 0;
+  line-height: var(--leading-tight);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.invoice-fields > .dos-form-row,
+.invoice-fields > .invoice-terms-order,
+.invoice-fields .dos-form-row,
+.invoice-fields .dos-field {
+  display: contents;
+}
+
+.dos-dialog .invoice-fields label {
+  min-width: max-content !important;
+  width: max-content;
+  white-space: nowrap;
+}
+
+.dos-dialog .invoice-fields .dos-input:not([type="date"]) {
+  width: 12ch;
+  min-width: 8ch;
+  max-width: 100%;
+  flex: 0 0 auto;
+}
+
+.dos-dialog .invoice-fields input[type="date"].dos-input {
+  justify-self: start;
+}
+
+.invoice-fields .dos-choice-pair,
+.invoice-fields .invoice-work-person {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+}
+
+.dos-dialog .invoice-fields .dos-choice-pair > .dos-input,
+.dos-dialog .invoice-fields .invoice-work-person > .dos-input {
+  order: -1;
+  flex: 0 0 10ch;
+  width: 10ch;
+  min-width: 10ch;
+  max-width: 100%;
+}
+
+.dos-dialog .invoice-fields .invoice-work-person > .dos-input[aria-label="Work Person"] {
+  flex-basis: 16ch;
+  width: 16ch;
+  min-width: 10ch;
+}
+
+.work-order-edit,
+.property-edit {
+  gap: 0.04em;
+}
+
+.work-order-edit .dos-field,
+.property-edit .dos-field {
+  min-height: 0;
 }
 
 .dos-dialog .browse-grid {
@@ -2009,12 +2238,15 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-inline: 8px;
+  padding-block: 8px;
+  gap: 8px;
 }
 
 .catalog-add {
   display: flex;
-  gap: 0.6em;
-  margin-bottom: 1em;
+  gap: 8px;
+  margin-bottom: 0;
   min-width: 0;
 }
 
@@ -2033,10 +2265,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .catalog-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: 0.6em;
+  column-gap: 8px;
   align-items: center;
   min-width: 0;
-  margin-bottom: 0.35em;
+  margin-bottom: 8px;
 }
 
 .catalog-name {
@@ -2087,11 +2319,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .job-desc-frame {
-  --job-desc: 28ch;
-  --job-size: 12ch;
-  --job-price: 10ch;
-  --job-delete: 10ch;
-  --job-gap: 16px;
+  --job-gap: 8px;
   --job-scrollbar: 16px;
   display: flex;
   flex-direction: column;
@@ -2099,17 +2327,14 @@ input[type="number"]::-webkit-inner-spin-button {
   align-self: stretch;
   min-height: 0;
   width: 100%;
-  min-width: calc(
-    var(--job-desc) + var(--job-size) + var(--job-price) + var(--job-delete) +
-      3 * var(--job-gap) + var(--job-scrollbar)
-  );
+  min-width: 0;
   max-width: 100%;
 }
 
 .job-desc-head,
 .job-desc-row {
   display: grid;
-  grid-template-columns: minmax(var(--job-desc), 1.4fr) var(--job-size) var(--job-price) var(--job-delete);
+  grid-template-columns: minmax(0, 1fr) minmax(8ch, 12ch) minmax(7ch, 10ch) minmax(8ch, 10ch);
   column-gap: var(--job-gap);
   width: 100%;
   min-width: 0;
@@ -2161,11 +2386,13 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .job-desc-row .dos-btn {
   width: 100%;
-  min-width: max-content;
+  min-width: 0;
+  max-width: 100%;
   box-sizing: border-box;
-  padding: 0 1ch;
+  padding: 0 0.4ch;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .job-desc-price {

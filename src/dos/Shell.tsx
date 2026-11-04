@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useSyncExternalStore } from "react";
+import { ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import {
   mountUndoDeleteKeys,
   subscribeUndoDeletes,
@@ -251,6 +251,21 @@ export function Dialog({
   /** Sits under the fields and above the hint line. */
   below?: ReactNode;
 }) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const pin = () => {
+      body.scrollTop = 0;
+    };
+    pin();
+    const frame = requestAnimationFrame(pin);
+    const timer = window.setTimeout(pin, 0);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [title]);
   return (
     <div className="dos-overlay">
       <div
@@ -259,7 +274,7 @@ export function Dialog({
         aria-label={title.trim()}
       >
         <div className="dlg-title"> {title} </div>
-        <div className="dlg-body">{children}</div>
+        <div className="dlg-body" ref={bodyRef}>{children}</div>
         {below}
         {foot && <div className="dlg-foot">{foot}</div>}
       </div>

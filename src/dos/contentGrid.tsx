@@ -6,14 +6,14 @@ import { CSSProperties, ReactNode } from "react";
  * viewport font and does not cut the contact.
  */
 export const PROPERTY_LIST_COLUMNS =
-  "max-content minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 1fr) max-content max-content minmax(0, 1.15fr)";
+  "min-content max-content minmax(0, 1fr) min-content max-content max-content min-content";
 
 /**
  * Invoice browse. Every track can shrink. The list scrolls vertically
  * instead of scaling the type down to fit nine max-content columns.
  */
 export const INVOICE_LIST_COLUMNS =
-  "minmax(0, 1.05fr) minmax(0, 0.7fr) minmax(0, 0.75fr) minmax(0, 0.65fr) minmax(0, 0.9fr) minmax(0, 0.75fr) minmax(0, 0.75fr) minmax(0, 0.95fr) minmax(0, 0.75fr)";
+  "minmax(12ch, max-content) minmax(0, 0.8fr) minmax(0, 0.45fr) minmax(0, 0.7fr) minmax(0, 0.45fr) minmax(0, 0.75fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 0.7fr)";
 
 /**
  * One max-content track per column. `shrinkColumn` (0-based) is

@@ -1056,7 +1056,7 @@ export function CompanyPropertyGate({
         <div className="dos-main-wrap">
           <div
             className="dos-menu-frame"
-            style={{ width: "max-content", maxWidth: "none", minWidth: "min(72ch, 100%)" }}
+            style={{ width: "min(72ch, 100%)", maxWidth: "100%" }}
           >
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
@@ -1420,7 +1420,7 @@ export function CompanyPropertyGate({
           {company ? (
             <ContentGrid className="fit-grid" columns={7} template={PROPERTY_LIST_COLUMNS}>
               <div className="browse-grid browse-grid-header">
-                <div>ProNO</div>
+                <div>Pro<br />NO</div>
                 <div>Name</div>
                 <div>Street</div>
                 <div>City</div>
@@ -1455,13 +1455,14 @@ export function CompanyPropertyGate({
                 <button
                   type="button"
                   className="sort-btn"
+                  aria-label={`CoNO${propertySortMark(propertySort, "company")}`}
                   onClick={() =>
                     setPropertySort((cur) => nextPropertySort(cur, "company"))
                   }
                 >
-                  CoNO{propertySortMark(propertySort, "company")}
+                  Co<br />NO{propertySortMark(propertySort, "company")}
                 </button>
-                <div>ProNO</div>
+                <div>Pro<br />NO</div>
                 <button
                   type="button"
                   className="sort-btn"
@@ -1622,7 +1623,7 @@ export function CompanyPropertyGate({
           wide
           foot="Esc=Cancel, Cntr_S=Save & Exit, Edit=Arrow_Key"
         >
-          <div className="dos-form">
+          <div className="dos-form property-edit">
             <DotField label="Property NO" width={14}>
               <input
                 className="dos-input w5"
