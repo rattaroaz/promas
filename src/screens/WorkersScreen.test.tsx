@@ -96,6 +96,18 @@ describe("WorkersScreen", () => {
     expect(screen.queryByRole("button", { name: "Add Work Person" })).not.toBeInTheDocument();
   });
 
+  it("blocks save when the Worker ID is empty", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    await user.click(await screen.findByRole("button", { name: "Ins Add" }));
+    await user.type(screen.getByLabelText("Name"), "Ana Cruz");
+    expect(screen.getByText("ID number is required")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(screen.getByText("ID number is required")).toBeInTheDocument();
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Name")).toHaveValue("Ana Cruz");
+  });
+
   it("opens a Work Person window from Ins Add and saves its fields", async () => {
     const user = userEvent.setup();
     renderApp(<WorkersScreen />);

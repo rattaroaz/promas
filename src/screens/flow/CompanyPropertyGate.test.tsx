@@ -196,7 +196,7 @@ describe("CompanyPropertyGate", () => {
     expect(row).toHaveTextContent("MARIA GONZALEZ");
     expect(row.closest(".content-grid")).toHaveStyle({
       gridTemplateColumns:
-        "max-content max-content minmax(16ch, max-content) max-content max-content max-content max-content",
+        "max-content max-content minmax(16ch, max-content) minmax(8ch, max-content) max-content max-content minmax(8ch, max-content)",
     });
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
@@ -372,6 +372,45 @@ describe("CompanyPropertyGate", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it("matches a street when the search words are out of order", async () => {
+    const secco = {
+      ...emptyProperty("1000"),
+      proNo: "09",
+      name: "Secco",
+      street: "11334 W. Secco Canyon Hwy",
+      city: "LOS ANGELES",
+    };
+    vi.mocked(api.listProperties).mockResolvedValue([secco]);
+    const user = userEvent.setup();
+    const onReady = vi.fn();
+    const { unmount } = renderApp(
+      <CompanyPropertyGate process="invoice" onBack={vi.fn()} onReady={onReady} />
+    );
+    const street = screen.getByRole("textbox", { name: "Property Street" });
+    await user.click(street);
+    await user.type(street, "11334 Canyon{Enter}");
+    await waitFor(() => {
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "1000" }),
+        expect.objectContaining({ street: "11334 W. Secco Canyon Hwy" })
+      );
+    });
+    unmount();
+    onReady.mockClear();
+    renderApp(
+      <CompanyPropertyGate process="invoice" onBack={vi.fn()} onReady={onReady} />
+    );
+    const again = screen.getByRole("textbox", { name: "Property Street" });
+    await user.click(again);
+    await user.type(again, "11334 Secco{Enter}");
+    await waitFor(() => {
+      expect(onReady).toHaveBeenCalledWith(
+        expect.objectContaining({ companyNo: "1000" }),
+        expect.objectContaining({ street: "11334 W. Secco Canyon Hwy" })
+      );
+    });
+  });
+
   it("selects property by street address", async () => {
     const user = userEvent.setup();
     const onReady = vi.fn();
@@ -522,7 +561,7 @@ describe("CompanyPropertyGate", () => {
     expect(screen.queryByText("Co.Contact")).not.toBeInTheDocument();
     expect(maria.closest(".content-grid")).toHaveStyle({
       gridTemplateColumns:
-        "max-content max-content minmax(16ch, max-content) max-content max-content max-content max-content",
+        "max-content max-content minmax(16ch, max-content) minmax(8ch, max-content) max-content max-content minmax(8ch, max-content)",
     });
   });
 

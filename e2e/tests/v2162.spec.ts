@@ -157,16 +157,17 @@ test.describe("promas 2.16.2", () => {
         expect(date.icon, date.label).toBe(true);
         // Widths used to be divided by fit-scale, so a payroll page at 0.8535
         // still looked the same. Payroll must actually be scale 1.
+        // Date width is 12ch + 2.8em, so compare in em. The viewport font
+        // changes the pixel width on purpose.
         if (row.screen === "payroll" || row.screen === "payroll-1024") {
           expect(row.fit, `${row.screen} --fit-scale`).toBe(1);
-          norms.push(date.width);
-        } else {
-          norms.push(date.width / row.fit);
         }
+        const fontPx = parseFloat(date.fontSize) || 1;
+        norms.push(date.width / fontPx);
       }
     }
     const normSpread = Math.max(...norms) - Math.min(...norms);
-    expect(normSpread, `design widths ${norms.map((n) => n.toFixed(1)).join(",")}`).toBeLessThanOrEqual(2);
+    expect(normSpread, `design widths ${norms.map((n) => n.toFixed(2)).join(",")}`).toBeLessThanOrEqual(0.15);
 
     await attachJson("dates.json", {
       termsLeft: termsBox!.x,

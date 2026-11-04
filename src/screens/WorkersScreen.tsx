@@ -207,6 +207,11 @@ export function WorkersScreen() {
       setMsgKind("error");
       return;
     }
+    if (!draft.workerNo.trim()) {
+      setMsg("ID number is required");
+      setMsgKind("error");
+      return;
+    }
     if (idTaken(draft.workerNo, draft.originalName)) {
       setMsg("Worker ID must be unique");
       setMsgKind("error");
@@ -341,9 +346,12 @@ export function WorkersScreen() {
 
   if (draft) {
     const shared = workerIdAlreadyShared(idRows(), draft.workerNo, draft.originalName);
-    const formMessage = shared
-      ? "This Worker ID is already shared. You can still save, or enter a new ID to resolve it."
-      : "Worker ID is unique.";
+    const idMissing = !draft.workerNo.trim();
+    const formMessage = idMissing
+      ? "ID number is required"
+      : shared
+        ? "This Worker ID is already shared. You can still save, or enter a new ID to resolve it."
+        : "Worker ID is unique.";
     return (
       <Screen
         statusKeys={[

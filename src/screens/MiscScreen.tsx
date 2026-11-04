@@ -6,6 +6,8 @@
  *  4. Import Database     — pick original PROMAS folder and load all .DBF files
  *  5. Workers             — work person list for invoice dropdowns
  *  6. Job Descriptions    — descriptions and prices for invoice lines
+ *  7. Unit Size           — sizes offered on Job Descriptions
+ *  8. Paint Supply Company — companies offered on the invoice
  */
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -21,6 +23,7 @@ import {
   UNSAVED_JOB_CHANGES,
 } from "./JobDescriptionsScreen";
 import { log } from "../lib/observability";
+import { NameCatalogScreen } from "./NameCatalogScreen";
 
 const MISC_ITEMS: MenuItem[] = [
   { id: "date", num: "1", label: "Change System Date", accel: "C" },
@@ -29,6 +32,8 @@ const MISC_ITEMS: MenuItem[] = [
   { id: "import", num: "4", label: "Import Database", accel: "I" },
   { id: "workers", num: "5", label: "Workers", accel: "W" },
   { id: "jobs", num: "6", label: "Job Descriptions", accel: "J" },
+  { id: "sizes", num: "7", label: "Unit Size", accel: "U" },
+  { id: "paint", num: "8", label: "Paint Supply Company", accel: "P" },
 ];
 
 function formatImportSummary(r: ImportResult): string {
@@ -571,6 +576,30 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
 
   if (screen === "jobs") {
     return <JobDescriptionsScreen onBack={() => setScreen(null)} />;
+  }
+
+  if (screen === "sizes") {
+    return (
+      <NameCatalogScreen
+        title=" Unit Size "
+        hint="These sizes fill the Size field on Job Descriptions."
+        load={() => api.listUnitSizes()}
+        save={(name) => api.saveUnitSize(name)}
+        remove={(name) => api.deleteUnitSize(name)}
+      />
+    );
+  }
+
+  if (screen === "paint") {
+    return (
+      <NameCatalogScreen
+        title=" Paint Supply Company "
+        hint="These companies fill Paint Supply Co. on an invoice."
+        load={() => api.listPaintSupplyCos()}
+        save={(name) => api.savePaintSupplyCo(name)}
+        remove={(name) => api.deletePaintSupplyCo(name)}
+      />
+    );
   }
 
   return null;

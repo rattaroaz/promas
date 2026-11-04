@@ -272,6 +272,15 @@ function InvoiceSiteHeader({
   );
 }
 
+/** Idle invoice-list chrome: the count and the key hint. Notices stay visible. */
+function isInvoiceBrowseChrome(text: string): boolean {
+  if (!text.trim()) return true;
+  if (text.startsWith("No invoices for this property")) return true;
+  if (text.startsWith("Ins=Add")) return true;
+  if (text.startsWith("Sorted by unit")) return true;
+  return /^\d+ invoices\b/.test(text);
+}
+
 export function InvoiceProcess({
   company,
   property,
@@ -795,6 +804,9 @@ export function InvoiceProcess({
       title=" Invoice Process "
       message={msg}
       messageKind={msgKind}
+      hideMessageBar={
+        mode === "browse" && msgKind === "default" && isInvoiceBrowseChrome(msg)
+      }
       left={`${company.companyNo}/${property.proNo}`}
       right={property.name.slice(0, 24)}
     >
@@ -850,7 +862,7 @@ export function InvoiceProcess({
             ))}
             {originalRows.length === 0 && (
               <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
-                {"  (no invoices — press Ins or click New Invoice)"}
+                {"  No invoices for this property. Press Ins or click New Invoice."}
               </div>
             )}
           </ContentGrid>

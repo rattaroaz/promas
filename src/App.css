@@ -26,19 +26,19 @@
   --dos-brown: #aa5500;
   --dos-gray: #555555;
   /* Type scale. One face; every font-size and line-height in the app is one
-     of these steps (src/typography.test.ts fails on anything else). Screen
-     text is 22px Times New Roman. Property banners are 26px. The control keys
-     at the top are 18px. --fit-scale is 1 when that size fits the window, and
-     shrinks a screen that would not (a wide property table, a tall dialog).
-     Printed forms keep the previous face and the paper sizes, and do not use
-     --fit-scale. */
+     of these steps (src/typography.test.ts fails on anything else). Sizes
+     are rem, so a step never compounds inside another. The root is the
+     viewport scale from before v2.16.7 switched the screen to fixed px:
+     clamp(32px, 2.3vw + 1.2vh, 80px), times --fit-scale. --fit-scale is 1
+     when that size fits the window, and shrinks a screen that would not.
+     Printed forms keep the paper sizes and do not use --fit-scale. */
   --font-dos: "Times New Roman", Times, serif;
   --font-print: "Consolas", "Lucida Console", "Courier New", monospace;
-  --text-root: calc(22px * var(--fit-scale, 1));
+  --text-root: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
   --text-print: 10pt;
-  --text-sm: calc(18px * var(--fit-scale, 1));
+  --text-sm: 0.9rem;
   --text-md: 1rem;
-  --text-lg: calc(26px * var(--fit-scale, 1));
+  --text-lg: 1.3rem;
   /* What those smaller and larger steps were on paper, before the screen
      sizes were fixed. Print rules still use them. */
   --text-print-sm: 0.9rem;
@@ -544,6 +544,17 @@ h6 {
    when the row fits (1400) and ellipsizes only when the track has to shrink
    (1024). The title still has the full value. */
 .content-grid .property-street {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* City and contact shrink with the street so the viewport font stays put.
+   The cell rule above sets min-width: min-content; these win on specificity. */
+.content-grid > .browse-grid > .property-city,
+.content-grid > .browse-grid > .property-contact {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -1395,9 +1406,13 @@ h6 {
   min-width: 0;
 }
 
-.payroll-fit .desc-truncate {
+.payroll-fit .desc-truncate,
+.payroll-fit .desc-truncate > div {
   max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Header and total sit outside the scroller. Without the same stable gutter
@@ -1410,7 +1425,7 @@ h6 {
 
 /* The one-line toolbar was wider than 1024 and the fitter answered with
    --fit-scale 0.8535. Wrap instead, the same as the other search lines,
-   so 22px type stays at fit-scale 1. */
+   so the viewport font stays at fit-scale 1. */
 .dos-searchline.payroll-toolbar {
   flex-wrap: wrap;
 }

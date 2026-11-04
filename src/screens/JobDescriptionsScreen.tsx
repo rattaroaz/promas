@@ -10,6 +10,7 @@ import {
   priceShownForSize,
   sizesEditedOnJob,
 } from "../lib/jobCatalog";
+import { UNIT_SIZES } from "../lib/catalogSeeds";
 
 type Row = JobDescription & { key: string; size: string; editedSizes: string[] };
 
@@ -31,19 +32,34 @@ const PRICE_FIELDS = [
   "fixed",
 ] as const;
 
-function rowFromJob(job: JobDescription, key: string, size = "single"): Row {
+function rowFromJob(
+  job: JobDescription,
+  key: string,
+  size = "Single",
+  catalog: readonly string[] = UNIT_SIZES
+): Row {
   return {
     ...blankJobDescription(),
     ...job,
     key,
     size,
     originalDescription: job.description,
-    editedSizes: sizesEditedOnJob(job),
+    editedSizes: sizesEditedOnJob(job, catalog),
   };
 }
 
+function extrasMatch(a: JobDescription, b: JobDescription): boolean {
+  const left = a.extraPrices ?? {};
+  const right = b.extraPrices ?? {};
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if ((left[key] ?? null) !== (right[key] ?? null)) return false;
+  }
+  return true;
+}
+
 function pricesMatch(a: JobDescription, b: JobDescription): boolean {
-  return PRICE_FIELDS.every((field) => a[field] === b[field]);
+  return PRICE_FIELDS.every((field) => a[field] === b[field]) && extrasMatch(a, b);
 }
 
 function snapshot(row: Row): JobDescription {
@@ -58,6 +74,7 @@ function snapshot(row: Row): JobDescription {
     fourPlusTwo: row.fourPlusTwo,
     occupied: row.occupied,
     fixed: row.fixed,
+    extraPrices: row.extraPrices ?? {},
   };
 }
 
@@ -72,6 +89,8 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
   const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
   const [pendingQuit, setPendingQuit] = useState(false);
+  const [sizes, setSizes] = useState<string[]>([...UNIT_SIZES]);
+  const sizesRef = useRef<string[]>([...UNIT_SIZES]);
   const rowsRef = useRef<Row[]>([]);
   const savedRef = useRef<Map<string, JobDescription>>(new Map());
   const dirtyRef = useRef(false);
@@ -113,11 +132,18 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
 
   useEffect(() => {
     let cancel = false;
-    api
-      .listJobDescriptions()
-      .then((list) => {
+    Promise.all([
+      api.listJobDescriptions(),
+      api.listUnitSizes().catch(() => [] as string[]),
+    ])
+      .then(([list, sizeList]) => {
         if (cancel) return;
-        const next = (list ?? []).map((job) => rowFromJob(job, nextKey()));
+        const catalog = sizeList?.length ? sizeList : [...JOB_SIZES];
+        sizesRef.current = catalog;
+        setSizes(catalog);
+        const next = (list ?? []).map((job) =>
+          rowFromJob(job, nextKey(), catalog[0] ?? "Single", catalog)
+        );
         rowsRef.current = next;
         setRows(next);
         rememberSaved(next);
@@ -189,6 +215,7 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
           fourPlusTwo: row.fourPlusTwo,
           occupied: row.occupied,
           fixed: row.fixed,
+          extraPrices: row.extraPrices ?? {},
         });
       }
       const byName = new Map(
@@ -196,7 +223,12 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
       );
       const next = saved.map((job) => {
         const current = byName.get(job.description.toLowerCase());
-        return rowFromJob(job, current?.key ?? nextKey(), current?.size ?? "single");
+        return rowFromJob(
+          job,
+          current?.key ?? nextKey(),
+          current?.size ?? sizesRef.current[0] ?? "Single",
+          sizesRef.current
+        );
       });
       const blanks = rowsRef.current.filter(
         (row) => !row.originalDescription && !row.description.trim() && !rowIsDirty(row)
@@ -337,7 +369,7 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
                       value={row.size}
                       onChange={(e) => patchRow(row.key, { size: e.target.value })}
                     >
-                      {JOB_SIZES.map((size) => (
+                      {sizes.map((size) => (
                         <option key={size} value={size}>
                           {size}
                         </option>
@@ -353,7 +385,13 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
                         if (!current) return;
                         patchRow(
                           row.key,
-                          jobWithSizePrice(current, current.size, price, current.editedSizes)
+                          jobWithSizePrice(
+                            current,
+                            current.size,
+                            price,
+                            current.editedSizes,
+                            sizesRef.current
+                          )
                         );
                       }}
                     />
@@ -380,7 +418,7 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
                   {
                     ...blankJobDescription(),
                     key: nextKey(),
-                    size: "single",
+                    size: sizesRef.current[0] ?? "Single",
                     originalDescription: "",
                     editedSizes: [],
                   },

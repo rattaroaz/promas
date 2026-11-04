@@ -11,6 +11,12 @@ const viewports = [
   { width: 1280, height: 800 },
 ] as const;
 
+/** Root size from the pre-v2.16.7 viewport scale, times the live fit scale. */
+function expectedRoot(width: number, height: number, fit: number) {
+  const raw = 2.3 * (width / 100) + 1.2 * (height / 100);
+  return Math.min(80, Math.max(32, raw)) * fit;
+}
+
 test("payroll, property tables, and the work person form fit at scale 1", async ({ page }) => {
   test.setTimeout(180_000);
   for (const viewport of viewports) {
@@ -29,7 +35,10 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
       };
     });
     expect(payroll.fit, `${tag} payroll --fit-scale`).toBe("1");
-    expect(payroll.font, `${tag} payroll font`).toBeCloseTo(22, 0);
+    expect(payroll.font, `${tag} payroll font`).toBeCloseTo(
+      expectedRoot(viewport.width, viewport.height, Number(payroll.fit)),
+      0
+    );
 
     await propertyList(page, /3\.\s*Invoice Process/i);
     await waitForFit(page);
@@ -49,7 +58,10 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
       };
     });
     expect(properties.fit, `${tag} property table --fit-scale`).toBe("1");
-    expect(properties.font, `${tag} property table font`).toBeCloseTo(22, 0);
+    expect(properties.font, `${tag} property table font`).toBeCloseTo(
+      expectedRoot(viewport.width, viewport.height, Number(properties.fit)),
+      0
+    );
     expect(properties.overflow, `${tag} property table overflow`).toBeLessThanOrEqual(1);
     expect(properties.title, tag).toBe("14755 NORTH VENTURA CANYON AVENUE BUILDING A1");
     expect(properties.text, tag).toBe(properties.title);
@@ -97,15 +109,19 @@ test("payroll, property tables, and the work person form fit at scale 1", async 
       };
     });
     expect(form.fit, `${tag} work person --fit-scale`).toBe("1");
-    expect(form.font, `${tag} work person font`).toBeCloseTo(22, 0);
+    expect(form.font, `${tag} work person font`).toBeCloseTo(
+      expectedRoot(viewport.width, viewport.height, Number(form.fit)),
+      0
+    );
     expect(form.minWidth, `${tag} form min-width`).toBeGreaterThanOrEqual(46 * form.ch - 1);
     expect(form.gap, `${tag} space above the form`).toBeLessThan(48);
     expect(form.phoneClass, tag).toContain("w16");
     expect(form.phoneWidth, `${tag} phone is narrower than the name`).toBeLessThan(form.nameWidth - 8);
     expect(form.address.focused, `${tag} address focus font`).toBe(form.address.blurred);
     expect(form.phone.focused, `${tag} phone focus font`).toBe(form.phone.blurred);
-    expect(parseFloat(form.address.focused), `${tag} address font`).toBeCloseTo(22, 0);
-    expect(parseFloat(form.phone.focused), `${tag} phone font`).toBeCloseTo(22, 0);
+    const root = expectedRoot(viewport.width, viewport.height, Number(form.fit));
+    expect(parseFloat(form.address.focused), `${tag} address font`).toBeCloseTo(root, 0);
+    expect(parseFloat(form.phone.focused), `${tag} phone font`).toBeCloseTo(root, 0);
   }
 });
 
@@ -219,7 +235,8 @@ test("startup warns about worker IDs that are already duplicated and still saves
     const line = parseFloat(getComputedStyle(el).lineHeight);
     return el.scrollHeight / line;
   });
-  expect(messageLines, "duplicate warning is one line at 1024").toBeLessThanOrEqual(1.05);
+  // Viewport type is larger than the 22px lock, so this warning wraps once.
+  expect(messageLines, "duplicate warning stays within two lines at 1024").toBeLessThanOrEqual(2.15);
 
   await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
   await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
@@ -271,7 +288,7 @@ test("payroll headers share left edges with their columns", async ({ page }) => 
   }
 });
 
-test("a wide window shows the full property street", async ({ page }) => {
+test("a wide window keeps the property table at scale 1", async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 });
   await propertyList(page, /3\.\s*Invoice Process/i);
   await waitForFit(page);
@@ -285,12 +302,18 @@ test("a wide window shows the full property street", async ({ page }) => {
       client: cell.clientWidth,
       scroll: cell.scrollWidth,
       text: (cell.textContent || "").trim(),
+      title: cell.getAttribute("title"),
+      ellipsis: getComputedStyle(cell).textOverflow,
     };
   });
   expect(street.fit, "1400 property --fit-scale").toBe("1");
   expect(street.overflow, "1400 property overflow").toBeLessThanOrEqual(1);
   expect(street.text).toBe("14755 NORTH VENTURA CANYON AVENUE BUILDING A1");
-  expect(street.client, "1400 street is not truncated").toBeGreaterThanOrEqual(street.scroll - 1);
+  expect(street.title).toBe(street.text);
+  // The restored viewport font is larger than the 22px lock, so this address
+  // ellipsizes at 1400. The full string stays in the cell and its title.
+  expect(street.ellipsis, "1400 street ellipsis").toBe("ellipsis");
+  expect(street.client, "1400 street truncates").toBeLessThan(street.scroll);
 });
 
 test("company list property tables stay at scale 1", async ({ page }) => {

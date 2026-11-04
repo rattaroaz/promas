@@ -14,6 +14,7 @@ import {
   emptyProperty,
 } from "../../api";
 import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
+import { recordMatchesQuery } from "../../lib/tokenSearch";
 import { pushUndoDelete } from "../../lib/undoDelete";
 import {
   Screen,
@@ -109,27 +110,13 @@ type PrField = "no" | "name" | "phone" | "street" | "contact";
 type FirstKind = "company" | "property" | "invoice";
 
 function matchesPropertyContact(p: Property, q: string): boolean {
-  const needle = q.trim().toUpperCase();
-  if (!needle) return false;
-  return (
-    p.contact.toUpperCase().includes(needle) ||
-    p.manager.toUpperCase().includes(needle)
-  );
+  if (!q.trim()) return false;
+  return recordMatchesQuery(q, p.contact, p.manager);
 }
 
 function matchesPropertyAddress(p: Property, q: string): boolean {
-  const needle = q.trim().toUpperCase();
-  if (!needle) return false;
-  const hay = [p.street, p.city, p.state, p.zip]
-    .filter(Boolean)
-    .join(" ")
-    .toUpperCase();
-  return (
-    p.street.toUpperCase().includes(needle) ||
-    p.city.toUpperCase().includes(needle) ||
-    p.zip.toUpperCase().includes(needle) ||
-    hay.includes(needle)
-  );
+  if (!q.trim()) return false;
+  return recordMatchesQuery(q, p.street, p.city, p.state, p.zip);
 }
 
 /** Street shown in property lists. Falls back to the name only when no address parts exist. */
@@ -212,7 +199,7 @@ function PropertyPlaceCells({ p }: { p: Property }) {
       <div className="property-street" title={street}>
         {street}
       </div>
-      <div>{(p.city ?? "").trim()}</div>
+      <div className="property-city">{(p.city ?? "").trim()}</div>
       <div>{(p.state ?? "").trim()}</div>
       <div>{(p.zip ?? "").trim()}</div>
     </>
@@ -413,17 +400,13 @@ export function CompanyPropertyGate({
         await selectCompany(one);
         return;
       }
-      list = list.filter((c) => c.companyNo.startsWith(q));
+      list = list.filter((c) => recordMatchesQuery(q, c.companyNo));
     } else if (coField === "name") {
-      list = list.filter((c) =>
-        c.name.toUpperCase().includes(q.toUpperCase())
-      );
+      list = list.filter((c) => recordMatchesQuery(q, c.name));
     } else if (coField === "phone") {
-      list = list.filter((c) => c.phone.includes(q) || c.phone2.includes(q));
+      list = list.filter((c) => recordMatchesQuery(q, c.phone, c.phone2, c.phone3, c.phone4));
     } else {
-      list = list.filter((c) =>
-        c.contact.toUpperCase().includes(q.toUpperCase())
-      );
+      list = list.filter((c) => recordMatchesQuery(q, c.contact));
     }
 
     if (list.length === 0) {
@@ -636,13 +619,13 @@ export function CompanyPropertyGate({
     if (field === "no") {
       const exact = all.filter((p) => p.proNo.trim() === q);
       if (exact.length) return exact;
-      return all.filter((p) => p.proNo.startsWith(q));
+      return all.filter((p) => recordMatchesQuery(q, p.proNo));
     }
     if (field === "name") {
-      return all.filter((p) => p.name.toUpperCase().includes(q.toUpperCase()));
+      return all.filter((p) => recordMatchesQuery(q, p.name));
     }
     if (field === "phone") {
-      return all.filter((p) => p.phone.includes(q) || p.phone2.includes(q));
+      return all.filter((p) => recordMatchesQuery(q, p.phone, p.phone2));
     }
     if (field === "contact") {
       return all.filter((p) => matchesPropertyContact(p, q));
@@ -681,8 +664,8 @@ export function CompanyPropertyGate({
         (p) =>
           matchesPropertyAddress(p, q) ||
           matchesPropertyContact(p, q) ||
-          p.name.toUpperCase().includes(q.toUpperCase()) ||
-          p.proNo.includes(q)
+          recordMatchesQuery(q, p.name) ||
+          recordMatchesQuery(q, p.proNo)
       );
     }
 
@@ -1435,7 +1418,7 @@ export function CompanyPropertyGate({
       {phase === "pr-browse" && (
         <div className="dos-browse">
           {company ? (
-            <ContentGrid columns={7} shrinkColumn={2}>
+            <ContentGrid columns={7} shrinkColumn={2} softColumns={[3, 6]}>
               <div className="browse-grid browse-grid-header">
                 <div>ProNO</div>
                 <div>Name</div>
@@ -1462,12 +1445,12 @@ export function CompanyPropertyGate({
                   <div>{p.proNo}</div>
                   <div>{p.name}</div>
                   <PropertyPlaceCells p={p} />
-                  <div>{propertyContactName(p)}</div>
+                  <div className="property-contact">{propertyContactName(p)}</div>
                 </button>
               ))}
             </ContentGrid>
           ) : (
-            <ContentGrid columns={7} shrinkColumn={2}>
+            <ContentGrid columns={7} shrinkColumn={2} softColumns={[3, 6]}>
               <div className="browse-grid browse-grid-header">
                 <button
                   type="button"
@@ -1510,7 +1493,7 @@ export function CompanyPropertyGate({
                   <div>{p.companyNo}</div>
                   <div>{p.proNo}</div>
                   <PropertyPlaceCells p={p} />
-                  <div>{propertyContactName(p)}</div>
+                  <div className="property-contact">{propertyContactName(p)}</div>
                 </button>
               ))}
             </ContentGrid>

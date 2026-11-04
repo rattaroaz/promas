@@ -161,6 +161,8 @@ export interface JobDescription {
   fourPlusTwo: number | null;
   occupied: number | null;
   fixed: number | null;
+  /** Prices for sizes that are not one of the original columns, such as lofts. */
+  extraPrices?: Record<string, number>;
 }
 
 export interface WorkType {
@@ -581,6 +583,12 @@ export const api = {
   listPaintSupplyCos: () => invoke<string[]>("list_paint_supply_cos"),
   savePaintSupplyCo: (name: string) =>
     invoke<string[]>("save_paint_supply_co", { name }),
+  deletePaintSupplyCo: (name: string) =>
+    invoke<string[]>("delete_paint_supply_co", { name }),
+  listUnitSizes: () => invoke<string[]>("list_unit_sizes"),
+  saveUnitSize: (name: string) => invoke<string[]>("save_unit_size", { name }),
+  deleteUnitSize: (name: string) =>
+    invoke<string[]>("delete_unit_size", { name }),
   listWorkTypes: (params: ListParams = {}) =>
     invoke<WorkType[]>("list_work_types", { params }),
   saveWorkType: (workType: WorkType) =>

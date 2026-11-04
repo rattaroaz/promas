@@ -1102,9 +1102,9 @@ function SalesReport({
   );
 }
 
-/** Tracks shrink so Run does not drop 22px type below fit-scale 1 at 1024. */
+/** Tracks shrink so Run stays at fit-scale 1 when the viewport font grows. */
 const PAYROLL_COLS =
-  "12ch 7ch minmax(10ch, 1fr) 9ch 12ch 12ch minmax(0, 4ch) minmax(0, 4ch)";
+  "11ch 6ch minmax(8ch, 1fr) 7ch 10ch 10ch minmax(0, 4ch) minmax(0, 4ch)";
 
 function PayrollReport({
   rows,

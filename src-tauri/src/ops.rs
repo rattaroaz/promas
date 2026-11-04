@@ -292,7 +292,6 @@ pub fn list_cash_receipts(
     let from_date = params.from_date.clone().unwrap_or_default();
     let to_date = params.to_date.clone().unwrap_or_default();
     let limit = params.limit.unwrap_or(200);
-    let like = format!("%{}%", search);
 
     let mut stmt = conn
         .prepare(
@@ -303,24 +302,23 @@ pub fn list_cash_receipts(
                  AND (?1='' OR cr.company_no=?1)
                  AND (?2='' OR cr.pay_date>=?2)
                  AND (?3='' OR cr.pay_date<=?3)
-                 AND (?4='' OR CAST(cr.invoice AS TEXT) LIKE ?5 OR cr.pay_ref_no LIKE ?5 OR c.name LIKE ?5
-                      OR c.contact LIKE ?5
-                      OR EXISTS (
-                           SELECT 1 FROM invoices i
-                           LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
-                           WHERE i.company_no=cr.company_no
-                             AND i.sales_date=cr.sales_date
-                             AND i.invoice=cr.invoice
-                             AND (p.street LIKE ?5 OR p.city LIKE ?5 OR p.zip LIKE ?5
-                                  OR p.state LIKE ?5 OR p.name LIKE ?5)
-                      ))
+                 AND promas_match(
+                      CAST(cr.invoice AS TEXT) || ' ' || COALESCE(cr.pay_ref_no,'') || ' ' ||
+                      COALESCE(c.name,'') || ' ' || COALESCE(c.contact,'') || ' ' ||
+                      COALESCE((SELECT group_concat(
+                        COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
+                        COALESCE(p.state,'') || ' ' || COALESCE(p.name,''), ' ')
+                        FROM invoices i
+                        LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
+                        WHERE i.company_no=cr.company_no AND i.sales_date=cr.sales_date AND i.invoice=cr.invoice), ''),
+                      ?4)
                ORDER BY cr.pay_date DESC, cr.id DESC
-               LIMIT ?6"#,
+               LIMIT ?5"#,
         )
         .map_err(map_err)?;
     let rows = stmt
         .query_map(
-            params![company_no, from_date, to_date, search, like, limit],
+            params![company_no, from_date, to_date, search, limit],
             |r| {
                 Ok(CashReceipt {
                     id: r.get(0)?,
@@ -347,8 +345,6 @@ pub fn report_sales_analysis(
     let to_date = params.to_date.clone().unwrap_or_default();
     let company_no = params.company_no.clone().unwrap_or_default();
 
-    let like = format!("%{}%", company_no);
-
     // Original Sales Analysis / Invoice Register date range is Inv_Date
     // (i.sales_date), not cash receipt pay_date.
     let mut stmt = conn
@@ -357,14 +353,14 @@ pub fn report_sales_analysis(
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                WHERE i.voided=0
-                 AND (?1='' OR i.company_no=?1 OR i.company_no LIKE ?4 OR COALESCE(c.name,'') LIKE ?4)
+                 AND promas_match(COALESCE(i.company_no,'') || ' ' || COALESCE(c.name,''), ?1)
                  AND (?2='' OR i.sales_date>=?2)
                  AND (?3='' OR i.sales_date<=?3)
                ORDER BY i.sales_date, i.invoice"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![company_no, from_date, to_date, like], |r| {
+        .query_map(params![company_no, from_date, to_date], |r| {
             Ok(SalesAnalysisRow {
                 sales_date: r.get(0)?,
                 invoice: r.get(1)?,
@@ -385,7 +381,6 @@ pub fn list_materials(conn: &Connection, params: &ListParams) -> Result<Vec<Mate
     let search = params.search.clone().unwrap_or_default();
     let from_date = params.from_date.clone().unwrap_or_default();
     let to_date = params.to_date.clone().unwrap_or_default();
-    let like = format!("%{}%", search);
     let sort = params.sort.clone().unwrap_or_default().to_lowercase();
     let order_by = match sort.as_str() {
         "worker" => "m.emp_no, m.mat_date, m.description",
@@ -400,30 +395,20 @@ pub fn list_materials(conn: &Connection, params: &ListParams) -> Result<Vec<Mate
            WHERE m.voided=0
              AND (?1='' OR m.mat_date>=?1)
              AND (?2='' OR m.mat_date<=?2)
-             AND (?3='' OR m.emp_no LIKE ?4 OR m.description LIKE ?4 OR e.name LIKE ?4
-               OR EXISTS (
-                 SELECT 1 FROM work_persons wp
-                 WHERE TRIM(COALESCE(wp.worker_no, '')) != ''
-                   AND m.emp_no = wp.worker_no
-                   AND (
-                     wp.name LIKE ?4 COLLATE NOCASE
-                     OR wp.worker_no LIKE ?4 COLLATE NOCASE
-                   )
-               )
-               OR EXISTS (
-                 SELECT 1 FROM employees em
-                 WHERE TRIM(COALESCE(em.emp_no, '')) != ''
-                   AND m.emp_no = em.emp_no
-                   AND (
-                     em.name LIKE ?4 COLLATE NOCASE
-                     OR em.emp_no LIKE ?4 COLLATE NOCASE
-                   )
-               ))
+             AND promas_match(
+               COALESCE(m.emp_no,'') || ' ' || COALESCE(m.description,'') || ' ' || COALESCE(e.name,'') || ' ' ||
+               COALESCE((SELECT group_concat(wp.name || ' ' || wp.worker_no, ' ')
+                 FROM work_persons wp
+                 WHERE TRIM(COALESCE(wp.worker_no, '')) != '' AND m.emp_no = wp.worker_no), '') || ' ' ||
+               COALESCE((SELECT group_concat(em.name || ' ' || em.emp_no, ' ')
+                 FROM employees em
+                 WHERE TRIM(COALESCE(em.emp_no, '')) != '' AND m.emp_no = em.emp_no), ''),
+               ?3)
            ORDER BY {order_by}"#
     );
     let mut stmt = conn.prepare(&sql).map_err(map_err)?;
     let rows = stmt
-        .query_map(params![from_date, to_date, search, like], |r| {
+        .query_map(params![from_date, to_date, search], |r| {
             Ok(Material {
                 id: r.get(0)?,
                 emp_no: r.get(1)?,
@@ -443,7 +428,6 @@ pub fn report_payroll(conn: &Connection, params: &ListParams) -> Result<Vec<Payr
     let from_date = params.from_date.clone().unwrap_or_default();
     let to_date = params.to_date.clone().unwrap_or_default();
     let worker = params.search.clone().unwrap_or_default();
-    let worker_like = format!("%{}%", worker);
 
     let mut stmt = conn
         .prepare(
@@ -473,37 +457,25 @@ pub fn report_payroll(conn: &Connection, params: &ListParams) -> Result<Vec<Payr
                WHERE i.voided=0
                  AND (?1='' OR i.sales_date>=?1)
                  AND (?2='' OR i.sales_date<=?2)
-                 AND (?3='' OR EXISTS (
-                   SELECT 1 FROM invoice_lines l
-                   WHERE l.company_no=i.company_no AND l.pro_no=i.pro_no
-                     AND l.sales_date=i.sales_date AND l.invoice=i.invoice
-                     AND (
-                       l.emp_no LIKE ?4 COLLATE NOCASE
-                       OR EXISTS (
-                         SELECT 1 FROM work_persons wp
-                         WHERE TRIM(COALESCE(wp.worker_no, '')) != ''
-                           AND l.emp_no = wp.worker_no
-                           AND (
-                             wp.name LIKE ?4 COLLATE NOCASE
-                             OR wp.worker_no LIKE ?4 COLLATE NOCASE
-                           )
-                       )
-                       OR EXISTS (
-                         SELECT 1 FROM employees em
-                         WHERE TRIM(COALESCE(em.emp_no, '')) != ''
-                           AND l.emp_no = em.emp_no
-                           AND (
-                             em.name LIKE ?4 COLLATE NOCASE
-                             OR em.emp_no LIKE ?4 COLLATE NOCASE
-                           )
-                       )
-                     )
-                 ))
+                 AND promas_match(
+                   COALESCE((SELECT group_concat(
+                     COALESCE(l.emp_no,'') || ' ' ||
+                     COALESCE((SELECT group_concat(wp.name || ' ' || wp.worker_no, ' ')
+                       FROM work_persons wp
+                       WHERE TRIM(COALESCE(wp.worker_no, '')) != '' AND l.emp_no = wp.worker_no), '') || ' ' ||
+                     COALESCE((SELECT group_concat(em.name || ' ' || em.emp_no, ' ')
+                       FROM employees em
+                       WHERE TRIM(COALESCE(em.emp_no, '')) != '' AND l.emp_no = em.emp_no), ''),
+                     ' ')
+                     FROM invoice_lines l
+                     WHERE l.company_no=i.company_no AND l.pro_no=i.pro_no
+                       AND l.sales_date=i.sales_date AND l.invoice=i.invoice), ''),
+                   ?3)
                ORDER BY i.sales_date, i.invoice"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![from_date, to_date, worker, worker_like], |r| {
+        .query_map(params![from_date, to_date, worker], |r| {
             Ok(PayrollRow {
                 sales_date: r.get(0)?,
                 invoice: r.get(1)?,
@@ -528,8 +500,6 @@ pub fn report_paint_usage(
     let to_date = params.to_date.clone().unwrap_or_default();
     let paint = params.paint_supply_co.clone().unwrap_or_default();
     let worker = params.search.clone().unwrap_or_default();
-    let paint_like = format!("%{}%", paint);
-    let worker_like = format!("%{}%", worker);
 
     let mut stmt = conn
         .prepare(
@@ -561,33 +531,21 @@ pub fn report_paint_usage(
                  ON l.company_no=i.company_no AND l.pro_no=i.pro_no
                 AND l.sales_date=i.sales_date AND l.invoice=i.invoice
                WHERE i.voided=0
-                 AND (?3='' OR i.paint_supply_co LIKE ?4 COLLATE NOCASE)
-                 AND (?5='' OR EXISTS (
-                   SELECT 1 FROM invoice_lines w
-                   WHERE w.company_no=i.company_no AND w.pro_no=i.pro_no
-                     AND w.sales_date=i.sales_date AND w.invoice=i.invoice
-                     AND (
-                       w.emp_no LIKE ?6 COLLATE NOCASE
-                       OR EXISTS (
-                         SELECT 1 FROM work_persons wp
-                         WHERE TRIM(COALESCE(wp.worker_no, '')) != ''
-                           AND w.emp_no = wp.worker_no
-                           AND (
-                             wp.name LIKE ?6 COLLATE NOCASE
-                             OR wp.worker_no LIKE ?6 COLLATE NOCASE
-                           )
-                       )
-                       OR EXISTS (
-                         SELECT 1 FROM employees em
-                         WHERE TRIM(COALESCE(em.emp_no, '')) != ''
-                           AND w.emp_no = em.emp_no
-                           AND (
-                             em.name LIKE ?6 COLLATE NOCASE
-                             OR em.emp_no LIKE ?6 COLLATE NOCASE
-                           )
-                       )
-                     )
-                 ))
+                 AND promas_match(COALESCE(i.paint_supply_co,''), ?3)
+                 AND promas_match(
+                   COALESCE((SELECT group_concat(
+                     COALESCE(w.emp_no,'') || ' ' ||
+                     COALESCE((SELECT group_concat(wp.name || ' ' || wp.worker_no, ' ')
+                       FROM work_persons wp
+                       WHERE TRIM(COALESCE(wp.worker_no, '')) != '' AND w.emp_no = wp.worker_no), '') || ' ' ||
+                     COALESCE((SELECT group_concat(em.name || ' ' || em.emp_no, ' ')
+                       FROM employees em
+                       WHERE TRIM(COALESCE(em.emp_no, '')) != '' AND w.emp_no = em.emp_no), ''),
+                     ' ')
+                     FROM invoice_lines w
+                     WHERE w.company_no=i.company_no AND w.pro_no=i.pro_no
+                       AND w.sales_date=i.sales_date AND w.invoice=i.invoice), ''),
+                   ?4)
                GROUP BY i.company_no, i.pro_no, i.sales_date, i.invoice
                HAVING
                  (?1='' AND ?2='')
@@ -607,7 +565,7 @@ pub fn report_paint_usage(
         .map_err(map_err)?;
     let rows = stmt
         .query_map(
-            params![from_date, to_date, paint, paint_like, worker, worker_like],
+            params![from_date, to_date, paint, worker],
             |r| {
                 Ok(PaintUsageRow {
                     work_person: r.get(0)?,
@@ -647,7 +605,7 @@ pub fn report_worker_wages(
                WHERE i.voided=0 AND TRIM(l.emp_no) != ''
                  AND (?1='' OR COALESCE(l.work_date, l.sales_date)>=?1)
                  AND (?2='' OR COALESCE(l.work_date, l.sales_date)<=?2)
-                 AND (?3='' OR l.emp_no=?3)
+                 AND promas_match(COALESCE(l.emp_no,'') || ' ' || COALESCE(e.name,''), ?3)
                ORDER BY l.emp_no, COALESCE(l.work_date, l.sales_date), l.invoice"#,
         )
         .map_err(map_err)?;
@@ -995,7 +953,6 @@ pub fn report_aging(
     } else {
         search
     };
-    let like = format!("%{}%", search);
 
     // Age from invoice date (original invoice register / aging used Inv_Date).
     // Buckets: Current (0–30), >30 (31–60), >60 (61–90), >90 (91–120), >120.
@@ -1011,20 +968,20 @@ pub fn report_aging(
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                WHERE i.voided=0 AND i.balance > 0.0005
-                 AND (?2='' OR i.company_no LIKE ?3 OR COALESCE(c.name,'') LIKE ?3
-                      OR COALESCE(c.contact,'') LIKE ?3
-                      OR EXISTS (
-                           SELECT 1 FROM properties p
-                           WHERE p.company_no=i.company_no
-                             AND (p.street LIKE ?3 OR p.city LIKE ?3 OR p.zip LIKE ?3
-                                  OR p.state LIKE ?3 OR p.name LIKE ?3)
-                      ))
+                 AND promas_match(
+                      COALESCE(i.company_no,'') || ' ' || COALESCE(c.name,'') || ' ' ||
+                      COALESCE(c.contact,'') || ' ' || COALESCE(c.phone,'') || ' ' ||
+                      COALESCE((SELECT group_concat(
+                        COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
+                        COALESCE(p.state,'') || ' ' || COALESCE(p.name,''), ' ')
+                        FROM properties p WHERE p.company_no=i.company_no), ''),
+                      ?2)
                GROUP BY i.company_no
                ORDER BY i.company_no"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![as_of, search, like], |r| {
+        .query_map(params![as_of, search], |r| {
             Ok(AgingRow {
                 company_no: r.get(0)?,
                 company_name: r.get(1)?,

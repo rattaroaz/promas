@@ -207,6 +207,7 @@ export function Screen({
   title,
   message,
   messageKind,
+  hideMessageBar,
   left,
   right,
 }: {
@@ -215,6 +216,8 @@ export function Screen({
   title?: string;
   message?: string;
   messageKind?: "default" | "error" | "info";
+  /** Drops the black message line. Real errors and notices still pass false. */
+  hideMessageBar?: boolean;
   left?: string;
   right?: string;
 }) {
@@ -223,7 +226,7 @@ export function Screen({
       <StatusBar keys={statusKeys ?? [{ key: "Esc", label: "Exit" }]} />
       {title && <TitleBar title={title} left={left} right={right} />}
       <div className="dos-content">{children}</div>
-      <MessageBar text={message ?? ""} kind={messageKind} />
+      {!hideMessageBar && <MessageBar text={message ?? ""} kind={messageKind} />}
     </div>
   );
 }

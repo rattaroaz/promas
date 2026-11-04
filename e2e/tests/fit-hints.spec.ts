@@ -266,7 +266,7 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
       open: async () => {
         await propertyList(page, /3\.\s*Invoice Process/i);
         await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-        await expect(page.getByText(/1 invoices/i)).toBeVisible();
+        await expect(page.getByRole("button", { name: "New Invoice" })).toBeVisible();
       },
     },
     {

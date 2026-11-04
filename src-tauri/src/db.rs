@@ -158,6 +158,7 @@ pub fn open_and_migrate(path: &Path) -> Result<Connection, String> {
     })?;
     conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")
         .map_err(|e| format!("pragma: {e}"))?;
+    crate::search::register_search(&conn)?;
     create_schema(&conn).map_err(|e| {
         log::error!(target: "promas::db", "schema migrate failed {}: {e}", path.display());
         format!("schema: {e}")
@@ -383,7 +384,13 @@ fn create_schema(conn: &Connection) -> Result<()> {
         );
 
         CREATE TABLE IF NOT EXISTS paint_supply_cos (
-            name TEXT PRIMARY KEY COLLATE NOCASE
+            name TEXT PRIMARY KEY COLLATE NOCASE,
+            sort_order INTEGER NOT NULL DEFAULT 1000
+        );
+
+        CREATE TABLE IF NOT EXISTS unit_sizes (
+            name TEXT PRIMARY KEY COLLATE NOCASE,
+            sort_order INTEGER NOT NULL DEFAULT 1000
         );
 
         CREATE TABLE IF NOT EXISTS job_descriptions (
@@ -442,9 +449,17 @@ fn create_schema(conn: &Connection) -> Result<()> {
         "paint_supply_co",
         "TEXT NOT NULL DEFAULT ''",
     )?;
+    add_column_if_missing(
+        conn,
+        "paint_supply_cos",
+        "sort_order",
+        "INTEGER NOT NULL DEFAULT 1000",
+    )?;
     seed_paint_supply_cos(conn)?;
     add_column_if_missing(conn, "job_descriptions", "price_occupied", "REAL")?;
+    add_column_if_missing(conn, "job_descriptions", "size_prices", "TEXT")?;
     seed_job_descriptions(conn)?;
+    seed_unit_sizes(conn)?;
     Ok(())
 }
 
@@ -623,14 +638,84 @@ pub(crate) fn seed_job_descriptions(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Keep the Paint Supply Co. list in sync with companies stored on invoices.
-fn seed_paint_supply_cos(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        r#"INSERT OR IGNORE INTO paint_supply_cos (name)
-           SELECT DISTINCT TRIM(paint_supply_co) FROM invoices
-           WHERE TRIM(COALESCE(paint_supply_co,'')) != ''"#,
+const PAINT_SUPPLY_SEED_KEY: &str = "paint_supply_seed_v1";
+const UNIT_SIZES_SEED_KEY: &str = "unit_sizes_seed_v1";
+
+const PAINT_SUPPLY_SEED: &[&str] = &[
+    "Shilpark",
+    "Dunn Edwards",
+    "Sherman Williams",
+    "Vista",
+    "Home Depot",
+    "Lowes",
+];
+
+const UNIT_SIZE_SEED: &[&str] = &[
+    "Single",
+    "1+1",
+    "2+1",
+    "2+2",
+    "3+2",
+    "1+1 Loft",
+    "2+1 Loft",
+    "2+2 Loft",
+    "2+1.5",
+    "2+2.5",
+    "3+2.5",
+];
+
+fn meta_done(conn: &Connection, key: &str) -> Result<bool> {
+    ensure_app_meta(conn)?;
+    let n: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM app_meta WHERE key = ?1",
+        params![key],
+        |r| r.get(0),
+    )?;
+    Ok(n > 0)
+}
+
+fn mark_meta(conn: &Connection, key: &str) -> Result<()> {
+    ensure_app_meta(conn)?;
+    conn.execute(
+        "INSERT OR IGNORE INTO app_meta (key, value) VALUES (?1, '1')",
+        params![key],
     )?;
     Ok(())
+}
+
+/// Seed the paint-supply list once. Later deletes stay deleted. Names already
+/// stored on invoices are copied on that first pass only.
+fn seed_paint_supply_cos(conn: &Connection) -> Result<()> {
+    if meta_done(conn, PAINT_SUPPLY_SEED_KEY)? {
+        return Ok(());
+    }
+    for (index, name) in PAINT_SUPPLY_SEED.iter().enumerate() {
+        conn.execute(
+            "INSERT OR IGNORE INTO paint_supply_cos (name, sort_order) VALUES (?1, ?2)",
+            params![name, (index as i64) + 1],
+        )?;
+    }
+    conn.execute(
+        r#"INSERT OR IGNORE INTO paint_supply_cos (name, sort_order)
+           SELECT DISTINCT TRIM(paint_supply_co), 1000 FROM invoices
+           WHERE TRIM(COALESCE(paint_supply_co,'')) != ''"#,
+        [],
+    )?;
+    mark_meta(conn, PAINT_SUPPLY_SEED_KEY)
+}
+
+/// Seed unit sizes once. A list the user clears is not filled again.
+fn seed_unit_sizes(conn: &Connection) -> Result<()> {
+    if meta_done(conn, UNIT_SIZES_SEED_KEY)? {
+        return Ok(());
+    }
+    for (index, name) in UNIT_SIZE_SEED.iter().enumerate() {
+        conn.execute(
+            "INSERT OR IGNORE INTO unit_sizes (name, sort_order) VALUES (?1, ?2)",
+            params![name, (index as i64) + 1],
+        )?;
+    }
+    mark_meta(conn, UNIT_SIZES_SEED_KEY)
 }
 
 #[cfg(test)]
