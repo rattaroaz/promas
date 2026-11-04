@@ -302,16 +302,21 @@ pub fn list_cash_receipts(
                  AND (?1='' OR cr.company_no=?1)
                  AND (?2='' OR cr.pay_date>=?2)
                  AND (?3='' OR cr.pay_date<=?3)
-                 AND promas_match(
-                      CAST(cr.invoice AS TEXT) || ' ' || COALESCE(cr.pay_ref_no,'') || ' ' ||
-                      COALESCE(c.name,'') || ' ' || COALESCE(c.contact,'') || ' ' ||
-                      COALESCE((SELECT group_concat(
-                        COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
-                        COALESCE(p.state,'') || ' ' || COALESCE(p.name,''), ' ')
-                        FROM invoices i
-                        LEFT JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
-                        WHERE i.company_no=cr.company_no AND i.sales_date=cr.sales_date AND i.invoice=cr.invoice), ''),
-                      ?4)
+                 AND (
+                   promas_match(
+                        CAST(cr.invoice AS TEXT) || ' ' || COALESCE(cr.pay_ref_no,'') || ' ' ||
+                        COALESCE(c.name,'') || ' ' || COALESCE(c.contact,''),
+                        ?4)
+                   OR EXISTS (
+                     SELECT 1 FROM invoices i
+                     JOIN properties p ON p.company_no=i.company_no AND p.pro_no=i.pro_no
+                     WHERE i.company_no=cr.company_no AND i.sales_date=cr.sales_date AND i.invoice=cr.invoice
+                       AND promas_match(
+                            COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
+                            COALESCE(p.state,'') || ' ' || COALESCE(p.name,''),
+                            ?4)
+                   )
+                 )
                ORDER BY cr.pay_date DESC, cr.id DESC
                LIMIT ?5"#,
         )
@@ -968,14 +973,23 @@ pub fn report_aging(
                FROM invoices i
                LEFT JOIN companies c ON c.company_no=i.company_no
                WHERE i.voided=0 AND i.balance > 0.0005
-                 AND promas_match(
-                      COALESCE(i.company_no,'') || ' ' || COALESCE(c.name,'') || ' ' ||
-                      COALESCE(c.contact,'') || ' ' || COALESCE(c.phone,'') || ' ' ||
-                      COALESCE((SELECT group_concat(
-                        COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
-                        COALESCE(p.state,'') || ' ' || COALESCE(p.name,''), ' ')
-                        FROM properties p WHERE p.company_no=i.company_no), ''),
-                      ?2)
+                 AND (
+                   promas_match(
+                        COALESCE(i.company_no,'') || ' ' || COALESCE(c.name,'') || ' ' ||
+                        COALESCE(c.contact,'') || ' ' || COALESCE(c.phone,'') || ' ' ||
+                        COALESCE(c.street,'') || ' ' || COALESCE(c.city,'') || ' ' || COALESCE(c.zip,''),
+                        ?2)
+                   OR EXISTS (
+                     SELECT 1 FROM properties p
+                     WHERE p.company_no = i.company_no
+                       AND promas_match(
+                            COALESCE(p.pro_no,'') || ' ' || COALESCE(p.name,'') || ' ' ||
+                            COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' ||
+                            COALESCE(p.state,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
+                            COALESCE(p.contact,'') || ' ' || COALESCE(p.manager,''),
+                            ?2)
+                   )
+                 )
                GROUP BY i.company_no
                ORDER BY i.company_no"#,
         )

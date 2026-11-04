@@ -25,7 +25,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { ContentGrid } from "../../dos/contentGrid";
+import { ContentGrid, PROPERTY_LIST_COLUMNS } from "../../dos/contentGrid";
 import { fmtDate, naturalCompare, today } from "../../dos/utils";
 
 export type ProcessKind =
@@ -1418,7 +1418,7 @@ export function CompanyPropertyGate({
       {phase === "pr-browse" && (
         <div className="dos-browse">
           {company ? (
-            <ContentGrid columns={7} shrinkColumn={2} softColumns={[3, 6]}>
+            <ContentGrid className="fit-grid" columns={7} template={PROPERTY_LIST_COLUMNS}>
               <div className="browse-grid browse-grid-header">
                 <div>ProNO</div>
                 <div>Name</div>
@@ -1443,14 +1443,14 @@ export function CompanyPropertyGate({
                   }}
                 >
                   <div>{p.proNo}</div>
-                  <div>{p.name}</div>
+                  <div className="property-name">{p.name}</div>
                   <PropertyPlaceCells p={p} />
                   <div className="property-contact">{propertyContactName(p)}</div>
                 </button>
               ))}
             </ContentGrid>
           ) : (
-            <ContentGrid columns={7} shrinkColumn={2} softColumns={[3, 6]}>
+            <ContentGrid className="fit-grid" columns={7} template={PROPERTY_LIST_COLUMNS}>
               <div className="browse-grid browse-grid-header">
                 <button
                   type="button"

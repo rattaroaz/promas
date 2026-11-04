@@ -145,16 +145,8 @@ test("round 2 gate at 1280 and 1024", async ({ page }) => {
           client: name.clientWidth,
         };
       }, ordinary);
-      // The name track stops at the room left by Active, ID, Edit, and Delete.
-      // At the restored viewport font that room is shorter than
-      // "Alexander Montgomery-Smith", so that name ellipsizes. Shorter names
-      // still have to show in full.
-      if (fitted.text <= fitted.field + 1) {
-        expect(fitted.scroll, `${tag} ${ordinary}`).toBeLessThanOrEqual(fitted.client + 1);
-      } else {
-        expect(ordinary, tag).toBe("Alexander Montgomery-Smith");
-        expect(fitted.scroll, `${tag} ${ordinary} ellipsizes`).toBeGreaterThan(fitted.client + 1);
-      }
+      expect(fitted.field, `${tag} ${ordinary}`).toBeGreaterThanOrEqual(fitted.text - 1);
+      expect(fitted.scroll, `${tag} ${ordinary}`).toBeLessThanOrEqual(fitted.client + 1);
     }
     const long = "X".repeat(48);
     await saveWorkPerson(page, { name: long }, current);

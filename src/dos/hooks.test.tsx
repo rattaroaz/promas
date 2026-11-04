@@ -49,6 +49,55 @@ describe("fit measurement", () => {
     document.body.removeChild(host);
   });
 
+  it("ignores a wrapped fragment whose border box stays inside its line", () => {
+    const shell = document.createElement("div");
+    const line = document.createElement("div");
+    const fact = document.createElement("span");
+    fact.textContent = "Email: elaine@acme.example";
+    shell.appendChild(line);
+    line.appendChild(fact);
+    document.body.appendChild(shell);
+    const box = (
+      el: HTMLElement,
+      clientWidth: number,
+      scrollWidth: number,
+      offsetWidth = clientWidth,
+      offsetLeft = 0
+    ) => {
+      Object.defineProperty(el, "clientWidth", { value: clientWidth, configurable: true });
+      Object.defineProperty(el, "scrollWidth", { value: scrollWidth, configurable: true });
+      Object.defineProperty(el, "offsetWidth", { value: offsetWidth, configurable: true });
+      Object.defineProperty(el, "offsetLeft", { value: offsetLeft, configurable: true });
+    };
+    const rect = (el: HTMLElement, left: number, right: number) => {
+      el.getBoundingClientRect = () =>
+        ({
+          left,
+          right,
+          width: right - left,
+          height: 20,
+          top: 0,
+          bottom: 20,
+          x: left,
+          y: 0,
+          toJSON() {
+            return {};
+          },
+        }) as DOMRect;
+    };
+    box(shell, 1024, 1024);
+    box(line, 960, 960);
+    box(fact, 300, 0, 571, 570);
+    rect(shell, 0, 1024);
+    rect(line, 16, 976);
+    rect(fact, 123, 694);
+    expect(contentWidthOf(shell)).toBeLessThanOrEqual(1024);
+
+    rect(fact, 800, 1400);
+    expect(contentWidthOf(shell)).toBeGreaterThanOrEqual(1141);
+    document.body.removeChild(shell);
+  });
+
   it("measures a property scroller's width when the row is only 7px past it", () => {
     const shell = document.createElement("div");
     const grid = document.createElement("div");
@@ -161,7 +210,7 @@ describe("fit measurement", () => {
     document.body.removeChild(shell);
   });
 
-  it("shrinks for a dialog taller than its window and ignores a scrolling list", () => {
+  it("shrinks a dialog box taller than its window and lets the body scroll", () => {
     const shell = document.createElement("div");
     const overlay = document.createElement("div");
     overlay.className = "dos-overlay";
@@ -179,17 +228,14 @@ describe("fit measurement", () => {
       Object.defineProperty(el, "offsetHeight", { value: offset, configurable: true });
     };
     size(overlay, 600, 600);
-    size(dialog, 500, 500, 500);
-    size(body, 400, 900, 400);
+    size(dialog, 900, 900, 900);
+    size(body, 400, 400, 400);
     const tall = verticalFitFactor(shell);
-    expect(tall).toBeLessThan(0.6);
+    expect(tall).toBeLessThan(0.7);
     expect(tall).toBeGreaterThan(0.4);
 
-    const browse = document.createElement("div");
-    browse.className = "dos-browse-body";
-    body.appendChild(browse);
+    size(dialog, 500, 500, 500);
     size(body, 400, 900, 400);
-    size(browse, 100, 700, 100);
     expect(verticalFitFactor(shell)).toBe(1);
     document.body.removeChild(shell);
   });
@@ -218,7 +264,7 @@ describe("fit measurement", () => {
     expect(verticalFitFactor(shell)).toBe(1);
 
     size(body, 400, 900, 400);
-    expect(verticalFitFactor(shell)).toBeLessThan(1);
+    expect(verticalFitFactor(shell)).toBe(1);
     document.body.removeChild(shell);
   });
 

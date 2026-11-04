@@ -5,7 +5,6 @@ import { Screen, Prompt } from "../dos/Shell";
 import { pushUndoDelete } from "../lib/undoDelete";
 import {
   blankJobDescription,
-  JOB_SIZES,
   jobWithSizePrice,
   priceShownForSize,
   sizesEditedOnJob,
@@ -138,11 +137,11 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
     ])
       .then(([list, sizeList]) => {
         if (cancel) return;
-        const catalog = sizeList?.length ? sizeList : [...JOB_SIZES];
+        const catalog = sizeList ?? [];
         sizesRef.current = catalog;
         setSizes(catalog);
         const next = (list ?? []).map((job) =>
-          rowFromJob(job, nextKey(), catalog[0] ?? "Single", catalog)
+          rowFromJob(job, nextKey(), catalog[0] ?? "", catalog)
         );
         rowsRef.current = next;
         setRows(next);

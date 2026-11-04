@@ -148,26 +148,24 @@ test.describe("promas 2.16.2", () => {
     report.push(payroll1024);
     await shot(page, "payroll-1024");
 
-    const norms: number[] = [];
     for (const row of report) {
       const widths = row.dates.map((d) => d.width);
       const spread = Math.max(...widths) - Math.min(...widths);
       expect(spread, `${row.screen} date widths ${widths.join(",")}`).toBeLessThanOrEqual(1);
+      expect(row.fit, `${row.screen} --fit-scale`).toBe(1);
       for (const date of row.dates) {
         expect(date.icon, date.label).toBe(true);
-        // Widths used to be divided by fit-scale, so a payroll page at 0.8535
-        // still looked the same. Payroll must actually be scale 1.
-        // Date width is 12ch + 2.8em, so compare in em. The viewport font
-        // changes the pixel width on purpose.
-        if (row.screen === "payroll" || row.screen === "payroll-1024") {
-          expect(row.fit, `${row.screen} --fit-scale`).toBe(1);
-        }
-        const fontPx = parseFloat(date.fontSize) || 1;
-        norms.push(date.width / fontPx);
       }
     }
-    const normSpread = Math.max(...norms) - Math.min(...norms);
-    expect(normSpread, `design widths ${norms.map((n) => n.toFixed(2)).join(",")}`).toBeLessThanOrEqual(0.15);
+    // Original tolerance was 2px of raw width at fit 1. The viewport font
+    // makes 1024 and 1280 different roots, so that 2px check stays inside
+    // each viewport instead of pooling both.
+    const at1024 = report.filter((row) => row.screen === "payroll-1024").flatMap((row) => row.dates.map((d) => d.width));
+    const at1280 = report.filter((row) => row.screen !== "payroll-1024").flatMap((row) => row.dates.map((d) => d.width));
+    for (const [label, group] of [["1024", at1024], ["1280", at1280]] as const) {
+      const normSpread = Math.max(...group) - Math.min(...group);
+      expect(normSpread, `${label} design widths ${group.map((n) => n.toFixed(1)).join(",")}`).toBeLessThanOrEqual(2);
+    }
 
     await attachJson("dates.json", {
       termsLeft: termsBox!.x,

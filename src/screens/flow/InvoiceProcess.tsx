@@ -25,7 +25,7 @@ import {
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { MoneyInput } from "../../dos/MoneyInput";
-import { ContentGrid } from "../../dos/contentGrid";
+import { ContentGrid, INVOICE_LIST_COLUMNS } from "../../dos/contentGrid";
 import { addDays, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 import {
@@ -33,7 +33,6 @@ import {
   downloadInvoicePdf,
 } from "../../lib/invoicePrint";
 import {
-  UNIT_SIZE_OPTIONS,
   applyPresetPriceToLine,
   applyPresetPrices,
   blankNewInvoiceLine,
@@ -302,6 +301,7 @@ export function InvoiceProcess({
   const [workPersons, setWorkPersons] = useState<WorkPerson[]>([]);
   const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
+  const [unitSizes, setUnitSizes] = useState<string[]>([]);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Delete=Void  Esc=Exit"
   );
@@ -388,6 +388,7 @@ export function InvoiceProcess({
       setMsg(String(e));
       setMsgKind("error");
     });
+    loadUnitSizes().catch(() => setUnitSizes([]));
   }, [load]);
 
   useEffect(() => {
@@ -412,6 +413,39 @@ export function InvoiceProcess({
     } catch {
       setPaintSupplyCos([]);
     }
+  }
+
+  async function loadUnitSizes() {
+    try {
+      setUnitSizes((await api.listUnitSizes()) ?? []);
+    } catch {
+      setUnitSizes([]);
+    }
+  }
+
+  function catalogSize(size: string): string {
+    const raw = size.trim();
+    if (!raw || !isListedUnitSize(raw, unitSizes)) return "";
+    return (
+      unitSizes.find((item) => item.toLowerCase() === raw.toLowerCase()) ??
+      unitSizes.find((item) => normalizeUnitSize(item) === normalizeUnitSize(raw)) ??
+      ""
+    );
+  }
+
+  function sizeChoices(current: string): string[] {
+    const raw = current.trim();
+    if (!raw || catalogSize(raw)) return unitSizes;
+    return [...unitSizes, raw];
+  }
+
+  function paintChoices(current: string): string[] {
+    const raw = current.trim();
+    if (!raw) return paintSupplyCos;
+    if (paintSupplyCos.some((name) => name.toLowerCase() === raw.toLowerCase())) {
+      return paintSupplyCos;
+    }
+    return [...paintSupplyCos, raw];
   }
 
   function listedWorkPerson(name: string) {
@@ -453,8 +487,9 @@ export function InvoiceProcess({
   }
 
   function listedPaintSupplyCo(name: string) {
-    const key = name.trim().toLowerCase();
-    return paintSupplyCos.find((n) => n.toLowerCase() === key) ?? "";
+    const raw = name.trim();
+    if (!raw) return "";
+    return paintSupplyCos.find((n) => n.toLowerCase() === raw.toLowerCase()) ?? raw;
   }
 
   async function startNew() {
@@ -521,7 +556,6 @@ export function InvoiceProcess({
       setMsgKind("error");
       return;
     }
-    await rememberPaintSupplyCo(inv.paintSupplyCo);
     setConfirmSave(true);
     setMsg("Is This Data Correct ? (Y/N)");
   }
@@ -813,7 +847,7 @@ export function InvoiceProcess({
       {mode === "browse" && (
         <div className="dos-browse">
           <InvoiceSiteHeader company={company} property={property} />
-          <ContentGrid columns={9}>
+          <ContentGrid className="fit-grid" columns={9} template={INVOICE_LIST_COLUMNS}>
             <div className="browse-grid browse-grid-header">
               <div>Inv_Date</div>
               <div>Inv#</div>
@@ -1004,9 +1038,8 @@ export function InvoiceProcess({
                     className="dos-select dos-choice"
                     aria-label="Size"
                     value={
-                      isListedUnitSize(editing.invoice.salesSize)
-                        ? normalizeUnitSize(editing.invoice.salesSize) ?? ""
-                        : ""
+                      catalogSize(editing.invoice.salesSize) ||
+                      editing.invoice.salesSize.trim()
                     }
                     onChange={(e) => {
                       const salesSize = e.target.value;
@@ -1018,7 +1051,7 @@ export function InvoiceProcess({
                     }}
                   >
                     <option value=""> </option>
-                    {UNIT_SIZE_OPTIONS.map((s) => (
+                    {sizeChoices(editing.invoice.salesSize).map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -1027,10 +1060,10 @@ export function InvoiceProcess({
                   <input
                     className="dos-input"
                     aria-label="Custom size"
-                    readOnly={isListedUnitSize(editing.invoice.salesSize)}
+                    readOnly={catalogSize(editing.invoice.salesSize) !== ""}
                     value={editing.invoice.salesSize}
                     onChange={(e) => {
-                      if (isListedUnitSize(editing.invoice.salesSize)) return;
+                      if (catalogSize(editing.invoice.salesSize)) return;
                       const salesSize = e.target.value;
                       const invoice = { ...editing.invoice, salesSize };
                       setEditing({
@@ -1082,18 +1115,23 @@ export function InvoiceProcess({
                     aria-label="Paint Supply Co. list"
                     title="Paint Supply Co."
                     value={listedPaintSupplyCo(editing.invoice.paintSupplyCo ?? "")}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = e.target.value;
                       setEditing({
                         ...editing,
                         invoice: {
                           ...editing.invoice,
-                          paintSupplyCo: e.target.value,
+                          paintSupplyCo: value,
                         },
-                      })
-                    }
+                      });
+                      const known = paintSupplyCos.some(
+                        (name) => name.toLowerCase() === value.trim().toLowerCase()
+                      );
+                      if (value.trim() && !known) void rememberPaintSupplyCo(value);
+                    }}
                   >
                     <option value=""> </option>
-                    {paintSupplyCos.map((name) => (
+                    {paintChoices(editing.invoice.paintSupplyCo ?? "").map((name) => (
                       <option key={name} value={name}>
                         {name}
                       </option>
@@ -1113,7 +1151,9 @@ export function InvoiceProcess({
                         },
                       })
                     }
-                    onBlur={() => {
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
                       void rememberPaintSupplyCo(editing.invoice.paintSupplyCo);
                     }}
                   />

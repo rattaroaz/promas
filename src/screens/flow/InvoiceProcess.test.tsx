@@ -6,6 +6,8 @@ import { InvoiceProcess, descriptionRowCount } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyInvoiceLine, emptyProperty } from "../../api";
 import { today } from "../../dos/utils";
 import { downloadInvoicePdf, printInvoiceOnTemplate } from "../../lib/invoicePrint";
+import { UNIT_SIZES } from "../../lib/catalogSeeds";
+import { INVOICE_LIST_COLUMNS } from "../../dos/contentGrid";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
   COLOR_CHANGE_WALLS_NAVAJO_WHITE,
@@ -41,6 +43,7 @@ vi.mock("../../api", async () => {
       deleteWorkPerson: vi.fn(),
       listPaintSupplyCos: vi.fn(),
       savePaintSupplyCo: vi.fn(),
+      listUnitSizes: vi.fn(),
       getSysdata: vi.fn(),
       saveInvoice: vi.fn(),
       voidInvoice: vi.fn(),
@@ -95,6 +98,7 @@ describe("InvoiceProcess", () => {
     vi.mocked(api.saveWorkPerson).mockImplementation(async (person) => [person]);
     vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
+    vi.mocked(api.listUnitSizes).mockResolvedValue([...UNIT_SIZES]);
     vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) => {
       const n = name.trim();
       return n
@@ -135,7 +139,7 @@ describe("InvoiceProcess", () => {
     // Header and rows share one content-sized grid.
     expect(header).toHaveClass("browse-grid");
     expect(header?.closest(".content-grid")).toHaveStyle({
-      gridTemplateColumns: "repeat(9, max-content)",
+      gridTemplateColumns: INVOICE_LIST_COLUMNS,
     });
     
     expect(api.listInvoices).toHaveBeenCalledWith(
@@ -279,6 +283,8 @@ describe("InvoiceProcess", () => {
     await user.clear(cost);
     await user.type(cost, "42.5");
     await user.type(supplier, "Kelly-Moore");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(api.savePaintSupplyCo).toHaveBeenCalledWith("Kelly-Moore"));
     await user.click(screen.getByRole("button", { name: /^Ctrl-S Save$/i }));
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
@@ -383,7 +389,8 @@ describe("InvoiceProcess", () => {
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "2+2");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("295.00");
     expect(screen.getByLabelText(/Price 2/i)).toHaveValue("150.00");
-    await user.selectOptions(screen.getByLabelText(/^Size$/i), "Occupied");
+    await user.selectOptions(screen.getByLabelText(/^Size$/i), "");
+    await user.type(screen.getByLabelText("Custom size"), "Occupied");
     expect(screen.getByLabelText("Custom size")).toHaveValue("Occupied");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
   });
@@ -454,16 +461,7 @@ describe("InvoiceProcess", () => {
     const values = Array.from(size.querySelectorAll("option")).map(
       (o) => o.getAttribute("value") ?? ""
     );
-    expect(values).toEqual([
-      "",
-      "single",
-      "1+1",
-      "2+1",
-      "2+2",
-      "3+2",
-      "4+2",
-      "Occupied",
-    ]);
+    expect(values).toEqual(["", ...UNIT_SIZES]);
     expect(screen.getByLabelText("Custom size")).not.toHaveAttribute("readonly");
     expect(size).toHaveClass("dos-choice");
     expect(screen.getByLabelText("Line 1 description")).toHaveClass("dos-choice");
@@ -657,7 +655,7 @@ describe("InvoiceProcess", () => {
       PAINT_KITCHEN_CABINET_INSIDE
     );
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
-    await user.selectOptions(screen.getByLabelText(/^Size$/i), "4+2");
+    await user.type(screen.getByLabelText("Custom size"), "4+2");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("130.00");
     await user.selectOptions(
       screen.getByLabelText("Line 1 description"),
@@ -884,7 +882,7 @@ describe("InvoiceProcess", () => {
     expect(header).toHaveClass("browse-grid");
     expect(firstRow).toHaveClass("browse-grid");
     expect(grid).toHaveStyle({
-      gridTemplateColumns: "repeat(9, max-content)",
+      gridTemplateColumns: INVOICE_LIST_COLUMNS,
     });
     expect(header?.closest(".content-grid")).toBe(grid);
     expect(firstRow?.closest(".content-grid")).toBe(grid);
@@ -1177,6 +1175,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
     vi.mocked(api.listWorkPersons).mockResolvedValue([]);
     vi.mocked(api.listJobDescriptions).mockResolvedValue(presetJobDescriptions());
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
+    vi.mocked(api.listUnitSizes).mockResolvedValue([...UNIT_SIZES]);
     vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) =>
       ["Dunn-Edwards", name].sort()
     );
@@ -1533,6 +1532,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
       await openNewForm(user);
       await user.type(screen.getByLabelText("Paint Supply Co."), "Vista Paint");
       await user.tab();
+      expect(api.savePaintSupplyCo).not.toHaveBeenCalled();
       const list = screen.getByLabelText("Paint Supply Co. list");
       await waitFor(() =>
         expect(within(list).getByRole("option", { name: "Vista Paint" })).toBeInTheDocument()

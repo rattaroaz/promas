@@ -225,6 +225,13 @@ h6 {
   text-overflow: clip;
 }
 
+.dos-messagebar.single-line {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: clip;
+}
+
 .dos-messagebar.error {
   color: var(--dos-red-bright);
   background: var(--dos-black);
@@ -562,6 +569,32 @@ h6 {
   white-space: nowrap;
 }
 
+/* Invoice and property lists fill the window and scroll down. Tracks use
+   fr, so a long cell ellipsizes or wraps instead of widening the screen. */
+.content-grid.fit-grid {
+  overflow-x: hidden;
+}
+.content-grid.fit-grid > .browse-grid {
+  min-width: 0;
+  width: 100%;
+}
+.content-grid.fit-grid > .browse-grid > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content-grid.fit-grid > .browse-grid > .property-name,
+.content-grid.fit-grid > .browse-grid > .property-street,
+.content-grid.fit-grid > .browse-grid > .property-city,
+.content-grid.fit-grid > .browse-grid > .property-contact {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  overflow: visible;
+}
+
 .content-grid > .browse-grid-header {
   position: sticky;
   top: 0;
@@ -726,7 +759,7 @@ h6 {
   min-width: 0;
   width: min(92ch, 100%);
   max-width: 100%;
-  max-height: 90%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   color: var(--app-ink);
@@ -866,6 +899,37 @@ h6 {
   flex: 0 0 47ch;
 }
 
+.dos-dialog .dos-input.w45 {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+
+.cash-ledger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cash-ledger .browse-grid {
+  width: 100%;
+  min-width: 0;
+}
+
+.cash-ledger .browse-grid > div,
+.cash-ledger .browse-grid > button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cash-ledger .browse-grid-header > div {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+
 /* Select + typed value: picker is a small box, value uses the rest */
 .dos-choice-pair {
   display: flex;
@@ -923,7 +987,7 @@ h6 {
   display: grid;
   /* Description takes the row. WorkDate uses the shared date width; the digit
      padding below keeps mm/dd/yyyy clear of the calendar glyph. */
-  grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 10ch;
+  grid-template-columns: minmax(12ch, 1fr) var(--dos-date-width) 11ch 8ch;
   /* Same 8px gap as the property tables. */
   column-gap: 8px;
   align-items: center;
@@ -1109,6 +1173,13 @@ h6 {
    first line aligned with the list after the bleed margin above. */
 .dos-browse > .dos-info-banner {
   padding-left: calc(1ch + 5ch);
+  /* The shared bleed margin above made this box a few pixels wider than the
+     window, and that fixed overflow walked the type down to the floor. */
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .dos-browse > .invoice-site-header {
@@ -1117,7 +1188,8 @@ h6 {
 
 .dos-browse > .invoice-site-header {
   width: auto;
-  max-width: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* Company / property line above a list. Columns under it stay blue. */
@@ -1213,14 +1285,46 @@ h6 {
    Material Costs), and the gap is the field's own 0.5ch. A max-content label
    plus a 2ch gap started Due Date and Invoice Number 4px to the right. */
 .invoice-terms-order {
+  /* One label column and one control column. Two dates on one row are wider
+     than the dialog at the viewport font, and the type was shrinking to make
+     them fit. Stacked controls still share a left edge. */
   display: grid;
-  grid-template-columns: 15ch max-content max-content max-content;
+  grid-template-columns: max-content minmax(0, max-content);
   column-gap: 0.5ch;
   row-gap: 0.15em;
   align-items: baseline;
   justify-items: start;
   width: max-content;
   max-width: 100%;
+  min-width: 0;
+}
+
+.invoice-terms-order .dos-input:not([type="date"]) {
+  width: 17ch;
+  min-width: 0;
+  max-width: min(17ch, 100%);
+}
+
+.dos-dialog .browse-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dos-dialog .dos-form,
+.dos-dialog .dos-field,
+.dos-dialog .invoice-edit {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dos-dialog .dos-field .dos-input:not([type="date"]),
+.dos-dialog .dos-field .dos-select,
+.dos-dialog .work-order-line-field .dos-input,
+.dos-dialog .work-order-line-field .dos-select,
+.dos-dialog .work-order-line-desc .dos-input {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .invoice-terms-order > .dos-form-row,
@@ -1762,11 +1866,11 @@ input[type="number"]::-webkit-inner-spin-button {
    Active?, Delete, and Edit stay on screen at 1024. A name past that cap
    ellipsizes. The track does not grow with the window. */
 .workers-frame {
-  --workers-active: 7.6ch;
+  --workers-active: 6.8ch;
   --workers-name: 13.2ch;
   --workers-id: 9.8ch;
-  --workers-delete: 10ch;
-  --workers-edit: 8ch;
+  --workers-delete: 8ch;
+  --workers-edit: 5ch;
   --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-edit) var(--workers-delete);
   --workers-gap: 16px;
   --workers-scrollbar: 16px;
@@ -1874,9 +1978,79 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .workers-row .dos-btn {
   width: 100%;
-  min-width: max-content;
+  min-width: 0;
+  max-width: 100%;
   box-sizing: border-box;
-  padding: 0 1ch;
+  padding: 0 0.3ch;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.dos-main-wrap:has(.catalog-frame) {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.catalog-frame {
+  flex: 1 1 auto;
+  align-self: center;
+  min-height: 0;
+  max-height: 100%;
+  width: min(52ch, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.catalog-frame .menu-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.catalog-add {
+  display: flex;
+  gap: 0.6em;
+  margin-bottom: 1em;
+  min-width: 0;
+}
+
+.catalog-add .dos-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.catalog-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.catalog-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: 0.6em;
+  align-items: center;
+  min-width: 0;
+  margin-bottom: 0.35em;
+}
+
+.catalog-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-row .dos-btn {
+  width: 10ch;
+  min-width: 10ch;
+  max-width: 10ch;
+  box-sizing: border-box;
   text-align: center;
   white-space: nowrap;
 }

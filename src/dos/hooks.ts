@@ -502,7 +502,8 @@ export function useBrowseIndex(count: number) {
   return { index, setIndex, up, down, pageUp, pageDown, home, end };
 }
 
-const FIT_MIN = 0.45;
+/** Below this, type would be smaller than the old 22px base on a 1024 screen. */
+const FIT_MIN = 0.85;
 /** Room for the vertical scrollbar and subpixel rounding, so a fitted row does not gain a horizontal scrollbar. */
 const FIT_SLACK_PX = 28;
 
@@ -576,11 +577,22 @@ export function contentWidthOf(root: HTMLElement): number {
     for (const node of el.children) {
       if (!(node instanceof HTMLElement)) continue;
       if (ignoredByFit(node)) continue;
-      const childWidth = horizontallyClipped(node)
-        ? node.offsetWidth
-        : Math.max(node.scrollWidth, node.offsetWidth);
-      const right = node.offsetLeft + childWidth;
-      if (right > cw + slack + 1) max = Math.max(max, right);
+      // A wrapped inline (the invoice email, a city after a long street) reports
+      // offsetLeft of its first fragment plus the width of a later line. Adding
+      // those paints a false width past the window. Only a border box that
+      // actually sticks out of its parent counts. jsdom leaves the rect empty,
+      // so the offset sum stays in use there.
+      const box = node.getBoundingClientRect();
+      const host = el.getBoundingClientRect();
+      const unmeasured = host.width < 1 && host.height < 1;
+      const paintsPast = unmeasured || box.right > host.right + 1 || box.left < host.left - 1;
+      if (paintsPast) {
+        const childWidth = horizontallyClipped(node)
+          ? node.offsetWidth
+          : Math.max(node.scrollWidth, node.offsetWidth);
+        const right = node.offsetLeft + childWidth;
+        if (right > cw + slack + 1) max = Math.max(max, right);
+      }
       visit(node);
     }
   };
@@ -658,11 +670,10 @@ function visibleBottom(el: HTMLElement): number | null {
 
 /**
  * How tall a dialog is allowed to be before the type has to shrink.
- * The stylesheet's max-height is that cap: 90% for a normal dialog, 100% for
- * the invoice, which is meant to fill the content area and scroll inside.
- * A hardcoded 90% treated that full-height invoice as overflow on every open.
- * Shrinking then did nothing to a percentage height, so --fit-scale fell to
- * its floor and date boxes no longer shared one design width.
+ * The stylesheet's max-height is that cap: 100% of the overlay, which is
+ * already the content area under the title and status bars. A dialog that
+ * fills it scrolls its body. Shrinking type to keep every field on screen
+ * made the invoice and work order fall below the viewport size.
  */
 function allowedDialogHeight(node: HTMLElement, vh: number): number {
   const parentH = node.parentElement?.clientHeight ?? vh;
@@ -686,18 +697,11 @@ export function verticalFitFactor(root: HTMLElement): number {
   root.querySelectorAll(".dos-dialog").forEach((node) => {
     if (!(node instanceof HTMLElement)) return;
     if (node.closest(".dos-help, .dos-prompt, .print-preview-overlay")) return;
-    const body = node.querySelector(".dlg-body");
-    let extra = 0;
-    if (body instanceof HTMLElement) {
-      extra = Math.max(0, body.scrollHeight - body.clientHeight);
-      body.querySelectorAll(".dos-browse-body, .dos-report").forEach((browse) => {
-        if (!(browse instanceof HTMLElement)) return;
-        extra -= Math.max(0, browse.scrollHeight - browse.clientHeight);
-      });
-      extra = Math.max(0, extra);
-    }
+    // A dialog body is meant to scroll. Counting that overflow as extra height
+    // shrunk the invoice and work-order forms until every field fit without a
+    // scrollbar, and the type fell below the viewport size.
     const avail = allowedDialogHeight(node, vh);
-    factor = tighten(factor, node.offsetHeight + extra, avail);
+    factor = tighten(factor, node.offsetHeight, avail);
     const foot = node.querySelector(":scope > .dlg-foot");
     if (foot instanceof HTMLElement) {
       const footBox = foot.getBoundingClientRect();
@@ -788,12 +792,15 @@ export function dialogClip(root: HTMLElement): { x: number; y: number } {
     if (body.closest(".dos-help, .dos-prompt")) return;
     const br = body.getBoundingClientRect();
     if (br.width < 2 || br.height < 2) return;
+    const scrollsY = ["auto", "scroll", "overlay"].includes(getComputedStyle(body).overflowY);
     body.querySelectorAll("input, button, select, textarea").forEach((node) => {
       if (!(node instanceof HTMLElement) || skipPainted(node)) return;
       const box = node.getBoundingClientRect();
       if (box.width < 2 || box.height < 2) return;
       if (box.right > br.right + 1) x = Math.max(x, box.right - br.right);
       if (box.left < br.left - 1) x = Math.max(x, br.left - box.left);
+      // Fields below the fold scroll into view. They are not a reason to shrink type.
+      if (scrollsY) return;
       if (box.bottom > br.bottom + 1) y = Math.max(y, box.bottom - br.bottom);
       if (box.top < br.top - 1) y = Math.max(y, br.top - box.top);
     });

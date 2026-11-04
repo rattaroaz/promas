@@ -313,10 +313,13 @@ test.describe("focus does not resize the screen", () => {
         const fields = page.locator(".dos-dialog input:visible, .dos-dialog select:visible, .dos-dialog textarea:visible, .dos-menu-frame button:visible");
         const count = await fields.count();
         for (let i = 0; i < count; i++) {
-          const before = await layout();
           const field = fields.nth(i);
           if (!(await field.isVisible().catch(() => false))) continue;
           if (!(await field.isEnabled().catch(() => false))) continue;
+          await field.evaluate((el) => {
+            el.scrollIntoView({ block: "nearest", inline: "nearest" });
+          });
+          const before = await layout();
           await field.focus();
           await frames(page);
           const after = await layout();

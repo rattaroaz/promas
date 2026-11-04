@@ -109,15 +109,23 @@ pub fn list_companies(state: State<DbState>, params: ListParams) -> Result<Vec<C
                contact,enter_date,page_map,last_pro_id,memo,voided
                FROM companies
                WHERE (?1 OR voided=0)
-                 AND promas_match(
-                      COALESCE(company_no,'') || ' ' || COALESCE(name,'') || ' ' || COALESCE(phone,'') || ' ' ||
-                      COALESCE(contact,'') || ' ' || COALESCE(street,'') || ' ' || COALESCE(city,'') || ' ' ||
-                      COALESCE(zip,'') || ' ' ||
-                      COALESCE((SELECT group_concat(
-                        COALESCE(street,'') || ' ' || COALESCE(city,'') || ' ' || COALESCE(state,'') || ' ' ||
-                        COALESCE(zip,'') || ' ' || COALESCE(contact,'') || ' ' || COALESCE(manager,''), ' ')
-                        FROM properties WHERE properties.company_no = companies.company_no), ''),
-                      ?2)
+                 AND (
+                   promas_match(
+                        COALESCE(companies.company_no,'') || ' ' || COALESCE(companies.name,'') || ' ' || COALESCE(companies.phone,'') || ' ' ||
+                        COALESCE(companies.contact,'') || ' ' || COALESCE(companies.street,'') || ' ' || COALESCE(companies.city,'') || ' ' ||
+                        COALESCE(companies.zip,''),
+                        ?2)
+                   OR EXISTS (
+                     SELECT 1 FROM properties
+                     WHERE properties.company_no = companies.company_no
+                       AND promas_match(
+                            COALESCE(properties.pro_no,'') || ' ' || COALESCE(properties.name,'') || ' ' ||
+                            COALESCE(properties.street,'') || ' ' || COALESCE(properties.city,'') || ' ' ||
+                            COALESCE(properties.state,'') || ' ' || COALESCE(properties.zip,'') || ' ' ||
+                            COALESCE(properties.contact,'') || ' ' || COALESCE(properties.manager,''),
+                            ?2)
+                   )
+                 )
                ORDER BY company_no
                LIMIT ?3 OFFSET ?4"#,
         )
@@ -469,14 +477,29 @@ pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), S
         return Err("Work person name required".into());
     }
     let worker_no = person.worker_no.trim();
-    if worker_no.is_empty() {
-        return Err("ID number is required".into());
-    }
     let address = person.address.trim();
     let phone = person.phone.trim();
     let active: i64 = if person.active { 1 } else { 0 };
     let original = person.original_name.trim();
     let key = if original.is_empty() { name } else { original };
+    let stored_id: Option<String> = if original.is_empty() {
+        None
+    } else {
+        conn.query_row(
+            "SELECT TRIM(COALESCE(worker_no, '')) FROM work_persons WHERE name = ?1 COLLATE NOCASE",
+            params![key],
+            |r| r.get(0),
+        )
+        .ok()
+    };
+    // A new person, or one whose ID is being cleared, still needs an ID.
+    // A legacy row that was saved with a blank ID can change Active only.
+    if worker_no.is_empty() {
+        let keeping_blank = stored_id.as_deref().is_some_and(|existing| existing.is_empty());
+        if !keeping_blank {
+            return Err("ID number is required".into());
+        }
+    }
 
     if !original.is_empty() && !original.eq_ignore_ascii_case(name) {
         let clash: i64 = conn

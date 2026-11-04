@@ -371,7 +371,38 @@ export async function invoke<T = unknown>(
     ] as T;
   }
   if (cmd === "list_companies") {
-    return [fixtureCompany, fixtureCompany2, fixtureCompany3] as T;
+    const params = (_args?.params ?? {}) as { search?: string };
+    const search = String(params.search ?? "");
+    const companies = [fixtureCompany, fixtureCompany2, fixtureCompany3];
+    if (!search.trim()) return companies as T;
+    return companies.filter((company) => {
+      const own = recordMatchesQuery(
+        search,
+        company.companyNo,
+        company.name,
+        company.phone,
+        company.contact,
+        company.street,
+        company.city,
+        company.zip
+      );
+      if (own) return true;
+      return properties.some(
+        (row) =>
+          row.companyNo === company.companyNo &&
+          recordMatchesQuery(
+            search,
+            row.proNo,
+            row.name,
+            row.street,
+            row.city,
+            row.state,
+            row.zip,
+            row.contact,
+            row.manager
+          )
+      );
+    }) as T;
   }
   if (cmd === "get_company") {
     const companyNo = String(_args?.companyNo ?? "").trim();
@@ -460,7 +491,10 @@ export async function invoke<T = unknown>(
     const original = String(person.originalName ?? "").trim();
     const key = (original || name).toLowerCase();
     const workerNo = String(person.workerNo ?? "").trim();
-    if (!workerNo) throw new Error("ID number is required");
+    const stored = workPersons.find((p) => p.name.toLowerCase() === key);
+    if (!workerNo && !(stored && !stored.workerNo.trim())) {
+      throw new Error("ID number is required");
+    }
     const existing = workPersons.find((p) => p.name.toLowerCase() === key);
     const keeping =
       !!existing && existing.workerNo.trim().toLowerCase() === workerNo.toLowerCase();

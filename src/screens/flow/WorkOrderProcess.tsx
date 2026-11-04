@@ -28,6 +28,11 @@ import { money, fmtDate, today } from "../../dos/utils";
 import { priceForPreset } from "../../lib/jobCatalog";
 import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 
+const WO_LIST_COLS =
+  "minmax(4.5ch, 7ch) minmax(8ch, 12ch) minmax(0, 1fr) minmax(0, 1.3fr) minmax(5ch, 8ch)";
+const WO_LINE_COLS =
+  "minmax(4ch, 8ch) minmax(0, 1fr) minmax(3ch, 6ch) minmax(6ch, 10ch) minmax(7ch, 9ch)";
+
 export function WorkOrderProcess({
   company,
   property,
@@ -381,7 +386,7 @@ export function WorkOrderProcess({
           <div className="dos-info-banner">
             {company.name} — {property.name} {property.street}
           </div>
-          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 9ch 15ch 10ch" }}>
+          <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: WO_LIST_COLS }}>
             <div>Ord#</div>
             <div>OrdDate</div>
             <div>Unit/Size</div>
@@ -393,7 +398,7 @@ export function WorkOrderProcess({
               <button
                 key={`${w.orderNo}-${w.orderDate}`}
                 className={`dos-row ${i === index ? "selected" : ""} ${w.voided ? "voided" : ""} browse-grid`}
-                style={{ gridTemplateColumns: "7ch 12ch 9ch 15ch 10ch" }}
+                style={{ gridTemplateColumns: WO_LIST_COLS }}
                 onMouseEnter={() => {
                   if (pointerHoverMuted()) return;
                   setIndex(i);
@@ -532,7 +537,7 @@ export function WorkOrderProcess({
               />
             </DotField>
 
-            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
+            <div className="browse-grid browse-grid-header" style={{ margin: "0.5em 0 0.2em", gridTemplateColumns: WO_LINE_COLS }}>
               <div>Code#</div>
               <div>Description</div>
               <div>W/T</div>
@@ -540,7 +545,7 @@ export function WorkOrderProcess({
               <div>Delete</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
+              <div key={idx} className="browse-grid" style={{ marginBottom: "0.12em", gridTemplateColumns: WO_LINE_COLS }}>
                 <div className="work-order-line-field" style={{ minWidth: 0 }}>
                   <input
                     className="dos-input"
@@ -634,10 +639,10 @@ export function WorkOrderProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: "max-content", minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
-                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
+                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 0.4ch" }}
                     onClick={() => deleteWorkOrderLine(idx)}
                   >
                     Delete
@@ -645,7 +650,7 @@ export function WorkOrderProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: "8ch 30ch 8ch 12ch 10ch" }}>
+            <div className="browse-grid" style={{ marginTop: "0.4em", gridTemplateColumns: WO_LINE_COLS }}>
               <div style={{ gridColumn: "1 / 4" }}>
                 <button
                   className="dos-btn"

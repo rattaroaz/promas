@@ -219,6 +219,11 @@ describe("MiscScreen", () => {
     await user.click(screen.getByRole("button", { name: /7\.\s*Unit Size/i }));
     expect(await screen.findByText("Single")).toBeInTheDocument();
     expect(screen.getByText("3+2.5")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Add Unit Size"), "single");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Already in the list.")).toBeInTheDocument();
+    expect(api.saveUnitSize).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText("Add Unit Size"));
     await user.type(screen.getByLabelText("Add Unit Size"), "Studio");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(await screen.findByText("Studio")).toBeInTheDocument();

@@ -234,6 +234,17 @@ describe("WorkersScreen", () => {
     expect(api.saveWorkPerson).not.toHaveBeenCalled();
   });
 
+  it("puts Active back when saving a blank ID fails", async () => {
+    const user = userEvent.setup();
+    catalog = [{ ...jose, workerNo: "" }];
+    vi.mocked(api.saveWorkPerson).mockRejectedValueOnce(new Error("ID number is required"));
+    renderApp(<WorkersScreen />);
+    const active = await screen.findByRole("checkbox", { name: "Active Jose Ramirez" });
+    await user.click(active);
+    await waitFor(() => expect(active).toBeChecked());
+    expect(screen.getByText("ID number is required")).toBeInTheDocument();
+  });
+
   it("deactivates a worker without removing the row", async () => {
     const user = userEvent.setup();
     renderApp(<WorkersScreen />);

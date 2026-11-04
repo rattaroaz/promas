@@ -65,6 +65,11 @@ export function NameCatalogScreen({
       setMsgKind("error");
       return;
     }
+    if (names.some((row) => row.toLowerCase() === name.toLowerCase())) {
+      setMsg("Already in the list.");
+      setMsgKind("info");
+      return;
+    }
     try {
       setNames(await save(name));
       setDraft("");
@@ -101,9 +106,9 @@ export function NameCatalogScreen({
       messageKind={msgKind}
     >
       <div className="dos-main-wrap">
-        <div className="dos-menu-frame" style={{ minWidth: "min(46ch, 100%)" }}>
-          <div className="menu-body" style={{ padding: "1em 2ch" }}>
-            <div style={{ display: "flex", gap: "0.6em", marginBottom: "1em" }}>
+        <div className="dos-menu-frame catalog-frame">
+          <div className="menu-body">
+            <div className="catalog-add">
               <input
                 className="dos-input"
                 aria-label={`Add ${title.trim()}`}
@@ -121,26 +126,26 @@ export function NameCatalogScreen({
                 Add
               </button>
             </div>
-            {names.length === 0 && (
-              <div style={{ color: "var(--app-highlight)" }}>No names yet.</div>
-            )}
-            {names.map((name) => (
-              <div
-                key={name}
-                className="workers-row"
-                style={{ display: "flex", gap: "0.6em", alignItems: "center" }}
-              >
-                <div style={{ flex: 1 }}>{name}</div>
-                <button
-                  type="button"
-                  className="dos-btn danger"
-                  aria-label={`Delete ${name}`}
-                  onClick={() => setPending(name)}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
+            <div className="catalog-list">
+              {names.length === 0 && (
+                <div style={{ color: "var(--app-highlight)" }}>No names yet.</div>
+              )}
+              {names.map((name) => (
+                <div key={name} className="catalog-row">
+                  <div className="catalog-name" title={name}>
+                    {name}
+                  </div>
+                  <button
+                    type="button"
+                    className="dos-btn danger"
+                    aria-label={`Delete ${name}`}
+                    onClick={() => setPending(name)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

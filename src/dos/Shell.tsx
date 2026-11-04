@@ -194,8 +194,12 @@ export function MessageBar({
   text: string;
   kind?: "default" | "error" | "info";
 }) {
+  const singleLine = text.startsWith("Duplicate Worker ID");
+  const classes = ["dos-messagebar"];
+  if (kind !== "default") classes.push(kind);
+  if (singleLine) classes.push("single-line");
   return (
-    <div className={`dos-messagebar ${kind !== "default" ? kind : ""}`}>
+    <div className={classes.join(" ")}>
       {text || "\u00A0"}
     </div>
   );

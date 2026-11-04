@@ -24,6 +24,9 @@ import { formatMoneyInput } from "../../dos/moneyFormat";
 import { DateInput } from "../../dos/DateInput";
 import { money, fmtDate, today } from "../../dos/utils";
 
+const CASH_COLS =
+  "minmax(0, 0.7fr) minmax(0, 1.05fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(3ch, 0.45fr)";
+
 interface InvoiceWithLatestReceipt extends Invoice {
   latestReceiptDate?: string;
   latestReceiptRef?: string;
@@ -415,8 +418,8 @@ export function CashProcess({
           <div className="dos-info-banner">
             {`Company NO : ${company.companyNo}  ${company.name}`}
           </div>
-          <div className="dos-browse">
-            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch" }}>
+          <div className="dos-browse cash-ledger">
+            <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: CASH_COLS }}>
               <div>Inv_#</div>
               <div>Inv_Date</div>
               <div>Inv_amount</div>
@@ -431,7 +434,7 @@ export function CashProcess({
                 <button
                   key={`${inv.invoice}-${inv.salesDate}`}
                   className={`dos-row ${i === index ? "selected" : ""} browse-grid`}
-                  style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch" }}
+                  style={{ gridTemplateColumns: CASH_COLS }}
                   onMouseEnter={() => {
                     if (pointerHoverMuted()) return;
                     setIndex(i);
@@ -462,7 +465,7 @@ export function CashProcess({
                 </div>
               )}
             </div>
-            <div className="browse-grid dos-total" style={{ gridTemplateColumns: "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch", marginTop: "0.5em" }}>
+            <div className="browse-grid dos-total" style={{ gridTemplateColumns: CASH_COLS, marginTop: "0.5em" }}>
               <div style={{ gridColumn: "1 / 7", textAlign: "right" }}>Unpaid Total</div>
               <div>{money(unpaidTotal)}</div>
               <div></div>
