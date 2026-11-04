@@ -1,12 +1,12 @@
 import { CSSProperties, ReactNode } from "react";
 
 /**
- * Property browse. Number columns stay on their text. Street, city, and
- * contact share the rest and wrap, so a long address does not shrink the
- * viewport font and does not cut the contact.
+ * Property browse. Number columns stay on their text. Street takes the
+ * leftover width and wraps, but it does not shrink below its longest word,
+ * so the address cannot paint into the next column. The gap stays 16px.
  */
 export const PROPERTY_LIST_COLUMNS =
-  "min-content max-content minmax(0, 1fr) min-content max-content max-content min-content";
+  "min-content max-content minmax(min-content, 1fr) min-content max-content max-content min-content";
 
 /**
  * Invoice browse. Every track can shrink. The list scrolls vertically

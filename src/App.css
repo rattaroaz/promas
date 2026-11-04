@@ -631,14 +631,26 @@ h6 {
   word-break: normal;
   hyphens: manual;
   text-overflow: clip;
-  overflow: visible;
+  overflow: hidden;
+}
+
+/* Property rows keep a real gap and 8px of side padding. Street wraps inside
+   its own track. The gap is not reduced to buy width. */
+.content-grid.fit-grid:has(.property-street) {
+  column-gap: 16px;
+  padding-inline: 8px;
+  box-sizing: border-box;
+}
+
+.content-grid.fit-grid:has(.property-street) > .browse-grid {
+  column-gap: 16px;
 }
 .content-grid.fit-grid > .browse-grid > .property-city,
 .content-grid.fit-grid > .browse-grid > .property-contact {
   min-width: min-content;
 }
 .content-grid.fit-grid > .browse-grid > .property-name {
-  overflow: visible;
+  overflow: hidden;
   text-overflow: clip;
   white-space: nowrap;
   min-width: max-content;
@@ -1271,8 +1283,8 @@ h6 {
 .dos-dialog .invoice-fields .dos-input,
 .dos-dialog .invoice-fields .dos-select,
 .dos-dialog .invoice-fields .dos-choice {
-  margin-top: -0.14em;
-  margin-bottom: -0.14em;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .invoice-summary {
@@ -1308,6 +1320,12 @@ h6 {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+}
+
+/* Taller field rows scroll inside the dialog instead of covering the lines. */
+.dos-dialog:has(.invoice-edit) .invoice-edit {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 /* The banner stays fully visible. The list below it scrolls.
@@ -1446,8 +1464,9 @@ h6 {
 .invoice-fields {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
+  grid-auto-rows: minmax(calc(1lh + 8px), auto);
   column-gap: 0.5ch;
-  row-gap: 0;
+  row-gap: 8px;
   align-items: center;
   justify-items: start;
   width: 100%;
@@ -1502,26 +1521,46 @@ h6 {
   justify-self: start;
 }
 
+/* Size and Paint: the typed value and its dropdown each have a track, so the
+   caret box cannot sit on top of the text. */
 .invoice-fields .dos-choice-pair,
 .invoice-fields .invoice-work-person {
-  flex: 0 0 auto;
-  width: auto;
+  display: grid;
+  grid-template-columns: max-content 1.7em;
+  column-gap: 8px;
+  align-items: center;
+  justify-items: start;
+  width: max-content;
   max-width: 100%;
 }
 
 .dos-dialog .invoice-fields .dos-choice-pair > .dos-input,
 .dos-dialog .invoice-fields .invoice-work-person > .dos-input {
-  order: -1;
+  grid-column: 1;
+  grid-row: 1;
+  order: 0;
   flex: 0 0 10ch;
   width: 10ch;
   min-width: 10ch;
-  max-width: 100%;
+  max-width: 10ch;
+}
+
+.invoice-fields .dos-choice-pair > .dos-choice,
+.invoice-fields .invoice-work-person > .dos-choice {
+  grid-column: 2;
+  grid-row: 1;
+  width: 1.7em;
+  min-width: 0;
+  max-width: 1.7em;
+  justify-self: stretch;
+  overflow: hidden;
 }
 
 .dos-dialog .invoice-fields .invoice-work-person > .dos-input[aria-label="Work Person"] {
   flex-basis: 16ch;
   width: 16ch;
   min-width: 10ch;
+  max-width: 16ch;
 }
 
 .work-order-edit,

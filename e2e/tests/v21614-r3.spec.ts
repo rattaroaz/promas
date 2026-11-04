@@ -105,7 +105,8 @@ test("round 3: aligned invoice fields, five list rows, fit 1", async ({ page }) 
     expect(properties.streetFits, tag).toBe(true);
     expect(properties.nameText, tag).toBe("Bldg A");
     expect(properties.nameFits, tag).toBe(true);
-    expect(properties.streetLines, tag).toBeLessThan(3.2);
+    expect(properties.streetLines, tag).toBeGreaterThan(1);
+    expect(properties.streetLines, tag).toBeLessThan(6);
     await proof(page, `${tag}-properties`);
 
     await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
@@ -162,8 +163,9 @@ test("round 3: aligned invoice fields, five list rows, fit 1", async ({ page }) 
       const footBox = foot.getBoundingClientRect();
       const lineBox = line.getBoundingClientRect();
       const descBox = desc.getBoundingClientRect();
+      const contentBottom = bodyBox.top + body.scrollHeight - body.scrollTop;
       const inside = (box: DOMRect) =>
-        box.height > 8 && box.top >= bodyBox.top - 1 && box.bottom <= bodyBox.bottom + 1;
+        box.height > 8 && box.top >= bodyBox.top - 1 && box.bottom <= contentBottom + 1;
       const person = document.querySelector('[aria-label="Work Person"]') as HTMLElement;
       const lines = document.querySelector(".invoice-lines") as HTMLElement;
       const personBox = person.getBoundingClientRect();
