@@ -25,7 +25,7 @@ import {
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { MoneyInput } from "../../dos/MoneyInput";
-import { ContentGrid } from "../../dos/contentGrid";
+import { ContentGrid, INVOICE_LIST_COLUMNS } from "../../dos/contentGrid";
 import { addDays, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 import {
@@ -33,7 +33,6 @@ import {
   downloadInvoicePdf,
 } from "../../lib/invoicePrint";
 import {
-  UNIT_SIZE_OPTIONS,
   applyPresetPriceToLine,
   applyPresetPrices,
   blankNewInvoiceLine,
@@ -242,6 +241,36 @@ function InvoiceLineDescription({
   );
 }
 
+function ClampedComments({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || open) return;
+    setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, open]);
+  return (
+    <div className="invoice-comments">
+      <span
+        ref={ref}
+        className={open ? "invoice-comment-text" : "invoice-comment-text is-clamped"}
+      >
+        {text}
+      </span>
+      {overflows && (
+        <button
+          type="button"
+          className="invoice-header-more"
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Less" : "More"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function InvoiceSiteHeader({
   company,
   property,
@@ -254,9 +283,7 @@ function InvoiceSiteHeader({
     <div className="invoice-site-header">
       {rows.map((row, i) =>
         row.wrap === "words" ? (
-          <div key={i} className="invoice-comments">
-            <span className="invoice-comment-text">{row.parts[0]}</span>
-          </div>
+          <ClampedComments key={i} text={row.parts[0]} />
         ) : (
           <div key={i} className="invoice-fact-line">
             {row.parts.map((part, j) => (
@@ -270,6 +297,15 @@ function InvoiceSiteHeader({
       )}
     </div>
   );
+}
+
+/** Idle invoice-list chrome: the count and the key hint. Notices stay visible. */
+function isInvoiceBrowseChrome(text: string): boolean {
+  if (!text.trim()) return true;
+  if (text.startsWith("No invoices for this property")) return true;
+  if (text.startsWith("Ins=Add")) return true;
+  if (text.startsWith("Sorted by unit")) return true;
+  return /^\d+ invoices\b/.test(text);
 }
 
 export function InvoiceProcess({
@@ -293,6 +329,7 @@ export function InvoiceProcess({
   const [workPersons, setWorkPersons] = useState<WorkPerson[]>([]);
   const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [paintSupplyCos, setPaintSupplyCos] = useState<string[]>([]);
+  const [unitSizes, setUnitSizes] = useState<string[]>([]);
   const [msg, setMsg] = useState(
     "Ins=Add  Ctrl-Home=Edit  Delete=Void  Esc=Exit"
   );
@@ -379,6 +416,7 @@ export function InvoiceProcess({
       setMsg(String(e));
       setMsgKind("error");
     });
+    loadUnitSizes().catch(() => setUnitSizes([]));
   }, [load]);
 
   useEffect(() => {
@@ -403,6 +441,39 @@ export function InvoiceProcess({
     } catch {
       setPaintSupplyCos([]);
     }
+  }
+
+  async function loadUnitSizes() {
+    try {
+      setUnitSizes((await api.listUnitSizes()) ?? []);
+    } catch {
+      setUnitSizes([]);
+    }
+  }
+
+  function catalogSize(size: string): string {
+    const raw = size.trim();
+    if (!raw || !isListedUnitSize(raw, unitSizes)) return "";
+    return (
+      unitSizes.find((item) => item.toLowerCase() === raw.toLowerCase()) ??
+      unitSizes.find((item) => normalizeUnitSize(item) === normalizeUnitSize(raw)) ??
+      ""
+    );
+  }
+
+  function sizeChoices(current: string): string[] {
+    const raw = current.trim();
+    if (!raw || catalogSize(raw)) return unitSizes;
+    return [...unitSizes, raw];
+  }
+
+  function paintChoices(current: string): string[] {
+    const raw = current.trim();
+    if (!raw) return paintSupplyCos;
+    if (paintSupplyCos.some((name) => name.toLowerCase() === raw.toLowerCase())) {
+      return paintSupplyCos;
+    }
+    return [...paintSupplyCos, raw];
   }
 
   function listedWorkPerson(name: string) {
@@ -444,8 +515,9 @@ export function InvoiceProcess({
   }
 
   function listedPaintSupplyCo(name: string) {
-    const key = name.trim().toLowerCase();
-    return paintSupplyCos.find((n) => n.toLowerCase() === key) ?? "";
+    const raw = name.trim();
+    if (!raw) return "";
+    return paintSupplyCos.find((n) => n.toLowerCase() === raw.toLowerCase()) ?? raw;
   }
 
   async function startNew() {
@@ -512,7 +584,6 @@ export function InvoiceProcess({
       setMsgKind("error");
       return;
     }
-    await rememberPaintSupplyCo(inv.paintSupplyCo);
     setConfirmSave(true);
     setMsg("Is This Data Correct ? (Y/N)");
   }
@@ -795,15 +866,18 @@ export function InvoiceProcess({
       title=" Invoice Process "
       message={msg}
       messageKind={msgKind}
+      hideMessageBar={
+        mode === "browse" && msgKind === "default" && isInvoiceBrowseChrome(msg)
+      }
       left={`${company.companyNo}/${property.proNo}`}
       right={property.name.slice(0, 24)}
     >
       {mode === "browse" && (
         <div className="dos-browse">
           <InvoiceSiteHeader company={company} property={property} />
-          <ContentGrid columns={9}>
+          <ContentGrid className="fit-grid" columns={9} template={INVOICE_LIST_COLUMNS}>
             <div className="browse-grid browse-grid-header">
-              <div>Inv_Date</div>
+              <div className="invoice-inv-date">Inv_Date</div>
               <div>Inv#</div>
               <div>PO</div>
               <button
@@ -837,7 +911,7 @@ export function InvoiceProcess({
                   openEdit(inv);
                 }}
               >
-                <div>{fmtDate(inv.salesDate)}</div>
+                <div className="invoice-inv-date">{fmtDate(inv.salesDate)}</div>
                 <div>{inv.invoice}</div>
                 <div>{inv.custPoNo ?? ""}</div>
                 <div>{inv.salesUnit}</div>
@@ -850,7 +924,7 @@ export function InvoiceProcess({
             ))}
             {originalRows.length === 0 && (
               <div className="dos-row content-grid-span" style={{ color: "var(--app-highlight)" }}>
-                {"  (no invoices — press Ins or click New Invoice)"}
+                {"  No invoices for this property. Press Ins or click New Invoice."}
               </div>
             )}
           </ContentGrid>
@@ -886,6 +960,7 @@ export function InvoiceProcess({
           foot="Esc=Cancel, Ctrl-S=Save & Exit, End=Print on Form"
         >
           <div className="dos-form invoice-edit">
+            <div className="invoice-fields">
             <div className="dos-form-row">
               <DotField label="Invoice Date" width={14}>
                 <input
@@ -927,6 +1002,7 @@ export function InvoiceProcess({
               <DotField label="Terms" width={8}>
                 <input
                   className="dos-input w15"
+                  aria-label="Terms"
                   value={editing.invoice.salesTerm}
                   onChange={(e) =>
                     setEditing({
@@ -974,6 +1050,7 @@ export function InvoiceProcess({
               <DotField label="Unit" width={14}>
                 <input
                   className="dos-input w10"
+                  aria-label="Unit"
                   value={editing.invoice.salesUnit}
                   onChange={(e) =>
                     setEditing({
@@ -992,9 +1069,8 @@ export function InvoiceProcess({
                     className="dos-select dos-choice"
                     aria-label="Size"
                     value={
-                      isListedUnitSize(editing.invoice.salesSize)
-                        ? normalizeUnitSize(editing.invoice.salesSize) ?? ""
-                        : ""
+                      catalogSize(editing.invoice.salesSize) ||
+                      editing.invoice.salesSize.trim()
                     }
                     onChange={(e) => {
                       const salesSize = e.target.value;
@@ -1006,7 +1082,7 @@ export function InvoiceProcess({
                     }}
                   >
                     <option value=""> </option>
-                    {UNIT_SIZE_OPTIONS.map((s) => (
+                    {sizeChoices(editing.invoice.salesSize).map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -1015,10 +1091,10 @@ export function InvoiceProcess({
                   <input
                     className="dos-input"
                     aria-label="Custom size"
-                    readOnly={isListedUnitSize(editing.invoice.salesSize)}
+                    readOnly={catalogSize(editing.invoice.salesSize) !== ""}
                     value={editing.invoice.salesSize}
                     onChange={(e) => {
-                      if (isListedUnitSize(editing.invoice.salesSize)) return;
+                      if (catalogSize(editing.invoice.salesSize)) return;
                       const salesSize = e.target.value;
                       const invoice = { ...editing.invoice, salesSize };
                       setEditing({
@@ -1033,6 +1109,7 @@ export function InvoiceProcess({
               <DotField label="Customer P.O" width={14}>
                 <input
                   className="dos-input w12"
+                  aria-label="Customer P.O."
                   value={editing.invoice.custPoNo}
                   onChange={(e) =>
                     setEditing({
@@ -1070,18 +1147,23 @@ export function InvoiceProcess({
                     aria-label="Paint Supply Co. list"
                     title="Paint Supply Co."
                     value={listedPaintSupplyCo(editing.invoice.paintSupplyCo ?? "")}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = e.target.value;
                       setEditing({
                         ...editing,
                         invoice: {
                           ...editing.invoice,
-                          paintSupplyCo: e.target.value,
+                          paintSupplyCo: value,
                         },
-                      })
-                    }
+                      });
+                      const known = paintSupplyCos.some(
+                        (name) => name.toLowerCase() === value.trim().toLowerCase()
+                      );
+                      if (value.trim() && !known) void rememberPaintSupplyCo(value);
+                    }}
                   >
                     <option value=""> </option>
-                    {paintSupplyCos.map((name) => (
+                    {paintChoices(editing.invoice.paintSupplyCo ?? "").map((name) => (
                       <option key={name} value={name}>
                         {name}
                       </option>
@@ -1101,7 +1183,9 @@ export function InvoiceProcess({
                         },
                       })
                     }
-                    onBlur={() => {
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
                       void rememberPaintSupplyCo(editing.invoice.paintSupplyCo);
                     }}
                   />
@@ -1142,15 +1226,17 @@ export function InvoiceProcess({
                 </div>
               </DotField>
             </div>
+            </div>
 
-            <div className="browse-grid browse-grid-header invoice-line-grid" style={{ margin: "0.5em 0 0.2em" }}>
+            <div className="invoice-lines">
+            <div className="browse-grid browse-grid-header invoice-line-grid">
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Delete</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid invoice-line-grid" style={{ marginBottom: "0.12em" }}>
+              <div key={idx} className="browse-grid invoice-line-grid">
                 <div className="invoice-line-type">
                   <select
                     className="dos-select dos-choice"
@@ -1219,10 +1305,10 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div className="invoice-line-end" style={{ minWidth: "max-content", minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div className="invoice-line-end" style={{ minWidth: "max-content", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
-                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
+                    style={{ width: "100%", textAlign: "center", padding: "0 1ch" }}
                     onClick={() => deleteInvoiceLine(idx)}
                   >
                     Delete
@@ -1230,7 +1316,24 @@ export function InvoiceProcess({
                 </div>
               </div>
             ))}
-            <div className="browse-grid invoice-line-grid dos-total" style={{ marginTop: "0.4em" }}>
+            <div className="dos-total">
+              Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
+              {"  "}
+              <button
+                type="button"
+                className="dos-btn"
+                onClick={() => printCurrent()}
+                title="Print on invoice_template.pdf (End)"
+              >
+                Print Form (End)
+              </button>
+            </div>
+            <div className="dos-note">
+              1.5% interest charged on past due accounts over 30 days.
+            </div>
+            </div>
+            <div className="invoice-summary">
+            <div className="browse-grid invoice-line-grid dos-total">
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"
@@ -1258,20 +1361,6 @@ export function InvoiceProcess({
               <div className="invoice-line-end">{money(lineTotal)}</div>
               <div className="invoice-line-end"></div>
             </div>
-            <div className="dos-total" style={{ marginTop: "0.4em" }}>
-              Balance: {money(lineTotal - editing.invoice.salesPay - editing.invoice.payTotal)}
-              {"  "}
-              <button
-                type="button"
-                className="dos-btn"
-                onClick={() => printCurrent()}
-                title="Print on invoice_template.pdf (End)"
-              >
-                Print Form (End)
-              </button>
-            </div>
-            <div className="dos-note" style={{ marginTop: "0.6em" }}>
-              1.5% interest charged on past due accounts over 30 days.
             </div>
           </div>
         </Dialog>

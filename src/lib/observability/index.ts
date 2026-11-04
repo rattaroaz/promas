@@ -62,6 +62,7 @@ export function formatDiagnosticsText(
     : "NOTE: May include local paths and environment details. Review before sharing.";
   const lines = [
     `=== ${bundle.appName} Diagnostics ===`,
+    pathNote,
     `generated: ${bundle.generatedAt}`,
     `version: ${bundle.appVersion}`,
     `screen: ${bundle.screen}`,
@@ -69,8 +70,6 @@ export function formatDiagnosticsText(
     `lastApiError: ${state.lastApiError ?? "(none)"}`,
     `lastUpdate: ${state.lastUpdateOutcome ?? "(none)"}`,
     `pendingSpans: ${state.pendingSpans}`,
-    "",
-    pathNote,
     "",
     "--- backend ---",
     backend

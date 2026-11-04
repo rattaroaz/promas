@@ -107,20 +107,20 @@ async function clipReport(page: Page): Promise<string[]> {
       const box = el.getBoundingClientRect();
       if (box.width < 2 || box.height < 2) continue;
       const name = (el.getAttribute("aria-label") || textOf(el)).slice(0, 60);
-      if (box.right > vw + 1 || box.left < -1 || box.bottom > vh + 1 || box.top < -1) {
+      const body = el.closest(".dlg-body");
+      const scrollsY =
+        body instanceof HTMLElement &&
+        ["auto", "scroll", "overlay"].includes(getComputedStyle(body).overflowY);
+      if (box.right > vw + 1 || box.left < -1 || (!scrollsY && (box.bottom > vh + 1 || box.top < -1))) {
         issues.push(
           `form overflows viewport "${name}" right ${Math.round(box.right)} bottom ${Math.round(box.bottom)} vw ${vw} vh ${vh}`
         );
       }
-      const body = el.closest(".dlg-body");
       if (body) {
         const br = body.getBoundingClientRect();
-        if (
-          box.right > br.right + 1 ||
-          box.left < br.left - 1 ||
-          box.bottom > br.bottom + 1 ||
-          box.top < br.top - 1
-        ) {
+        const pastX = box.right > br.right + 1 || box.left < br.left - 1;
+        const pastY = !scrollsY && (box.bottom > br.bottom + 1 || box.top < br.top - 1);
+        if (pastX || pastY) {
           issues.push(
             `form clipped by dialog "${name}" right ${Math.round(box.right)} bottom ${Math.round(box.bottom)} body ${Math.round(br.right)}x${Math.round(br.bottom)}`
           );
@@ -266,7 +266,7 @@ test("status lines, key hints, and tables fit at 1280 and 1024", async ({ page }
       open: async () => {
         await propertyList(page, /3\.\s*Invoice Process/i);
         await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-        await expect(page.getByText(/1 invoices/i)).toBeVisible();
+        await expect(page.getByRole("button", { name: "New Invoice" })).toBeVisible();
       },
     },
     {

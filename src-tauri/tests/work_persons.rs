@@ -185,7 +185,7 @@ fn numeric_employee_ids_fill_blank_worker_numbers() {
 #[test]
 fn delete_and_rename_leave_invoice_lines_untouched() {
     let (dir, conn) = temp_conn("keep-invoice");
-    write_work_person(&conn, &person("Jose Ramirez", "", true, "")).unwrap();
+    write_work_person(&conn, &person("Jose Ramirez", "9", true, "")).unwrap();
     write_work_person(&conn, &person("Ana Cruz", "15", false, "")).unwrap();
     conn.execute(
         "INSERT INTO invoice_lines (company_no, pro_no, sales_date, invoice, line_no, description, emp_no, price)
@@ -269,8 +269,28 @@ fn worker_id_is_unique_and_address_is_stored() {
 
     write_work_person(&conn, &person("Ana Cruz", "15", true, "")).unwrap();
     write_work_person(&conn, &person("Jose Ramirez", "400", true, "Jose Ramirez")).unwrap();
-    write_work_person(&conn, &person("Pat Lee", "", true, "")).unwrap();
-    write_work_person(&conn, &person("Sam Lee", "", true, "")).unwrap();
+    let err = write_work_person(&conn, &person("Pat Lee", "", true, "")).unwrap_err();
+    assert_eq!(err, "ID number is required");
+    let err = write_work_person(&conn, &person("Sam Lee", "   ", true, "")).unwrap_err();
+    assert_eq!(err, "ID number is required");
+
+    conn.execute(
+        "INSERT INTO work_persons (name, worker_no, address, phone, active) VALUES ('Legacy Blank', '', '', '', 1)",
+        [],
+    )
+    .unwrap();
+    write_work_person(&conn, &person("Legacy Blank", "", false, "Legacy Blank")).unwrap();
+    let active: i64 = conn
+        .query_row(
+            "SELECT active FROM work_persons WHERE name = 'Legacy Blank'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(active, 0);
+    write_work_person(&conn, &person("Legacy Blank", "", true, "Legacy Blank")).unwrap();
+    let cleared = write_work_person(&conn, &person("Jose Ramirez", "", true, "Jose Ramirez")).unwrap_err();
+    assert_eq!(cleared, "ID number is required");
     drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }

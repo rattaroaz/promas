@@ -96,6 +96,18 @@ describe("WorkersScreen", () => {
     expect(screen.queryByRole("button", { name: "Add Work Person" })).not.toBeInTheDocument();
   });
 
+  it("blocks save when the Worker ID is empty", async () => {
+    const user = userEvent.setup();
+    renderApp(<WorkersScreen />);
+    await user.click(await screen.findByRole("button", { name: "Ins Add" }));
+    await user.type(screen.getByLabelText("Name"), "Ana Cruz");
+    expect(screen.getByText("ID number is required")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ctrl-S Save" }));
+    expect(screen.getByText("ID number is required")).toBeInTheDocument();
+    expect(api.saveWorkPerson).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Name")).toHaveValue("Ana Cruz");
+  });
+
   it("opens a Work Person window from Ins Add and saves its fields", async () => {
     const user = userEvent.setup();
     renderApp(<WorkersScreen />);
@@ -220,6 +232,17 @@ describe("WorkersScreen", () => {
     expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ins Add" })).toBeInTheDocument();
     expect(api.saveWorkPerson).not.toHaveBeenCalled();
+  });
+
+  it("puts Active back when saving a blank ID fails", async () => {
+    const user = userEvent.setup();
+    catalog = [{ ...jose, workerNo: "" }];
+    vi.mocked(api.saveWorkPerson).mockRejectedValueOnce(new Error("ID number is required"));
+    renderApp(<WorkersScreen />);
+    const active = await screen.findByRole("checkbox", { name: "Active Jose Ramirez" });
+    await user.click(active);
+    await waitFor(() => expect(active).toBeChecked());
+    expect(screen.getByText("ID number is required")).toBeInTheDocument();
   });
 
   it("deactivates a worker without removing the row", async () => {

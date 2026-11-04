@@ -1,4 +1,6 @@
 import { presetJobDescriptions, type JobDescription } from "../../src/lib/jobCatalog";
+import { PAINT_SUPPLY_COMPANIES, UNIT_SIZES } from "../../src/lib/catalogSeeds";
+import { recordMatchesQuery } from "../../src/lib/tokenSearch";
 
 type E2EWorkPerson = {
   name: string;
@@ -34,6 +36,8 @@ function seedWorkPersons(): E2EWorkPerson[] {
 let workPersons: E2EWorkPerson[] = seedWorkPersons();
 
 let jobDescriptions: JobDescription[] = presetJobDescriptions();
+let unitSizes: string[] = [...UNIT_SIZES];
+let paintSupplyCos: string[] = [...PAINT_SUPPLY_COMPANIES];
 
 function listWorkPersons(): E2EWorkPerson[] {
   return [...workPersons].sort((a, b) =>
@@ -214,6 +218,28 @@ let properties: E2EProperty[] = [
     memo: "",
     voided: false,
   },
+  {
+    companyNo: "1000",
+    proNo: "09",
+    name: "Secco",
+    class: "",
+    street: "11334 W. Secco Canyon Hwy",
+    city: "LOS ANGELES",
+    state: "CA",
+    zip: "91316",
+    phone: "",
+    phone2: "",
+    contact: "SECCO DESK",
+    noOfUnit: 12,
+    manager: "SECCO DESK",
+    pageMap: "",
+    keyInfo: "",
+    paintTime: "",
+    comment1: "",
+    comment2: "",
+    memo: "",
+    voided: false,
+  },
 ];
 
 const fixtureInvoice = {
@@ -345,7 +371,38 @@ export async function invoke<T = unknown>(
     ] as T;
   }
   if (cmd === "list_companies") {
-    return [fixtureCompany, fixtureCompany2, fixtureCompany3] as T;
+    const params = (_args?.params ?? {}) as { search?: string };
+    const search = String(params.search ?? "");
+    const companies = [fixtureCompany, fixtureCompany2, fixtureCompany3];
+    if (!search.trim()) return companies as T;
+    return companies.filter((company) => {
+      const own = recordMatchesQuery(
+        search,
+        company.companyNo,
+        company.name,
+        company.phone,
+        company.contact,
+        company.street,
+        company.city,
+        company.zip
+      );
+      if (own) return true;
+      return properties.some(
+        (row) =>
+          row.companyNo === company.companyNo &&
+          recordMatchesQuery(
+            search,
+            row.proNo,
+            row.name,
+            row.street,
+            row.city,
+            row.state,
+            row.zip,
+            row.contact,
+            row.manager
+          )
+      );
+    }) as T;
   }
   if (cmd === "get_company") {
     const companyNo = String(_args?.companyNo ?? "").trim();
@@ -380,15 +437,24 @@ export async function invoke<T = unknown>(
       search?: string;
     };
     const companyNo = String(params.companyNo ?? "").trim();
-    const search = String(params.search ?? "").trim().toLowerCase();
+    const search = String(params.search ?? "").trim();
     let rows = properties;
     if (companyNo) rows = rows.filter((row) => row.companyNo === companyNo);
     if (search) {
       rows = rows.filter((row) =>
-        [row.street, row.name, row.proNo, row.contact, row.city, row.companyNo]
-          .join(" ")
-          .toLowerCase()
-          .includes(search)
+        recordMatchesQuery(
+          search,
+          row.street,
+          row.name,
+          row.proNo,
+          row.contact,
+          row.manager,
+          row.city,
+          row.state,
+          row.zip,
+          row.phone,
+          row.companyNo
+        )
       );
     }
     return rows.map((row) => ({ ...row })) as T;
@@ -425,6 +491,10 @@ export async function invoke<T = unknown>(
     const original = String(person.originalName ?? "").trim();
     const key = (original || name).toLowerCase();
     const workerNo = String(person.workerNo ?? "").trim();
+    const stored = workPersons.find((p) => p.name.toLowerCase() === key);
+    if (!workerNo && !(stored && !stored.workerNo.trim())) {
+      throw new Error("ID number is required");
+    }
     const existing = workPersons.find((p) => p.name.toLowerCase() === key);
     const keeping =
       !!existing && existing.workerNo.trim().toLowerCase() === workerNo.toLowerCase();
@@ -457,11 +527,36 @@ export async function invoke<T = unknown>(
     return listWorkPersons() as T;
   }
   if (cmd === "list_paint_supply_cos") {
-    return [] as T;
+    return [...paintSupplyCos] as T;
   }
   if (cmd === "save_paint_supply_co") {
     const name = String(_args?.name ?? "").trim();
-    return (name ? [name] : []) as T;
+    if (!name) throw new Error("Paint supply company required");
+    if (!paintSupplyCos.some((row) => row.toLowerCase() === name.toLowerCase())) {
+      paintSupplyCos.push(name);
+    }
+    return [...paintSupplyCos] as T;
+  }
+  if (cmd === "delete_paint_supply_co") {
+    const name = String(_args?.name ?? "").trim().toLowerCase();
+    paintSupplyCos = paintSupplyCos.filter((row) => row.toLowerCase() !== name);
+    return [...paintSupplyCos] as T;
+  }
+  if (cmd === "list_unit_sizes") {
+    return [...unitSizes] as T;
+  }
+  if (cmd === "save_unit_size") {
+    const name = String(_args?.name ?? "").trim();
+    if (!name) throw new Error("Unit size required");
+    if (!unitSizes.some((row) => row.toLowerCase() === name.toLowerCase())) {
+      unitSizes.push(name);
+    }
+    return [...unitSizes] as T;
+  }
+  if (cmd === "delete_unit_size") {
+    const name = String(_args?.name ?? "").trim().toLowerCase();
+    unitSizes = unitSizes.filter((row) => row.toLowerCase() !== name);
+    return [...unitSizes] as T;
   }
   if (cmd === "report_paint_usage") {
     return [] as T;
@@ -494,7 +589,7 @@ export async function invoke<T = unknown>(
         proNo: "01",
         worker: "ana cruz",
       },
-    ].filter((row) => !search || row.worker.includes(search));
+    ].filter((row) => recordMatchesQuery(search, row.worker, row.propertyAddress, row.jobDescription));
     return rows.map(({ worker: _worker, ...row }) => row) as T;
   }
   if (cmd === "list_work_orders") {
@@ -613,14 +708,7 @@ export async function invoke<T = unknown>(
         voided: false,
         empName: "Inactive Ian",
       },
-    ].filter((row) =>
-      !search
-        ? true
-        : [row.empNo, row.description, row.empName]
-            .join(" ")
-            .toLowerCase()
-            .includes(search)
-    );
+    ].filter((row) => recordMatchesQuery(search, row.empNo, row.description, row.empName));
     return rows.map((row) => ({ ...row })) as T;
   }
   if (cmd === "save_material") {

@@ -4,6 +4,7 @@ pub mod dbf;
 pub mod import;
 pub mod models;
 pub mod ops;
+pub mod search;
 
 use db::{init_db, DbState};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -80,6 +81,10 @@ pub fn run() {
             commands::delete_job_description,
             commands::list_paint_supply_cos,
             commands::save_paint_supply_co,
+            commands::delete_paint_supply_co,
+            commands::list_unit_sizes,
+            commands::save_unit_size,
+            commands::delete_unit_size,
             commands::list_work_types,
             commands::save_work_type,
             commands::delete_work_type,

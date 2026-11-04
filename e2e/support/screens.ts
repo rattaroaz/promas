@@ -84,7 +84,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await propertyList(page, /3\.\s*Invoice Process/i);
       await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-      await expect(page.getByText(/1 invoices/i)).toBeVisible();
+      await expect(page.getByRole("button", { name: "New Invoice" })).toBeVisible();
     },
   },
   {

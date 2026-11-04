@@ -3,6 +3,7 @@ import { fireEvent, renderApp, screen, userEvent, waitFor } from "../test/render
 import { MiscScreen } from "./MiscScreen";
 import { UNSAVED_JOB_CHANGES } from "./JobDescriptionsScreen";
 import { PAINTING_OF_CEILING } from "../lib/jobCatalog";
+import { PAINT_SUPPLY_COMPANIES, UNIT_SIZES } from "../lib/catalogSeeds";
 import { api } from "../api";
 import { open } from "@tauri-apps/plugin-dialog";
 
@@ -29,6 +30,12 @@ vi.mock("../api", async () => {
       listJobDescriptions: vi.fn(),
       saveJobDescription: vi.fn(),
       deleteJobDescription: vi.fn(),
+      listUnitSizes: vi.fn(),
+      saveUnitSize: vi.fn(),
+      deleteUnitSize: vi.fn(),
+      listPaintSupplyCos: vi.fn(),
+      savePaintSupplyCo: vi.fn(),
+      deletePaintSupplyCo: vi.fn(),
     },
   };
 });
@@ -36,6 +43,8 @@ vi.mock("../api", async () => {
 describe("MiscScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(api.listUnitSizes).mockResolvedValue([...UNIT_SIZES]);
+    vi.mocked(api.listPaintSupplyCos).mockResolvedValue([...PAINT_SUPPLY_COMPANIES]);
     vi.mocked(api.reindexDataFiles).mockResolvedValue("Reindex complete.");
     vi.mocked(api.importDbfFolder).mockResolvedValue({
       companies: 2,
@@ -132,7 +141,7 @@ describe("MiscScreen", () => {
     expect(await screen.findByLabelText("Job description 1")).toHaveValue(
       PAINTING_OF_CEILING
     );
-    expect(screen.getByRole("combobox", { name: "Size 1" })).toHaveValue("single");
+    expect(screen.getByRole("combobox", { name: "Size 1" })).toHaveValue("Single");
     expect(screen.getByLabelText("Price 1")).toHaveValue("75.00");
     expect(screen.getByLabelText("Price 1")).toHaveClass("job-desc-price");
     expect(
@@ -140,14 +149,14 @@ describe("MiscScreen", () => {
     ).toEqual(["Description", "Size", "Price", ""]);
     await user.selectOptions(screen.getByRole("combobox", { name: "Size 1" }), "2+2");
     expect(screen.getByLabelText("Price 1")).toHaveValue("150.00");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Size 1" }), "Occupied");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 1" }), "1+1 Loft");
     expect(screen.getByLabelText("Price 1")).toHaveValue("");
     expect(screen.getByRole("button", { name: `Delete ${PAINTING_OF_CEILING}` })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add Job Description" }));
     const added = screen.getByLabelText("Job description 2");
     await user.type(added, "Touch up");
     const price = screen.getByLabelText("Price 2");
-    expect(screen.getByRole("combobox", { name: "Size 2" })).toHaveValue("single");
+    expect(screen.getByRole("combobox", { name: "Size 2" })).toHaveValue("Single");
     await user.type(price, "10");
     await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "1+1");
     expect(screen.getByLabelText("Price 2")).toHaveValue("10.00");
@@ -155,7 +164,7 @@ describe("MiscScreen", () => {
     await user.type(screen.getByLabelText("Price 2"), "20");
     await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "2+2");
     expect(screen.getByLabelText("Price 2")).toHaveValue("10.00");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "single");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Size 2" }), "Single");
     expect(screen.getByLabelText("Price 2")).toHaveValue("10.00");
     expect(api.saveJobDescription).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Save Changes" }));
@@ -168,12 +177,76 @@ describe("MiscScreen", () => {
           twoPlusOne: 10,
           twoPlusTwo: 10,
           threePlusTwo: 10,
-          fourPlusTwo: 10,
-          occupied: 10,
+          fourPlusTwo: null,
+          occupied: null,
           fixed: null,
+          extraPrices: {
+            "1+1 Loft": 10,
+            "2+1 Loft": 10,
+            "2+2 Loft": 10,
+            "2+1.5": 10,
+            "2+2.5": 10,
+            "3+2.5": 10,
+          },
         })
       );
     });
+  });
+
+  it("adds and deletes a unit size and a paint supply company", async () => {
+    const user = userEvent.setup();
+    const sizes: string[] = [...UNIT_SIZES];
+    const paint: string[] = [...PAINT_SUPPLY_COMPANIES];
+    vi.mocked(api.saveUnitSize).mockImplementation(async (name) => {
+      sizes.push(name);
+      return [...sizes];
+    });
+    vi.mocked(api.deleteUnitSize).mockImplementation(async (name) => {
+      const next = sizes.filter((row) => row.toLowerCase() !== name.toLowerCase());
+      sizes.splice(0, sizes.length, ...next);
+      return [...sizes];
+    });
+    vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name) => {
+      paint.push(name);
+      return [...paint];
+    });
+    vi.mocked(api.deletePaintSupplyCo).mockImplementation(async (name) => {
+      const next = paint.filter((row) => row.toLowerCase() !== name.toLowerCase());
+      paint.splice(0, paint.length, ...next);
+      return [...paint];
+    });
+    renderApp(<MiscScreen onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /7\.\s*Unit Size/i }));
+    expect(await screen.findByText("Single")).toBeInTheDocument();
+    expect(screen.getByText("3+2.5")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Add Unit Size"), "single");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Already in the list.")).toBeInTheDocument();
+    expect(api.saveUnitSize).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText("Add Unit Size"));
+    await user.type(screen.getByLabelText("Add Unit Size"), "Studio");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Studio")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete Single" }));
+    await user.keyboard("y");
+    await waitFor(() => {
+      expect(screen.queryByText("Single")).not.toBeInTheDocument();
+    });
+    expect(api.deleteUnitSize).toHaveBeenCalledWith("Single");
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: /8\.\s*Paint Supply Company/i }));
+    expect(await screen.findByText("Shilpark")).toBeInTheDocument();
+    expect(screen.getByText("Sherman Williams")).toBeInTheDocument();
+    expect(screen.getByText("Lowes")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Add Paint Supply Company"), "Kelly-Moore");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Kelly-Moore")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete Vista" }));
+    await user.keyboard("y");
+    await waitFor(() => {
+      expect(screen.queryByText("Vista")).not.toBeInTheDocument();
+    });
+    expect(api.deletePaintSupplyCo).toHaveBeenCalledWith("Vista");
   });
 
   it("asks before leaving unsaved job description edits", async () => {

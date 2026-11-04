@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useSyncExternalStore } from "react";
+import { ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import {
   mountUndoDeleteKeys,
   subscribeUndoDeletes,
@@ -194,8 +194,12 @@ export function MessageBar({
   text: string;
   kind?: "default" | "error" | "info";
 }) {
+  const singleLine = text.startsWith("Duplicate Worker ID");
+  const classes = ["dos-messagebar"];
+  if (kind !== "default") classes.push(kind);
+  if (singleLine) classes.push("single-line");
   return (
-    <div className={`dos-messagebar ${kind !== "default" ? kind : ""}`}>
+    <div className={classes.join(" ")}>
       {text || "\u00A0"}
     </div>
   );
@@ -207,6 +211,7 @@ export function Screen({
   title,
   message,
   messageKind,
+  hideMessageBar,
   left,
   right,
 }: {
@@ -215,6 +220,8 @@ export function Screen({
   title?: string;
   message?: string;
   messageKind?: "default" | "error" | "info";
+  /** Drops the black message line. Real errors and notices still pass false. */
+  hideMessageBar?: boolean;
   left?: string;
   right?: string;
 }) {
@@ -223,7 +230,7 @@ export function Screen({
       <StatusBar keys={statusKeys ?? [{ key: "Esc", label: "Exit" }]} />
       {title && <TitleBar title={title} left={left} right={right} />}
       <div className="dos-content">{children}</div>
-      <MessageBar text={message ?? ""} kind={messageKind} />
+      {!hideMessageBar && <MessageBar text={message ?? ""} kind={messageKind} />}
     </div>
   );
 }
@@ -244,6 +251,21 @@ export function Dialog({
   /** Sits under the fields and above the hint line. */
   below?: ReactNode;
 }) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const pin = () => {
+      body.scrollTop = 0;
+    };
+    pin();
+    const frame = requestAnimationFrame(pin);
+    const timer = window.setTimeout(pin, 0);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [title]);
   return (
     <div className="dos-overlay">
       <div
@@ -252,7 +274,7 @@ export function Dialog({
         aria-label={title.trim()}
       >
         <div className="dlg-title"> {title} </div>
-        <div className="dlg-body">{children}</div>
+        <div className="dlg-body" ref={bodyRef}>{children}</div>
         {below}
         {foot && <div className="dlg-foot">{foot}</div>}
       </div>

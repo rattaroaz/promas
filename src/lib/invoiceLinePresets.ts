@@ -52,9 +52,19 @@ export function normalizeUnitSize(raw: string): string | null {
   return null;
 }
 
-export function isListedUnitSize(size: string): boolean {
-  const key = normalizeUnitSize(size);
-  return key != null && (UNIT_SIZE_OPTIONS as readonly string[]).includes(key);
+/** True when `size` is one of `catalog` (the live unit-size list, or the legacy options). */
+export function isListedUnitSize(
+  size: string,
+  catalog: readonly string[] = UNIT_SIZE_OPTIONS
+): boolean {
+  const raw = size.trim();
+  if (!raw) return false;
+  if (catalog.some((item) => item.toLowerCase() === raw.toLowerCase())) return true;
+  const key = normalizeUnitSize(raw);
+  return (
+    key != null &&
+    catalog.some((item) => item === key || normalizeUnitSize(item) === key)
+  );
 }
 
 export function applyPresetPriceToLine(

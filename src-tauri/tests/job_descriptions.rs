@@ -27,6 +27,7 @@ fn blank(description: &str, fixed: Option<f64>) -> JobDescription {
         four_plus_two: None,
         occupied: None,
         fixed,
+        extra_prices: std::collections::BTreeMap::new(),
     }
 }
 

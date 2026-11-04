@@ -6,6 +6,8 @@ import { InvoiceProcess, descriptionRowCount } from "./InvoiceProcess";
 import { api, emptyCompany, emptyInvoice, emptyInvoiceLine, emptyProperty } from "../../api";
 import { today } from "../../dos/utils";
 import { downloadInvoicePdf, printInvoiceOnTemplate } from "../../lib/invoicePrint";
+import { UNIT_SIZES } from "../../lib/catalogSeeds";
+import { INVOICE_LIST_COLUMNS } from "../../dos/contentGrid";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
   COLOR_CHANGE_WALLS_NAVAJO_WHITE,
@@ -41,6 +43,7 @@ vi.mock("../../api", async () => {
       deleteWorkPerson: vi.fn(),
       listPaintSupplyCos: vi.fn(),
       savePaintSupplyCo: vi.fn(),
+      listUnitSizes: vi.fn(),
       getSysdata: vi.fn(),
       saveInvoice: vi.fn(),
       voidInvoice: vi.fn(),
@@ -76,7 +79,7 @@ async function renderedSiteHeader(
   renderApp(
     <InvoiceProcess company={siteCompany} property={siteProperty} onBack={vi.fn()} />
   );
-  await screen.findByText(/1 invoices/i);
+  await screen.findByRole("button", { name: "New Invoice" });
   return [...(document.querySelector(".invoice-site-header")?.children ?? [])].map(
     (el) => el.textContent ?? ""
   );
@@ -95,6 +98,7 @@ describe("InvoiceProcess", () => {
     vi.mocked(api.saveWorkPerson).mockImplementation(async (person) => [person]);
     vi.mocked(api.deleteWorkPerson).mockResolvedValue([]);
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
+    vi.mocked(api.listUnitSizes).mockResolvedValue([...UNIT_SIZES]);
     vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) => {
       const n = name.trim();
       return n
@@ -123,7 +127,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New Invoice" })).toBeInTheDocument();
     const header = document.querySelector(".browse-grid-header");
     expect(header?.textContent).toContain("Inv#");
     expect(header?.textContent).toContain("PO");
@@ -135,7 +139,7 @@ describe("InvoiceProcess", () => {
     // Header and rows share one content-sized grid.
     expect(header).toHaveClass("browse-grid");
     expect(header?.closest(".content-grid")).toHaveStyle({
-      gridTemplateColumns: "repeat(9, max-content)",
+      gridTemplateColumns: INVOICE_LIST_COLUMNS,
     });
     
     expect(api.listInvoices).toHaveBeenCalledWith(
@@ -152,7 +156,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /A1/i }));
     expect(await screen.findByText(/Invoice Number 1\s+PO-441/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Invoice Number")).toHaveValue("1");
@@ -165,7 +169,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     act(() => {
       window.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Insert", bubbles: true })
@@ -204,7 +208,7 @@ describe("InvoiceProcess", () => {
       renderApp(
         <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
       );
-      await screen.findByText(/1 invoices/i);
+      await screen.findByRole("button", { name: "New Invoice" });
       act(() => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Insert", bubbles: true }));
       });
@@ -223,7 +227,7 @@ describe("InvoiceProcess", () => {
       renderApp(
         <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
       );
-      await screen.findByText(/1 invoices/i);
+      await screen.findByRole("button", { name: "New Invoice" });
       act(() => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Insert", bubbles: true }));
       });
@@ -239,7 +243,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
 
     const material = await screen.findByLabelText("Material Costs");
@@ -272,13 +276,15 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const cost = await screen.findByLabelText("Material Costs");
     const supplier = screen.getByLabelText("Paint Supply Co.");
     await user.clear(cost);
     await user.type(cost, "42.5");
     await user.type(supplier, "Kelly-Moore");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(api.savePaintSupplyCo).toHaveBeenCalledWith("Kelly-Moore"));
     await user.click(screen.getByRole("button", { name: /^Ctrl-S Save$/i }));
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
     await waitFor(() => {
@@ -299,7 +305,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const list = await screen.findByLabelText("Paint Supply Co. list");
     await user.selectOptions(list, "Dunn-Edwards");
@@ -311,7 +317,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     await user.selectOptions(
       await screen.findByLabelText("Paint Supply Co. list"),
@@ -328,7 +334,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
     expect(screen.getByText(/Invoice Number 2/i)).toBeInTheDocument();
@@ -340,7 +346,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^Ins Add$/i }));
     expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
   });
@@ -351,7 +357,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={onBack} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^Esc Exit$/i }));
     expect(onBack).toHaveBeenCalled();
   });
@@ -361,7 +367,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const desc = await screen.findByLabelText("Line 1 description");
     await user.selectOptions(desc, INTERIOR_PAINT_WALL_CLOSET);
@@ -383,7 +389,8 @@ describe("InvoiceProcess", () => {
     await user.selectOptions(screen.getByLabelText(/^Size$/i), "2+2");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("295.00");
     expect(screen.getByLabelText(/Price 2/i)).toHaveValue("150.00");
-    await user.selectOptions(screen.getByLabelText(/^Size$/i), "Occupied");
+    await user.selectOptions(screen.getByLabelText(/^Size$/i), "");
+    await user.type(screen.getByLabelText("Custom size"), "Occupied");
     expect(screen.getByLabelText("Custom size")).toHaveValue("Occupied");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
   });
@@ -393,7 +400,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     await user.selectOptions(
       await screen.findByLabelText("Line 1 description"),
@@ -421,7 +428,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(screen.getByLabelText("Line 1 description")).toHaveValue("");
     expect(screen.getByLabelText("Line 1 custom text")).not.toHaveAttribute(
@@ -448,22 +455,13 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const size = await screen.findByLabelText(/^Size$/i);
     const values = Array.from(size.querySelectorAll("option")).map(
       (o) => o.getAttribute("value") ?? ""
     );
-    expect(values).toEqual([
-      "",
-      "single",
-      "1+1",
-      "2+1",
-      "2+2",
-      "3+2",
-      "4+2",
-      "Occupied",
-    ]);
+    expect(values).toEqual(["", ...UNIT_SIZES]);
     expect(screen.getByLabelText("Custom size")).not.toHaveAttribute("readonly");
     expect(size).toHaveClass("dos-choice");
     expect(screen.getByLabelText("Line 1 description")).toHaveClass("dos-choice");
@@ -497,7 +495,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(screen.getByText("WorkDate")).toBeInTheDocument();
     const heads = document.querySelector(".browse-grid-header.invoice-line-grid");
@@ -520,7 +518,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(4);
     expect(screen.queryByRole("button", { name: "F2 Undo Delete" })).not.toBeInTheDocument();
@@ -539,7 +537,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const price = await screen.findByLabelText(/Price 1/i);
     await user.type(price, "100");
@@ -566,7 +564,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const pick = await screen.findByLabelText("Work Person list");
     expect(Array.from(pick.querySelectorAll("option")).map((o) => o.textContent)).toEqual(
@@ -624,7 +622,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const pick = await screen.findByLabelText("Work Person list");
     expect(Array.from(pick.querySelectorAll("option")).map((o) => o.textContent)).toEqual(
@@ -650,14 +648,14 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     await user.selectOptions(
       await screen.findByLabelText("Line 1 description"),
       PAINT_KITCHEN_CABINET_INSIDE
     );
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("");
-    await user.selectOptions(screen.getByLabelText(/^Size$/i), "4+2");
+    await user.type(screen.getByLabelText("Custom size"), "4+2");
     expect(screen.getByLabelText(/Price 1/i)).toHaveValue("130.00");
     await user.selectOptions(
       screen.getByLabelText("Line 1 description"),
@@ -678,7 +676,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New Invoice" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toHaveClass(
       "invoice-open"
     );
@@ -706,7 +704,7 @@ describe("InvoiceProcess", () => {
         focusInvoice={9}
       />
     );
-    expect(await screen.findByText(/1 invoices/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New Invoice" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-9/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /PO-441/i })).not.toBeInTheDocument();
   });
@@ -716,7 +714,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     await user.type(screen.getByLabelText("Work Person"), "Ana Cruz");
     await user.click(screen.getByRole("button", { name: /^\+ Line$/i }));
@@ -749,7 +747,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^Delete Void$/i }));
     expect(screen.getByText(/Do you want Void/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Y$/i }));
@@ -781,7 +779,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    expect(await screen.findByText(/2 invoices/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New Invoice" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /PO-441/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /OLD-9/i })).toHaveTextContent("Void");
     expect(screen.queryByRole("button", { name: /OTHER/i })).not.toBeInTheDocument();
@@ -809,7 +807,7 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
     
-    await screen.findByText(/4 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     
     // Original loaded order (null)
     const rows = screen.getAllByRole("button").filter(btn => 
@@ -822,7 +820,8 @@ describe("InvoiceProcess", () => {
     
     const unitHeader = screen.getByRole("button", { name: /Unit/i });
     expect(unitHeader.textContent).toBe("Unit");
-    expect(screen.getByText(/4 invoices.*Ins=Add/i)).toBeInTheDocument();
+    expect(screen.queryByText(/4 invoices/i)).not.toBeInTheDocument();
+    expect(document.querySelector(".dos-messagebar")).toBeNull();
     
     // First click: ascending
     await user.click(unitHeader);
@@ -835,7 +834,7 @@ describe("InvoiceProcess", () => {
     expect(sortedRowsAsc[2].textContent).toContain("10");
     expect(sortedRowsAsc[3].textContent).toContain("A1");
     expect(unitHeader.textContent).toContain("^");
-    expect(screen.getByText(/Sorted by unit, ascending/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Sorted by unit, ascending/i)).not.toBeInTheDocument();
     
     // Second click: descending
     await user.click(unitHeader);
@@ -848,7 +847,7 @@ describe("InvoiceProcess", () => {
     expect(sortedRowsDesc[2].textContent).toContain("2");
     expect(sortedRowsDesc[3].textContent).toContain("1A");
     expect(unitHeader.textContent).toContain("v");
-    expect(screen.getByText(/Sorted by unit, descending/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Sorted by unit, descending/i)).not.toBeInTheDocument();
     
     // Third click: back to original order (null)
     await user.click(unitHeader);
@@ -861,7 +860,8 @@ describe("InvoiceProcess", () => {
     expect(restoredRows[2].textContent).toContain("2");
     expect(restoredRows[3].textContent).toContain("1A");
     expect(unitHeader.textContent).toBe("Unit");
-    expect(screen.getByText(/4 invoices.*Ins=Add/i)).toBeInTheDocument();
+    expect(screen.queryByText(/4 invoices/i)).not.toBeInTheDocument();
+    expect(document.querySelector(".dos-messagebar")).toBeNull();
   });
 
   it("uses equal column tracks and keeps alignment across Unit sort states", async () => {
@@ -873,7 +873,7 @@ describe("InvoiceProcess", () => {
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
     
-    await screen.findByText(/2 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     
     const grid = document.querySelector(".content-grid");
     const header = grid?.querySelector(".browse-grid-header");
@@ -882,7 +882,7 @@ describe("InvoiceProcess", () => {
     expect(header).toHaveClass("browse-grid");
     expect(firstRow).toHaveClass("browse-grid");
     expect(grid).toHaveStyle({
-      gridTemplateColumns: "repeat(9, max-content)",
+      gridTemplateColumns: INVOICE_LIST_COLUMNS,
     });
     expect(header?.closest(".content-grid")).toBe(grid);
     expect(firstRow?.closest(".content-grid")).toBe(grid);
@@ -910,7 +910,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(await screen.findByLabelText("Invoice Number")).toHaveValue("2");
 
@@ -935,7 +935,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const number = await screen.findByLabelText("Invoice Number");
     expect(number).toHaveAttribute("type", "text");
@@ -951,7 +951,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     expect(await screen.findByLabelText("Invoice Number")).toBeInTheDocument();
     expect(screen.queryByText(/Order Person/i)).not.toBeInTheDocument();
@@ -982,7 +982,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={co} property={site} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     const header = document.querySelector(".invoice-site-header");
     expect(header).not.toBeNull();
     const lines = [...(header?.children ?? [])].map((el) => el.textContent);
@@ -1009,7 +1009,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     const line = document.querySelector(".invoice-fact-line") as HTMLElement;
     const fact = document.querySelector(".invoice-fact") as HTMLElement;
     const column = document.querySelector(".browse-grid-header") as HTMLElement;
@@ -1017,9 +1017,9 @@ describe("InvoiceProcess", () => {
     const bannerPx = parseFloat(banner.fontSize);
     const columnPx = parseFloat(getComputedStyle(column).fontSize);
     if (Number.isFinite(bannerPx) && Number.isFinite(columnPx) && columnPx > 0) {
-      expect(bannerPx / columnPx).toBeCloseTo(26 / 22, 2);
+      expect(bannerPx / columnPx).toBeCloseTo(0.9, 2);
     } else {
-      expect(banner.fontSize).toMatch(/26px|var\(--text-lg\)/);
+      expect(banner.fontSize).toMatch(/var\(--text-sm\)/);
     }
     const pad = parseFloat(banner.paddingLeft);
     expect(pad).toBeGreaterThan(0);
@@ -1082,7 +1082,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={site} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     const lines = [
       ...(document.querySelector(".invoice-site-header")?.children ?? []),
     ].map((el) => el.textContent);
@@ -1132,7 +1132,7 @@ describe("InvoiceProcess", () => {
     renderApp(
       <InvoiceProcess company={company} property={property} onBack={vi.fn()} />
     );
-    await screen.findByText(/1 invoices/i);
+    await screen.findByRole("button", { name: "New Invoice" });
     await user.click(screen.getByRole("button", { name: /^New Invoice$/i }));
     const custom = await screen.findByLabelText("Line 1 custom text");
     expect(custom.tagName).toBe("TEXTAREA");
@@ -1175,6 +1175,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
     vi.mocked(api.listWorkPersons).mockResolvedValue([]);
     vi.mocked(api.listJobDescriptions).mockResolvedValue(presetJobDescriptions());
     vi.mocked(api.listPaintSupplyCos).mockResolvedValue(["Dunn-Edwards"]);
+    vi.mocked(api.listUnitSizes).mockResolvedValue([...UNIT_SIZES]);
     vi.mocked(api.savePaintSupplyCo).mockImplementation(async (name: string) =>
       ["Dunn-Edwards", name].sort()
     );
@@ -1213,7 +1214,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
   async function renderList(onBack = vi.fn()) {
     const user = userEvent.setup();
     renderApp(<InvoiceProcess company={company} property={property} onBack={onBack} />);
-    await screen.findByText(/2 invoices/);
+    await screen.findByRole("button", { name: "New Invoice" });
     return { user, onBack };
   }
 
@@ -1431,7 +1432,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
     it("does not ask to void an invoice that is already void", async () => {
       vi.mocked(api.listInvoices).mockResolvedValue([{ ...fixture, voided: true }]);
       renderApp(<InvoiceProcess company={company} property={property} onBack={vi.fn()} />);
-      await screen.findByText(/1 invoices/);
+      await screen.findByRole("button", { name: "New Invoice" });
       key("Delete");
       expect(voidQuestion()).not.toBeInTheDocument();
     });
@@ -1473,7 +1474,8 @@ describe("InvoiceProcess keys, printing and failures", () => {
 
       key("Escape");
       expect(form()).not.toBeInTheDocument();
-      expect(messageBar()).not.toHaveClass("error");
+      expect(screen.queryByText("--> Invoice Date required !!")).not.toBeInTheDocument();
+      expect(document.querySelector(".dos-messagebar")).toBeNull();
     });
 
     it("a failed save keeps the form open and shows the error", async () => {
@@ -1530,6 +1532,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
       await openNewForm(user);
       await user.type(screen.getByLabelText("Paint Supply Co."), "Vista Paint");
       await user.tab();
+      expect(api.savePaintSupplyCo).not.toHaveBeenCalled();
       const list = screen.getByLabelText("Paint Supply Co. list");
       await waitFor(() =>
         expect(within(list).getByRole("option", { name: "Vista Paint" })).toBeInTheDocument()

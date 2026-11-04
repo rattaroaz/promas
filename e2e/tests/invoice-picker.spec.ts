@@ -23,6 +23,7 @@ test.describe("invoice street picker", () => {
       /1500\s*01\s*100 ELM ROAD/,
       /1000\s*01\s*14755 NORTH VENTURA/,
       /1000\s*02\s*88 MAIN ST/,
+      /1000\s*09\s*11334 W\. Secco Canyon Hwy/,
     ]);
 
     await page.getByRole("button", { name: /^CoNO v$/ }).click();
@@ -40,6 +41,7 @@ test.describe("invoice street picker", () => {
       /10 OAK AVENUE/,
       /88 MAIN ST/,
       /100 ELM ROAD/,
+      /11334 W\. Secco Canyon Hwy/,
       /14755 NORTH VENTURA/,
     ]);
   });

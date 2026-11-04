@@ -18,6 +18,7 @@ import {
   VARNISH_KITCHEN_CABINET,
   applyPresetPriceToLine,
   applyPresetPrices,
+  isListedUnitSize,
   normalizeUnitSize,
   presetJobDescriptions,
   priceForPreset,
@@ -33,6 +34,17 @@ describe("normalizeUnitSize", () => {
     expect(normalizeUnitSize("occupied")).toBe("Occupied");
     expect(normalizeUnitSize("")).toBeNull();
     expect(normalizeUnitSize("studio")).toBeNull();
+  });
+});
+
+describe("isListedUnitSize", () => {
+  it("uses the live list and does not invent sizes when that list is empty", () => {
+    expect(isListedUnitSize("1+1")).toBe(true);
+    expect(isListedUnitSize("Single", ["Single", "1+1 Loft"])).toBe(true);
+    expect(isListedUnitSize("1+1 Loft", ["Single", "1+1 Loft"])).toBe(true);
+    expect(isListedUnitSize("Occupied", ["Single", "1+1"])).toBe(false);
+    expect(isListedUnitSize("1+1", [])).toBe(false);
+    expect(isListedUnitSize("  ", ["Single"])).toBe(false);
   });
 });
 

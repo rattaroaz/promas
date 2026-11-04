@@ -376,6 +376,9 @@ pub struct JobDescription {
     pub four_plus_two: Option<f64>,
     pub occupied: Option<f64>,
     pub fixed: Option<f64>,
+    /// Prices for unit sizes that are not one of the original columns.
+    #[serde(default)]
+    pub extra_prices: std::collections::BTreeMap<String, f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

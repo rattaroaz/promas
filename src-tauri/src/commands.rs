@@ -103,27 +103,35 @@ pub fn list_companies(state: State<DbState>, params: ListParams) -> Result<Vec<C
     let search = params.search.unwrap_or_default();
     let limit = params.limit.unwrap_or(500);
     let offset = params.offset.unwrap_or(0);
-    let like = format!("%{}%", search);
-
     let mut stmt = conn
         .prepare(
             r#"SELECT company_no,name,class,street,city,state,zip,phone,phone2,phone3,phone4,
                contact,enter_date,page_map,last_pro_id,memo,voided
                FROM companies
                WHERE (?1 OR voided=0)
-                 AND (?2='' OR company_no LIKE ?3 OR name LIKE ?3 OR phone LIKE ?3 OR contact LIKE ?3
-                      OR street LIKE ?3 OR city LIKE ?3 OR zip LIKE ?3
-                      OR company_no IN (
-                           SELECT company_no FROM properties
-                           WHERE street LIKE ?3 OR city LIKE ?3 OR state LIKE ?3 OR zip LIKE ?3
-                              OR contact LIKE ?3 OR manager LIKE ?3
-                      ))
+                 AND (
+                   promas_match(
+                        COALESCE(companies.company_no,'') || ' ' || COALESCE(companies.name,'') || ' ' || COALESCE(companies.phone,'') || ' ' ||
+                        COALESCE(companies.contact,'') || ' ' || COALESCE(companies.street,'') || ' ' || COALESCE(companies.city,'') || ' ' ||
+                        COALESCE(companies.zip,''),
+                        ?2)
+                   OR EXISTS (
+                     SELECT 1 FROM properties
+                     WHERE properties.company_no = companies.company_no
+                       AND promas_match(
+                            COALESCE(properties.pro_no,'') || ' ' || COALESCE(properties.name,'') || ' ' ||
+                            COALESCE(properties.street,'') || ' ' || COALESCE(properties.city,'') || ' ' ||
+                            COALESCE(properties.state,'') || ' ' || COALESCE(properties.zip,'') || ' ' ||
+                            COALESCE(properties.contact,'') || ' ' || COALESCE(properties.manager,''),
+                            ?2)
+                   )
+                 )
                ORDER BY company_no
-               LIMIT ?4 OFFSET ?5"#,
+               LIMIT ?3 OFFSET ?4"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![include_voided, search, like, limit, offset], |r| {
+        .query_map(params![include_voided, search, limit, offset], |r| {
             Ok(Company {
                 company_no: r.get(0)?,
                 name: r.get(1)?,
@@ -262,8 +270,6 @@ pub fn list_properties(state: State<DbState>, params: ListParams) -> Result<Vec<
     let company_no = params.company_no.unwrap_or_default();
     let limit = params.limit.unwrap_or(500);
     let offset = params.offset.unwrap_or(0);
-    let like = format!("%{}%", search);
-
     let mut stmt = conn
         .prepare(
             r#"SELECT company_no,pro_no,name,class,street,city,state,zip,phone,phone2,
@@ -271,16 +277,19 @@ pub fn list_properties(state: State<DbState>, params: ListParams) -> Result<Vec<
                FROM properties
                WHERE (?1 OR voided=0)
                  AND (?2='' OR company_no=?2)
-                 AND (?3='' OR pro_no LIKE ?4 OR name LIKE ?4 OR phone LIKE ?4
-                      OR street LIKE ?4 OR city LIKE ?4 OR state LIKE ?4 OR zip LIKE ?4
-                      OR contact LIKE ?4 OR manager LIKE ?4)
+                 AND promas_match(
+                      COALESCE(pro_no,'') || ' ' || COALESCE(name,'') || ' ' || COALESCE(phone,'') || ' ' ||
+                      COALESCE(phone2,'') || ' ' || COALESCE(street,'') || ' ' || COALESCE(city,'') || ' ' ||
+                      COALESCE(state,'') || ' ' || COALESCE(zip,'') || ' ' || COALESCE(contact,'') || ' ' ||
+                      COALESCE(manager,''),
+                      ?3)
                ORDER BY company_no, pro_no
-               LIMIT ?5 OFFSET ?6"#,
+               LIMIT ?4 OFFSET ?5"#,
         )
         .map_err(map_err)?;
     let rows = stmt
         .query_map(
-            params![include_voided, company_no, search, like, limit, offset],
+            params![include_voided, company_no, search, limit, offset],
             |r| {
                 Ok(Property {
                     company_no: r.get(0)?,
@@ -358,18 +367,19 @@ pub fn list_employees(state: State<DbState>, params: ListParams) -> Result<Vec<E
     let conn = state.0.lock().map_err(map_err)?;
     let include_voided = params.include_voided.unwrap_or(false);
     let search = params.search.unwrap_or_default();
-    let like = format!("%{}%", search);
     let mut stmt = conn
         .prepare(
             r#"SELECT emp_no,name,class,street,city,state,zip,phone,contact,enter_date,
                commission,ssno,birth_date,voided FROM employees
                WHERE (?1 OR voided=0)
-                 AND (?2='' OR emp_no LIKE ?3 OR name LIKE ?3 OR phone LIKE ?3)
+                 AND promas_match(
+                      COALESCE(emp_no,'') || ' ' || COALESCE(name,'') || ' ' || COALESCE(phone,''),
+                      ?2)
                ORDER BY emp_no"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![include_voided, search, like], |r| {
+        .query_map(params![include_voided, search], |r| {
             Ok(Employee {
                 emp_no: r.get(0)?,
                 name: r.get(1)?,
@@ -472,6 +482,24 @@ pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), S
     let active: i64 = if person.active { 1 } else { 0 };
     let original = person.original_name.trim();
     let key = if original.is_empty() { name } else { original };
+    let stored_id: Option<String> = if original.is_empty() {
+        None
+    } else {
+        conn.query_row(
+            "SELECT TRIM(COALESCE(worker_no, '')) FROM work_persons WHERE name = ?1 COLLATE NOCASE",
+            params![key],
+            |r| r.get(0),
+        )
+        .ok()
+    };
+    // A new person, or one whose ID is being cleared, still needs an ID.
+    // A legacy row that was saved with a blank ID can change Active only.
+    if worker_no.is_empty() {
+        let keeping_blank = stored_id.as_deref().is_some_and(|existing| existing.is_empty());
+        if !keeping_blank {
+            return Err("ID number is required".into());
+        }
+    }
 
     if !original.is_empty() && !original.eq_ignore_ascii_case(name) {
         let clash: i64 = conn
@@ -486,7 +514,7 @@ pub fn write_work_person(conn: &Connection, person: &WorkPerson) -> Result<(), S
         }
     }
 
-    // A blank ID is allowed more than once. A filled-in ID belongs to one person.
+    // An ID number is required. A filled-in ID belongs to one person.
     // Someone who already has this ID in the database may keep it: a catalog
     // that was duplicated before the rule existed can still be edited and saved.
     if !worker_no.is_empty() {
@@ -567,6 +595,13 @@ pub fn delete_work_person(state: State<DbState>, name: String) -> Result<Vec<Wor
 // ─── Job descriptions (invoice and work-order description list) ───────
 // Deleting or renaming a catalog row does not rewrite invoice lines.
 
+fn parse_extra_prices(raw: Option<String>) -> std::collections::BTreeMap<String, f64> {
+    let Some(raw) = raw.filter(|text| !text.trim().is_empty()) else {
+        return std::collections::BTreeMap::new();
+    };
+    serde_json::from_str(&raw).unwrap_or_default()
+}
+
 fn job_from_row(r: &rusqlite::Row) -> rusqlite::Result<JobDescription> {
     Ok(JobDescription {
         description: r.get(0)?,
@@ -579,13 +614,14 @@ fn job_from_row(r: &rusqlite::Row) -> rusqlite::Result<JobDescription> {
         four_plus_two: r.get(6)?,
         occupied: r.get(7)?,
         fixed: r.get(8)?,
+        extra_prices: parse_extra_prices(r.get(9)?),
     })
 }
 
 pub fn list_job_description_records(conn: &Connection) -> Result<Vec<JobDescription>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT description, price_single, price_11, price_21, price_22, price_32, price_42, price_occupied, fixed_price
+            "SELECT description, price_single, price_11, price_21, price_22, price_32, price_42, price_occupied, fixed_price, size_prices
              FROM job_descriptions ORDER BY sort_order, description COLLATE NOCASE",
         )
         .map_err(map_err)?;
@@ -616,13 +652,15 @@ pub fn write_job_description(conn: &Connection, job: &JobDescription) -> Result<
             return Err("A job description with that name already exists".into());
         }
     }
+    let extra = serde_json::to_string(&job.extra_prices).unwrap_or_else(|_| "{}".to_string());
     let updated = conn
         .execute(
             "UPDATE job_descriptions
              SET description = ?1,
                  price_single = ?2, price_11 = ?3, price_21 = ?4,
-                 price_22 = ?5, price_32 = ?6, price_42 = ?7, price_occupied = ?8, fixed_price = ?9
-             WHERE description = ?10 COLLATE NOCASE",
+                 price_22 = ?5, price_32 = ?6, price_42 = ?7, price_occupied = ?8, fixed_price = ?9,
+                 size_prices = ?10
+             WHERE description = ?11 COLLATE NOCASE",
             params![
                 description,
                 job.single,
@@ -633,6 +671,7 @@ pub fn write_job_description(conn: &Connection, job: &JobDescription) -> Result<
                 job.four_plus_two,
                 job.occupied,
                 job.fixed,
+                extra,
                 key,
             ],
         )
@@ -648,8 +687,9 @@ pub fn write_job_description(conn: &Connection, job: &JobDescription) -> Result<
         conn.execute(
             "INSERT INTO job_descriptions (
                 description, sort_order,
-                price_single, price_11, price_21, price_22, price_32, price_42, price_occupied, fixed_price
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                price_single, price_11, price_21, price_22, price_32, price_42, price_occupied, fixed_price,
+                size_prices
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 description,
                 next,
@@ -661,6 +701,7 @@ pub fn write_job_description(conn: &Connection, job: &JobDescription) -> Result<
                 job.four_plus_two,
                 job.occupied,
                 job.fixed,
+                extra,
             ],
         )
         .map_err(map_err)?;
@@ -708,14 +749,9 @@ pub fn delete_job_description(
 fn list_paint_supply_names(conn: &rusqlite::Connection) -> Result<Vec<String>, String> {
     let mut stmt = conn
         .prepare(
-            r#"SELECT name FROM (
-                 SELECT TRIM(name) AS name FROM paint_supply_cos
-                 UNION
-                 SELECT DISTINCT TRIM(paint_supply_co) FROM invoices
-                 WHERE TRIM(COALESCE(paint_supply_co,'')) != ''
-               )
+            r#"SELECT TRIM(name) FROM paint_supply_cos
                WHERE TRIM(name) != ''
-               ORDER BY name COLLATE NOCASE"#,
+               ORDER BY sort_order, name COLLATE NOCASE"#,
         )
         .map_err(map_err)?;
     let rows = stmt
@@ -737,12 +773,96 @@ pub fn save_paint_supply_co(state: State<DbState>, name: String) -> Result<Vec<S
         return Err("Paint supply company required".into());
     }
     let conn = state.0.lock().map_err(map_err)?;
+    let next: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM paint_supply_cos",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(map_err)?;
     conn.execute(
-        "INSERT OR IGNORE INTO paint_supply_cos (name) VALUES (?1)",
-        params![name],
+        "INSERT OR IGNORE INTO paint_supply_cos (name, sort_order) VALUES (?1, ?2)",
+        params![name, next],
     )
     .map_err(map_err)?;
     list_paint_supply_names(&conn)
+}
+
+#[tauri::command]
+pub fn delete_paint_supply_co(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    remove_paint_supply_co(&conn, &name)?;
+    list_paint_supply_names(&conn)
+}
+
+pub fn remove_paint_supply_co(conn: &Connection, name: &str) -> Result<(), String> {
+    conn.execute(
+        "DELETE FROM paint_supply_cos WHERE name = ?1 COLLATE NOCASE",
+        params![name.trim()],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+fn list_catalog_names(conn: &Connection, table: &str) -> Result<Vec<String>, String> {
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT TRIM(name) FROM {table} WHERE TRIM(name) != '' ORDER BY sort_order, name COLLATE NOCASE"
+        ))
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(map_err)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(map_err)
+}
+
+fn write_catalog_name(conn: &Connection, table: &str, name: &str, empty_message: &str) -> Result<(), String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(empty_message.into());
+    }
+    let next: i64 = conn
+        .query_row(
+            &format!("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM {table}"),
+            [],
+            |r| r.get(0),
+        )
+        .map_err(map_err)?;
+    conn.execute(
+        &format!("INSERT OR IGNORE INTO {table} (name, sort_order) VALUES (?1, ?2)"),
+        params![name, next],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+fn remove_catalog_name(conn: &Connection, table: &str, name: &str) -> Result<(), String> {
+    conn.execute(
+        &format!("DELETE FROM {table} WHERE name = ?1 COLLATE NOCASE"),
+        params![name.trim()],
+    )
+    .map_err(map_err)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_unit_sizes(state: State<DbState>) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    list_catalog_names(&conn, "unit_sizes")
+}
+
+#[tauri::command]
+pub fn save_unit_size(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    write_catalog_name(&conn, "unit_sizes", &name, "Unit size required")?;
+    list_catalog_names(&conn, "unit_sizes")
+}
+
+#[tauri::command]
+pub fn delete_unit_size(state: State<DbState>, name: String) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(map_err)?;
+    remove_catalog_name(&conn, "unit_sizes", &name)?;
+    list_catalog_names(&conn, "unit_sizes")
 }
 
 // ─── Work Types ───────────────────────────────────────────────────────
@@ -752,17 +872,16 @@ pub fn list_work_types(state: State<DbState>, params: ListParams) -> Result<Vec<
     let conn = state.0.lock().map_err(map_err)?;
     let include_voided = params.include_voided.unwrap_or(false);
     let search = params.search.unwrap_or_default();
-    let like = format!("%{}%", search);
     let mut stmt = conn
         .prepare(
             r#"SELECT code_no,work_type,description,price,voided FROM work_types
                WHERE (?1 OR voided=0)
-                 AND (?2='' OR code_no LIKE ?3 OR description LIKE ?3)
+                 AND promas_match(COALESCE(code_no,'') || ' ' || COALESCE(description,''), ?2)
                ORDER BY code_no"#,
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![include_voided, search, like], |r| {
+        .query_map(params![include_voided, search], |r| {
             Ok(WorkType {
                 code_no: r.get(0)?,
                 work_type: r.get(1)?,
@@ -820,7 +939,6 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
     let to_date = params.to_date.unwrap_or_default();
     let limit = params.limit.unwrap_or(200);
     let offset = params.offset.unwrap_or(0);
-    let like = format!("%{}%", search);
 
     let mut stmt = conn
         .prepare(
@@ -836,12 +954,14 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
                  AND (?3='' OR i.pro_no=?3)
                  AND (?4='' OR i.sales_date>=?4)
                  AND (?5='' OR i.sales_date<=?5)
-                 AND (?6='' OR CAST(i.invoice AS TEXT) LIKE ?7 OR i.sales_unit LIKE ?7
-                      OR c.name LIKE ?7 OR c.contact LIKE ?7 OR i.cust_po_no LIKE ?7
-                      OR p.street LIKE ?7 OR p.city LIKE ?7 OR p.zip LIKE ?7 OR p.name LIKE ?7
-                      OR p.contact LIKE ?7 OR p.manager LIKE ?7)
+                 AND promas_match(
+                      CAST(i.invoice AS TEXT) || ' ' || COALESCE(i.sales_unit,'') || ' ' ||
+                      COALESCE(c.name,'') || ' ' || COALESCE(c.contact,'') || ' ' || COALESCE(i.cust_po_no,'') || ' ' ||
+                      COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
+                      COALESCE(p.name,'') || ' ' || COALESCE(p.contact,'') || ' ' || COALESCE(p.manager,''),
+                      ?6)
                ORDER BY i.sales_date DESC, i.invoice DESC
-               LIMIT ?8 OFFSET ?9"#,
+               LIMIT ?7 OFFSET ?8"#,
         )
         .map_err(map_err)?;
     let rows = stmt
@@ -853,7 +973,6 @@ pub fn list_invoices(state: State<DbState>, params: ListParams) -> Result<Vec<In
                 from_date,
                 to_date,
                 search,
-                like,
                 limit,
                 offset
             ],
@@ -992,7 +1111,6 @@ pub fn list_work_orders(
     let search = params.search.unwrap_or_default();
     let company_no = params.company_no.unwrap_or_default();
     let limit = params.limit.unwrap_or(200);
-    let like = format!("%{}%", search);
 
     let mut stmt = conn
         .prepare(
@@ -1003,17 +1121,19 @@ pub fn list_work_orders(
                LEFT JOIN properties p ON p.company_no=w.company_no AND p.pro_no=w.pro_no
                WHERE (?1 OR w.voided=0)
                  AND (?2='' OR w.company_no=?2)
-                 AND (?3='' OR CAST(w.order_no AS TEXT) LIKE ?4 OR w.order_unit LIKE ?4 OR c.name LIKE ?4
-                      OR c.contact LIKE ?4
-                      OR p.street LIKE ?4 OR p.city LIKE ?4 OR p.zip LIKE ?4 OR p.name LIKE ?4
-                      OR p.contact LIKE ?4 OR p.manager LIKE ?4)
+                 AND promas_match(
+                      CAST(w.order_no AS TEXT) || ' ' || COALESCE(w.order_unit,'') || ' ' ||
+                      COALESCE(c.name,'') || ' ' || COALESCE(c.contact,'') || ' ' ||
+                      COALESCE(p.street,'') || ' ' || COALESCE(p.city,'') || ' ' || COALESCE(p.zip,'') || ' ' ||
+                      COALESCE(p.name,'') || ' ' || COALESCE(p.contact,'') || ' ' || COALESCE(p.manager,''),
+                      ?3)
                ORDER BY w.order_date DESC, w.order_no DESC
-               LIMIT ?5"#,
+               LIMIT ?4"#,
         )
         .map_err(map_err)?;
     let rows = stmt
         .query_map(
-            params![include_voided, company_no, search, like, limit],
+            params![include_voided, company_no, search, limit],
             |r| {
                 Ok(WorkOrder {
                     company_no: r.get(0)?,

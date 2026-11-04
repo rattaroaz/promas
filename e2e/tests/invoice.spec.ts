@@ -14,7 +14,8 @@ async function openInvoiceBrowse(page: Page) {
   await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
 
   // Browse list for the selected site (status bar + fixture row)
-  await expect(page.getByText(/1 invoices/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "New Invoice" })).toBeVisible();
+  await expect(page.getByText(/1 invoices/i)).toHaveCount(0);
 }
 
 test.describe("invoice process", () => {

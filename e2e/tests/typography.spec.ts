@@ -187,7 +187,7 @@ test("every screen draws text from the one type scale", async ({ page }) => {
       open: async () => {
         await propertyList(page, /3\.\s*Invoice Process/i);
         await page.getByRole("button", { name: /01\s+Bldg A/i }).click();
-        await expect(page.getByText(/1 invoices/i)).toBeVisible();
+        await expect(page.getByRole("button", { name: "New Invoice" })).toBeVisible();
       },
     },
     {
@@ -366,7 +366,7 @@ test("the main menu and Workers draw text at the same size in every window", asy
 
 test("printed reports use the print size, whatever the window and fit scale", async ({ page }) => {
   const printed: number[] = [];
-  const screen: number[] = [];
+  const screen: { size: number; fit: number }[] = [];
   for (const viewport of [
     { width: 1024, height: 768 },
     { width: 1920, height: 1080 },
@@ -375,7 +375,16 @@ test("printed reports use the print size, whatever the window and fit scale", as
     await openMain(page, /6\.\s*Reports Menu/i);
     await page.getByRole("button", { name: /Open Receivables Aging/i }).click();
     await waitForFit(page);
-    screen.push(await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize)));
+    screen.push(
+      await page.evaluate(() => {
+        const root = document.documentElement;
+        const style = getComputedStyle(root);
+        return {
+          size: parseFloat(style.fontSize),
+          fit: parseFloat(style.getPropertyValue("--fit-scale")) || 1,
+        };
+      })
+    );
     await page.emulateMedia({ media: "print" });
     for (const fit of ["", "0.6"]) {
       printed.push(
@@ -394,8 +403,22 @@ test("printed reports use the print size, whatever the window and fit scale", as
     }
     await page.emulateMedia({ media: "screen" });
   }
-  expect(screen[0], "screen type stays 22px in every window").toBeCloseTo(22, 0);
-  expect(screen[1], "screen type stays 22px in every window").toBeCloseTo(22, 0);
+  const expected = (width: number, height: number, fit: number) => {
+    const raw = 2.3 * (width / 100) + 1.2 * (height / 100);
+    return Math.min(80, Math.max(32, raw)) * fit;
+  };
+  const viewports = [
+    { width: 1024, height: 768 },
+    { width: 1920, height: 1080 },
+  ];
+  screen.forEach((sample, index) => {
+    const viewport = viewports[index];
+    expect(sample.size, `viewport scale at ${viewport.width}×${viewport.height}`).toBeCloseTo(
+      expected(viewport.width, viewport.height, sample.fit),
+      0
+    );
+  });
+  expect(screen[0].size, "a larger window uses a larger root size").not.toBeCloseTo(screen[1].size, 0);
   for (const size of printed) expect(size, `printed sizes ${printed.join(", ")}`).toBeCloseTo(printed[0], 2);
-  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(22, 0);
+  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(screen[0].size, 0);
 });

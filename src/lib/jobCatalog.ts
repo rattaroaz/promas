@@ -15,6 +15,8 @@ export interface JobDescription {
   occupied: number | null;
   /** One price for every unit size. Null when the size prices are used. */
   fixed: number | null;
+  /** Prices for sizes that are not one of the original columns, such as lofts. */
+  extraPrices?: Record<string, number>;
 }
 
 export const INTERIOR_PAINT_WALL_CLOSET =
@@ -137,33 +139,45 @@ export function jobHasSizePrices(job: JobDescription): boolean {
   return job.fixed == null;
 }
 
-/** Sizes that already have their own price. A one-price job counts every size. */
-export function sizesEditedOnJob(job: JobDescription): string[] {
-  const filled = JOB_SIZES.filter((size) => sizeAmount(job, size) != null);
+const LEGACY_SIZE_FIELDS = {
+  single: "single",
+  "1+1": "onePlusOne",
+  "2+1": "twoPlusOne",
+  "2+2": "twoPlusTwo",
+  "3+2": "threePlusTwo",
+  "4+2": "fourPlusTwo",
+  Occupied: "occupied",
+} as const satisfies Record<string, keyof JobDescription>;
+
+/** "Single" / "1 + 1" / "Occupied" → the stored column key. Other labels stay as typed. */
+export function canonicalSizeKey(raw: string): string | null {
+  const listed = normalizeListedSize(raw);
+  if (listed) return listed;
+  const trimmed = raw.trim();
+  return trimmed || null;
+}
+
+/** Sizes that already have their own price. A one-price job counts every listed size. */
+export function sizesEditedOnJob(
+  job: JobDescription,
+  catalog: readonly string[] = JOB_SIZES
+): string[] {
+  const filled = catalog.filter((size) => sizeAmount(job, size) != null);
   if (filled.length > 0) return [...filled];
-  if (job.fixed != null) return [...JOB_SIZES];
+  if (job.fixed != null) return [...catalog];
   return [];
 }
 
 function sizeAmount(job: JobDescription, size: string): number | null {
-  switch (size) {
-    case "single":
-      return job.single;
-    case "1+1":
-      return job.onePlusOne;
-    case "2+1":
-      return job.twoPlusOne;
-    case "2+2":
-      return job.twoPlusTwo;
-    case "3+2":
-      return job.threePlusTwo;
-    case "4+2":
-      return job.fourPlusTwo;
-    case "Occupied":
-      return job.occupied;
-    default:
-      return null;
+  const key = canonicalSizeKey(size);
+  if (!key) return null;
+  const field = LEGACY_SIZE_FIELDS[key as keyof typeof LEGACY_SIZE_FIELDS];
+  if (field) {
+    const value = job[field];
+    return typeof value === "number" ? value : null;
   }
+  const extra = job.extraPrices?.[key];
+  return extra == null ? null : extra;
 }
 
 function sharedSizePrice(job: JobDescription): number | null {
@@ -177,32 +191,21 @@ function sharedSizePrice(job: JobDescription): number | null {
 
 /** Price the job-description screen shows for the size chosen on that row. */
 export function priceShownForSize(job: JobDescription, size: string): number | null {
-  const key = normalizeListedSize(size);
-  const direct = key ? sizeAmount(job, key) : null;
+  const direct = sizeAmount(job, size);
   if (direct != null) return direct;
   if (job.fixed != null) return job.fixed;
   return sharedSizePrice(job);
 }
 
 function withSizeAmount(job: JobDescription, size: string, price: number | null): JobDescription {
-  switch (size) {
-    case "single":
-      return { ...job, single: price };
-    case "1+1":
-      return { ...job, onePlusOne: price };
-    case "2+1":
-      return { ...job, twoPlusOne: price };
-    case "2+2":
-      return { ...job, twoPlusTwo: price };
-    case "3+2":
-      return { ...job, threePlusTwo: price };
-    case "4+2":
-      return { ...job, fourPlusTwo: price };
-    case "Occupied":
-      return { ...job, occupied: price };
-    default:
-      return job;
-  }
+  const key = canonicalSizeKey(size);
+  if (!key) return job;
+  const field = LEGACY_SIZE_FIELDS[key as keyof typeof LEGACY_SIZE_FIELDS];
+  if (field) return { ...job, [field]: price };
+  const extra = { ...(job.extraPrices ?? {}) };
+  if (price == null) delete extra[key];
+  else extra[key] = price;
+  return { ...job, extraPrices: extra };
 }
 
 /**
@@ -214,23 +217,27 @@ export function jobWithSizePrice(
   job: JobDescription,
   size: string,
   price: number,
-  editedSizes: readonly string[] = sizesEditedOnJob(job)
+  editedSizes: readonly string[] = sizesEditedOnJob(job),
+  catalog: readonly string[] = JOB_SIZES
 ): JobDescription & { editedSizes: string[] } {
-  const key = normalizeListedSize(size);
+  const key = canonicalSizeKey(size);
   if (!key) return { ...job, editedSizes: [...editedSizes] };
-  const othersEdited = editedSizes.some((edited) => edited !== key);
+  const sameSize = (edited: string) => canonicalSizeKey(edited) === key;
+  const othersEdited = editedSizes.some((edited) => !sameSize(edited));
+  const listed = catalog.length > 0 ? catalog : [size];
   if (!othersEdited) {
     let next: JobDescription = { ...job, fixed: null };
-    for (const listed of JOB_SIZES) next = withSizeAmount(next, listed, price);
+    for (const item of listed) next = withSizeAmount(next, item, price);
     return { ...next, editedSizes: [key] };
   }
   const fallback = job.fixed ?? sharedSizePrice(job);
   let next: JobDescription = { ...job, fixed: null };
-  for (const listed of JOB_SIZES) {
-    const current = sizeAmount(job, listed);
-    next = withSizeAmount(next, listed, listed === key ? price : (current ?? fallback));
+  for (const item of listed) {
+    const itemKey = canonicalSizeKey(item);
+    const current = sizeAmount(job, item);
+    next = withSizeAmount(next, item, itemKey === key ? price : (current ?? fallback));
   }
-  const nextEdited = editedSizes.includes(key) ? [...editedSizes] : [...editedSizes, key];
+  const nextEdited = editedSizes.some(sameSize) ? [...editedSizes] : [...editedSizes, key];
   return { ...next, editedSizes: nextEdited };
 }
 
@@ -256,7 +263,7 @@ export function priceForPreset(
 ): number | null {
   const job = findJobDescription(description, catalog);
   if (!job) return null;
-  const key = normalizeListedSize(size);
+  const key = canonicalSizeKey(size);
   if (key) return priceShownForSize(job, key);
   if (!size.trim()) {
     if (!jobHasSizePrices(job)) return job.fixed;
@@ -290,5 +297,6 @@ export function blankJobDescription(): JobDescription {
     fourPlusTwo: null,
     occupied: null,
     fixed: null,
+    extraPrices: {},
   };
 }

@@ -164,7 +164,7 @@ export function WorkersScreen() {
     replaceRows(next);
   }
 
-  function queueActive(key: string) {
+  function queueActive(key: string, active: boolean) {
     const run = async () => {
       const row = rowsRef.current.find((r) => r.key === key);
       if (!row || !row.originalName) return;
@@ -174,13 +174,15 @@ export function WorkersScreen() {
           workerNo: row.workerNo.trim(),
           address: row.address,
           phone: row.phone,
-          active: row.active,
+          active,
           originalName: row.originalName,
         });
         setMsg("");
         setMsgKind("default");
       } catch (e) {
-        setMsg(String(e));
+        const current = rowsRef.current.find((r) => r.key === key);
+        if (current && current.active === active) patchRow(key, { active: !active });
+        setMsg(e instanceof Error ? e.message : String(e));
         setMsgKind("error");
       }
     };
@@ -204,6 +206,11 @@ export function WorkersScreen() {
     const name = draft.name.trim();
     if (!name) {
       setMsg("Work person name required");
+      setMsgKind("error");
+      return;
+    }
+    if (!draft.workerNo.trim()) {
+      setMsg("ID number is required");
       setMsgKind("error");
       return;
     }
@@ -269,10 +276,10 @@ export function WorkersScreen() {
     const names = rows.map((row) => row.name.trim()).filter(Boolean);
     const longest = names.reduce((max, name) => Math.max(max, textWidth(name, font)), 0);
     const headerPx = textWidth("Work Person", headerFont) + 1;
-    const active = 7.6 * ch;
+    const active = 6.8 * ch;
     const id = 9.8 * ch;
-    const del = 10 * ch;
-    const edit = 8 * ch;
+    const del = 8 * ch;
+    const edit = 5 * ch;
     const gaps = 16 * 4;
     const bar = 16;
     const port = scroll?.clientWidth || frame.clientWidth || 1024;
@@ -341,9 +348,12 @@ export function WorkersScreen() {
 
   if (draft) {
     const shared = workerIdAlreadyShared(idRows(), draft.workerNo, draft.originalName);
-    const formMessage = shared
-      ? "This Worker ID is already shared. You can still save, or enter a new ID to resolve it."
-      : "Worker ID is unique.";
+    const idMissing = !draft.workerNo.trim();
+    const formMessage = idMissing
+      ? "ID number is required"
+      : shared
+        ? "This Worker ID is already shared. You can still save, or enter a new ID to resolve it."
+        : "Worker ID is unique.";
     return (
       <Screen
         statusKeys={[
@@ -461,8 +471,9 @@ export function WorkersScreen() {
                   aria-label={`Active ${who}`}
                   checked={row.active}
                   onChange={(e) => {
-                    patchRow(row.key, { active: e.target.checked });
-                    queueActive(row.key);
+                    const active = e.target.checked;
+                    patchRow(row.key, { active });
+                    queueActive(row.key, active);
                   }}
                 />
                 <div
