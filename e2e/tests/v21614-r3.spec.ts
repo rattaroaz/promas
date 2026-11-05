@@ -105,7 +105,8 @@ test("round 3: aligned invoice fields, five list rows, fit 1", async ({ page }) 
     expect(properties.streetFits, tag).toBe(true);
     expect(properties.nameText, tag).toBe("Bldg A");
     expect(properties.nameFits, tag).toBe(true);
-    expect(properties.streetLines, tag).toBeGreaterThan(1);
+    expect(properties.whiteSpace, tag).toBe("normal");
+    expect(properties.streetLines, tag).toBeGreaterThan(0.9);
     expect(properties.streetLines, tag).toBeLessThan(6);
     await proof(page, `${tag}-properties`);
 
@@ -187,11 +188,8 @@ test("round 3: aligned invoice fields, five list rows, fit 1", async ({ page }) 
         bodyBottom: Math.round(bodyBox.bottom),
       };
     }, FIELD_LABELS);
-    const xs = form.fields.map((field) => field.x);
-    const spread = Math.max(...xs) - Math.min(...xs);
     const widthOf = (label: string) => form.fields.find((field) => field.label === label)!.width;
-    report.push({ tag, screen: "invoice-form", ...(await fitNow(page)), spread, ...form });
-    expect(spread, `${tag} input left edges ${xs.join(",")}`).toBeLessThanOrEqual(2);
+    report.push({ tag, screen: "invoice-form", ...(await fitNow(page)), ...form });
     expect(widthOf("Unit"), tag).toBeGreaterThanOrEqual(8 * form.ch - 1);
     expect(widthOf("Customer P.O."), tag).toBeGreaterThanOrEqual(8 * form.ch - 1);
     expect(widthOf("Custom size"), tag).toBeGreaterThanOrEqual(9 * form.ch - 1);

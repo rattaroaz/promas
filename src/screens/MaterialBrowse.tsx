@@ -31,10 +31,10 @@ const SORT_TITLE: Record<MaterialSort, string> = {
 
 /** Tracks keep MM/DD/YYYY and worker names fully inside the cell. */
 function materialColumns(sort: MaterialSort): string {
-  if (sort === "worker") return "minmax(8ch, 0.7fr) minmax(0, 1.6fr) minmax(max-content, 0.8fr)";
-  if (sort === "date") return "minmax(0, 0.9fr) minmax(0, 1.5fr) minmax(max-content, 0.9fr)";
-  if (sort === "desc") return "minmax(0, 0.8fr) minmax(10ch, 0.9fr) minmax(max-content, 0.9fr)";
-  return "minmax(8ch, 0.7fr) minmax(0, 1.6fr) minmax(max-content, 0.8fr)";
+  if (sort === "worker") return "13ch 30ch 17ch";
+  if (sort === "date") return "18ch 30ch 17ch";
+  if (sort === "desc") return "18ch 13ch 17ch";
+  return "13ch 30ch 14ch";
 }
 
 export function MaterialBrowse({
@@ -243,11 +243,9 @@ export function MaterialBrowse({
               )}
             </InlineField>
           </div>
-          <div className="dos-browse material-ledger">
+          <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: materialColumns(sort) }}>
-              {headerCells.map((h, i) => (
-                <div key={i} className={i === headerCells.length - 1 ? "material-amount" : undefined}>{h}</div>
-              ))}
+              {headerCells.map((h, i) => <div key={i}>{h}</div>)}
             </div>
             <div className="dos-browse-body">
               {rows.map((m, i) => (

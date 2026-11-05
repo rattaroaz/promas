@@ -25,7 +25,7 @@ import {
   SEARCH_BROWSE_KEYS,
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
-import { ContentGrid, PROPERTY_LIST_COLUMNS } from "../../dos/contentGrid";
+import { ContentGrid } from "../../dos/contentGrid";
 import { fmtDate, naturalCompare, today } from "../../dos/utils";
 
 export type ProcessKind =
@@ -1056,7 +1056,7 @@ export function CompanyPropertyGate({
         <div className="dos-main-wrap">
           <div
             className="dos-menu-frame"
-            style={{ width: "min(72ch, 100%)", maxWidth: "100%" }}
+            style={{ width: "max-content", maxWidth: "none", minWidth: "min(72ch, 100%)" }}
           >
             <div className="menu-body" style={{ padding: "0.8em 2ch" }}>
               <div className="dos-form">
@@ -1418,9 +1418,9 @@ export function CompanyPropertyGate({
       {phase === "pr-browse" && (
         <div className="dos-browse">
           {company ? (
-            <ContentGrid className="fit-grid" columns={7} template={PROPERTY_LIST_COLUMNS}>
+            <ContentGrid columns={7} shrinkColumn={2}>
               <div className="browse-grid browse-grid-header">
-                <div>Pro<br />NO</div>
+                <div>ProNO</div>
                 <div>Name</div>
                 <div>Street</div>
                 <div>City</div>
@@ -1450,7 +1450,7 @@ export function CompanyPropertyGate({
               ))}
             </ContentGrid>
           ) : (
-            <ContentGrid className="fit-grid" columns={7} template={PROPERTY_LIST_COLUMNS}>
+            <ContentGrid columns={7} shrinkColumn={2}>
               <div className="browse-grid browse-grid-header">
                 <button
                   type="button"
@@ -1460,9 +1460,9 @@ export function CompanyPropertyGate({
                     setPropertySort((cur) => nextPropertySort(cur, "company"))
                   }
                 >
-                  Co<br />NO{propertySortMark(propertySort, "company")}
+                  CoNO{propertySortMark(propertySort, "company")}
                 </button>
-                <div>Pro<br />NO</div>
+                <div>ProNO</div>
                 <button
                   type="button"
                   className="sort-btn"

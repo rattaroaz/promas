@@ -7,7 +7,6 @@ import { api, emptyCompany, emptyInvoice, emptyInvoiceLine, emptyProperty } from
 import { today } from "../../dos/utils";
 import { downloadInvoicePdf, printInvoiceOnTemplate } from "../../lib/invoicePrint";
 import { UNIT_SIZES } from "../../lib/catalogSeeds";
-import { INVOICE_LIST_COLUMNS } from "../../dos/contentGrid";
 import {
   COLOR_CHANGE_CEILING_SWISS_COFFEE,
   COLOR_CHANGE_WALLS_NAVAJO_WHITE,
@@ -139,7 +138,7 @@ describe("InvoiceProcess", () => {
     // Header and rows share one content-sized grid.
     expect(header).toHaveClass("browse-grid");
     expect(header?.closest(".content-grid")).toHaveStyle({
-      gridTemplateColumns: INVOICE_LIST_COLUMNS,
+      gridTemplateColumns: "repeat(9, max-content)",
     });
     
     expect(api.listInvoices).toHaveBeenCalledWith(
@@ -255,7 +254,7 @@ describe("InvoiceProcess", () => {
     expect(document.activeElement).toBe(material);
     await user.keyboard("{ArrowDown}");
     expect(document.activeElement).toBe(
-      screen.getByLabelText("Paint Supply Co. list")
+      screen.getByLabelText("Work Person list")
     );
 
     const price = screen.getByLabelText("Price 1");
@@ -882,7 +881,7 @@ describe("InvoiceProcess", () => {
     expect(header).toHaveClass("browse-grid");
     expect(firstRow).toHaveClass("browse-grid");
     expect(grid).toHaveStyle({
-      gridTemplateColumns: INVOICE_LIST_COLUMNS,
+      gridTemplateColumns: "repeat(9, max-content)",
     });
     expect(header?.closest(".content-grid")).toBe(grid);
     expect(firstRow?.closest(".content-grid")).toBe(grid);
@@ -1017,9 +1016,9 @@ describe("InvoiceProcess", () => {
     const bannerPx = parseFloat(banner.fontSize);
     const columnPx = parseFloat(getComputedStyle(column).fontSize);
     if (Number.isFinite(bannerPx) && Number.isFinite(columnPx) && columnPx > 0) {
-      expect(bannerPx / columnPx).toBeCloseTo(0.9, 2);
+      expect(bannerPx / columnPx).toBeCloseTo(26 / 22, 2);
     } else {
-      expect(banner.fontSize).toMatch(/var\(--text-sm\)/);
+      expect(banner.fontSize).toMatch(/26px|var\(--text-lg\)/);
     }
     const pad = parseFloat(banner.paddingLeft);
     expect(pad).toBeGreaterThan(0);
