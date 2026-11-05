@@ -24,8 +24,7 @@ import { formatMoneyInput } from "../../dos/moneyFormat";
 import { DateInput } from "../../dos/DateInput";
 import { money, fmtDate, today } from "../../dos/utils";
 
-const CASH_COLS =
-  "minmax(0, 0.7fr) minmax(0, 1.05fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(3ch, 0.45fr)";
+const CASH_COLS = "7ch 12ch 12ch 12ch 10ch 12ch 12ch 4ch";
 
 interface InvoiceWithLatestReceipt extends Invoice {
   latestReceiptDate?: string;
@@ -418,7 +417,7 @@ export function CashProcess({
           <div className="dos-info-banner">
             {`Company NO : ${company.companyNo}  ${company.name}`}
           </div>
-          <div className="dos-browse cash-ledger">
+          <div className="dos-browse">
             <div className="browse-grid browse-grid-header" style={{ gridTemplateColumns: CASH_COLS }}>
               <div>Inv_#</div>
               <div>Inv_Date</div>

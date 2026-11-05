@@ -28,10 +28,8 @@ import { money, fmtDate, today } from "../../dos/utils";
 import { priceForPreset } from "../../lib/jobCatalog";
 import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 
-const WO_LIST_COLS =
-  "minmax(4.5ch, 7ch) minmax(8ch, 12ch) minmax(0, 1fr) minmax(0, 1.3fr) minmax(5ch, 8ch)";
-const WO_LINE_COLS =
-  "minmax(4ch, 8ch) minmax(0, 1fr) minmax(3ch, 6ch) minmax(6ch, 10ch) minmax(7ch, 9ch)";
+const WO_LIST_COLS = "7ch 12ch 9ch 15ch 10ch";
+const WO_LINE_COLS = "8ch 30ch 8ch 12ch 10ch";
 
 export function WorkOrderProcess({
   company,
@@ -639,10 +637,10 @@ export function WorkOrderProcess({
                     }}
                   />
                 </div>
-                <div style={{ minWidth: 0, minHeight: "44px", display: "flex", alignItems: "center" }}>
+                <div style={{ minWidth: "max-content", minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
-                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 0.4ch" }}
+                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
                     onClick={() => deleteWorkOrderLine(idx)}
                   >
                     Delete

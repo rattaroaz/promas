@@ -403,22 +403,8 @@ test("printed reports use the print size, whatever the window and fit scale", as
     }
     await page.emulateMedia({ media: "screen" });
   }
-  const expected = (width: number, height: number, fit: number) => {
-    const raw = 2.3 * (width / 100) + 1.2 * (height / 100);
-    return Math.min(80, Math.max(32, raw)) * fit;
-  };
-  const viewports = [
-    { width: 1024, height: 768 },
-    { width: 1920, height: 1080 },
-  ];
-  screen.forEach((sample, index) => {
-    const viewport = viewports[index];
-    expect(sample.size, `viewport scale at ${viewport.width}×${viewport.height}`).toBeCloseTo(
-      expected(viewport.width, viewport.height, sample.fit),
-      0
-    );
-  });
-  expect(screen[0].size, "a larger window uses a larger root size").not.toBeCloseTo(screen[1].size, 0);
+  expect(screen[0].size, "screen type stays 22px in every window").toBeCloseTo(22, 0);
+  expect(screen[1].size, "screen type stays 22px in every window").toBeCloseTo(22, 0);
   for (const size of printed) expect(size, `printed sizes ${printed.join(", ")}`).toBeCloseTo(printed[0], 2);
-  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(screen[0].size, 0);
+  expect(printed[0], "paper stays off the screen size").not.toBeCloseTo(22, 0);
 });

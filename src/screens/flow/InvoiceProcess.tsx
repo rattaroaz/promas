@@ -25,7 +25,7 @@ import {
 } from "../../dos/Shell";
 import { DotField } from "../../dos/Field";
 import { MoneyInput } from "../../dos/MoneyInput";
-import { ContentGrid, INVOICE_LIST_COLUMNS } from "../../dos/contentGrid";
+import { ContentGrid } from "../../dos/contentGrid";
 import { addDays, money, fmtDate, today, naturalCompare } from "../../dos/utils";
 import { clearUndoScope, pushUndoDelete } from "../../lib/undoDelete";
 import {
@@ -875,7 +875,7 @@ export function InvoiceProcess({
       {mode === "browse" && (
         <div className="dos-browse">
           <InvoiceSiteHeader company={company} property={property} />
-          <ContentGrid className="fit-grid" columns={9} template={INVOICE_LIST_COLUMNS}>
+          <ContentGrid columns={9}>
             <div className="browse-grid browse-grid-header">
               <div className="invoice-inv-date">Inv_Date</div>
               <div>Inv#</div>
@@ -981,6 +981,8 @@ export function InvoiceProcess({
               </DotField>
             </div>
             <div className="invoice-terms-order">
+            <div className="invoice-term-line">
+            <div className="invoice-term-pair">
             <div className="dos-form-row">
               <DotField label="Due Date" width={12}>
                 <input
@@ -1016,6 +1018,10 @@ export function InvoiceProcess({
                 />
               </DotField>
             </div>
+            </div>
+            </div>
+            <div className="invoice-term-line">
+            <div className="invoice-term-pair">
             <div className="dos-form-row">
               <DotField label="Invoice Number" width={16}>
                 <input
@@ -1046,6 +1052,9 @@ export function InvoiceProcess({
               </DotField>
             </div>
             </div>
+            </div>
+            <div className="invoice-term-line">
+            <div className="invoice-term-pair">
             <div className="dos-form-row">
               <DotField label="Unit" width={14}>
                 <input
@@ -1106,6 +1115,8 @@ export function InvoiceProcess({
                   />
                 </div>
               </DotField>
+            </div>
+            </div>
               <DotField label="Customer P.O" width={14}>
                 <input
                   className="dos-input w12"
@@ -1123,6 +1134,8 @@ export function InvoiceProcess({
                 />
               </DotField>
             </div>
+            <div className="invoice-term-line">
+            <div className="invoice-term-pair">
             <div className="dos-form-row">
               <DotField label="Material Costs" width={14}>
                 <MoneyInput
@@ -1140,6 +1153,40 @@ export function InvoiceProcess({
                   }
                 />
               </DotField>
+              <DotField label="Work Person" width={14}>
+                <div className="invoice-work-person">
+                  <select
+                    className="dos-select dos-choice"
+                    aria-label="Work Person list"
+                    title="Work Person"
+                    value={listedWorkPerson(invoiceWorkPerson(editing.lines))}
+                    onChange={(e) => setInvoiceWorkPerson(e.target.value)}
+                  >
+                    <option value=""> </option>
+                    {workPersons
+                      .filter((person) => person.active)
+                      .map((person) => (
+                        <option key={person.name} value={person.name}>
+                          {person.name}
+                        </option>
+                      ))}
+                  </select>
+                  <input
+                    className="dos-input"
+                    aria-label="Work Person"
+                    placeholder="Type name"
+                    value={invoiceWorkPerson(editing.lines)}
+                    onChange={(e) => setInvoiceWorkPerson(e.target.value)}
+                    onBlur={() => {
+                      const raw = invoiceWorkPerson(editing.lines);
+                      const canon = listedWorkPerson(raw);
+                      if (canon && canon !== raw) setInvoiceWorkPerson(canon);
+                    }}
+                  />
+                </div>
+              </DotField>
+            </div>
+            </div>
               <DotField label="Paint Supply Co." width={16}>
                 <div className="invoice-work-person">
                   <select
@@ -1192,51 +1239,18 @@ export function InvoiceProcess({
                 </div>
               </DotField>
             </div>
-            <div className="dos-form-row">
-              <DotField label="Work Person" width={14}>
-                <div className="invoice-work-person">
-                  <select
-                    className="dos-select dos-choice"
-                    aria-label="Work Person list"
-                    title="Work Person"
-                    value={listedWorkPerson(invoiceWorkPerson(editing.lines))}
-                    onChange={(e) => setInvoiceWorkPerson(e.target.value)}
-                  >
-                    <option value=""> </option>
-                    {workPersons
-                      .filter((person) => person.active)
-                      .map((person) => (
-                        <option key={person.name} value={person.name}>
-                          {person.name}
-                        </option>
-                      ))}
-                  </select>
-                  <input
-                    className="dos-input"
-                    aria-label="Work Person"
-                    placeholder="Type name"
-                    value={invoiceWorkPerson(editing.lines)}
-                    onChange={(e) => setInvoiceWorkPerson(e.target.value)}
-                    onBlur={() => {
-                      const raw = invoiceWorkPerson(editing.lines);
-                      const canon = listedWorkPerson(raw);
-                      if (canon && canon !== raw) setInvoiceWorkPerson(canon);
-                    }}
-                  />
-                </div>
-              </DotField>
             </div>
             </div>
 
             <div className="invoice-lines">
-            <div className="browse-grid browse-grid-header invoice-line-grid">
+            <div className="browse-grid browse-grid-header invoice-line-grid" style={{ margin: "0.5em 0 0.2em" }}>
               <div>Description</div>
               <div>WorkDate</div>
               <div>Price</div>
               <div>Delete</div>
             </div>
             {editing.lines.map((line, idx) => (
-              <div key={idx} className="browse-grid invoice-line-grid">
+              <div key={idx} className="browse-grid invoice-line-grid" style={{ marginBottom: "0.12em" }}>
                 <div className="invoice-line-type">
                   <select
                     className="dos-select dos-choice"
@@ -1305,10 +1319,10 @@ export function InvoiceProcess({
                     }}
                   />
                 </div>
-                <div className="invoice-line-end" style={{ minWidth: "max-content", display: "flex", alignItems: "center" }}>
+                <div className="invoice-line-end" style={{ minWidth: "max-content", minHeight: "44px", display: "flex", alignItems: "center" }}>
                   <button
                     className="dos-btn danger"
-                    style={{ width: "100%", textAlign: "center", padding: "0 1ch" }}
+                    style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
                     onClick={() => deleteInvoiceLine(idx)}
                   >
                     Delete
@@ -1333,7 +1347,7 @@ export function InvoiceProcess({
             </div>
             </div>
             <div className="invoice-summary">
-            <div className="browse-grid invoice-line-grid dos-total">
+            <div className="browse-grid invoice-line-grid dos-total" style={{ marginTop: "0.4em" }}>
               <div style={{ gridColumn: "1 / 3" }}>
                 <button
                   className="dos-btn"

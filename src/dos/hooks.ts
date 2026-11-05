@@ -502,8 +502,7 @@ export function useBrowseIndex(count: number) {
   return { index, setIndex, up, down, pageUp, pageDown, home, end };
 }
 
-/** Below this, type would be smaller than the old 22px base on a 1024 screen. */
-const FIT_MIN = 0.85;
+const FIT_MIN = 0.45;
 /** Room for the vertical scrollbar and subpixel rounding, so a fitted row does not gain a horizontal scrollbar. */
 const FIT_SLACK_PX = 28;
 

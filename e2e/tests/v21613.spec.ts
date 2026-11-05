@@ -11,10 +11,11 @@ const viewports = [
   { width: 1280, height: 800 },
 ] as const;
 
-/** Root size from the pre-v2.16.7 viewport scale, times the live fit scale. */
+/** Screen body size, times the live fit scale. */
 function expectedRoot(width: number, height: number, fit: number) {
-  const raw = 2.3 * (width / 100) + 1.2 * (height / 100);
-  return Math.min(80, Math.max(32, raw)) * fit;
+  void width;
+  void height;
+  return 22 * fit;
 }
 
 test("payroll, property tables, and the work person form fit at scale 1", async ({ page }) => {

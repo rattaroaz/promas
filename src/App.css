@@ -26,19 +26,19 @@
   --dos-brown: #aa5500;
   --dos-gray: #555555;
   /* Type scale. One face; every font-size and line-height in the app is one
-     of these steps (src/typography.test.ts fails on anything else). Sizes
-     are rem, so a step never compounds inside another. The root is the
-     viewport scale from before v2.16.7 switched the screen to fixed px:
-     clamp(32px, 2.3vw + 1.2vh, 80px), times --fit-scale. --fit-scale is 1
-     when that size fits the window, and shrinks a screen that would not.
-     Printed forms keep the paper sizes and do not use --fit-scale. */
+     of these steps (src/typography.test.ts fails on anything else). Screen
+     text is 22px Times New Roman. Property banners are 26px. The control keys
+     at the top are 18px. --fit-scale is 1 when that size fits the window, and
+     shrinks a screen that would not (a wide property table, a tall dialog).
+     Printed forms keep the previous face and the paper sizes, and do not use
+     --fit-scale. */
   --font-dos: "Times New Roman", Times, serif;
   --font-print: "Consolas", "Lucida Console", "Courier New", monospace;
-  --text-root: calc(clamp(32px, 2.3vw + 1.2vh, 80px) * var(--fit-scale, 1));
+  --text-root: calc(22px * var(--fit-scale, 1));
   --text-print: 10pt;
-  --text-sm: 0.9rem;
+  --text-sm: calc(18px * var(--fit-scale, 1));
   --text-md: 1rem;
-  --text-lg: 1.3rem;
+  --text-lg: calc(26px * var(--fit-scale, 1));
   /* What those smaller and larger steps were on paper, before the screen
      sizes were fixed. Print rules still use them. */
   --text-print-sm: 0.9rem;
@@ -225,13 +225,6 @@ h6 {
   text-overflow: clip;
 }
 
-.dos-messagebar.single-line {
-  white-space: nowrap;
-  font-size: var(--text-sm);
-  overflow: hidden;
-  text-overflow: clip;
-}
-
 .dos-messagebar.error {
   color: var(--dos-red-bright);
   background: var(--dos-black);
@@ -282,28 +275,6 @@ h6 {
   padding: 0.3em 0;
 }
 
-/* Search forms sit in the window. A 47ch street must shrink instead of
-   pulling the process entry below fit 1. */
-.dos-menu-frame .dos-form {
-  width: 100%;
-  min-width: 0;
-}
-
-.dos-menu-frame .dos-field {
-  max-width: 100%;
-}
-
-.dos-menu-frame .dos-input.w45,
-.dos-menu-frame .dos-input.w40,
-.dos-menu-frame .dos-input.w30,
-.dos-menu-frame .dos-input.w20,
-.dos-menu-frame .dos-input.w15 {
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
-  flex: 1 1 8ch;
-}
-
 /* Diagnostics fills the content area. The log scrolls inside the frame, so
    the title cannot slide under the status bar and the note stays reachable. */
 .dos-main-wrap > .diagnostics-frame {
@@ -337,13 +308,6 @@ h6 {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  font-size: var(--text-sm);
-  line-height: var(--leading-tight);
-}
-
-.diagnostics-frame .menu-body > div:first-child {
-  gap: 8px;
-  margin-bottom: 0.3em;
 }
 
 .dos-menu-item {
@@ -577,89 +541,16 @@ h6 {
 }
 
 /* Street is minmax(16ch, max-content) on the grid. It keeps the full address
-   when the row fits (1400) and ellipsizes only when the track has to shrink
-   (1024). The title still has the full value. */
+   on one line when the row fits, and wraps inside the track when the row
+   would otherwise run past the window. */
 .content-grid .property-street {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* City and contact shrink with the street so the viewport font stays put.
-   The cell rule above sets min-width: min-content; these win on specificity. */
-.content-grid > .browse-grid > .property-city,
-.content-grid > .browse-grid > .property-contact {
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Invoice and property lists fill the window and scroll down. Tracks use
-   fr, so a long cell ellipsizes or wraps instead of widening the screen. */
-.dos-browse:has(> .content-grid.fit-grid) {
-  padding-inline: 0;
-}
-
-.content-grid.fit-grid {
-  overflow-x: hidden;
-  column-gap: 4px;
-  scrollbar-gutter: auto;
-  padding-right: 0;
-}
-.content-grid.fit-grid > .browse-grid {
-  min-width: 0;
-  width: 100%;
-  column-gap: 4px;
-}
-.content-grid.fit-grid > .browse-grid > * {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.content-grid.fit-grid > .browse-grid > .property-name,
-.content-grid.fit-grid > .browse-grid > .property-street,
-.content-grid.fit-grid > .browse-grid > .property-city,
-.content-grid.fit-grid > .browse-grid > .property-contact {
+  text-overflow: clip;
   white-space: normal;
   overflow-wrap: normal;
   word-break: normal;
-  hyphens: manual;
-  text-overflow: clip;
-  overflow: hidden;
-}
-
-/* Property rows keep a real gap and 8px of side padding. Street wraps inside
-   its own track. The gap is not reduced to buy width. */
-.content-grid.fit-grid:has(.property-street) {
-  column-gap: 16px;
-  padding-inline: 8px;
-  box-sizing: border-box;
-}
-
-.content-grid.fit-grid:has(.property-street) > .browse-grid {
-  column-gap: 16px;
-}
-.content-grid.fit-grid > .browse-grid > .property-city,
-.content-grid.fit-grid > .browse-grid > .property-contact {
-  min-width: min-content;
-}
-.content-grid.fit-grid > .browse-grid > .property-name {
-  overflow: hidden;
-  text-overflow: clip;
-  white-space: nowrap;
-  min-width: max-content;
-}
-.content-grid.fit-grid > .browse-grid > .invoice-inv-date {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: nowrap;
-  min-width: max-content;
 }
 
 .content-grid > .browse-grid-header {
@@ -826,7 +717,7 @@ h6 {
   min-width: 0;
   width: min(92ch, 100%);
   max-width: 100%;
-  max-height: 100%;
+  max-height: 90%;
   display: flex;
   flex-direction: column;
   color: var(--app-ink);
@@ -966,56 +857,6 @@ h6 {
   flex: 0 0 47ch;
 }
 
-.dos-dialog .dos-input.w45 {
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
-  flex: 1 1 auto;
-}
-
-.cash-ledger {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.cash-ledger .browse-grid {
-  width: 100%;
-  min-width: 0;
-}
-
-.cash-ledger .browse-grid > div,
-.cash-ledger .browse-grid > button {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cash-ledger .browse-grid-header > div {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-}
-
-.material-ledger .browse-grid {
-  width: 100%;
-  min-width: 0;
-}
-
-.material-ledger .browse-grid > div,
-.material-ledger .browse-grid > button {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.material-ledger .browse-grid-header > .material-amount {
-  min-width: max-content;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: nowrap;
-}
-
 /* Select + typed value: picker is a small box, value uses the rest */
 .dos-choice-pair {
   display: flex;
@@ -1073,7 +914,7 @@ h6 {
   display: grid;
   /* Description takes the row. WorkDate uses the shared date width; the digit
      padding below keeps mm/dd/yyyy clear of the calendar glyph. */
-  grid-template-columns: minmax(12ch, 1fr) var(--dos-date-width) 11ch 8ch;
+  grid-template-columns: minmax(0, 1fr) var(--dos-date-width) 12ch 10ch;
   /* Same 8px gap as the property tables. */
   column-gap: 8px;
   align-items: center;
@@ -1179,14 +1020,6 @@ h6 {
   word-break: normal;
 }
 
-.invoice-site-header,
-.invoice-site-header .invoice-fact-line,
-.invoice-site-header .invoice-comments,
-.invoice-site-header .invoice-comment-text {
-  font-size: var(--text-sm);
-  line-height: var(--leading-tight);
-}
-
 .invoice-fact-line {
   display: block;
   width: 100%;
@@ -1224,77 +1057,15 @@ h6 {
   padding: 0 0.6ch;
 }
 
-.dos-overlay:has(.invoice-edit),
-.dos-overlay:has(.work-order-edit),
-.dos-overlay:has(.property-edit) {
+.dos-overlay:has(.invoice-edit) {
   align-items: stretch;
-  padding: 0.25ch;
+  padding: 0.4ch;
 }
 
-.dos-dialog:has(.invoice-edit),
-.dos-dialog:has(.work-order-edit),
-.dos-dialog:has(.property-edit) {
+.dos-dialog:has(.invoice-edit) {
   height: 100%;
   max-height: 100%;
   min-height: 0;
-}
-
-.dos-dialog:has(.work-order-edit) .dlg-body,
-.dos-dialog:has(.property-edit) .dlg-body,
-.dos-dialog:has(.invoice-edit) .dlg-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 0.2em 1ch;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.dos-dialog:has(.invoice-edit) .dlg-body {
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding-top: 0.05em;
-  padding-bottom: 0.05em;
-}
-
-.invoice-edit {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  gap: 0;
-}
-
-.invoice-fields {
-  flex: 0 0 auto;
-  overflow: visible;
-}
-
-.invoice-lines {
-  flex: 1 1 0;
-  min-height: 3.4em;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.dos-dialog .invoice-fields label,
-.dos-dialog .invoice-fields .dos-input,
-.dos-dialog .invoice-fields .dos-select,
-.dos-dialog .invoice-fields .dos-choice {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-.invoice-summary {
-  flex: 0 0 auto;
-  background: var(--dos-blue);
-}
-
-.invoice-summary .dos-total,
-.invoice-summary .dos-note {
-  margin-top: 0;
 }
 
 .dlg-body:has(.invoice-edit) {
@@ -1319,12 +1090,6 @@ h6 {
 .invoice-edit {
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
-}
-
-/* Taller field rows scroll inside the dialog instead of covering the lines. */
-.dos-dialog:has(.invoice-edit) .invoice-edit {
-  flex: 0 0 auto;
   overflow: visible;
 }
 
@@ -1351,13 +1116,6 @@ h6 {
    first line aligned with the list after the bleed margin above. */
 .dos-browse > .dos-info-banner {
   padding-left: calc(1ch + 5ch);
-  /* The shared bleed margin above made this box a few pixels wider than the
-     window, and that fixed overflow walked the type down to the floor. */
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  margin-left: 0;
-  margin-right: 0;
 }
 
 .dos-browse > .invoice-site-header {
@@ -1366,8 +1124,7 @@ h6 {
 
 .dos-browse > .invoice-site-header {
   width: auto;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+  max-width: none;
 }
 
 /* Company / property line above a list. Columns under it stay blue. */
@@ -1398,13 +1155,12 @@ h6 {
   max-width: none;
   flex: 1 1 0;
   padding: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
   resize: none;
-  height: 1.2em;
-  max-height: 1.2em;
-  line-height: var(--leading-tight);
+  overflow: hidden;
+  height: auto;
   box-sizing: border-box;
 }
 
@@ -1459,145 +1215,54 @@ h6 {
   min-width: 0;
 }
 
-/* Every invoice label and value shares one grid, so Unit, Size, and P.O.
-   each sit on their own row and every input starts on the same left edge. */
-.invoice-fields {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  grid-auto-rows: minmax(calc(1lh + 8px), auto);
+/* Aligned pairs share one width, so Size starts under Order Date.
+   Customer P.O. and Paint Supply Co. sit on that same line when the
+   window has room, and wrap under it when they would stick out. */
+.invoice-terms-order {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  row-gap: 0.15em;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* The aligned pairs stay one width, so Size starts under Order Date.
+   Customer P.O. and Paint Supply Co. sit on that same line when the
+   window has room, and wrap under it when it does not. */
+.invoice-term-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   column-gap: 0.5ch;
-  row-gap: 8px;
-  align-items: center;
-  justify-items: start;
-  width: 100%;
-  min-width: 0;
-  line-height: var(--leading-tight);
-}
-
-.dos-dialog:has(.invoice-edit) .dlg-title,
-.dos-dialog:has(.invoice-edit) .dlg-foot {
-  line-height: var(--leading-tight);
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.invoice-edit .browse-grid {
-  min-height: 0;
-}
-
-.invoice-edit .invoice-line-grid {
-  margin-top: 0.1em;
-  margin-bottom: 0;
-}
-
-.invoice-edit .dos-btn {
-  min-height: 0;
-  line-height: var(--leading-tight);
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.invoice-fields > .dos-form-row,
-.invoice-fields > .invoice-terms-order,
-.invoice-fields .dos-form-row,
-.invoice-fields .dos-field {
-  display: contents;
-}
-
-.dos-dialog .invoice-fields label {
-  min-width: max-content !important;
-  width: max-content;
-  white-space: nowrap;
-}
-
-.dos-dialog .invoice-fields .dos-input:not([type="date"]) {
-  width: 12ch;
-  min-width: 8ch;
+  row-gap: 0.15em;
   max-width: 100%;
-  flex: 0 0 auto;
+  min-width: 0;
 }
 
-.dos-dialog .invoice-fields input[type="date"].dos-input {
-  justify-self: start;
-}
-
-/* Size and Paint: the typed value and its dropdown each have a track, so the
-   caret box cannot sit on top of the text. */
-.invoice-fields .dos-choice-pair,
-.invoice-fields .invoice-work-person {
+.invoice-term-pair {
   display: grid;
-  grid-template-columns: max-content 1.7em;
-  column-gap: 8px;
-  align-items: center;
+  grid-template-columns:
+    18ch var(--dos-date-width)
+    15ch var(--dos-date-width);
+  column-gap: 0.5ch;
+  align-items: baseline;
   justify-items: start;
-  width: max-content;
-  max-width: 100%;
 }
 
-.dos-dialog .invoice-fields .dos-choice-pair > .dos-input,
-.dos-dialog .invoice-fields .invoice-work-person > .dos-input {
-  grid-column: 1;
-  grid-row: 1;
-  order: 0;
-  flex: 0 0 10ch;
-  width: 10ch;
-  min-width: 10ch;
-  max-width: 10ch;
-}
-
-.invoice-fields .dos-choice-pair > .dos-choice,
-.invoice-fields .invoice-work-person > .dos-choice {
-  grid-column: 2;
-  grid-row: 1;
-  width: 1.7em;
-  min-width: 0;
-  max-width: 1.7em;
-  justify-self: stretch;
-  overflow: hidden;
-}
-
-.dos-dialog .invoice-fields .invoice-work-person > .dos-input[aria-label="Work Person"] {
-  flex-basis: 16ch;
-  width: 16ch;
-  min-width: 10ch;
-  max-width: 16ch;
-}
-
-.work-order-edit,
-.property-edit {
-  gap: 0.04em;
-}
-
-.work-order-edit .dos-field,
-.property-edit .dos-field {
-  min-height: 0;
-}
-
-.dos-dialog .browse-grid {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.dos-dialog .dos-form,
-.dos-dialog .dos-field,
-.dos-dialog .invoice-edit {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.dos-dialog .dos-field .dos-input:not([type="date"]),
-.dos-dialog .dos-field .dos-select,
-.dos-dialog .work-order-line-field .dos-input,
-.dos-dialog .work-order-line-field .dos-select,
-.dos-dialog .work-order-line-desc .dos-input {
-  max-width: 100%;
-  min-width: 0;
-}
-
-.invoice-terms-order > .dos-form-row,
-.invoice-terms-order .dos-field {
+.invoice-term-pair > .dos-form-row,
+.invoice-term-pair .dos-field {
   display: contents;
+}
+
+/* The typed size and name sit in the date column, beside the caret. */
+.invoice-terms-order .dos-choice-pair > .dos-input,
+.invoice-terms-order .invoice-work-person .dos-input {
+  width: 10ch;
+  min-width: 0;
+  max-width: 10ch;
+  flex: 0 0 10ch;
 }
 
 /* ─── Prompt / yes-no ───────────────────────────────────── */
@@ -1778,13 +1443,9 @@ h6 {
   min-width: 0;
 }
 
-.payroll-fit .desc-truncate,
-.payroll-fit .desc-truncate > div {
+.payroll-fit .desc-truncate {
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Header and total sit outside the scroller. Without the same stable gutter
@@ -1797,7 +1458,7 @@ h6 {
 
 /* The one-line toolbar was wider than 1024 and the fitter answered with
    --fit-scale 0.8535. Wrap instead, the same as the other search lines,
-   so the viewport font stays at fit-scale 1. */
+   so 22px type stays at fit-scale 1. */
 .dos-searchline.payroll-toolbar {
   flex-wrap: wrap;
 }
@@ -2134,11 +1795,11 @@ input[type="number"]::-webkit-inner-spin-button {
    Active?, Delete, and Edit stay on screen at 1024. A name past that cap
    ellipsizes. The track does not grow with the window. */
 .workers-frame {
-  --workers-active: 6.8ch;
+  --workers-active: 7.6ch;
   --workers-name: 13.2ch;
   --workers-id: 9.8ch;
-  --workers-delete: 8ch;
-  --workers-edit: 5ch;
+  --workers-delete: 10ch;
+  --workers-edit: 8ch;
   --workers-cols: var(--workers-active) var(--workers-name) var(--workers-id) var(--workers-edit) var(--workers-delete);
   --workers-gap: 16px;
   --workers-scrollbar: 16px;
@@ -2246,13 +1907,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .workers-row .dos-btn {
   width: 100%;
-  min-width: 0;
-  max-width: 100%;
+  min-width: max-content;
   box-sizing: border-box;
-  padding: 0 0.3ch;
+  padding: 0 1ch;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .dos-main-wrap:has(.catalog-frame) {
@@ -2307,7 +1966,7 @@ input[type="number"]::-webkit-inner-spin-button {
   column-gap: 8px;
   align-items: center;
   min-width: 0;
-  margin-bottom: 8px;
+  margin-bottom: 0.2em;
 }
 
 .catalog-name {
@@ -2358,7 +2017,11 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .job-desc-frame {
-  --job-gap: 8px;
+  --job-desc: 28ch;
+  --job-size: 12ch;
+  --job-price: 10ch;
+  --job-delete: 10ch;
+  --job-gap: 16px;
   --job-scrollbar: 16px;
   display: flex;
   flex-direction: column;
@@ -2366,14 +2029,17 @@ input[type="number"]::-webkit-inner-spin-button {
   align-self: stretch;
   min-height: 0;
   width: 100%;
-  min-width: 0;
+  min-width: calc(
+    var(--job-desc) + var(--job-size) + var(--job-price) + var(--job-delete) +
+      3 * var(--job-gap) + var(--job-scrollbar)
+  );
   max-width: 100%;
 }
 
 .job-desc-head,
 .job-desc-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(8ch, 12ch) minmax(7ch, 10ch) minmax(8ch, 10ch);
+  grid-template-columns: minmax(var(--job-desc), 1.4fr) var(--job-size) var(--job-price) var(--job-delete);
   column-gap: var(--job-gap);
   width: 100%;
   min-width: 0;
@@ -2425,13 +2091,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .job-desc-row .dos-btn {
   width: 100%;
-  min-width: 0;
-  max-width: 100%;
+  min-width: max-content;
   box-sizing: border-box;
-  padding: 0 0.4ch;
+  padding: 0 1ch;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .job-desc-price {

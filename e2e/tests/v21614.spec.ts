@@ -13,8 +13,9 @@ const viewports = [
 ] as const;
 
 function expectedRoot(width: number, height: number, fit: number) {
-  const raw = 2.3 * (width / 100) + 1.2 * (height / 100);
-  return Math.min(80, Math.max(32, raw)) * fit;
+  void width;
+  void height;
+  return 22 * fit;
 }
 
 async function proof(page: Page, name: string) {
