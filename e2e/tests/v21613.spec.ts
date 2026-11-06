@@ -227,7 +227,8 @@ test("a focused long worker name still opens Edit and Delete", async ({ page }) 
     await page.mouse.click(delBox.x + delBox.width / 2, delBox.y + delBox.height / 2);
     const dialog = page.getByRole("dialog", { name: "Are you sure you want to delete this?" });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(long);
+    await expect(dialog).toContainText("Are you sure you want to delete this?");
+    await expect(dialog).not.toContainText(long);
     await page.keyboard.press("n");
     await expect(dialog).toHaveCount(0);
   }
