@@ -20,6 +20,7 @@ import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
   Screen,
   Dialog,
+  DeletePrompt,
   Prompt,
   HelpOverlay,
 } from "../../dos/Shell";
@@ -337,6 +338,7 @@ export function InvoiceProcess({
     "default"
   );
   const [voidAsk, setVoidAsk] = useState(false);
+  const [pendingLineDelete, setPendingLineDelete] = useState<number | null>(null);
   const [confirmSave, setConfirmSave] = useState(false);
   const [help, setHelp] = useState(false);
   const [unitSortDirection, setUnitSortDirection] = useState<"asc" | "desc" | null>(null);
@@ -1172,7 +1174,7 @@ export function InvoiceProcess({
                       ))}
                   </select>
                   <input
-                    className="dos-input"
+                    className="dos-input invoice-person-name"
                     aria-label="Work Person"
                     placeholder="Type name"
                     value={invoiceWorkPerson(editing.lines)}
@@ -1217,7 +1219,7 @@ export function InvoiceProcess({
                     ))}
                   </select>
                   <input
-                    className="dos-input"
+                    className="dos-input invoice-paint-name"
                     aria-label="Paint Supply Co."
                     placeholder="Type name"
                     value={editing.invoice.paintSupplyCo ?? ""}
@@ -1323,7 +1325,7 @@ export function InvoiceProcess({
                   <button
                     className="dos-btn danger"
                     style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
-                    onClick={() => deleteInvoiceLine(idx)}
+                    onClick={() => setPendingLineDelete(idx)}
                   >
                     Delete
                   </button>
@@ -1380,6 +1382,16 @@ export function InvoiceProcess({
         </Dialog>
       )}
 
+      {pendingLineDelete != null && (
+        <DeletePrompt
+          onYes={() => {
+            const idx = pendingLineDelete;
+            setPendingLineDelete(null);
+            deleteInvoiceLine(idx);
+          }}
+          onNo={() => setPendingLineDelete(null)}
+        />
+      )}
       {voidAsk && (
         <Prompt
           question={`Do you want Void (Y/N) ?  Invoice #${current?.invoice}`}

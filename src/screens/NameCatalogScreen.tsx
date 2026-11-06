@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Screen, Prompt } from "../dos/Shell";
+import { DeletePrompt, Screen } from "../dos/Shell";
 
 /**
  * Add and delete a named list (unit sizes, paint supply companies).
@@ -23,23 +23,6 @@ export function NameCatalogScreen({
   const [pending, setPending] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [msgKind, setMsgKind] = useState<"default" | "error" | "info">("default");
-
-  useEffect(() => {
-    if (!pending) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "y" || e.key === "Y") {
-        e.preventDefault();
-        e.stopPropagation();
-        void confirmDelete();
-      } else if (e.key === "n" || e.key === "N" || e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        setPending(null);
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [pending]);
 
   useEffect(() => {
     let cancel = false;
@@ -150,8 +133,7 @@ export function NameCatalogScreen({
         </div>
       </div>
       {pending && (
-        <Prompt
-          question="Are you sure? Y/N"
+        <DeletePrompt
           onYes={() => void confirmDelete()}
           onNo={() => setPending(null)}
         />

@@ -92,7 +92,7 @@ export function MiscScreen({ onBack }: { onBack: () => void }) {
         else if (editForm) setEditForm(null);
         else if (
           document.querySelector(
-            `[aria-label="Are you sure? Y/N"], [aria-label="${UNSAVED_JOB_CHANGES}"]`
+            `[aria-label="Are you sure you want to delete this?"], [aria-label="${UNSAVED_JOB_CHANGES}"]`
           )
         ) {
           // Workers and Job Descriptions own these prompts. Their listeners

@@ -318,6 +318,7 @@ describe("WorkOrderProcess editing", () => {
     expect(code1).toHaveValue("*");
     fireEvent.change(screen.getByLabelText(/^Service Date/), { target: { value: "" } });
     await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+    await user.keyboard("y");
     expect(screen.getByText("Total: 40.00")).toBeInTheDocument();
     await user.keyboard("{Control>}s{/Control}Y");
     await waitFor(() => expect(api.saveWorkOrder).toHaveBeenCalledTimes(1));

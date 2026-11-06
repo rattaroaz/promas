@@ -19,6 +19,7 @@ import { pushUndoDelete } from "../../lib/undoDelete";
 import {
   Screen,
   Dialog,
+  DeletePrompt,
   Prompt,
   HelpOverlay,
   FORM_KEYS,
@@ -203,6 +204,35 @@ function PropertyPlaceCells({ p }: { p: Property }) {
       <div>{(p.state ?? "").trim()}</div>
       <div>{(p.zip ?? "").trim()}</div>
     </>
+  );
+}
+
+/** Comment uses the street width and grows another line when the text wraps. */
+function PropertyComment({
+  id,
+  value,
+  onChange,
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      id={id}
+      className="dos-input w45 property-comment"
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
 
@@ -540,6 +570,10 @@ export function CompanyPropertyGate({
     p: Property,
     extras?: { focusInvoice?: number }
   ) {
+    // A street or contact search lists every company. Choosing a row opens
+    // the process, and Esc must come back to that list. Setting the company
+    // here would turn the list into that company's page.
+    const keepGlobalList = company == null;
     let co = company;
     if (!co || co.companyNo !== p.companyNo) {
       co = (await api.getCompany(p.companyNo)) ?? null;
@@ -549,8 +583,10 @@ export function CompanyPropertyGate({
       setMsgKind("error");
       return;
     }
-    setCompany(co);
-    setProperty(p);
+    if (!keepGlobalList) {
+      setCompany(co);
+      setProperty(p);
+    }
     if (extras) onReady(co, p, extras);
     else onReady(co, p);
   }
@@ -821,10 +857,6 @@ export function CompanyPropertyGate({
         setEditPr(null);
         return;
       }
-      if (askDeleteCompany) {
-        setAskDeleteCompany(false);
-        return;
-      }
       goBackScreen();
     },
     onF1: () => setHelp(true),
@@ -940,17 +972,6 @@ export function CompanyPropertyGate({
             ? invBrowse.end
             : undefined,
     onChar: (ch) => {
-      if (askDeleteCompany) {
-        if (ch === "y" || ch === "Y") {
-          void confirmDeleteCompany();
-          return true;
-        }
-        if (ch === "n" || ch === "N") {
-          setAskDeleteCompany(false);
-          return true;
-        }
-        return true;
-      }
       if (askAdd) {
         if (ch === "y" || ch === "Y") {
           setAskAdd(false);
@@ -1666,8 +1687,8 @@ export function CompanyPropertyGate({
                 onChange={(e) => setEditPr({ ...editPr, city: e.target.value })}
               />
             </DotField>
-            <div className="dos-form-row">
-              <DotField label="Sta" width={5}>
+            <div className="property-state-zip">
+              <DotField label="Sta" width={14}>
                 <input
                   className="dos-input w4"
                   value={editPr.state}
@@ -1739,7 +1760,7 @@ export function CompanyPropertyGate({
             </DotField>
             <DotField label="E-mail" width={14}>
               <input
-                className="dos-input w12"
+                className="dos-input property-email"
                 aria-label="E-mail"
                 value={editPr.pageMap}
                 onChange={(e) =>
@@ -1748,12 +1769,9 @@ export function CompanyPropertyGate({
               />
             </DotField>
             <DotField label="Comment" width={14}>
-              <input
-                className="dos-input w40"
+              <PropertyComment
                 value={editPr.comment1}
-                onChange={(e) =>
-                  setEditPr({ ...editPr, comment1: e.target.value })
-                }
+                onChange={(comment1) => setEditPr({ ...editPr, comment1 })}
               />
             </DotField>
           </div>
@@ -1761,8 +1779,7 @@ export function CompanyPropertyGate({
       )}
 
       {askDeleteCompany && company && (
-        <Prompt
-          question={`Are you sure you want to delete company ${company.companyNo} ${company.name} (Y/N) ?`}
+        <DeletePrompt
           onYes={() => void confirmDeleteCompany()}
           onNo={() => setAskDeleteCompany(false)}
         />

@@ -781,7 +781,7 @@ describe("CompanyPropertyGate", () => {
     await user.click(await screen.findByRole("button", { name: /1000\s+ACME/i }));
     await user.click(await screen.findByRole("button", { name: "Delete company" }));
     expect(
-      await screen.findByText(/Are you sure you want to delete company 1000 ACME/i)
+      await screen.findByText("Are you sure you want to delete this?")
     ).toBeInTheDocument();
     expect(api.deleteCompany).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /^N$/i }));
@@ -1550,6 +1550,14 @@ describe("CompanyPropertyGate searches, keys and failures", () => {
       key("Insert");
       expect(await screen.findByRole("dialog", { name: "Property Information" })).toBeInTheDocument();
       expect(screen.getByLabelText(/^Sta/)).toHaveValue("CA");
+      expect(screen.getByLabelText(/^Sta/).closest(".property-state-zip")).toBeTruthy();
+      expect(screen.getByLabelText(/^Zip/).closest(".property-state-zip")).toBeTruthy();
+      expect(screen.getByLabelText("E-mail")).toHaveClass("property-email");
+      const street = screen.getByLabelText(/^Street/);
+      const comment = screen.getByLabelText(/^Comment/);
+      expect(comment.tagName).toBe("TEXTAREA");
+      expect(comment).toHaveClass("w45");
+      expect(street).toHaveClass("w45");
       const fill = (label: string | RegExp, value: string) =>
         fireEvent.change(screen.getByLabelText(label), { target: { value } });
       fill(/^PropertyName/, "Bldg C");
@@ -1749,7 +1757,7 @@ describe("CompanyPropertyGate searches, keys and failures", () => {
       await chooseAcme(gate.user);
       await gate.user.click(await screen.findByRole("button", { name: "Delete company" }));
       expect(
-        screen.getByRole("dialog", { name: "Are you sure you want to delete company 1000 ACME (Y/N) ?" })
+        screen.getByRole("dialog", { name: "Are you sure you want to delete this?" })
       ).toBeInTheDocument();
       return gate;
     }
@@ -1780,7 +1788,7 @@ describe("CompanyPropertyGate searches, keys and failures", () => {
     it.each(["n", "Escape"])("%s keeps the company", async (k) => {
       const { onBack } = await askToDelete();
       key(k);
-      expect(screen.queryByRole("dialog", { name: /delete company/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Are you sure you want to delete this?" })).not.toBeInTheDocument();
       expect(row(/01\s+Bldg A/)).toBeInTheDocument();
       expect(api.deleteCompany).not.toHaveBeenCalled();
       expect(onBack).not.toHaveBeenCalled();
@@ -1790,7 +1798,7 @@ describe("CompanyPropertyGate searches, keys and failures", () => {
       await askToDelete();
       key("x");
       key("Insert");
-      expect(screen.getByRole("dialog", { name: /delete company 1000 ACME/ })).toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: "Are you sure you want to delete this?" })).toBeInTheDocument();
       expect(screen.queryByRole("dialog", { name: "Property Information" })).not.toBeInTheDocument();
     });
 
@@ -1799,7 +1807,7 @@ describe("CompanyPropertyGate searches, keys and failures", () => {
       await askToDelete();
       key("y");
       await waitFor(() => expect(messageBar()).toHaveTextContent("FOREIGN KEY constraint failed"));
-      expect(screen.queryByRole("dialog", { name: /delete company/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Are you sure you want to delete this?" })).not.toBeInTheDocument();
       expect(row(/01\s+Bldg A/)).toBeInTheDocument();
     });
   });

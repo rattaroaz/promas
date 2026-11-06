@@ -439,7 +439,7 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     await page.getByRole("button", { name: "Ctrl-S Save" }).click();
     const del = page.getByRole("button", { name: new RegExp(`Delete ${long}`) });
     await del.click();
-    await expect(page.getByLabel("Are you sure? Y/N")).toBeVisible();
+    await expect(page.getByLabel("Are you sure you want to delete this?")).toBeVisible();
     await waitForFit(page);
     const afterFit = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")
@@ -448,7 +448,7 @@ test("a long typed value fits, and Delete does not move the scale", async ({ pag
     const prompted = await clipReport(page);
     expect(prompted, prompted.join("\n")).toEqual([]);
     await page.keyboard.press("Escape");
-    await expect(page.getByLabel("Are you sure? Y/N")).toHaveCount(0);
+    await expect(page.getByLabel("Are you sure you want to delete this?")).toHaveCount(0);
     await waitForFit(page);
     const closed = await page.evaluate(() =>
       document.documentElement.style.getPropertyValue("--fit-scale")

@@ -522,7 +522,9 @@ describe("InvoiceProcess", () => {
     expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(4);
     expect(screen.queryByRole("button", { name: "F2 Undo Delete" })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: /^Delete$/ })[0]);
+    await user.keyboard("y");
     await user.click(screen.getAllByRole("button", { name: /^Delete$/ })[0]);
+    await user.keyboard("y");
     expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: "F2 Undo Delete" }));
     expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(3);
@@ -1503,6 +1505,7 @@ describe("InvoiceProcess keys, printing and failures", () => {
       const deletes = screen.getAllByRole("button", { name: /^Delete$/ });
       expect(deletes).toHaveLength(4);
       await user.click(deletes[3]);
+      await user.keyboard("y");
       expect(screen.getAllByRole("button", { name: /^Delete$/ })).toHaveLength(3);
       await user.click(screen.getByRole("button", { name: /^\+ Line$/ }));
 
