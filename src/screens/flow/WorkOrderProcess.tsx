@@ -17,6 +17,7 @@ import { pointerHoverMuted, useBrowseIndex, useDosKeys } from "../../dos/hooks";
 import {
   Screen,
   Dialog,
+  DeletePrompt,
   Prompt,
   HelpOverlay,
   BROWSE_KEYS,
@@ -53,6 +54,7 @@ export function WorkOrderProcess({
     "default"
   );
   const [voidAsk, setVoidAsk] = useState(false);
+  const [pendingLineDelete, setPendingLineDelete] = useState<number | null>(null);
   const [confirmSave, setConfirmSave] = useState(false);
   const [addWtAsk, setAddWtAsk] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
@@ -641,7 +643,7 @@ export function WorkOrderProcess({
                   <button
                     className="dos-btn danger"
                     style={{ width: "100%", minHeight: "44px", textAlign: "center", padding: "0 1ch" }}
-                    onClick={() => deleteWorkOrderLine(idx)}
+                    onClick={() => setPendingLineDelete(idx)}
                   >
                     Delete
                   </button>
@@ -683,6 +685,16 @@ export function WorkOrderProcess({
         </Dialog>
       )}
 
+      {pendingLineDelete != null && (
+        <DeletePrompt
+          onYes={() => {
+            const idx = pendingLineDelete;
+            setPendingLineDelete(null);
+            deleteWorkOrderLine(idx);
+          }}
+          onNo={() => setPendingLineDelete(null)}
+        />
+      )}
       {voidAsk && (
         <Prompt
           question={`Do you want Void (Y/N) ?  Order #${current?.orderNo}`}

@@ -785,6 +785,60 @@ h6 {
   gap: 0.15em;
 }
 
+/* Sta uses the same label width as the fields above it, so its box lines up.
+   Zip stays on that line. The gap is four spaces: in this font a space is
+   a quarter of an em. The boxes hug their text so the gap starts at the
+   state box instead of after an empty stretch. */
+.property-state-zip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  column-gap: 1em;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.property-state-zip > .dos-field:first-child {
+  flex: 0 0 20.5ch;
+  width: 20.5ch;
+}
+
+.property-state-zip > .dos-field:last-child {
+  flex: 0 0 18.5ch;
+  width: 18.5ch;
+}
+
+.property-state-zip .dos-input.w4 {
+  width: 5ch;
+  flex: 0 0 5ch;
+  max-width: 5ch;
+}
+
+.property-state-zip .dos-input.w10 {
+  width: 12ch;
+  flex: 0 0 12ch;
+  max-width: 12ch;
+}
+
+/* Twice the old 14ch email box. */
+.property-edit .property-email {
+  width: 28ch;
+  min-width: 28ch;
+  max-width: 28ch;
+  flex: 0 0 28ch;
+}
+
+/* Same width as Street (w45). Extra text wraps onto the next line. */
+.property-edit .property-comment {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  resize: none;
+  overflow: hidden;
+  height: auto;
+  padding: 0 0.4ch;
+}
+
 .dos-field {
   display: flex;
   align-items: baseline;
@@ -1243,9 +1297,11 @@ h6 {
 
 .invoice-term-pair {
   display: grid;
+  /* The last track fits the doubled Work Person box, so Customer P.O.
+     and Paint Supply Co. start further right on a wide window. */
   grid-template-columns:
     18ch var(--dos-date-width)
-    15ch var(--dos-date-width);
+    15ch max(var(--dos-date-width), calc(20ch + 1.7em + 0.3ch));
   column-gap: 0.5ch;
   align-items: baseline;
   justify-items: start;
@@ -1263,6 +1319,22 @@ h6 {
   min-width: 0;
   max-width: 10ch;
   flex: 0 0 10ch;
+}
+
+/* Work Person is twice that 10ch box. */
+.invoice-terms-order .invoice-work-person .invoice-person-name {
+  width: 20ch;
+  min-width: 20ch;
+  max-width: 20ch;
+  flex: 0 0 20ch;
+}
+
+/* Paint Supply Co. is 30% wider than that 10ch box. */
+.invoice-terms-order .invoice-work-person .invoice-paint-name {
+  width: 13ch;
+  min-width: 13ch;
+  max-width: 13ch;
+  flex: 0 0 13ch;
 }
 
 /* ─── Prompt / yes-no ───────────────────────────────────── */

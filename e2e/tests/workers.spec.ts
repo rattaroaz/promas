@@ -52,7 +52,7 @@ test.describe("workers", () => {
     await page.getByRole("button", { name: /7\.\s*Miscellaneous/i }).click();
     await page.getByRole("button", { name: /5\.\s*Workers/i }).click();
     const deleteJose = page.getByRole("button", { name: "Delete Jose Ramirez" });
-    const sure = page.getByRole("dialog", { name: "Are you sure? Y/N" });
+    const sure = page.getByRole("dialog", { name: "Are you sure you want to delete this?" });
     await deleteJose.click();
     await expect(sure).toBeVisible();
     await page.keyboard.press("x");

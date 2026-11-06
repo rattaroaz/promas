@@ -87,6 +87,50 @@ describe("ProcessRouter observability", () => {
     expect(screen.queryByRole("textbox", { name: "Company NO" })).not.toBeInTheDocument();
   });
 
+  it("Esc from a street-search invoice returns to that street list", async () => {
+    vi.mocked(api.listProperties).mockResolvedValue([
+      {
+        ...emptyProperty("2006"),
+        proNo: "01",
+        name: "Pointe",
+        street: "1800 First",
+        city: "Irvine",
+      },
+      {
+        ...emptyProperty("1000"),
+        proNo: "02",
+        name: "Other",
+        street: "1800 Second",
+        city: "Tustin",
+      },
+    ]);
+    vi.mocked(api.listInvoices).mockResolvedValue([]);
+    vi.mocked(api.getCompany).mockImplementation(async (companyNo: string) => ({
+      ...emptyCompany(),
+      companyNo,
+      name: companyNo === "2006" ? "First Pointe Management Group" : "ACME",
+    }));
+
+    const user = userEvent.setup();
+    renderApp(<ProcessRouter process="invoice" onBack={vi.fn()} />);
+    const street = screen.getByRole("textbox", { name: "Property Street" });
+    await user.click(street);
+    await user.type(street, "1800{Enter}");
+    await user.click(await screen.findByRole("button", { name: /2006/ }));
+    expect(await screen.findByRole("button", { name: /New Invoice/i })).toBeInTheDocument();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+    expect(await screen.findByRole("button", { name: /CoNO/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /1800 Second/ })).toBeInTheDocument();
+    expect(screen.queryByText("2006 First Pointe Management Group")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete company" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /New Invoice/i })).not.toBeInTheDocument();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(await screen.findByRole("textbox", { name: "Property Street" })).toBeInTheDocument();
+  });
+
   it("returns from the invoice list to the menu with one Esc per screen", async () => {
     vi.mocked(api.listCompanies).mockResolvedValue([
       { ...emptyCompany(), companyNo: "1000", name: "ACME" },

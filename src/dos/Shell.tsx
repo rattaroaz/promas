@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
+import { ReactNode, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import {
   mountUndoDeleteKeys,
   subscribeUndoDeletes,
@@ -277,6 +277,54 @@ export function Dialog({
         <div className="dlg-body" ref={bodyRef}>{children}</div>
         {below}
         {foot && <div className="dlg-foot">{foot}</div>}
+      </div>
+    </div>
+  );
+}
+
+export const DELETE_PROMPT_QUESTION = "Are you sure you want to delete this?";
+export const DELETE_YES = "promas-delete-yes";
+export const DELETE_NO = "promas-delete-no";
+
+/**
+ * One confirm for every delete. Y deletes. Esc and N close the popup.
+ * Every other key is ignored, so the popup stays where it is.
+ */
+export function DeletePrompt({
+  onYes,
+  onNo,
+}: {
+  onYes: () => void;
+  onNo: () => void;
+}) {
+  const yesRef = useRef(onYes);
+  const noRef = useRef(onNo);
+  yesRef.current = onYes;
+  noRef.current = onNo;
+  useLayoutEffect(() => {
+    document.documentElement.dataset.deletePrompt = "yes";
+    const yes = () => yesRef.current();
+    const no = () => noRef.current();
+    window.addEventListener(DELETE_YES, yes);
+    window.addEventListener(DELETE_NO, no);
+    return () => {
+      delete document.documentElement.dataset.deletePrompt;
+      window.removeEventListener(DELETE_YES, yes);
+      window.removeEventListener(DELETE_NO, no);
+    };
+  }, []);
+  return (
+    <div className="dos-overlay">
+      <div className="dos-prompt" role="dialog" aria-label={DELETE_PROMPT_QUESTION}>
+        <div className="q">{DELETE_PROMPT_QUESTION}</div>
+        <div style={{ marginTop: "0.6em", display: "flex", gap: "2ch", justifyContent: "center" }}>
+          <button type="button" className="dos-btn" onClick={() => yesRef.current()}>
+            Y
+          </button>
+          <button type="button" className="dos-btn" onClick={() => noRef.current()}>
+            N
+          </button>
+        </div>
       </div>
     </div>
   );

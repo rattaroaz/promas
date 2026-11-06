@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useCallback, useState, useRef } from "react";
 import type { RefObject } from "react";
-import { STATUS_KEY_CLICK } from "./Shell";
+import { DELETE_NO, DELETE_YES, STATUS_KEY_CLICK } from "./Shell";
 
 export type ArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 
@@ -242,6 +242,16 @@ export function useDosKeys(
     if (!active) return;
 
     const onKey = (e: KeyboardEvent) => {
+      if (document.documentElement.dataset.deletePrompt === "yes") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.repeat) return;
+        if (e.key === "y" || e.key === "Y") window.dispatchEvent(new Event(DELETE_YES));
+        else if (e.key === "n" || e.key === "N" || e.key === "Escape") {
+          window.dispatchEvent(new Event(DELETE_NO));
+        }
+        return;
+      }
       const h = ref.current;
       const tag = (e.target as HTMLElement)?.tagName;
       const inField =
@@ -411,6 +421,10 @@ export function useDosKeys(
     const onStatusClick = (ev: Event) => {
       const key = (ev as CustomEvent<string>).detail;
       if (typeof key !== "string") return;
+      if (document.documentElement.dataset.deletePrompt === "yes") {
+        if (key === "Esc") window.dispatchEvent(new Event(DELETE_NO));
+        return;
+      }
       const h = ref.current;
       switch (key) {
         case "Esc":

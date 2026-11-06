@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, JobDescription } from "../api";
 import { MoneyInput } from "../dos/MoneyInput";
-import { Screen, Prompt } from "../dos/Shell";
+import { DeletePrompt, Prompt, Screen } from "../dos/Shell";
 import { pushUndoDelete } from "../lib/undoDelete";
 import {
   blankJobDescription,
@@ -265,68 +265,49 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [pendingQuit]);
 
-  useEffect(() => {
-    if (!pendingDelete) return;
+  async function confirmPendingDelete() {
     const row = pendingDelete;
-    let settled = false;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.type !== "keydown") return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (settled) return;
-      if (e.key === "y" || e.key === "Y") {
-        settled = true;
-        setPendingDelete(null);
-        void (async () => {
-          if (row.originalDescription) {
-            try {
-              await api.deleteJobDescription(row.originalDescription);
-            } catch (err) {
-              setMsg(String(err));
-              setMsgKind("error");
-              return;
-            }
-          }
-          const index = rowsRef.current.findIndex((r) => r.key === row.key);
-          savedRef.current.delete(row.key);
-          replaceRows(rowsRef.current.filter((r) => r.key !== row.key));
-          setMsg("");
-          setMsgKind("default");
-          pushUndoDelete(async () => {
-            const description = row.description.trim() || row.originalDescription || "";
-            if (row.originalDescription && description) {
-              await api.saveJobDescription({
-                description,
-                originalDescription: "",
-                single: row.single,
-                onePlusOne: row.onePlusOne,
-                twoPlusOne: row.twoPlusOne,
-                twoPlusTwo: row.twoPlusTwo,
-                threePlusTwo: row.threePlusTwo,
-                fourPlusTwo: row.fourPlusTwo,
-                occupied: row.occupied,
-                fixed: row.fixed,
-              });
-            }
-            if (rowsRef.current.some((r) => r.key === row.key)) return;
-            const next = [...rowsRef.current];
-            next.splice(Math.min(Math.max(index, 0), next.length), 0, row);
-            replaceRows(next);
-            savedRef.current.set(row.key, snapshot(row));
-            setMsg("Delete undone.");
-            setMsgKind("info");
-          });
-        })();
+    if (!row) return;
+    setPendingDelete(null);
+    if (row.originalDescription) {
+      try {
+        await api.deleteJobDescription(row.originalDescription);
+      } catch (err) {
+        setMsg(String(err));
+        setMsgKind("error");
         return;
       }
-      if (e.key === "n" || e.key === "N" || e.key === "Escape") {
-        settled = true;
-        setPendingDelete(null);
+    }
+    const index = rowsRef.current.findIndex((r) => r.key === row.key);
+    savedRef.current.delete(row.key);
+    replaceRows(rowsRef.current.filter((r) => r.key !== row.key));
+    setMsg("");
+    setMsgKind("default");
+    pushUndoDelete(async () => {
+      const description = row.description.trim() || row.originalDescription || "";
+      if (row.originalDescription && description) {
+        await api.saveJobDescription({
+          description,
+          originalDescription: "",
+          single: row.single,
+          onePlusOne: row.onePlusOne,
+          twoPlusOne: row.twoPlusOne,
+          twoPlusTwo: row.twoPlusTwo,
+          threePlusTwo: row.threePlusTwo,
+          fourPlusTwo: row.fourPlusTwo,
+          occupied: row.occupied,
+          fixed: row.fixed,
+        });
       }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [pendingDelete]);
+      if (rowsRef.current.some((r) => r.key === row.key)) return;
+      const next = [...rowsRef.current];
+      next.splice(Math.min(Math.max(index, 0), next.length), 0, row);
+      replaceRows(next);
+      savedRef.current.set(row.key, snapshot(row));
+      setMsg("Delete undone.");
+      setMsgKind("info");
+    });
+  }
 
   return (
     <Screen
@@ -433,11 +414,10 @@ export function JobDescriptionsScreen({ onBack }: { onBack?: () => void }) {
         </div>
       </div>
       {pendingDelete && (
-        <div className="dos-overlay">
-          <div className="dos-prompt" role="dialog" aria-label="Are you sure? Y/N">
-            <div className="q">Are you sure? Y/N</div>
-          </div>
-        </div>
+        <DeletePrompt
+          onYes={() => void confirmPendingDelete()}
+          onNo={() => setPendingDelete(null)}
+        />
       )}
       {pendingQuit && (
         <Prompt question={UNSAVED_JOB_CHANGES} onYes={leaveWithoutSaving} onNo={() => {

@@ -89,7 +89,7 @@ describe("MiscScreen", () => {
       await screen.findByRole("button", { name: "Delete Jose Ramirez" })
     );
     expect(
-      screen.getByRole("dialog", { name: "Are you sure? Y/N" })
+      screen.getByRole("dialog", { name: "Are you sure you want to delete this?" })
     ).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
